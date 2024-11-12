@@ -1,0 +1,218 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>estimateMissSBM</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimation of simple SBMs with missing data</h2>
+
+<h3>Description</h3>
+
+<p>Variational EM inference of Stochastic Block Models indexed by block number from a partially observed network.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">estimateMissSBM(
+  adjacencyMatrix,
+  vBlocks,
+  sampling,
+  covariates = list(),
+  control = list()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>adjacencyMatrix</code></td>
+<td>
+<p>The N x N adjacency matrix of the network data. If <code>adjacencyMatrix</code> is symmetric,
+we assume an undirected network with no loop; otherwise the network is assumed to be directed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vBlocks</code></td>
+<td>
+<p>The vector of number of blocks considered in the collection.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sampling</code></td>
+<td>
+<p>The model used to described the process that originates the missing data:
+MAR designs ("dyad", "node","covar-dyad","covar-node","snowball") and MNAR designs
+("double-standard", "block-dyad", "block-node" , "degree") are available. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covariates</code></td>
+<td>
+<p>An optional list with M entries (the M covariates). If the covariates are node-centered, each entry of <code>covariates</code>
+must be a size-N vector;  if the covariates are dyad-centered, each entry of <code>covariates</code> must be N x N matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>a list of parameters controlling advanced features. See details.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Internal functions use <code>future_lapply</code>, so set your plan to <code>'multisession'</code> or
+<code>'multicore'</code> to use several cores/workers.
+The list of parameters <code>control</code> tunes more advanced features, such as the
+initialization, how covariates are handled in the model, and the variational EM algorithm:
+</p>
+
+<ul>
+<li>
+<p> useCov logical. If <code>covariates</code> is not null, should they be used for the
+for the SBM inference (or just for the sampling)? Default is TRUE.
+</p>
+</li>
+<li>
+<p> clusterInit Initial method for clustering: either a character ("spectral")
+or a list with <code>length(vBlocks)</code> vectors, each with size  <code>ncol(adjacencyMatrix)</code>,
+providing a user-defined clustering. Default is "spectral".
+similarity An R x R -&gt; R function to compute similarities between node covariates. Default is
+<code>l1_similarity</code>, that is, -abs(x-y). Only relevant when the covariates are node-centered
+(i.e. <code>covariates</code> is a list of size-N vectors).
+</p>
+</li>
+<li>
+<p> threshold V-EM algorithm stops stop when an optimization step changes the objective function or the parameters
+by less than threshold. Default is 1e-2.
+</p>
+</li>
+<li>
+<p> maxIter V-EM algorithm stops when the number of iteration exceeds maxIter.
+Default is 50.
+</p>
+</li>
+<li>
+<p> fixPointIter number of fix-point iterations in the V-E step. Default is 3.
+</p>
+</li>
+<li>
+<p> exploration character indicating the kind of exploration used among "forward", "backward", "both" or "none". Default is "both".
+</p>
+</li>
+<li>
+<p> iterates integer for the number of iterations during exploration. Only relevant when <code>exploration</code> is different from "none". Default is 1.
+</p>
+</li>
+<li>
+<p> trace logical for verbosity. Default is TRUE.
+</p>
+</li>
+</ul>
+<p>The different sampling designs are split into two families in which we find dyad-centered and
+node-centered samplings. See <a href="https://doi.org/10.1080/01621459.2018.1562934">doi:10.1080/01621459.2018.1562934</a> for a complete description.
+</p>
+
+<ul>
+<li>
+<p> Missing at Random (MAR)
+</p>
+
+<ul>
+<li>
+<p> dyad parameter = p = Prob(Dyad(i,j) is observed)
+</p>
+</li>
+<li>
+<p> node parameter = p = Prob(Node i is observed)
+</p>
+</li>
+<li>
+<p> covar-dyad": parameter = beta in R^M, such that Prob(Dyad (i,j) is observed) = logistic(parameter' covarArray (i,j, .))
+</p>
+</li>
+<li>
+<p> covar-node": parameter = nu in R^M such that Prob(Node i is observed)  = logistic(parameter' covarMatrix (i,)
+</p>
+</li>
+<li>
+<p> snowball": parameter = number of waves with Prob(Node i is observed in the 1st wave)
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p> Missing Not At Random (MNAR)
+</p>
+
+<ul>
+<li>
+<p> double-standard parameter = (p0,p1) with p0 = Prob(Dyad (i,j) is observed | the dyad is equal to 0), p1 = Prob(Dyad (i,j) is observed | the dyad is equal to 1)
+</p>
+</li>
+<li>
+<p> block-node parameter = c(p(1),...,p(Q)) and p(q) = Prob(Node i is observed | node i is in cluster q)
+</p>
+</li>
+<li>
+<p> block-dyad parameter = c(p(1,1),...,p(Q,Q)) and p(q,l) = Prob(Edge (i,j) is observed | node i is in cluster q and node j is in cluster l)
+</p>
+</li>
+</ul>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>Returns an R6 object with class <code>missSBM_collection</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>observeNetwork</code>, <code>missSBM_collection</code> and <code>missSBM_fit</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## SBM parameters
+N &lt;- 100 # number of nodes
+Q &lt;- 3   # number of clusters
+pi &lt;- rep(1,Q)/Q     # block proportion
+theta &lt;- list(mean = diag(.45,Q) + .05 ) # connectivity matrix
+
+## Sampling parameters
+samplingParameters &lt;- .75 # the sampling rate
+sampling  &lt;- "dyad"      # the sampling design
+
+## generate a undirected binary SBM with no covariate
+sbm &lt;- sbm::sampleSimpleSBM(N, pi, theta)
+
+## Uncomment to set parallel computing with future
+## future::plan("multicore", workers = 2)
+
+## Sample some dyads data + Infer SBM with missing data
+collection &lt;-
+   observeNetwork(sbm$networkData, sampling, samplingParameters) %&gt;%
+   estimateMissSBM(vBlocks = 1:4, sampling = sampling)
+plot(collection, "monitoring")
+plot(collection, "icl")
+
+collection$ICL
+coef(collection$bestModel$fittedSBM, "connectivity")
+
+myModel &lt;- collection$bestModel
+plot(myModel, "expected")
+plot(myModel, "imputed")
+plot(myModel, "meso")
+coef(myModel, "sampling")
+coef(myModel, "connectivity")
+predict(myModel)[1:5, 1:5]
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,279 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mult_bf_inequality</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Computes Bayes Factors For Inequality Constrained Multinomial Parameters</h2>
+
+<h3>Description</h3>
+
+<p>Computes Bayes factor for inequality constrained multinomial parameters using a bridge sampling routine.
+Restricted hypothesis <code class="reqn">H_r</code> states that category proportions follow a particular trend.
+Alternative hypothesis <code class="reqn">H_e</code> states that category proportions are free to vary.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mult_bf_inequality(
+  samples = NULL,
+  restrictions = NULL,
+  x = NULL,
+  Hr = NULL,
+  a = rep(1, ncol(samples)),
+  factor_levels = NULL,
+  prior = FALSE,
+  index = 1,
+  maxiter = 1000,
+  seed = NULL,
+  niter = 5000,
+  nburnin = niter * 0.05
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>samples</code></td>
+<td>
+<p>matrix of dimension <code>nsamples x nparams</code> with samples from truncated Dirichlet density</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>restrictions</code></td>
+<td>
+<p><code>list</code> of class <code>bmult_rl</code> or of class <code>bmult_rl_ineq</code> as returned from <code>generate_restriction_list</code> that encodes
+inequality constraints for each independent restriction</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>numeric. Vector with data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Hr</code></td>
+<td>
+<p>string or character. Encodes the user specified informed hypothesis. Use either specified <code>factor_levels</code>
+or indices to refer to parameters. See “Note” section for details on how to formulate informed hypotheses</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>a</code></td>
+<td>
+<p>numeric. Vector with concentration parameters of Dirichlet distribution. Must be the same length as <code>x</code>. Default sets all concentration parameters to 1</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>factor_levels</code></td>
+<td>
+<p>character. Vector with category names. Must be the same length as <code>x</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>logical. If <code>TRUE</code> the function will ignore the data and evaluate only the prior distribution</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>index</code></td>
+<td>
+<p>numeric. Index of current restriction. Default is 1</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>numeric. Maximum number of iterations for the iterative updating scheme used in the bridge sampling routine.
+Default is 1,000 to avoid infinite loops</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>numeric. Sets the seed for reproducible pseudo-random number generation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>niter</code></td>
+<td>
+<p>numeric. Vector with number of samples to be drawn from truncated distribution</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nburnin</code></td>
+<td>
+<p>numeric. A single value specifying the number of burn-in samples when drawing from the truncated distribution.
+Minimum number of burn-in samples is 10. Default is 5% of the number of samples. Burn-in samples are removed automatically after the sampling.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The model assumes that data follow a multinomial distribution and assigns a Dirichlet distribution as prior for the model parameters
+(i.e., underlying category proportions). That is:
+</p>
+<p style="text-align: center;"><code class="reqn">x ~ Multinomial(N, \theta)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\theta ~ Dirichlet(\alpha)</code>
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>List consisting of the following elements:
+</p>
+
+<dl>
+<dt><code>$eval</code></dt>
+<dd>
+
+<ul>
+<li> <p><code>q11</code>: log prior or posterior evaluations for prior or posterior samples
+</p>
+</li>
+<li> <p><code>q12</code>: log proposal evaluations for prior or posterior samples
+</p>
+</li>
+<li> <p><code>q21</code>: log prior or posterior evaluations for samples from proposal
+</p>
+</li>
+<li> <p><code>q22</code>: log proposal evaluations for samples from proposal
+</p>
+</li>
+</ul>
+</dd>
+<dt><code>$niter</code></dt>
+<dd>
+<p>number of iterations of the iterative updating scheme</p>
+</dd>
+<dt><code>$logml</code></dt>
+<dd>
+<p>estimate of log marginal likelihood</p>
+</dd>
+<dt><code>$hyp</code></dt>
+<dd>
+<p>evaluated inequality constrained hypothesis</p>
+</dd>
+<dt><code>$error_measures</code></dt>
+<dd>
+
+<ul>
+<li> <p><code>re2</code>: the approximate
+relative mean-squared error for the marginal likelihood estimate
+</p>
+</li>
+<li> <p><code>cv</code>: the approximate coefficient of variation for the marginal
+likelihood estimate (assumes that bridge estimate is unbiased)
+</p>
+</li>
+<li> <p><code>percentage</code>: the approximate percentage error of the marginal likelihood estimate
+</p>
+</li>
+</ul>
+</dd>
+</dl>
+<h3>Note</h3>
+
+<p>The following signs can be used to encode restricted hypotheses: <code>"&lt;"</code> and <code>"&gt;"</code> for inequality constraints, <code>"="</code> for equality constraints,
+<code>","</code> for free parameters, and <code>"&amp;"</code> for independent hypotheses. The restricted hypothesis can either be a string or a character vector.
+For instance, the hypothesis <code>c("theta1 &lt; theta2, theta3")</code> means
+</p>
+
+<ul>
+<li> <p><code>theta1</code> is smaller than both <code>theta2</code> and <code>theta3</code>
+</p>
+</li>
+<li>
+<p> The parameters <code>theta2</code> and <code>theta3</code> both have <code>theta1</code> as lower bound, but are not influenced by each other.
+</p>
+</li>
+</ul>
+<p>The hypothesis <code>c("theta1 &lt; theta2 = theta3 &amp; theta4 &gt; theta5")</code> means that
+</p>
+
+<ul>
+<li>
+<p> Two independent hypotheses are stipulated: <code>"theta1 &lt; theta2 = theta3"</code> and <code>"theta4 &gt; theta5"</code>
+</p>
+</li>
+<li>
+<p> The restrictions on the parameters <code>theta1</code>, <code>theta2</code>, and <code>theta3</code> do
+not influence the restrictions on the parameters <code>theta4</code> and <code>theta5</code>.
+</p>
+</li>
+<li> <p><code>theta1</code> is smaller than <code>theta2</code> and <code>theta3</code>
+</p>
+</li>
+<li> <p><code>theta2</code> and <code>theta3</code> are assumed to be equal
+</p>
+</li>
+<li> <p><code>theta4</code> is larger than <code>theta5</code>
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>Damien P, Walker SG (2001).
+“Sampling truncated normal, beta, and gamma densities.”
+<em>Journal of Computational and Graphical Statistics</em>, <b>10</b>, 206–215.
+</p>
+<p>Gronau QF, Sarafoglou A, Matzke D, Ly A, Boehm U, Marsman M, Leslie DS, Forster JJ, Wagenmakers E, Steingroever H (2017).
+“A tutorial on bridge sampling.”
+<em>Journal of Mathematical Psychology</em>, <b>81</b>, 80–97.
+</p>
+<p>Frühwirth-Schnatter S (2004).
+“Estimating marginal likelihoods for mixture and Markov switching models using bridge sampling techniques.”
+<em>The Econometrics Journal</em>, <b>7</b>, 143–167.
+</p>
+<p>Sarafoglou A, Haaf JM, Ly A, Gronau QF, Wagenmakers EJ, Marsman M (2021).
+“Evaluating Multinomial Order Restrictions with Bridge Sampling.”
+<em>Psychological Methods</em>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>generate_restriction_list</code>
+</p>
+<p>Other functions to evaluate informed hypotheses: 
+<code>binom_bf_equality()</code>,
+<code>binom_bf_inequality()</code>,
+<code>binom_bf_informed()</code>,
+<code>mult_bf_equality()</code>,
+<code>mult_bf_informed()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># priors
+a &lt;- c(1, 1, 1, 1)
+
+# informed hypothesis
+factor_levels &lt;- c('theta1', 'theta2', 'theta3', 'theta4')
+Hr            &lt;- c('theta1', '&lt;',  'theta2', '&lt;', 'theta3', '&lt;', 'theta4')
+
+results_prior  &lt;- mult_bf_inequality(Hr=Hr, a=a, factor_levels=factor_levels, 
+prior=TRUE, seed = 2020)
+# corresponds to
+cbind(exp(results_prior$logml), 1/factorial(4))
+
+# alternative - if you have samples and a restriction list
+inequalities  &lt;- generate_restriction_list(Hr=Hr, a=a,
+factor_levels=factor_levels)$inequality_constraints
+prior_samples &lt;- mult_tsampling(inequalities, niter = 2e3, 
+prior=TRUE, seed = 2020)
+results_prior &lt;- mult_bf_inequality(prior_samples, inequalities, seed=2020)
+cbind(exp(results_prior$logml), 1/factorial(4))
+</code></pre>
+
+
+</div>

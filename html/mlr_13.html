@@ -1,0 +1,180 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>batchmark</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Run machine learning benchmarks as distributed experiments.</h2>
+
+<h3>Description</h3>
+
+<p>This function is a very parallel version of benchmark using
+<span class="pkg">batchtools</span>. Experiments are created in the provided registry for each
+combination of learners, tasks and resamplings. The experiments are then
+stored in a registry and the runs can be started via
+batchtools::submitJobs. A job is one train/test split of the outer
+resampling. In case of nested resampling (e.g. with makeTuneWrapper), each
+job is a full run of inner resampling, which can be parallelized in a second
+step with <span class="pkg">ParallelMap</span>.
+</p>
+<p>For details on the usage and support backends have a look at the batchtools
+tutorial page: <a href="https://github.com/mllg/batchtools">https://github.com/mllg/batchtools</a>.
+</p>
+<p>The general workflow with <code>batchmark</code> looks like this:
+</p>
+
+<ol>
+<li>
+<p> Create an ExperimentRegistry using batchtools::makeExperimentRegistry.
+</p>
+</li>
+<li>
+<p> Call <code>batchmark(...)</code> which defines jobs for all learners and tasks in an base::expand.grid fashion.
+</p>
+</li>
+<li>
+<p> Submit jobs using batchtools::submitJobs.
+</p>
+</li>
+<li>
+<p> Babysit the computation, wait for all jobs to finish using batchtools::waitForJobs.
+</p>
+</li>
+<li>
+<p> Call <code>reduceBatchmarkResult()</code> to reduce results into a BenchmarkResult.
+</p>
+</li>
+</ol>
+<p>If you want to use this with <span class="pkg">OpenML</span> datasets you can generate tasks
+from a vector of dataset IDs easily with <code>tasks = lapply(data.ids, function(x) convertOMLDataSetToMlr(getOMLDataSet(x)))</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">batchmark(
+  learners,
+  tasks,
+  resamplings,
+  measures,
+  keep.pred = TRUE,
+  keep.extract = FALSE,
+  models = FALSE,
+  reg = batchtools::getDefaultRegistry()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>learners</code></td>
+<td>
+<p>(list of Learner | character)<br>
+Learning algorithms which should be compared, can also be a single learner.
+If you pass strings the learners will be created via makeLearner.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tasks</code></td>
+<td>
+<p>list of Task<br>
+Tasks that learners should be run on.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resamplings</code></td>
+<td>
+<p>[(list of) ResampleDesc)<br>
+Resampling strategy for each tasks.
+If only one is provided, it will be replicated to match the number of tasks.
+If missing, a 10-fold cross validation is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>measures</code></td>
+<td>
+<p>(list of Measure)<br>
+Performance measures for all tasks.
+If missing, the default measure of the first task is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep.pred</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Keep the prediction data in the <code>pred</code> slot of the result object.
+If you do many experiments (on larger data sets) these objects might unnecessarily increase
+object size / mem usage, if you do not really need them.
+The default is set to <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep.extract</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Keep the <code>extract</code> slot of the result object. When creating a lot of
+benchmark results with extensive tuning, the resulting R objects can become
+very large in size. That is why the tuning results stored in the <code>extract</code>
+slot are removed by default (<code>keep.extract = FALSE</code>). Note that when
+<code>keep.extract = FALSE</code> you will not be able to conduct analysis in the
+tuning results.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>models</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Should all fitted models be stored in the ResampleResult?
+Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reg</code></td>
+<td>
+<p>(batchtools::Registry)<br>
+Registry, created by batchtools::makeExperimentRegistry. If not
+explicitly passed, uses the last created registry.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>(data.table). Generated job ids are stored in the column
+“job.id”.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other benchmark: 
+<code>BenchmarkResult</code>,
+<code>benchmark()</code>,
+<code>convertBMRToRankMatrix()</code>,
+<code>friedmanPostHocTestBMR()</code>,
+<code>friedmanTestBMR()</code>,
+<code>generateCritDifferencesData()</code>,
+<code>getBMRAggrPerformances()</code>,
+<code>getBMRFeatSelResults()</code>,
+<code>getBMRFilteredFeatures()</code>,
+<code>getBMRLearnerIds()</code>,
+<code>getBMRLearnerShortNames()</code>,
+<code>getBMRLearners()</code>,
+<code>getBMRMeasureIds()</code>,
+<code>getBMRMeasures()</code>,
+<code>getBMRModels()</code>,
+<code>getBMRPerformances()</code>,
+<code>getBMRPredictions()</code>,
+<code>getBMRTaskDescs()</code>,
+<code>getBMRTaskIds()</code>,
+<code>getBMRTuneResults()</code>,
+<code>plotBMRBoxplots()</code>,
+<code>plotBMRRanksAsBarChart()</code>,
+<code>plotBMRSummary()</code>,
+<code>plotCritDifferences()</code>,
+<code>reduceBatchmarkResults()</code>
+</p>
+
+
+</div>

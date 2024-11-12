@@ -1,0 +1,414 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>marqLevAlg</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>A parallelized general-purpose optimization based on Marquardt-Levenberg algorithm</h2>
+
+<h3>Description</h3>
+
+<p>This algorithm provides a numerical solution to the problem of unconstrained local
+optimization. This is more efficient than the Gauss-Newton-like algorithm when
+starting from points very far from the final maximum. A new convergence test
+is implemented (RDM) in addition to the usual stopping criterion : stopping
+rule is when the gradients are small enough in the parameters metric
+(GH-1G).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">marqLevAlg(
+  b,
+  m = FALSE,
+  fn,
+  gr = NULL,
+  hess = NULL,
+  maxiter = 500,
+  epsa = 1e-04,
+  epsb = 1e-04,
+  epsd = 1e-04,
+  partialH = NULL,
+  digits = 8,
+  print.info = FALSE,
+  blinding = TRUE,
+  multipleTry = 25,
+  nproc = 1,
+  clustertype = NULL,
+  file = "",
+  .packages = NULL,
+  minimize = TRUE,
+  ...
+)
+
+mla(
+  b,
+  m = FALSE,
+  fn,
+  gr = NULL,
+  hess = NULL,
+  maxiter = 500,
+  epsa = 1e-04,
+  epsb = 1e-04,
+  epsd = 1e-04,
+  partialH = NULL,
+  digits = 8,
+  print.info = FALSE,
+  blinding = TRUE,
+  multipleTry = 25,
+  nproc = 1,
+  clustertype = NULL,
+  file = "",
+  .packages = NULL,
+  minimize = TRUE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>b</code></td>
+<td>
+<p>an optional vector containing the initial values for the
+parameters. Default is 0.1 for every parameter.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>m</code></td>
+<td>
+<p>number of parameters. Optional if b is specified.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fn</code></td>
+<td>
+<p>the function to be optimized, with first argument the
+vector of parameters over which optimization is to take place (argument b).
+It should return a scalar result.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gr</code></td>
+<td>
+<p>a function to return the gradient value for a specific point.
+If missing, finite-difference approximation will be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hess</code></td>
+<td>
+<p>a function to return the hessian matrix for a specific point.
+If missing, finite-difference approximation will be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>optional maximum number of iterations for the marqLevAlg
+iterative algorithm. Default is 500.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>epsa</code></td>
+<td>
+<p>optional threshold for the convergence criterion based on the
+parameter stability. Default is 0.0001.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>epsb</code></td>
+<td>
+<p>optional threshold for the convergence criterion based on the
+objective function stability. Default is 0.0001.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>epsd</code></td>
+<td>
+<p>optional threshold for the relative distance to maximum. This
+criterion has the nice interpretation of estimating the ratio of the
+approximation error over the statistical error, thus it can be used for
+stopping the iterative process whathever the problem. Default is 0.0001.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>partialH</code></td>
+<td>
+<p>optional vector giving the indexes of the parameters to be dropped from
+the Hessian matrix to define the relative distance to maximum/minimum. If specified,
+this option will only be considered at iterations where the two first convergence
+criteria are satisfied (epsa and epsb) and if the total Hessian is not invertible.
+By default, no partial Hessian is defined.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>number of digits to print in outputs. Default value is 8.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>print.info</code></td>
+<td>
+<p>logical indicating if information about computation should be
+reported at each iteration.
+Default value is FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>blinding</code></td>
+<td>
+<p>logical. Equals to TRUE if the algorithm is allowed to go on
+in case of an infinite or not definite value of function. Default value is
+FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>multipleTry</code></td>
+<td>
+<p>integer, different from 1 if the algorithm is allowed to
+go for the first iteration in case of an infinite or not definite value of
+gradients or hessian. As many tries as requested in multipleTry will be done by
+changing the starting point of the algorithm. Default value is 25.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nproc</code></td>
+<td>
+<p>number of processors for parallel computing</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>clustertype</code></td>
+<td>
+<p>one of the supported types from <code>makeCluster</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>file</code></td>
+<td>
+<p>optional character giving the name of the file where the outputs
+of each iteration should be written (if print.info=TRUE).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.packages</code></td>
+<td>
+<p>for parallel setting only, packages used in the fn function</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>minimize</code></td>
+<td>
+<p>logical indicating if the fn function should be minimized or maximized. By default minimize=TRUE, the function is minimized.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other arguments of the fn, gr and hess functions</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Convergence criteria are very strict as they are based on derivatives of the
+objective function in addition to the parameter and objective function stability. In
+some cases, the program may not converge and reach the maximum number of
+iterations fixed at 500.  In this case, the user should check that parameter
+estimates at the last iteration are not on the boundaries of the parameter
+space.  If the parameters are on the boundaries of the parameter space, the
+identifiability of the model should be assessed.  If not, the program should
+be run again with other initial values, with a higher maximum number of
+iterations or less strict convergence tolerances. An alternative is to remove some
+parameters from the Hessian matrix.
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+<p> summary of the call to the function marqLevAlg.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ni</code></td>
+<td>
+<p> number of marqLevAlg iterations before reaching stopping
+criterion.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>istop</code></td>
+<td>
+<p> status of convergence: =1 if the convergence
+criteria were satisfied, =2 if the maximum number of iterations was reached,
+=3 if convergence criteria with partial Hessian matrix were satisfied,
+=4 if the algorithm encountered a problem in the function computation.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>v</code></td>
+<td>
+<p>if istop=1 or istop=3, vector containing the upper triangle matrix of variance-covariance
+estimates at the stopping point. Otherwise v contains the second derivatives
+of the fn function with respect to the parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grad</code></td>
+<td>
+<p>vector containing the gradient
+at the stopping point.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fn.value</code></td>
+<td>
+<p> function evaluation at
+the stopping point.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b</code></td>
+<td>
+<p> stopping point value.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ca</code></td>
+<td>
+
+<p>convergence criteria for parameters stabilisation.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cb</code></td>
+<td>
+<p> convergence
+criteria for function stabilisation.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rdm</code></td>
+<td>
+<p> convergence criteria on
+the relative distance to minimum (or maximum).  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>time</code></td>
+<td>
+<p> a running time.  </p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Melanie Prague, Viviane Philipps, Cecile Proust-Lima, Boris Hejblum, Daniel Commenges, Amadou Diakite
+</p>
+
+
+<h3>References</h3>
+
+<p><em>marqLevAlg Algorithm</em>
+</p>
+<p>Donald W. marquardt An algorithm for Least-Squares Estimation of Nonlinear
+Parameters. Journal of the Society for Industrial and Applied Mathematics,
+Vol. 11, No. 2. (Jun, 1963), pp. 431-441.
+</p>
+<p><em>Convergence criteria : Relative distance to Minimim (or Maximum)</em>
+</p>
+<p>Commenges D. Jacqmin-Gadda H. Proust C. Guedj J. A Newton-like algorithm for
+likelihood maximization the robust-variance scoring algorithm
+arxiv:math/0610402v2 (2006)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+### example 1
+### initial values
+b &lt;- c(8,9)
+### your function
+f1 &lt;- function(b){
+	return(-4*(b[1]-5)^2-(b[2]-6)^2)
+}
+### gradient
+g1 &lt;- function(b){
+     return(c(-8*(b[1]-5),-2*(b[2]-6)))
+}
+## Call
+test1 &lt;- mla(b=b, fn=f1, minimize=FALSE)
+
+## Not run: 
+microbenchmark::microbenchmark(mla(b=b, fn=f1, minimize=FALSE),
+                              mla(b=b, fn=f1, minimize=FALSE, nproc=2),
+                              mla(b=b, fn=f1, gr=g1, minimize=FALSE),
+                              mla(b=b, fn=f1, gr=g1, minimize=FALSE, nproc=2),
+                              times=10)
+        
+## End(Not run)
+
+
+
+### example 2
+## initial values
+b &lt;- c(3,-1,0,1)
+## your function
+f2 &lt;- function(b){
+	return(-((b[1]+10*b[2])^2+5*(b[3]-b[4])^2+(b[2]-2*b[3])^4+10*(b[1]-b[4])^4))
+}
+## Call
+test2 &lt;- mla(b=b, fn=f2, minimize=FALSE)
+test2$b
+
+test2_par &lt;- mla(b=b, fn=f2, minimize=FALSE, nproc=2)
+test2_par$b
+
+## Not run: 
+microbenchmark::microbenchmark(mla(b=b, fn=f2, minimize=FALSE),
+                              mla(b=b, fn=f2, minimize=FALSE, nproc=2),
+                              times=10)
+        
+## End(Not run)
+
+
+## Not run: 
+### example 3 : a linear mixed model
+## the log-likelihood is implemented in the loglikLMM function
+## the gradient is implemented in the gradLMM function
+
+## data
+Y &lt;- dataEx$Y
+X &lt;- as.matrix(cbind(1,dataEx[,c("t","X1","X3")],dataEx$t*dataEx$X1))
+ni &lt;- as.numeric(table(dataEx$i))
+
+## initial values
+binit &lt;- c(0,0,0,0,0,1,1)
+
+## estimation in sequential mode, with numeric derivatives
+estim &lt;- marqLevAlg(b=binit, fn=loglikLMM, minimize=FALSE, X=X, Y=Y, ni=ni)
+## estimation in parallel mode, with numeric derivatives
+estim2 &lt;- marqLevAlg(b=binit, fn=loglikLMM, minimize=FALSE, X=X, Y=Y, ni=ni, 
+nproc=2, clustertype="FORK")
+## estimation in sequential mode, with analytic gradient
+estim3 &lt;- marqLevAlg(b=binit, fn=loglikLMM, gr=gradLMM, minimize=FALSE, X=X, Y=Y, ni=ni)
+## estimation in parallel mode, with analytic gradient
+estim4 &lt;- marqLevAlg(b=binit, fn=loglikLMM, gr=gradLMM, minimize=FALSE, X=X, Y=Y, ni=ni, 
+nproc=2, clustertype="FORK")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

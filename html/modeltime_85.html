@@ -1,0 +1,161 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modeltime_accuracy</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate Accuracy Metrics</h2>
+
+<h3>Description</h3>
+
+<p>This is a wrapper for <code>yardstick</code> that simplifies time series regression accuracy metric
+calculations from a fitted <code>workflow</code> (trained workflow) or <code>model_fit</code> (trained parsnip model).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modeltime_accuracy(
+  object,
+  new_data = NULL,
+  metric_set = default_forecast_accuracy_metric_set(),
+  acc_by_id = FALSE,
+  quiet = TRUE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A Modeltime Table</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>new_data</code></td>
+<td>
+<p>A <code>tibble</code> to predict and calculate residuals on.
+If provided, overrides any calibration data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>metric_set</code></td>
+<td>
+<p>A <code>yardstick::metric_set()</code> that is used to summarize one or more
+forecast accuracy (regression) metrics.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>acc_by_id</code></td>
+<td>
+<p>Should a global or local model accuracy be produced? (Default: FALSE)
+</p>
+
+<ul>
+<li>
+<p> When <code>FALSE</code>, a global model accuracy is provided.
+</p>
+</li>
+<li>
+<p> If <code>TRUE</code>, a local accuracy is provided group-wise for each time series ID.
+To enable local accuracy, an <code>id</code> must be provided during <code>modeltime_calibrate()</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quiet</code></td>
+<td>
+<p>Hide errors (<code>TRUE</code>, the default), or display them as they occur?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>If <code>new_data</code> is provided, these parameters are passed to <code>modeltime_calibrate()</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The following accuracy metrics are included by default via <code>default_forecast_accuracy_metric_set()</code>:
+</p>
+
+<ul>
+<li>
+<p> MAE - Mean absolute error, <code>mae()</code>
+</p>
+</li>
+<li>
+<p> MAPE - Mean absolute percentage error, <code>mape()</code>
+</p>
+</li>
+<li>
+<p> MASE  - Mean absolute scaled error, <code>mase()</code>
+</p>
+</li>
+<li>
+<p> SMAPE - Symmetric mean absolute percentage error, <code>smape()</code>
+</p>
+</li>
+<li>
+<p> RMSE  - Root mean squared error, <code>rmse()</code>
+</p>
+</li>
+<li>
+<p> RSQ   - R-squared, <code>rsq()</code>
+</p>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>A tibble with accuracy estimates.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(tidymodels)
+library(dplyr)
+library(lubridate)
+library(timetk)
+
+
+# Data
+m750 &lt;- m4_monthly %&gt;% filter(id == "M750")
+
+# Split Data 80/20
+splits &lt;- initial_time_split(m750, prop = 0.8)
+
+# --- MODELS ---
+
+# Model 1: prophet ----
+model_fit_prophet &lt;- prophet_reg() %&gt;%
+    set_engine(engine = "prophet") %&gt;%
+    fit(value ~ date, data = training(splits))
+
+
+# ---- MODELTIME TABLE ----
+
+models_tbl &lt;- modeltime_table(
+    model_fit_prophet
+)
+
+# ---- ACCURACY ----
+
+models_tbl %&gt;%
+    modeltime_calibrate(new_data = testing(splits)) %&gt;%
+    modeltime_accuracy(
+        metric_set = metric_set(mae, rmse, rsq)
+    )
+
+
+</code></pre>
+
+
+</div>

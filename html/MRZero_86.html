@@ -1,0 +1,257 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mr_ivw</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Inverse-variance weighted method</h2>
+
+<h3>Description</h3>
+
+<p>The <code>mr_ivw</code> function implements the inverse-variance method, informally known as the "Toby Johnson" method. With a single
+genetic variant, this is simply the ratio method.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mr_ivw(
+  object,
+  model = "default",
+  robust = FALSE,
+  penalized = FALSE,
+  weights = "simple",
+  psi = 0,
+  correl = FALSE,
+  distribution = "normal",
+  alpha = 0.05,
+  ...
+)
+
+## S4 method for signature 'MRInput'
+mr_ivw(
+  object,
+  model = "default",
+  robust = FALSE,
+  penalized = FALSE,
+  weights = "simple",
+  psi = 0,
+  correl = FALSE,
+  distribution = "normal",
+  alpha = 0.05,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>An <code>MRInput</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>What type of model should be used: <code>"default"</code>, <code>"random"</code> or <code>"fixed"</code>. The random-effects model (<code>"random"</code>) is a multiplicative random-effects model, allowing overdispersion in the weighted linear regression (the residual standard error is not fixed to be 1, but is not allowed to take values below 1). The fixed-effect model (<code>"fixed"</code>) sets the residual standard error to be 1. The <code>"default"</code> setting is to use a fixed-effect model with 3 genetic variants or fewer, and otherwise to use a random-effects model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>robust</code></td>
+<td>
+<p>Indicates whether robust regression using the <code>lmrob()</code> function from the package <code>robustbase</code> should be used in the method rather than standard linear regression (<code>lm</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>penalized</code></td>
+<td>
+<p>Indicates whether a penalty should be applied to the weights to downweight the contribution of genetic variants with outlying ratio estimates to the analysis.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>Which weights to use in the weighted regression. If <code>"simple"</code> (the default option), then the IVW estimate is equivalent to meta-analysing the ratio estimates from each variant using inverse-variance weights based on the simplest expression of the variance for the ratio estimate (first-order term from the delta expansion - standard error of the association with the outcome divided by the association with the exposure). If <code>"delta"</code>, then the variance expression is the second-order term from the delta expansion. The second-order term incorporates uncertainty in the genetic association with the exposure – this uncertainty is ignored using the simple weighting.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>psi</code></td>
+<td>
+<p>The correlation between the genetic associations with the exposure and the association with the outcome for each variant resulting from sample overlap. The default value is <code>0</code>, corresponding to a strict two-sample Mendelian randomization analysis (no overlap). If there is complete overlap between the samples, then the correlation should be set to the observational correlation between the exposure and the outcome. This correlation is only used in the calculation of standard errors if the option <code>weights</code> is set to <code>"delta"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>correl</code></td>
+<td>
+<p>If the genetic variants are correlated, then this correlation can be accounted for. The matrix of correlations between must be provided in the <code>MRInput</code> object: the elements of this matrix are the correlations between the individual variants (diagonal elements are 1). If a correlation matrix is specified in the <code>MRInput</code> object, then <code>correl</code> is set to <code>TRUE</code>. If <code>correl</code> is set to <code>TRUE</code>, then the values of <code>robust</code> and <code>penalized</code> are taken as <code>FALSE</code>, and <code>weights</code> is set to <code>"simple"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distribution</code></td>
+<td>
+<p>The type of distribution used to calculate the confidence intervals. Options are <code>"normal"</code> (default) or <code>"t-dist"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>The significance level used to calculate the confidence interval. The default value is 0.05.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments to be passed to the regression method.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>With multiple uncorrelated genetic variants, this estimate can be thought of as: 1) the inverse-variance
+weighted combination of the ratio estimates from a meta-analysis; 2) the ratio estimate from combining the
+genetic variants into a weighted score and then using this score as an instrumental variable (the same estimate
+is obtained from the two-stage least squares method using individual-level data); 3) the coefficient from
+weighted linear regression of the associations with the outcome on the associations with the risk factor fixing
+the intercept to zero and using the inverse-variance weights.
+</p>
+<p>Here, we implement the method using weighted linear regression. If the variants are correlated, the method is implemented using generalized weighted linear regression; this is hard coded using matrix algebra.
+</p>
+<p>The causal estimate is obtained by regression of the associations with the outcome on the associations with the risk factor, with the intercept set to zero and weights being the inverse-variances of the associations with the outcome.
+</p>
+<p>With a single genetic variant, the estimate is the ratio of coefficients betaY/betaX and the standard error is the first term of the delta method approximation betaYse/betaX.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The output from the function is an <code>IVW</code> object containing:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Model</code></td>
+<td>
+<p>A character string giving the type of model used (<code>"fixed"</code>, <code>"random"</code>, or <code>"default"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Exposure</code></td>
+<td>
+<p>A character string giving the name given to the exposure.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Outcome</code></td>
+<td>
+<p>A character string giving the name given to the outcome.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Correlation</code></td>
+<td>
+<p>The matrix of genetic correlations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Robust</code></td>
+<td>
+<p><code>TRUE</code> if robust regression has been used to calculate the estimate, <code>FALSE</code> otherwise.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Penalized</code></td>
+<td>
+<p><code>TRUE</code> if weights have been penalized, <code>FALSE</code> otherwise.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Estimate</code></td>
+<td>
+<p>The value of the causal estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>StdError</code></td>
+<td>
+<p>Standard error of the causal estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CILower</code></td>
+<td>
+<p>The lower bound of the causal estimate based on the estimated standard error and the significance level provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CIUpper</code></td>
+<td>
+<p>The upper bound of the causal estimate based on the estimated standard error and the significance level provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Alpha</code></td>
+<td>
+<p>The significance level used when calculating the confidence intervals.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Pvalue</code></td>
+<td>
+<p>The p-value associated with the estimate (calculated as Estimate/StdError as per Wald test) using a normal or t-distribution (as specified in <code>distribution</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SNPs</code></td>
+<td>
+<p>The number of genetic variants (SNPs) included in the analysis.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>RSE</code></td>
+<td>
+<p>The estimated residual standard error from the regression model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Heter.Stat</code></td>
+<td>
+<p>Heterogeneity statistic (Cochran's Q statistic) and associated p-value: the null hypothesis is that all genetic variants estimate the same causal parameter; rejection of the null is an indication that one or more variants may be pleiotropic.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Fstat</code></td>
+<td>
+<p>An approximation of the first-stage F statistic for all variants based on the summarized data.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Original implementation: The International Consortium for Blood Pressure Genome-Wide Association Studies. Genetic variants in novel pathways influence blood pressure and cardiovascular disease risk. Nature 2011; 478:103-109. doi: 10.1038/nature10405.
+</p>
+<p>Detailed description of method: Stephen Burgess, Adam S Butterworth, Simon G Thompson. Mendelian randomization analysis with multiple genetic variants using summarized data. Genetic Epidemiology 2013; 37:658-665. doi: 10.1002/gepi.21758.
+</p>
+<p>Robust and penalized weights: Stephen Burgess, Jack Bowden, Frank Dudbridge, Simon G Thompson. Robust instrumental variable methods using multiple candidate instruments with application to Mendelian randomization. arXiv 2016; 1606.03729.
+</p>
+<p>Heterogeneity test: Fabiola del Greco, Cosetta Minelli, Nuala A Sheehan, John R Thompson. Detecting pleiotropy in Mendelian randomisation studies with summary data and a continuous outcome. Stat Med 2015; 34(21):2926-2940. doi: 10.1002/sim.6522.
+</p>
+<p>Simple versus delta weights (first-order versus second-order): Stephen Burgess, Jack Bowden. Integrating summarized data from multiple genetic variants in Mendelian randomization: bias and coverage properties of inverse-variance weighted methods. arXiv:1512.04486.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">mr_ivw(mr_input(bx = ldlc, bxse = ldlcse, by = chdlodds, byse = chdloddsse))
+mr_ivw(mr_input(bx = ldlc, bxse = ldlcse, by = chdlodds, byse = chdloddsse),
+  robust = TRUE)
+mr_ivw(mr_input(bx = ldlc, bxse = ldlcse, by = chdlodds, byse = chdloddsse),
+  penalized = TRUE)
+mr_ivw(mr_input(calcium, calciumse, fastgluc, fastglucse, corr=calc.rho))
+  ## correlated variants
+
+</code></pre>
+
+
+</div>

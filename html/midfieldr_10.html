@@ -1,0 +1,197 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>order_multiway</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Order categorical variables of multiway data</h2>
+
+<h3>Description</h3>
+
+<p>Transform a data frame such that two independent categorical variables are
+factors with levels ordered for display in a multiway dot plot. Multiway data
+comprise a single quantitative value (or response) for every combination of
+levels of two categorical variables. The ordering of the rows and panels is
+crucial to the perception of effects (Cleveland, 1993).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">order_multiway(
+  dframe,
+  quantity,
+  categories,
+  ...,
+  method = NULL,
+  ratio_of = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>dframe</code></td>
+<td>
+<p>Data frame containing a single quantitative value
+(or response) for every combination of levels of two categorical
+variables. Categories may be class character or factor. Two additional
+numeric columns are required when using the "percent" ordering method.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quantity</code></td>
+<td>
+<p>Character, name (in quotes) of the single multiway quantitative
+variable</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>categories</code></td>
+<td>
+<p>Character, vector of names (in quotes) of the two multiway
+categorical variables</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Not used for passing values; forces subsequent arguments to be
+referable only by name.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>Character, “median” (default) or “percent”, method of
+ordering the levels of the categories. The median method computes the
+medians of the quantitative column grouped by category. The percent
+method computes percentages based on the same ratio underlying the
+quantitative percentage variable except grouped by category.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ratio_of</code></td>
+<td>
+<p>Character vector with the names (in quotes) of the
+numerator and denominator columns that produced the quantitative
+variable, required when <code>method</code> is "percent". Names can be
+in any order; the algorithm assumes that the parameter with the
+larger column sum is the denominator of the ratio.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>In our context, "multiway" refers to the data structure and graph design
+defined by Cleveland (1993), not to the methods of analysis described by
+Kroonenberg (2008).
+</p>
+<p>Multiway data comprise three variables: a categorical variable of <em>m</em> levels;
+a second independent categorical variable of <em>n</em> levels; and a quantitative
+variable (or <em>response</em>) of length <em>mn</em> that cross-classifies the categories,
+that is, there is a value of the response for each combination of levels of
+the two categorical variables.
+</p>
+<p>In a multiway dot plot, one category is encoded by the panels, the second
+category is encoded by the rows of each panel, and the quantitative variable
+is encoded along identical horizontal scales.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A data frame in <code>data.table</code> format with
+the following properties: rows are preserved; columns specified by
+<code>categories</code> are converted to factors and ordered; the column specified
+by <code>quantity</code> is converted to type double; other columns are preserved
+with the exception that columns added by the function overwrite existing
+columns of the same name (if any); grouping structures are not preserved.
+The added columns are:
+</p>
+
+<dl>
+<dt>
+<code>CATEGORY_median</code> columns (when ordering method is "median")</dt>
+<dd>
+<p>Numeric. Two columns of medians of the quantitative variable grouped
+by the categorical variables. The <code>CATEGORY</code> placeholder in
+the column name is replaced by a category name from the
+<code>categories</code> argument. For example, suppose
+<code>categories = c("program", "people")</code> and
+<code>method = "median"</code>. The two new column names would be
+<code>program_median</code> and <code>people_median.</code></p>
+</dd>
+<dt>
+<code>CATEGORY_QUANTITY</code> columns (when ordering method is "percent")</dt>
+<dd>
+<p>Numeric. Two columns of percentages based on the same ratio that
+produces the quantitative variable except grouped by the categorical
+variables. The <code>CATEGORY</code> placeholder in the column name is
+replaced by a category name from the <code>categories</code> argument; the
+<code>QUANTITY</code> placeholder is replaced by the quantitative variable
+name in the <code>quantity</code> argument. For example, suppose
+<code>categories = c("program", "people")</code>, and
+<code>quantity = "grad_rate"</code>, and <code>method = "percent"</code>. The two
+new column names  would be <code>program_grad_rate</code> and
+<code>people_grad_rate.</code></p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Cleveland WS (1993). <em>Visualizing Data</em>. Hobart Press, Summit, NJ.
+</p>
+<p>Kroonenberg PM (2008). <em>Applied Multiway Data Analysis</em>. Wiley,
+Hoboken, NJ.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Subset of built-in data set
+dframe &lt;- study_results[program == "EE" | program == "ME"]
+dframe[, people := paste(race, sex)]
+dframe[, c("race", "sex") := NULL]
+data.table::setcolorder(dframe, c("program", "people"))
+
+# Class before ordering
+class(dframe$program)
+class(dframe$people)
+
+# Class and levels after ordering
+mw1 &lt;- order_multiway(dframe, 
+                      quantity = "stickiness", 
+                      categories = c("program", "people"))
+class(mw1$program)
+levels(mw1$program)
+class(mw1$people)
+levels(mw1$people)
+
+# Display category medians 
+mw1
+
+# Existing factors (if any) are re-ordered
+mw2 &lt;- dframe
+mw2$program &lt;- factor(mw2$program, levels = c("ME", "EE"))
+
+# Levels before conditioning
+levels(mw2$program) 
+
+# Levels after conditioning
+mw2 &lt;- order_multiway(dframe, 
+                      quantity = "stickiness", 
+                      categories = c("program", "people"))
+levels(mw2$program) 
+
+# Ordering using percent method
+order_multiway(dframe, 
+               quantity = "stickiness", 
+               categories = c("program", "people"), 
+               method = "percent", 
+               ratio_of = c("graduates", "ever_enrolled"))
+</code></pre>
+
+
+</div>

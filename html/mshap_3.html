@@ -1,0 +1,200 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>summary_plot</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>SHAP Summary Plot</h2>
+
+<h3>Description</h3>
+
+<p>A Function for obtaining a beeswarm plot, similar to the summary plot
+in the <code>{shap}</code> python package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">summary_plot(
+  variable_values,
+  shap_values,
+  names = NULL,
+  num_vars = 10,
+  colorscale = c("#A54657", "#FAF0CA", "#0D3B66"),
+  legend.position = c(0.8, 0.2),
+  font_family = "Times New Roman",
+  title = "SHAP Value Summary"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>variable_values</code></td>
+<td>
+<p>A data frame of the  values of the variables that
+caused the given SHAP values, generally will be the same data frame or
+matrix that was passed to the model for prediction.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>shap_values</code></td>
+<td>
+<p>A data frame of shap values, either returned by <code>mshap()</code>
+or obtained from the python <code>{shap}</code> module.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>names</code></td>
+<td>
+<p>A character vector of variable names, corresponding to the
+order of the columns in both <code>variable_values</code> and <code>shap_values</code>. If
+<code>NULL</code> (default), then the column names of the <code>variable_values</code> are
+taken as <code>names</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>num_vars</code></td>
+<td>
+<p>An integer specifying the number of variables to show in the
+plot, defaults to the 10 most important.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>colorscale</code></td>
+<td>
+<p>The color scale used for the color of the plot. It should
+be a character vector of length three, with the low color first, the
+middle color second, and the high color third. These can be hex color
+codes or colors recognized by <code>{ggplot2}</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>legend.position</code></td>
+<td>
+<p>The position of the legend.  See <code>?ggplot2::theme</code>
+for more information.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>font_family</code></td>
+<td>
+<p>A character string specifying the family of the text on
+the plot. Defaults to Times New Roman.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>title</code></td>
+<td>
+<p>A character string specifying the title of the plot.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function allows the user to pass a data frame of SHAP values and
+variable values and returns a ggplot object displaying a general summary
+of the effect of Variable level on SHAP value by variable.
+It is created with <code>{ggbeeswarm}</code>, and the returned value is a <code>{ggplot2}</code>
+object that can be modified for given themes/colors.
+</p>
+<p>Please note that for the <code>variable_values</code> and <code>shap_values</code> arguments,
+both of which are data frames, the columns must be in the same order.
+This is essential in assuring that the variable values and labels are
+matched to the correct shap values.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>{ggplot2}</code> object
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+if (interactive()) {
+library(mshap)
+library(ggplot2)
+
+# Generate fake data
+set.seed(18)
+dat &lt;- data.frame(
+  age = runif(1000, min = 0, max = 20),
+  prop_domestic = runif(1000),
+  model = sample(c(0, 1), 1000, replace = TRUE),
+  maintain = rexp(1000, .01) + 200
+)
+shap &lt;- data.frame(
+  age = rexp(1000, 1/dat$age) * (-1)^(rbinom(1000, 1, dat$prop_domestic)),
+  prop_domestic = -200 * rnorm(100, dat$prop_domestic, 0.02) + 100,
+  model = ifelse(dat$model == 0, rnorm(1000, -50, 30), rnorm(1000, 50, 30)),
+  maintain = (rnorm(1000, dat$maintain, 100) - 400) * 0.2
+)
+expected_value &lt;- 1000
+
+# A Basic sumary plot
+summary_plot(
+  variable_values = dat,
+  shap_values = shap
+)
+
+# A Customized summary plot
+summary_plot(
+  variable_values = dat,
+  shap_values = shap,
+  legend.position = "bottom",
+  names = c("Age", "% Domestic", "Model", "Maintenence Hours"),
+  colorscale = c("blue", "purple", "red"),
+  font_family = "Arial",
+  title = "A Custom Title"
+)
+
+# A basic observation plot
+observation_plot(
+  variable_values = dat[1,],
+  shap_values = shap[1,],
+  expected_value = expected_value
+)
+
+# A Customized Observation plot
+observation_plot(
+  variable_values = dat[1,],
+  shap_values = shap[1,],
+  expected_value = expected_value,
+  names = c("Age", "% Domestic", "Model", "Maintenence Hours"),
+  font_family = "Arial",
+  title = "A Custom Title",
+  fill_colors = c("red", "blue"),
+  connect_color = "black",
+  expected_color = "purple",
+  predicted_color = "yellow"
+)
+
+# Add elements to the returned object
+# see vignette("mshap_plots") for more information
+observation_plot(
+  variable_values = dat[1,],
+  shap_values = shap[1,],
+  expected_value = expected_value,
+  names = c("Age", "% Domestic", "Model", "Maintenence Hours"),
+  font_family = "Arial",
+  title = "A Custom Title"
+) +
+  geom_label(
+    aes(y = 950, x = 4, label = "This is a really big bar!"),
+    color = "#FFFFFF",
+    fill = NA
+  ) +
+  theme(
+    plot.background = element_rect(fill = "grey"),
+    panel.background = element_rect(fill = "lightyellow")
+  )
+}
+</code></pre>
+
+
+</div>

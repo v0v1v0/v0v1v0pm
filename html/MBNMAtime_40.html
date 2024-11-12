@@ -1,0 +1,169 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pDcalc</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate plugin pD from a JAGS model with univariate likelihood for studies
+with repeated measurements</h2>
+
+<h3>Description</h3>
+
+<p>Uses results from MBNMA JAGS models to calculate pD via the
+plugin method (Spiegelhalter et al. 2002). Can only be used for models with known
+standard errors or covariance matrices (typically univariate).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pDcalc(
+  obs1,
+  obs2,
+  fups = NULL,
+  narm,
+  NS,
+  theta.result,
+  resdev.result,
+  likelihood = "normal",
+  type = "time"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obs1</code></td>
+<td>
+<p>A matrix (study x arm) or array (study x arm x time point) containing
+observed data for <code>y</code> (normal likelihood) or <code>r</code> (binomial or Poisson likelihood)
+in each arm of each study. This will be the same array
+used as data for the JAGS model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>obs2</code></td>
+<td>
+<p>A matrix (study x arm) or array (study x arm x time point) containing
+observed data for <code>se</code> (normal likelihood), <code>N</code> (binomial likelihood) or <code>E</code> (Poisson likelihood)
+in each arm of each study. This will be the same array
+used as data for the JAGS model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fups</code></td>
+<td>
+<p>A numeric vector of length equal to the number of studies,
+containing the number of follow-up mean responses reported in each study. Required for
+time-course MBNMA models (if <code>type="time"</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>narm</code></td>
+<td>
+<p>A numeric vector of length equal to the number of studies,
+containing the number of arms in each study.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>NS</code></td>
+<td>
+<p>A single number equal to the number of studies in the dataset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>theta.result</code></td>
+<td>
+<p>A matrix (study x arm) or array (study x arm x time point)
+containing the posterior mean predicted means/probabilities/rate in each arm of each
+study. This will be estimated by the JAGS model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resdev.result</code></td>
+<td>
+<p>A matrix (study x arm) or array (study x arm x time point)
+containing the posterior mean residual deviance contributions in each arm of each
+study. This will be estimated by the JAGS model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>likelihood</code></td>
+<td>
+<p>A character object of any of the following likelihoods:
+</p>
+
+<ul>
+<li> <p><code>univariate</code>
+</p>
+</li>
+<li> <p><code>binomial</code> (does not work with time-course MBNMA models)
+</p>
+</li>
+<li> <p><code>multivar.normal</code> (does not work with time-course MBNMA models)
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>The type of MBNMA model fitted. Can be either <code>"time"</code> or <code>"dose"</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Method for calculating pD via the plugin method proposed by
+(Spiegelhalter et al. 2002). Standard errors / covariance matrices must be assumed
+to be known. To obtain values for theta.result and resdev.result these
+parameters must be monitored when running the JAGS model.
+</p>
+<p>For non-linear time-course MBNMA models residual deviance contributions may be skewed, which
+can lead to non-sensical results when calculating pD via the plugin method.
+Alternative approaches are to use pV (<code>pv</code>) as an approximation (Plummer 2008) or
+pD calculated by Kullback–Leibler divergence (<code>pd.kl</code>) or using an optimism adjustment (<code>popt</code>) (Plummer 2008).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A numeric value for the effective number of parameters, pD, calculated via the plugin method
+</p>
+
+
+<h3>References</h3>
+
+<p>TO ADD pV REF
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Using the alogliptin dataset
+network &lt;- mb.network(alog_pcfb)
+
+# Run Emax model saving predicted means and residual deviance contributions
+emax &lt;- mb.run(network, fun=temax(),
+  parameters.to.save=c("theta", "resdev"), intercept=FALSE)
+
+# Get matrices of observed data
+jagsdat &lt;- getjagsdata(network$data.ab)
+
+# Plugin estimation of pD is problematic with non-linear models as it often leads to
+#negative values, hence use of pV, pd.kl and popt as other measures for the effective
+#number of parameters
+pDcalc(obs1=jagsdat$y, obs2=jagsdat$se,
+  fups=jagsdat$fups, narm=jagsdat$narm, NS=jagsdat$NS,
+  theta.result = emax$BUGSoutput$mean$theta,
+  resdev.result = emax$BUGSoutput$mean$resdev
+  )
+
+</code></pre>
+
+
+</div>

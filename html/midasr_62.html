@@ -1,0 +1,118 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>midas_u</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate unrestricted MIDAS regression</h2>
+
+<h3>Description</h3>
+
+<p>Estimate unrestricted MIDAS regression using OLS. This function is a wrapper for <code>lm</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">midas_u(formula, data, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>MIDAS regression model formula</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a named list containing data with mixed frequencies</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments, which could be passed to <code>lm</code> function.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>MIDAS regression has the following form:
+</p>
+<p style="text-align: center;"><code class="reqn">y_t = \sum_{j=1}^p\alpha_jy_{t-j} +\sum_{i=0}^{k}\sum_{j=0}^{l_i}\beta_{j}^{(i)}x_{tm_i-j}^{(i)} + u_t,</code>
+</p>
+
+<p>where <code class="reqn">x_\tau^{(i)}</code>, <code class="reqn">i=0,...k</code> are regressors of higher (or similar) frequency than <code class="reqn">y_t</code>. 
+Given certain assumptions the coefficients can be estimated using usual OLS and they have the familiar properties associated with simple linear regression.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>lm</code> object.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Virmantas Kvedaras, Vaidotas Zemlys
+</p>
+
+
+<h3>References</h3>
+
+<p>Kvedaras V., Zemlys, V. <em>Testing the functional constraints on parameters in regressions with variables of different frequency</em> Economics Letters 116 (2012) 250-254
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">##The parameter function
+theta_h0 &lt;- function(p, dk, ...) {
+   i &lt;- (1:dk-1)/100
+   pol &lt;- p[3]*i + p[4]*i^2
+   (p[1] + p[2]*i)*exp(pol)
+}
+
+##Generate coefficients
+theta0 &lt;- theta_h0(c(-0.1,10,-10,-10),4*12)
+
+##Plot the coefficients
+##Do not run
+#plot(theta0)
+
+##' ##Generate the predictor variable
+xx &lt;- ts(arima.sim(model = list(ar = 0.6), 600 * 12), frequency = 12)
+
+##Simulate the response variable
+y &lt;- midas_sim(500, xx, theta0)
+
+x &lt;- window(xx, start=start(y))
+
+##Create low frequency data.frame
+ldt &lt;- data.frame(y=y,trend=1:length(y))
+
+##Create high frequency data.frame
+
+hdt &lt;- data.frame(x=window(x, start=start(y)))
+
+##Fit unrestricted model
+mu &lt;- midas_u(y~fmls(x,2,12)-1, list(ldt, hdt))
+
+##Include intercept and trend in regression
+
+mu_it &lt;- midas_u(y~fmls(x,2,12)+trend, list(ldt, hdt))
+
+##Pass data as partialy named list
+
+mu_it &lt;- midas_u(y~fmls(x,2,12)+trend, list(ldt, x=hdt$x))
+
+</code></pre>
+
+
+</div>

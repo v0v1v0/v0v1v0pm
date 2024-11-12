@@ -1,0 +1,175 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>callback_batch_fselect</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create Feature Selection Callback</h2>
+
+<h3>Description</h3>
+
+<p>Function to create a CallbackBatchFSelect.
+Predefined callbacks are stored in the dictionary mlr_callbacks and can be retrieved with <code>clbk()</code>.
+</p>
+<p>Feature selection callbacks can be called from different stages of feature selection.
+The stages are prefixed with <code style="white-space: pre;">⁠on_*⁠</code>.
+</p>
+<div class="sourceCode"><pre>Start Feature Selection
+     - on_optimization_begin
+    Start FSelect Batch
+         - on_optimizer_before_eval
+        Start Evaluation
+             - on_eval_after_design
+             - on_eval_after_benchmark
+             - on_eval_before_archive
+        End Evaluation
+         - on_optimizer_after_eval
+    End FSelect Batch
+     - on_result
+     - on_optimization_end
+End Feature Selection
+</pre></div>
+<p>See also the section on parameters for more information on the stages.
+A feature selection callback works with bbotk::ContextBatch and ContextBatchFSelect.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">callback_batch_fselect(
+  id,
+  label = NA_character_,
+  man = NA_character_,
+  on_optimization_begin = NULL,
+  on_optimizer_before_eval = NULL,
+  on_eval_after_design = NULL,
+  on_eval_after_benchmark = NULL,
+  on_eval_before_archive = NULL,
+  on_optimizer_after_eval = NULL,
+  on_result = NULL,
+  on_optimization_end = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>(<code>character(1)</code>)<br>
+Identifier for the new instance.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>label</code></td>
+<td>
+<p>(<code>character(1)</code>)<br>
+Label for the new instance.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>man</code></td>
+<td>
+<p>(<code>character(1)</code>)<br>
+String in the format <code style="white-space: pre;">⁠[pkg]::[topic]⁠</code> pointing to a manual page for this object.
+The referenced help package can be opened via method <code style="white-space: pre;">⁠$help()⁠</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>on_optimization_begin</code></td>
+<td>
+<p>(<code style="white-space: pre;">⁠function()⁠</code>)<br>
+Stage called at the beginning of the optimization.
+Called in <code>Optimizer$optimize()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>on_optimizer_before_eval</code></td>
+<td>
+<p>(<code style="white-space: pre;">⁠function()⁠</code>)<br>
+Stage called after the optimizer proposes points.
+Called in <code>OptimInstance$eval_batch()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>on_eval_after_design</code></td>
+<td>
+<p>(<code style="white-space: pre;">⁠function()⁠</code>)<br>
+Stage called after design is created.
+Called in <code>ObjectiveFSelectBatch$eval_many()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>on_eval_after_benchmark</code></td>
+<td>
+<p>(<code style="white-space: pre;">⁠function()⁠</code>)<br>
+Stage called after feature sets are evaluated.
+Called in <code>ObjectiveFSelectBatch$eval_many()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>on_eval_before_archive</code></td>
+<td>
+<p>(<code style="white-space: pre;">⁠function()⁠</code>)<br>
+Stage called before performance values are written to the archive.
+Called in <code>ObjectiveFSelectBatch$eval_many()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>on_optimizer_after_eval</code></td>
+<td>
+<p>(<code style="white-space: pre;">⁠function()⁠</code>)<br>
+Stage called after points are evaluated.
+Called in <code>OptimInstance$eval_batch()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>on_result</code></td>
+<td>
+<p>(<code style="white-space: pre;">⁠function()⁠</code>)<br>
+Stage called after result are written.
+Called in <code>OptimInstance$assign_result()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>on_optimization_end</code></td>
+<td>
+<p>(<code style="white-space: pre;">⁠function()⁠</code>)<br>
+Stage called at the end of the optimization.
+Called in <code>Optimizer$optimize()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>When implementing a callback, each function must have two arguments named <code>callback</code> and <code>context</code>.
+</p>
+<p>A callback can write data to the state (<code style="white-space: pre;">⁠$state⁠</code>), e.g. settings that affect the callback itself.
+Avoid writing large data the state.
+This can slow down the feature selection when the evaluation of configurations is parallelized.
+</p>
+<p>Feature selection callbacks access two different contexts depending on the stage.
+The stages <code>on_eval_after_design</code>, <code>on_eval_after_benchmark</code>, <code>on_eval_before_archive</code> access ContextBatchFSelect.
+This context can be used to customize the evaluation of a batch of feature sets.
+Changes to the state of callback are lost after the evaluation of a batch and changes to the fselect instance or the fselector are not possible.
+Persistent data should be written to the archive via <code style="white-space: pre;">⁠$aggregated_performance⁠</code> (see ContextBatchFSelect).
+The other stages access bbotk::ContextBatch.
+This context can be used to modify the fselect instance, archive, fselector and final result.
+There are two different contexts because the evaluation can be parallelized i.e. multiple instances of ContextBatchFSelect exists on different workers at the same time.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Write archive to disk
+callback_batch_fselect("mlr3fselect.backup",
+  on_optimization_end = function(callback, context) {
+    saveRDS(context$instance$archive, "archive.rds")
+  }
+)
+</code></pre>
+
+
+</div>

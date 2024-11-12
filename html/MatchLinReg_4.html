@@ -1,0 +1,156 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr.bias</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Treatment effect bias
+</h2>
+
+<h3>Description</h3>
+
+<p>Calculating treatment effect bias due to misspecified regression, using coefficients of omitted covariates (if supplied) or a constrained bias estimation approach.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mlr.bias(tr, Z.i = NULL, Z.o, gamma.o = NULL
+  , idx = 1:length(tr))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>tr</code></td>
+<td>
+<p>Binary treatment indicator vector (1=treatment, 0=control), whose coefficient in the linear regression model is TE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Z.i</code></td>
+<td>
+<p>Matrix of adjustment covariates included in linear regression. We must have <code>nrow(Z.i) == length(tr)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Z.o</code></td>
+<td>
+<p>Matrix of adjustment covariates (present in generative model but) omitted from regression estimation. We must have <code>nrow(Z.o) == length(tr)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma.o</code></td>
+<td>
+<p>Vector of coefficients for omitted adjustment covariates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>idx</code></td>
+<td>
+<p>Index of observations to be used, with possible duplication, e.g. as indexes of matched subset.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For <code>single</code>, <code>subspace</code> and <code>absolute</code>, biases are calculated using the constrained bias estimation framework, i.e. L2 norm of <code>Z.o%*%gamma.o</code> is taken to be <code>length(tr)</code> (mean squared of 1).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with the following elements is returned:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>gamma.o</code></td>
+<td>
+<p>If function argument <code>gamma.o</code> is <code>NULL</code>, this field will be <code>NA</code>. Otherwise, this will be the covariate omission bias for the given coefficient values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>single</code></td>
+<td>
+<p>A list with elements: 1) <code>bias</code>: bias for the omitted covariate with maximum absolute bias, 2) <code>bias.vec</code>: vector of biases for all omitted covariates, 3) <code>dir</code>: vector of length <code>length(tr)</code>, being the particular column of <code>Z.o</code> with maximum absolute bias (after orthogonalization and normalization), 4) <code>idx</code>: column number for <code>Z.o</code> corresponding to <code>dir</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subspace</code></td>
+<td>
+<p>A list with elements: 1) <code>bias</code>: bias in direction within omitted covariate subspace with maximum absolute bias, 2) <code>dir</code>: direction in omitted-covariate subspace (and orthogonal to subspace spanned by <code>{1,Z.i}</code>) corresponding to the bias in previous element.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>absolute</code></td>
+<td>
+<p>A list with elements: 1) <code>bias</code>: bias in direction within subspace orthogonal to <code>{1,Z.i}</code> with maximum absolute bias, 2) <code>dir</code>: direction in aforementioned subspace corresponding to maximum absolute bias.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Alireza S. Mahani, Mansour T.A. Sharabiani
+</p>
+
+
+<h3>References</h3>
+
+<p>Link to a draft paper, documenting the supporting mathematical framework, will be provided in the next release.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# number of included adjustment covariates
+K &lt;- 10
+# number of observations in treatment group
+Nt &lt;- 100
+# number of observations in control group
+Nc &lt;- 100
+N &lt;- Nt + Nc
+# number of omitted covariates
+Ko &lt;- 3
+
+# treatment indicator variable
+tr &lt;- c(rep(1, Nt), rep(0, Nc))
+# matrix of included (adjustment) covariates
+Z.i &lt;- matrix(runif(K*N), ncol = K)
+# matrix of omitted covariates
+Z.o &lt;- matrix(runif(Ko*N), ncol = Ko)
+# coefficients of omitted covariates
+gamma.o &lt;- runif(Ko)
+
+retobj &lt;- mlr.bias(tr = tr, Z.i = Z.i, Z.o = Z.o, gamma.o = gamma.o)
+
+# 1) using actual coefficients for computing bias
+ret &lt;- retobj$gamma.o
+
+# comparing with brute-force approach
+X.i &lt;- cbind(tr, 1, Z.i)
+ret2 &lt;- (solve(t(X.i) %*% X.i, t(X.i) %*% Z.o %*% gamma.o))[1]
+
+cat("check 1:", all.equal(ret2, ret), "\n")
+
+# comparing with single method
+Z.o.proj &lt;- mlr.orthogonalize(X = cbind(1, Z.i), Z = Z.o, normalize = TRUE)
+ret3 &lt;- (solve(t(X.i) %*% X.i, t(X.i) %*% Z.o.proj))[1, ]
+
+cat("check 2:", all.equal(ret3, retobj$single$bias.vec), "\n")
+
+ret4 &lt;- (solve(t(X.i) %*% X.i, t(X.i) %*% retobj$subspace$dir))[1, ]
+
+cat("check 3:", all.equal(as.numeric(ret4), as.numeric(retobj$subspace$bias)), "\n")
+
+ret4 &lt;- (solve(t(X.i) %*% X.i, t(X.i) %*% retobj$absolute$dir))[1, ]
+
+cat("check 4:", all.equal(as.numeric(ret4), as.numeric(retobj$absolute$bias)), "\n")
+
+</code></pre>
+
+
+</div>

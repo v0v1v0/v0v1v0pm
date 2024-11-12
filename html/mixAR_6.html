@@ -1,0 +1,163 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>percent_of</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Infix operator to apply functions to matrix-like objects
+</h2>
+
+<h3>Description</h3>
+
+<p>The infix operator <code>%of%</code> is a generic function which applies
+functions to objects.  This page describes the function and the
+methods defined in package <span class="pkg">mixAR</span>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">"%of%"(e1, e2)
+e1 %of% e2
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>e1</code></td>
+<td>
+
+<p>usually a function, the name of a function, a character vector, or a
+list of functions, see Details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>e2</code></td>
+<td>
+<p>an object, usually matrix-like.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>%of%</code> is a generic function with dispatch on both arguments.
+It is intended to be used mainly in infix form.
+</p>
+<p><code>%of%</code> transforms each “column” of a matrix-like object by a
+function. If <code>e1</code> specifies a single function, that is applied to all
+columns. Otherwise <code>length(e1)</code> should equal the number of 
+“columns” of <code>e2</code> and <code>e1[[i]]</code> is applied to the
+<code>i</code>-th “column” of <code>e2</code>.
+</p>
+<p>The mental model is that the first argument, <code>e1</code>, is (converted
+to) a list of functions containing one function for each column of
+<code>e2</code>. The i-th function is applied to each element of the i-th
+column.
+</p>
+<p>The methods for <code>"MixComp"</code> objects allow for very transparent
+and convenient computing with <code>"MixAR"</code> objects.
+</p>
+
+
+<h3>Value</h3>
+
+<p>for the default method, a matrix;
+</p>
+<p>for methods with <code>e2</code> from class <code>MixComp</code>, a <code>MixComp</code>
+object with its slot <code>m</code> replaced by the result of applying
+<code>e1</code> to its elements, see the descriptions of the individual
+methods for details;
+</p>
+
+
+<h3>Methods</h3>
+
+<p>Below are the descriptions of the methods for <code>%of%</code> defined by
+package <span class="pkg">mixAR</span>.
+</p>
+
+<dl>
+<dt><code>signature(e1 = "ANY", e2 = "ANY")</code></dt>
+<dd>
+<p>This is the default method. It uses <code>apply()</code> to evaluate
+<code>e1</code> for each element of the matrix <code>e2</code>, without
+checking the arguments. If the arguments are not suitable for
+<code>apply()</code>, any error messages will come from it. So, for this
+method <code>e1</code> is a function (or the name of a function) and
+<code>e2</code> is a matrix or array.
+</p>
+</dd>
+<dt><code>signature(e1 = "function", e2 = "MixComp")</code></dt>
+<dd>
+<p>Create (and return) a <code>MixComp</code> object with its slot <code>m</code>
+replaced by the result of applying the function <code>e1</code> to each
+element of the <code>MixComp</code> object <code>e2</code>, see class
+<code>"MixComp"</code>.
+</p>
+</dd>
+<dt><code>signature(e1 = "character", e2 = "MixComp")</code></dt>
+<dd>
+<p>Here <code>e1</code> contains the names of one or more functions.  If
+<code>length(e1) = 1</code>, this is equivalent to the method for
+<code>e1</code> of class <code>"function"</code>.
+</p>
+<p>If <code>length(e1) &gt; 1</code>, then for each <code>i</code> the function
+specified by <code>e1[i]</code> is applied to the <code>i</code>th column of
+<code>e2@m</code>.  In this case there is no recycling: <code>e1</code> must
+have <code>ncol(e2@m)</code> elements.
+</p>
+</dd>
+<dt><code>signature(e1 = "list", e2 = "MixComp")</code></dt>
+<dd>
+<p>Here each element of <code>e1</code> is a function or the name of a
+function. It works analogously to the method with <code>e1</code> from
+class <code>"character"</code>.  If <code>length(e1) = 1</code>, then
+<code>e1[[1]]</code> is applied to each element of
+<code>e1@m</code>. Otherwise, if <code>length(e1) &gt; 1</code>, then
+<code>e1[[i]]</code> is applied to the <code>i</code>th column of <code>e2@m</code>.
+</p>
+</dd>
+</dl>
+<h3>Note</h3>
+
+<p>The code is rather inefficient for some of the methods. 
+</p>
+<p>Maybe should require that the functions in the first argument are
+vectorised. (Some methods effectively assume it.)
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Georgi N. Boshnakov</p>
+
+
+<h3>See Also</h3>
+
+<p>class <code>"MixComp"</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">m &lt;- matrix(rnorm(18), ncol = 3)
+## defult method
+pm1 &lt;- pnorm %of% m
+f3 &lt;- list(pnorm, function(x, ...) pnorm(x, mean = 0.1),
+                  function(x, ...) pnorm(x, mean = -0.1) )
+## no method for f from "list" yet:
+## pm2 &lt;- f3 %of% m
+
+mc &lt;- new("MixComp", m = m)
+pnorm %of% mc
+pmc3 &lt;- f3 %of% mc
+## result is equivalent to applying f3[[i] to m[ , i]:
+all.equal(pmc3@m, cbind(f3[[1]](m[ , 1]), f3[[2]](m[ , 2]), f3[[3]](m[ , 3])))
+</code></pre>
+
+
+</div>

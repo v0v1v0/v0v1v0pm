@@ -1,0 +1,319 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>misvm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit MI-SVM model to the data</h2>
+
+<h3>Description</h3>
+
+<p>This function fits the MI-SVM model, first proposed by Andrews et al. (2003).
+It is a variation on the traditional SVM framework that carefully treats data
+from the multiple instance learning paradigm, where instances are grouped
+into bags, and a label is only available for each bag.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## Default S3 method:
+misvm(
+  x,
+  y,
+  bags,
+  cost = 1,
+  method = c("heuristic", "mip", "qp-heuristic"),
+  weights = TRUE,
+  control = list(kernel = "linear", sigma = if (is.vector(x)) 1 else 1/ncol(x),
+    nystrom_args = list(m = nrow(x), r = nrow(x), sampling = "random"), max_step = 500,
+    type = "C-classification", scale = TRUE, verbose = FALSE, time_limit = 60, start =
+    FALSE),
+  ...
+)
+
+## S3 method for class 'formula'
+misvm(formula, data, ...)
+
+## S3 method for class 'mi_df'
+misvm(x, ...)
+
+## S3 method for class 'mild_df'
+misvm(x, .fns = list(mean = mean, sd = stats::sd), cor = FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A data.frame, matrix, or similar object of covariates, where each
+row represents an instance. If a <code>mi_df</code> object is passed, <code style="white-space: pre;">⁠y, bags⁠</code> are
+automatically extracted, and all other columns will be used as predictors.
+If a <code>mild_df</code> object is passed, <code style="white-space: pre;">⁠y, bags, instances⁠</code> are automatically
+extracted, and all other columns will be used as predictors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>A numeric, character, or factor vector of bag labels for each
+instance.  Must satisfy <code>length(y) == nrow(x)</code>. Suggest that one of the
+levels is 1, '1', or TRUE, which becomes the positive class; otherwise, a
+positive class is chosen and a message will be supplied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bags</code></td>
+<td>
+<p>A vector specifying which instance belongs to each bag.  Can be a
+string, numeric, of factor.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cost</code></td>
+<td>
+<p>The cost parameter in SVM. If <code>method = 'heuristic'</code>, this will
+be fed to <code>kernlab::ksvm()</code>, otherwise it is similarly in internal
+functions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>The algorithm to use in fitting (default  <code>'heuristic'</code>).  When
+<code>method = 'heuristic'</code>, which employs an algorithm similar to Andrews et
+al. (2003). When <code>method = 'mip'</code>, the novel MIP method will be used.  When
+<code style="white-space: pre;">⁠method = 'qp-heuristic⁠</code>, the heuristic algorithm is computed using the
+dual SVM.  See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>named vector, or <code>TRUE</code>, to control the weight of the cost
+parameter for each possible y value.  Weights multiply against the cost
+vector. If <code>TRUE</code>, weights are calculated based on inverse counts of
+instances with given label, where we only count one positive instance per
+bag. Otherwise, names must match the levels of <code>y</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>list of additional parameters passed to the method that
+control computation with the following components:
+</p>
+
+<ul>
+<li> <p><code>kernel</code> either a character the describes the kernel ('linear' or
+'radial') or a kernel matrix at the instance level.
+</p>
+</li>
+<li> <p><code>sigma</code> argument needed for radial basis kernel.
+</p>
+</li>
+<li> <p><code>nystrom_args</code> a list of parameters to pass to <code>kfm_nystrom()</code>. This is
+used when <code>method = 'mip'</code> and <code>kernel = 'radial'</code> to generate a Nystrom
+approximation of the kernel features.
+</p>
+</li>
+<li> <p><code>max_step</code> argument used when <code>method = 'heuristic'</code>. Maximum steps of
+iteration for the heuristic algorithm.
+</p>
+</li>
+<li> <p><code>type</code>: argument used when <code>method = 'heuristic'</code>. The <code>type</code> argument is
+passed to <code>e1071::svm()</code>.
+</p>
+</li>
+<li> <p><code>scale</code> argument used for all methods. A logical for whether to rescale
+the input before fitting.
+</p>
+</li>
+<li> <p><code>verbose</code> argument used when <code>method = 'mip'</code>. Whether to message output
+to the console.
+</p>
+</li>
+<li> <p><code>time_limit</code> argument used when <code>method = 'mip'</code>. <code>FALSE</code>, or a time
+limit (in seconds) passed to <code>gurobi()</code> parameters.  If <code>FALSE</code>, no time
+limit is given.
+</p>
+</li>
+<li> <p><code>start</code> argument used when <code>method = 'mip'</code>.  If <code>TRUE</code>, the mip program
+will be warm_started with the solution from <code>method = 'qp-heuristic'</code> to
+potentially improve speed.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Arguments passed to or from other methods.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a formula with specification <code>mi(y, bags) ~ x</code> which uses the
+<code>mi</code> function to create the bag-instance structure. This argument is an
+alternative to the <code style="white-space: pre;">⁠x, y, bags⁠</code> arguments, but requires the <code>data</code>
+argument. See examples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>If <code>formula</code> is provided, a data.frame or similar from which
+formula elements will be extracted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.fns</code></td>
+<td>
+<p>(argument for <code>misvm.mild_df()</code> method) list of functions to
+summarize instances over.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cor</code></td>
+<td>
+<p>(argument for <code>misvm.mild_df()</code> method) logical, whether to
+include correlations between all features in the summarization.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Several choices of fitting algorithm are available, including a version of
+the heuristic algorithm proposed by Andrews et al. (2003) and a novel
+algorithm that explicitly solves the mixed-integer programming (MIP) problem
+using the gurobi package optimization back-end.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>misvm.</code>  The object contains at least the
+following components:
+</p>
+
+<ul>
+<li> <p><code style="white-space: pre;">⁠*_fit⁠</code>: A fit object depending on the <code>method</code> parameter.  If <code>method =   'heuristic'</code>, this will be an <code>svm</code> fit from the e1071 package.  If
+<code style="white-space: pre;">⁠method = 'mip', 'qp-heuristic'⁠</code> this will be <code>gurobi_fit</code> from a model
+optimization.
+</p>
+</li>
+<li> <p><code>call_type</code>: A character indicating which method <code>misvm()</code> was called
+with.
+</p>
+</li>
+<li> <p><code>features</code>: The names of features used in training.
+</p>
+</li>
+<li> <p><code>levels</code>: The levels of <code>y</code> that are recorded for future prediction.
+</p>
+</li>
+<li> <p><code>cost</code>: The cost parameter from function inputs.
+</p>
+</li>
+<li> <p><code>weights</code>: The calculated weights on the <code>cost</code> parameter.
+</p>
+</li>
+<li> <p><code>repr_inst</code>: The instances from positive bags that are selected to be
+most representative of the positive instances.
+</p>
+</li>
+<li> <p><code>n_step</code>: If <code>method %in% c('heuristic', 'qp-heuristic')</code>, the total
+steps used in the heuristic algorithm.
+</p>
+</li>
+<li> <p><code>x_scale</code>: If <code>scale = TRUE</code>, the scaling parameters for new predictions.
+</p>
+</li>
+</ul>
+<h3>Methods (by class)</h3>
+
+
+<ul>
+<li> <p><code>default</code>: Method for data.frame-like objects
+</p>
+</li>
+<li> <p><code>formula</code>: Method for passing formula
+</p>
+</li>
+<li> <p><code>mi_df</code>: Method for <code>mi_df</code> objects, automatically handling bag
+names, labels, and all covariates.
+</p>
+</li>
+<li> <p><code>mild_df</code>: Method for <code>mild_df</code> objects. Summarize samples to the
+instance level based on specified functions, then perform <code>misvm()</code> on
+instance level data.
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Sean Kent, Yifei Liu
+</p>
+
+
+<h3>References</h3>
+
+<p>Andrews, S., Tsochantaridis, I., &amp; Hofmann, T. (2002). Support
+vector machines for multiple-instance learning. <em>Advances in neural
+information processing systems</em>, <em>15</em>.
+</p>
+<p>Kent, S., &amp; Yu, M. (2022). Non-convex SVM for cancer diagnosis based on
+morphologic features of tumor microenvironment <em>arXiv preprint</em>
+<a href="https://arxiv.org/abs/2206.14704">arXiv:2206.14704</a>
+</p>
+
+
+<h3>See Also</h3>
+
+
+<ul>
+<li> <p><code>predict.misvm()</code> for prediction on new data.
+</p>
+</li>
+<li> <p><code>cv_misvm()</code> for cross-validation fitting.
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(8)
+mil_data &lt;- generate_mild_df(nbag = 20,
+                             positive_prob = 0.15,
+                             sd_of_mean = rep(0.1, 3))
+df &lt;- build_instance_feature(mil_data, seq(0.05, 0.95, length.out = 10))
+
+# Heuristic method
+mdl1 &lt;- misvm(x = df[, 4:123], y = df$bag_label,
+              bags = df$bag_name, method = "heuristic")
+mdl2 &lt;- misvm(mi(bag_label, bag_name) ~ X1_mean + X2_mean + X3_mean, data = df)
+
+# MIP method
+if (require(gurobi)) {
+  mdl3 &lt;- misvm(x = df[, 4:123], y = df$bag_label,
+                bags = df$bag_name, method = "mip")
+}
+
+predict(mdl1, new_data = df, type = "raw", layer = "bag")
+
+# summarize predictions at the bag layer
+library(dplyr)
+df %&gt;%
+  bind_cols(predict(mdl2, df, type = "class")) %&gt;%
+  bind_cols(predict(mdl2, df, type = "raw")) %&gt;%
+  distinct(bag_name, bag_label, .pred_class, .pred)
+
+
+</code></pre>
+
+
+</div>

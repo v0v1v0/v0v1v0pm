@@ -1,0 +1,470 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mdirt</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multidimensional discrete item response theory</h2>
+
+<h3>Description</h3>
+
+<p><code>mdirt</code> fits a variety of item response models with discrete latent variables.
+These include, but are not limited to, latent class analysis, multidimensional latent
+class models, multidimensional discrete latent class models, DINA/DINO models,
+grade of measurement models, C-RUM, and so on. If response models are not defined explicitly
+then customized models can defined using the <code>createItem</code> function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mdirt(
+  data,
+  model,
+  customTheta = NULL,
+  structure = NULL,
+  item.Q = NULL,
+  nruns = 1,
+  method = "EM",
+  covdata = NULL,
+  formula = NULL,
+  itemtype = "lca",
+  optimizer = "nlminb",
+  return_max = TRUE,
+  group = NULL,
+  GenRandomPars = FALSE,
+  verbose = TRUE,
+  pars = NULL,
+  technical = list(),
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a <code>matrix</code> or <code>data.frame</code> that consists of
+numerically ordered data, with missing data coded as <code>NA</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>number of mutually exclusive classes to fit, or alternatively a more specific
+<code>mirt.model</code> definition (which reflects the so-called Q-matrix).
+Note that when using a <code>mirt.model</code>,
+the order with which the syntax factors/attributes are defined are associated with the
+columns in the <code>customTheta</code> input</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>customTheta</code></td>
+<td>
+<p>input passed to <code>technical = list(customTheta = ...)</code>, but is included
+directly in this function for convenience. This input is most interesting for discrete latent models
+because it allows customized patterns of latent classes (i.e., defines the possible combinations
+of the latent attribute profile). The default builds the pattern <code>customTheta = diag(model)</code>,
+which is the typical pattern for the traditional latent class analysis whereby class
+membership mutually distinct and exhaustive. See <code>thetaComb</code> for a quick method
+to generate a matrix with all possible combinations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>structure</code></td>
+<td>
+<p>an R formula allowing the profile probability patterns (i.e., the structural component of
+the model) to be fitted according to a log-linear model. When <code>NULL</code>, all profile probabilities
+(except one) will be estimated. Use of this input requires that the <code>customTheta</code> input is supplied,
+and that the column names in this matrix match the names found within this formula</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>item.Q</code></td>
+<td>
+<p>a list of item-level Q-matrices indicating how the respective categories should be
+modeled by the underlying attributes. Each matrix must represent a <code class="reqn">K_i \times A</code> matrix,
+where <code class="reqn">K_i</code> represents the number of categories for the ith item, and <code class="reqn">A</code> is the number
+of attributes included in the <code>Theta</code> matrix; otherwise, a value of<code>NULL</code> will default
+to a matrix consisting of 1's for each <code class="reqn">K_i \times A</code> element except for the first row, which
+contains only 0's for proper identification. Incidentally, the first row of each matrix <code>must</code>
+contain only 0's so that the first category represents the reference category for identification</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nruns</code></td>
+<td>
+<p>a numeric value indicating how many times the model should be fit to the data
+when using random starting values. If greater than 1, <code>GenRandomPars</code> is set to true
+by default</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>estimation method. Can be 'EM' or 'BL' (see <code>mirt</code> for more details)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covdata</code></td>
+<td>
+<p>a data.frame of data used for latent regression models</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>an R formula (or list of formulas) indicating how the latent traits
+can be regressed using external covariates in <code>covdata</code>. If a named list
+of formulas is supplied (where the names correspond to the latent trait/attribute names in <code>model</code>)
+then specific regression effects can be estimated for each factor. Supplying a single formula
+will estimate the regression parameters for all latent variables by default</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>itemtype</code></td>
+<td>
+<p>a vector indicating the itemtype associated with each item.
+For discrete models this is limited to only 'lca' or items defined using a
+<code>createItem</code> definition</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optimizer</code></td>
+<td>
+<p>optimizer used for the M-step, set to <code>'nlminb'</code> by default.
+See <code>mirt</code> for more details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>return_max</code></td>
+<td>
+<p>logical; when <code>nruns &gt; 1</code>, return the model that has the most optimal
+maximum likelihood criteria? If FALSE, returns a list of all the estimated objects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>group</code></td>
+<td>
+<p>a factor variable indicating group membership used for multiple group analyses</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>GenRandomPars</code></td>
+<td>
+<p>logical; use random starting values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>logical; turn on messages to the R console</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pars</code></td>
+<td>
+<p>used for modifying starting values; see <code>mirt</code> for details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>technical</code></td>
+<td>
+<p>list of lower-level inputs. See <code>mirt</code> for details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments to be passed to the estimation engine. See <code>mirt</code>
+for more details and examples</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Posterior classification accuracy for each response pattern may be obtained
+via the <code>fscores</code> function. The <code>summary()</code> function will display
+the category probability values given the class membership, which can also
+be displayed graphically with <code>plot()</code>, while <code>coef()</code>
+displays the raw coefficient values (and their standard errors, if estimated). Finally,
+<code>anova()</code> is used to compare nested models, while
+<code>M2</code> and <code>itemfit</code> may be used for model fitting purposes.
+</p>
+
+
+<h3>'lca' model definition</h3>
+
+<p>The latent class IRT model with two latent classes has the form
+</p>
+<p style="text-align: center;"><code class="reqn">P(x = k|\theta_1, \theta_2, a1, a2) = \frac{exp(a1 \theta_1 + a2 \theta_2)}{
+  \sum_j^K exp(a1 \theta_1 + a2 \theta_2)}</code>
+</p>
+
+<p>where the <code class="reqn">\theta</code> values generally take on discrete points (such as 0 or 1).
+For proper identification, the first category slope parameters
+(<code class="reqn">a1</code> and <code class="reqn">a2</code>) are never freely estimated. Alternatively, supplying a different
+grid of <code class="reqn">\theta</code> values will allow the estimation of similar models (multidimensional
+discrete models, grade of membership, etc.). See the examples below.
+</p>
+<p>When the <code>item.Q</code> for is utilized, the above equation can be understood as
+</p>
+<p style="text-align: center;"><code class="reqn">P(x = k|\theta_1, \theta_2, a1, a2) = \frac{exp(a1 \theta_1 Q_{j1} + a2 \theta_2 Q_{j2})}{
+  \sum_j^K exp(a1 \theta_1 Q_{j1} + a2 \theta_2 Q_{j2})}</code>
+</p>
+
+<p>where by construction <code>Q</code> is a <code class="reqn">K_i \times A</code> matrix indicating whether the category should
+be modeled according to the latent class structure. For the standard latent class model, the Q-matrix
+has as many rows as categories, as many columns as the number of classes/attributes modeled,
+and consist of 0's in the first row and 1's elsewhere. This of course can be over-written by passing
+an alternative <code>item.Q</code> definition for each respective item.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Phil Chalmers <a href="mailto:rphilip.chalmers@gmail.com">rphilip.chalmers@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Chalmers, R., P. (2012). mirt: A Multidimensional Item Response Theory
+Package for the R Environment. <em>Journal of Statistical Software, 48</em>(6), 1-29.
+</p>
+<p>Proctor, C. H. (1970). A probabilistic formulation and statistical analysis for Guttman scaling.
+<em>Psychometrika, 35</em>, 73-78.
+<a href="https://doi.org/10.18637/jss.v048.i06">doi:10.18637/jss.v048.i06</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>thetaComb</code>, <code>fscores</code>, <code>mirt.model</code>, <code>M2</code>,
+<code>itemfit</code>, <code>boot.mirt</code>, <code>mirtCluster</code>,
+<code>wald</code>, <code>coef-method</code>, <code>summary-method</code>,
+<code>anova-method</code>, <code>residuals-method</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# LSAT6 dataset
+dat &lt;- expand.table(LSAT6)
+
+# fit with 2-3 latent classes
+(mod2 &lt;- mdirt(dat, 2))
+## Not run: 
+(mod3 &lt;- mdirt(dat, 3))
+summary(mod2)
+residuals(mod2)
+residuals(mod2, type = 'exp')
+anova(mod2, mod3)
+M2(mod2)
+itemfit(mod2)
+
+# generate classification plots
+plot(mod2)
+plot(mod2, facet_items = FALSE)
+plot(mod2, profile = TRUE)
+
+# available for polytomous data
+mod &lt;- mdirt(Science, 2)
+summary(mod)
+plot(mod)
+plot(mod, profile=TRUE)
+
+# classification based on response patterns
+fscores(mod2, full.scores = FALSE)
+
+# classify individuals either with the largest posterior probability.....
+fs &lt;- fscores(mod2)
+head(fs)
+classes &lt;- 1:2
+class_max &lt;- classes[apply(apply(fs, 1, max) == fs, 1, which)]
+table(class_max)
+
+# ... or by probability sampling (i.e., plausible value draws)
+class_prob &lt;- apply(fs, 1, function(x) sample(1:2, 1, prob=x))
+table(class_prob)
+
+# plausible value imputations for stochastic classification in both classes
+pvs &lt;- fscores(mod2, plausible.draws=10)
+tabs &lt;- lapply(pvs, function(x) apply(x, 2, table))
+tabs[[1]]
+
+
+# fit with random starting points (run in parallel to save time)
+if(interactive()) mirtCluster()
+mod &lt;- mdirt(dat, 2, nruns=10)
+
+#--------------------------
+# Grade of measurement model
+
+# define a custom Theta grid for including a 'fuzzy' class membership
+(Theta &lt;- matrix(c(1, 0, .5, .5, 0, 1), nrow=3 , ncol=2, byrow=TRUE))
+(mod_gom &lt;- mdirt(dat, 2, customTheta = Theta))
+summary(mod_gom)
+
+#-----------------
+# Multidimensional discrete latent class model
+
+dat &lt;- key2binary(SAT12,
+     key = c(1,4,5,2,3,1,2,1,3,1,2,4,2,1,5,3,4,4,1,4,3,3,4,1,3,5,1,3,1,5,4,5))
+
+# define Theta grid for three latent classes
+(Theta &lt;- thetaComb(0:1, 3))
+(mod_discrete &lt;- mdirt(dat, 3, customTheta = Theta))
+summary(mod_discrete)
+
+# Located latent class model
+model &lt;- mirt.model('C1 = 1-32
+                     C2 = 1-32
+                     C3 = 1-32
+                     CONSTRAIN = (1-32, a1), (1-32, a2), (1-32, a3)')
+(mod_located &lt;- mdirt(dat, model, customTheta = diag(3)))
+summary(mod_located)
+
+#-----------------
+### DINA model example
+# generate some suitable data for a two dimensional DINA application
+#     (first columns are intercepts)
+set.seed(1)
+Theta &lt;- expand.table(matrix(c(1,0,0,0,
+                               1,1,0,0,
+                               1,0,1,0,
+                               1,1,1,1), 4, 4, byrow=TRUE),
+                      freq = c(200,200,100,500))
+a &lt;- matrix(c(rnorm(15, -1.5, .5), rlnorm(5, .2, .3), numeric(15), rlnorm(5, .2, .3),
+              numeric(15), rlnorm(5, .2, .3)), 15, 4)
+
+guess &lt;- plogis(a[11:15,1]) # population guess
+slip &lt;- 1 - plogis(rowSums(a[11:15,])) # population slip
+
+dat &lt;- simdata(a, Theta=Theta, itemtype = 'lca')
+
+# first column is the intercept, 2nd and 3rd are attributes
+theta &lt;- cbind(1, thetaComb(0:1, 2))
+theta &lt;- cbind(theta, theta[,2] * theta[,3]) #DINA interaction of main attributes
+model &lt;- mirt.model('Intercept = 1-15
+                     A1 = 1-5
+                     A2 = 6-10
+                     A1A2 = 11-15')
+
+# last 5 items are DINA (first 10 are unidimensional C-RUMs)
+DINA &lt;- mdirt(dat, model, customTheta = theta)
+coef(DINA, simplify=TRUE)
+summary(DINA)
+M2(DINA) # fits well (as it should)
+
+cfs &lt;- coef(DINA, simplify=TRUE)$items[11:15,]
+cbind(guess, estguess = plogis(cfs[,1]))
+cbind(slip, estslip = 1 - plogis(rowSums(cfs)))
+
+
+### DINO model example
+theta &lt;- cbind(1, thetaComb(0:1, 2))
+# define theta matrix with negative interaction term
+(theta &lt;- cbind(theta, -theta[,2] * theta[,3]))
+
+model &lt;- mirt.model('Intercept = 1-15
+                     A1 = 1-5, 11-15
+                     A2 = 6-15
+                     Yoshi = 11-15
+                     CONSTRAIN = (11,a2,a3,a4), (12,a2,a3,a4), (13,a2,a3,a4),
+                                 (14,a2,a3,a4), (15,a2,a3,a4)')
+
+# last five items are DINOs (first 10 are unidimensional C-RUMs)
+DINO &lt;- mdirt(dat, model, customTheta = theta)
+coef(DINO, simplify=TRUE)
+summary(DINO)
+M2(DINO) #doesn't fit as well, because not the generating model
+
+## C-RUM (analogous to MIRT model)
+theta &lt;- cbind(1, thetaComb(0:1, 2))
+model &lt;- mirt.model('Intercept = 1-15
+                     A1 = 1-5, 11-15
+                     A2 = 6-15')
+
+CRUM &lt;- mdirt(dat, model, customTheta = theta)
+coef(CRUM, simplify=TRUE)
+summary(CRUM)
+
+# good fit, but over-saturated (main effects for items 11-15 can be set to 0)
+M2(CRUM)
+
+#------------------
+# multidimensional latent class model
+
+dat &lt;- key2binary(SAT12,
+     key = c(1,4,5,2,3,1,2,1,3,1,2,4,2,1,5,3,4,4,1,4,3,3,4,1,3,5,1,3,1,5,4,5))
+
+# 5 latent classes within 2 different sets of items
+model &lt;- mirt.model('C1 = 1-16
+                     C2 = 1-16
+                     C3 = 1-16
+                     C4 = 1-16
+                     C5 = 1-16
+                     C6 = 17-32
+                     C7 = 17-32
+                     C8 = 17-32
+                     C9 = 17-32
+                     C10 = 17-32
+                     CONSTRAIN = (1-16, a1), (1-16, a2), (1-16, a3), (1-16, a4), (1-16, a5),
+                       (17-32, a6), (17-32, a7), (17-32, a8), (17-32, a9), (17-32, a10)')
+
+theta &lt;- diag(10) # defined explicitly. Otherwise, this profile is assumed
+mod &lt;- mdirt(dat, model, customTheta = theta)
+coef(mod, simplify=TRUE)
+summary(mod)
+
+#------------------
+# multiple group with constrained group probabilities
+ dat &lt;- key2binary(SAT12,
+   key = c(1,4,5,2,3,1,2,1,3,1,2,4,2,1,5,3,4,4,1,4,3,3,4,1,3,5,1,3,1,5,4,5))
+group &lt;- rep(c('G1', 'G2'), each = nrow(SAT12)/2)
+Theta &lt;- diag(2)
+
+# the latent class parameters are technically located in the (nitems + 1) location
+model &lt;- mirt.model('A1 = 1-32
+                     A2 = 1-32
+                     CONSTRAINB = (33, c1)')
+mod &lt;- mdirt(dat, model, group = group, customTheta = Theta)
+coef(mod, simplify=TRUE)
+summary(mod)
+
+
+#------------------
+# Probabilistic Guttman Model (Proctor, 1970)
+
+# example analysis can also be found in the sirt package (see ?prob.guttman)
+data(data.read, package = 'sirt')
+head(data.read)
+
+Theta &lt;- matrix(c(1,0,0,0,
+                  1,1,0,0,
+                  1,1,1,0,
+                  1,1,1,1), 4, byrow=TRUE)
+
+model &lt;- mirt.model("INTERCEPT = 1-12
+                     C1 = 1,7,9,11
+                     C2 = 2,5,8,10,12
+                     C3 = 3,4,6")
+
+mod &lt;- mdirt(data.read, model, customTheta=Theta)
+summary(mod)
+
+M2(mod)
+itemfit(mod)
+
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

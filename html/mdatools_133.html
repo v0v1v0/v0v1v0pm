@@ -1,0 +1,418 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pca</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Principal Component Analysis</h2>
+
+<h3>Description</h3>
+
+<p><code>pca</code> is used to build and explore a principal component analysis (PCA) model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pca(
+  x,
+  ncomp = min(nrow(x) - 1, ncol(x), 20),
+  center = TRUE,
+  scale = FALSE,
+  exclrows = NULL,
+  exclcols = NULL,
+  x.test = NULL,
+  method = "svd",
+  rand = NULL,
+  lim.type = "ddmoments",
+  alpha = 0.05,
+  gamma = 0.01,
+  info = ""
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>calibration data (matrix or data frame).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncomp</code></td>
+<td>
+<p>maximum number of components to calculate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>center</code></td>
+<td>
+<p>logical, do mean centering of data or not.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p>logical, do standardization of data or not.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exclrows</code></td>
+<td>
+<p>rows to be excluded from calculations (numbers, names or vector with logical values)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exclcols</code></td>
+<td>
+<p>columns to be excluded from calculations (numbers, names or vector with logical values)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x.test</code></td>
+<td>
+<p>test data (matrix or data frame).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>method to compute principal components ("svd", "nipals").</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rand</code></td>
+<td>
+<p>vector with parameters for randomized PCA methods (if NULL, conventional PCA is used instead)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lim.type</code></td>
+<td>
+<p>which method to use for calculation of critical limits for residual distances (see details)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>significance level for extreme limits for T2 and Q disances.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma</code></td>
+<td>
+<p>significance level for outlier limits for T2 and Q distances.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>info</code></td>
+<td>
+<p>a short text with model description.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Note, that from v. 0.10.0 cross-validation is no more supported in PCA.
+</p>
+<p>If number of components is not specified, a minimum of number of objects - 1 and number of
+variables in calibration set is used. One can also specified an optimal number of component,
+once model is calibrated (<code>ncomp.selected</code>). The optimal number of components is used to
+build a residuals distance plot, as well as for SIMCA classification.
+</p>
+<p>If some of rows of calibration set should be excluded from calculations (e.g. because they are
+outliers) you can provide row numbers, names, or logical values as parameter <code>exclrows</code>. In
+this case they will be completely ignored we model is calibrated. However, score and residuls
+distances will be computed for these rows as well and then hidden. You can show them
+on corresponding plots by using parameter <code>show.excluded = TRUE</code>.
+</p>
+<p>It is also possible to exclude selected columns from calculations by provideing parameter
+<code>exclcols</code> in form of column numbers, names or logical values. In this case loading matrix
+will have zeros for these columns. This allows to compute PCA models for selected variables
+without removing them physically from a dataset.
+</p>
+<p>Take into account that if you see other packages to make plots (e.g. ggplot2) you will
+not be able to distinguish between hidden and normal objects.
+</p>
+<p>By default loadings are computed for the original dataset using either SVD or NIPALS algorithm.
+However, for datasets with large number of rows (e.g. hyperspectral images), there is a
+possibility to run algorithms based on random permutations [1, 2]. In this case you have
+to define parameter <code>rand</code> as a vector with two values: <code>p</code> - oversampling parameter
+and <code>k</code> - number of iterations. Usually <code>rand = c(15, 0)</code> or  <code>rand = c(5, 1)</code>
+are good options, which give quite almost precise solution but much faster.
+</p>
+<p>There are several ways to calculate critical limits for orthogonal (Q, q) and score (T2, h)
+distances. In <code>mdatools</code> you can specify one of the following methods via parameter
+<code>lim.type</code>: <code>"jm"</code> Jackson-Mudholkar approach [3], <code>"chisq"</code> - method based on
+chi-square distribution [4], <code>"ddmoments"</code> and <code>"ddrobust"</code> - related to data
+driven method proposed in [5]. The <code>"ddmoments"</code> is based on method of moments for
+estimation of distribution parameters (also known as "classical" approach) while
+<code>"ddrobust"</code> is based in robust estimation.
+</p>
+<p>If <code>lim.type="chisq"</code> or <code>lim.type="jm"</code> is used, only limits for Q-distances are
+computed based on corresponding approach, limits for T2-distances are computed using
+Hotelling's T-squared distribution. The methods utilizing the data driven approach calculate
+limits for combination of the distances bases on chi-square distribution and parameters
+estimated from the calibration data.
+</p>
+<p>The critical limits are calculated for a significance level defined by parameter <code>'alpha'</code>.
+You can also specify another parameter, <code>'gamma'</code>, which is used to calculate acceptance
+limit for outliers (shown as dashed line on residual distance plot).
+</p>
+<p>You can also recalculate the limits for existent model by using different values for alpha and
+gamme, without recomputing the model itself. In this case use the following code (it is assumed
+that you current PCA/SIMCA model is stored in variable <code>m</code>):
+<code>m = setDistanceLimits(m, lim.type, alpha, gamma)</code>.
+</p>
+<p>In case of PCA the critical limits are just shown on residual plot as lines and can be used for
+detection of extreme objects (solid line) and outliers (dashed line). When PCA model is used for
+classification in SIMCA (see <code>simca</code>) the limits are also employed for
+classification of objects.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns an object of <code>pca</code> class with following fields:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>ncomp </code></td>
+<td>
+<p>number of components included to the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncomp.selected </code></td>
+<td>
+<p>selected (optimal) number of components.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loadings </code></td>
+<td>
+<p>matrix with loading values (nvar x ncomp).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eigenvals </code></td>
+<td>
+<p>vector with eigenvalues for all existent components.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expvar </code></td>
+<td>
+<p>vector with explained variance for each component (in percent).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cumexpvar </code></td>
+<td>
+<p>vector with cumulative explained variance for each component (in percent).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>T2lim </code></td>
+<td>
+<p>statistical limit for T2 distance.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Qlim </code></td>
+<td>
+<p>statistical limit for Q residuals.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>info </code></td>
+<td>
+<p>information about the model, provided by user when build the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>calres </code></td>
+<td>
+<p>an object of class <code>pcares</code> with PCA results for a calibration data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>testres </code></td>
+<td>
+<p>an object of class <code>pcares</code> with PCA results for a test data, if it
+was provided.</p>
+</td>
+</tr>
+</table>
+<p>More details and examples can be found in the Bookdown tutorial.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sergey Kucheryavskiy (svkucheryavski@gmail.com)
+</p>
+
+
+<h3>References</h3>
+
+<p>1. N. Halko, P.G. Martinsson, J.A. Tropp. Finding structure with randomness: probabilistic
+algorithms for constructing approximate matrix decompositions. SIAM Review, 53 (2010) pp.
+217-288.
+</p>
+<p>2. S. Kucheryavskiy, Blessing of randomness against the curse of dimensionality,
+Journal of Chemometrics, 32 (2018).
+</p>
+<p>3. J.E. Jackson, A User's Guide to Principal Components, John Wiley &amp; Sons, New York, NY (1991).
+</p>
+<p>4. A.L. Pomerantsev, Acceptance areas for multivariate classification derived by projection
+methods, Journal of Chemometrics, 22 (2008) pp. 601-609.
+</p>
+<p>5. A.L. Pomerantsev, O.Ye. Rodionova, Concept and role of extreme objects in PCA/SIMCA,
+Journal of Chemometrics, 28 (2014) pp. 429-438.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Methods for <code>pca</code> objects:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+   <code>plot.pca</code> </td>
+<td style="text-align: left;"> makes an overview of PCA model with four plots.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>summary.pca</code> </td>
+<td style="text-align: left;"> shows some statistics for the model.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>categorize.pca</code> </td>
+<td style="text-align: left;"> categorize data rows as "normal", "extreme" or "outliers".</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>selectCompNum.pca</code> </td>
+<td style="text-align: left;"> set number of optimal components in the model</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>setDistanceLimits.pca</code> </td>
+<td style="text-align: left;"> set critical limits for residuals</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>predict.pca</code> </td>
+<td style="text-align: left;"> applies PCA model to a new data.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<p>Plotting methods for <code>pca</code> objects:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+   <code>plotScores.pca</code> </td>
+<td style="text-align: left;"> shows scores plot.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotLoadings.pca</code> </td>
+<td style="text-align: left;"> shows loadings plot.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotVariance.pca</code> </td>
+<td style="text-align: left;"> shows explained variance plot.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotCumVariance.pca</code> </td>
+<td style="text-align: left;"> shows cumulative explained variance plot.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotResiduals.pca</code> </td>
+<td style="text-align: left;"> shows plot for residual distances (Q vs. T2).</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotBiplot.pca</code> </td>
+<td style="text-align: left;"> shows bi-plot.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotExtreme.pca</code> </td>
+<td style="text-align: left;"> shows extreme plot.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotT2DoF</code> </td>
+<td style="text-align: left;"> plot with degrees of freedom for score distance.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotQDoF</code> </td>
+<td style="text-align: left;"> plot with degrees of freedom for orthogonal distance.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotDistDoF</code> </td>
+<td style="text-align: left;"> plot with degrees of freedom for both distances.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<p>Most of the methods for plotting data are also available for PCA results (<code>pcares</code>)
+objects. Also check <code>pca.mvreplace</code>, which replaces missing values in a data matrix
+with approximated using iterative PCA decomposition.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(mdatools)
+### Examples for PCA class
+
+## 1. Make PCA model for People data with autoscaling
+
+data(people)
+model = pca(people, scale = TRUE, info = "Simple PCA model")
+model = selectCompNum(model, 4)
+summary(model)
+plot(model, show.labels = TRUE)
+
+## 2. Show scores and loadings plots for the model
+
+par(mfrow = c(2, 2))
+plotScores(model, comp = c(1, 3), show.labels = TRUE)
+plotScores(model, comp = 2, type = "h", show.labels = TRUE)
+plotLoadings(model, comp = c(1, 3), show.labels = TRUE)
+plotLoadings(model, comp = c(1, 2), type = "h", show.labels = TRUE)
+par(mfrow = c(1, 1))
+
+## 3. Show residual distance and variance plots for the model
+par(mfrow = c(2, 2))
+plotVariance(model, type = "h")
+plotCumVariance(model, show.labels = TRUE, legend.position = "bottomright")
+plotResiduals(model, show.labels = TRUE)
+plotResiduals(model, ncomp = 2, show.labels = TRUE)
+par(mfrow = c(1, 1))
+
+</code></pre>
+
+
+</div>

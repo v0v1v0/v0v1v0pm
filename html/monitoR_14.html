@@ -1,0 +1,148 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>compareTemplates</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Compare Performance of Templates
+</h2>
+
+<h3>Description</h3>
+
+<p>Provided a <code>detectionList</code> object containing results from N templates scored against the same survey with Y song events, <code>compareTemplates</code> will create a Y x N matrix to compare how each template scored each song event.  If the song events are the sound clips used to create each template, <code>compareTemplates</code> may be a means of measuring overall similarity among sound events.  Can be used to identify template clips that may match more than one song type.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">compareTemplates(detection.obj, cutoff.return, cutoff.ignore, tol, n.drop = 0)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>detection.obj</code></td>
+<td>
+<p>Object of class <code>detectionList</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cutoff.return</code></td>
+<td>
+<p>Score cutoff below which events are not returned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cutoff.ignore</code></td>
+<td>
+<p>Score cutoff below which events are ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>Tolerance (s). If a peak is within <code>tol</code> of a peak from another template, they are in the same event.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.drop</code></td>
+<td>
+<p>Rows with this many templates or fewer will be dropped. <code>n.drop = 0</code> drops none.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The matrix is created by comparing the score for each event to the average score for that event.  For cases in which a template does not score an event above <code>cutoff</code> a value of <code>NA</code> is placed in the matrix for that template-event junction.  Similarly, if a template scores an event above <code>cutoff</code> but is beyond <code>tol</code> of the mean of other events, it will enter the matrix as its own event and an <code>NA</code> will be placed in the matrix for the event's junctions with other templates.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>times.mean</code></td>
+<td>
+<p>Vector of mean times for each row of the matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>times</code></td>
+<td>
+<p>Matrix of times for each event detection and template.</p>
+</td>
+</tr>
+</table>
+<table><tr style="vertical-align: top;">
+<td><code>scores</code></td>
+<td>
+<p>Matrix of scores for each event detection and template.</p>
+</td>
+</tr></table>
+<h3>Note</h3>
+
+<p>It can be difficult to make this function do the same grouping of peaks that a human might do.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sasha D. Hafner
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>makeCorTemplate</code>, 
+<code>makeBinTemplate</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Load data
+data(btnw)
+
+# Write Wave objects to file (temporary directory used here)
+btnw.fp &lt;- file.path(tempdir(), "btnw.wav")
+
+writeWave(btnw, btnw.fp)
+
+# Make three templates to compare
+btnw.1 &lt;- makeBinTemplate(clip = btnw.fp, frq.lim = c(2.75, 7), t.lim = c(.5, 2.5), 
+                          amp.cutoff = -20, name = -20)
+
+btnw.2 &lt;- makeBinTemplate(clip = btnw.fp, frq.lim = c(2.75, 7), t.lim = c(.5, 2.5), 
+                          amp.cutoff = -27, name = -27)
+
+btnw.3 &lt;- makeBinTemplate(clip = btnw.fp, frq.lim = c(2.75, 7), t.lim = c(.5, 2.5), 
+                          amp.cutoff = -34, name = -34)
+
+# Combine templates
+templates &lt;- combineBinTemplates(btnw.1, btnw.2, btnw.3)
+
+survey &lt;- bind(btnw, btnw, btnw)
+
+survey.fp &lt;- file.path(tempdir(), "survey.wav")
+
+writeWave(survey, survey.fp)
+
+scores &lt;- binMatch(survey = survey.fp, templates = templates, time.source = "fileinfo")
+
+pks &lt;- findPeaks(scores)
+
+compareTemplates(detection.obj = pks, cutoff.return = 12, cutoff.ignore = 6, tol = 1, 
+                 n.drop = 0) 
+
+# Clean up
+file.remove(btnw.fp)
+file.remove(survey.fp)
+</code></pre>
+
+
+</div>

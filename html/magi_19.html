@@ -1,0 +1,135 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MagiPosterior</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MAGI posterior density</h2>
+
+<h3>Description</h3>
+
+<p>Computes the MAGI log-posterior value and gradient for an ODE model with the given inputs: the observations <code class="reqn">Y</code>, the latent system trajectories <code class="reqn">X</code>,
+the parameters <code class="reqn">\theta</code>, the noise standard deviations <code class="reqn">\sigma</code>, and covariance kernels.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MagiPosterior(
+  y,
+  xlatent,
+  theta,
+  sigma,
+  covAllDimInput,
+  odeModel,
+  priorTemperatureInput = 1,
+  useBand = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>data matrix of observations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xlatent</code></td>
+<td>
+<p>matrix of system trajectory values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>theta</code></td>
+<td>
+<p>vector of parameter values <code class="reqn">\theta</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma</code></td>
+<td>
+<p>vector of observation noise for each system component</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covAllDimInput</code></td>
+<td>
+<p>list of covariance kernel objects for each system component. Covariance calculations may be carried out with <code>calCov</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>odeModel</code></td>
+<td>
+<p>list of ODE functions and inputs. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priorTemperatureInput</code></td>
+<td>
+<p>vector of tempering factors for the GP prior, derivatives, and observations, in that order. Controls the influence of the GP prior relative to the likelihood.  Recommended values: the total number of observations divided by the total number of discretization points for the GP prior and derivatives, and 1 for the observations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>useBand</code></td>
+<td>
+<p>logical: should the band matrix approximation be used?  If <code>TRUE</code>, <code>covAllDimInput</code> must include CinvBand, mphiBand, and KinvBand as computed by <code>calCov</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list with elements <code>value</code> for the value of the log-posterior density and <code>grad</code> for its gradient.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Trajectories from the Fitzhugh-Nagumo equations
+tvec &lt;- seq(0, 20, 2)
+Vtrue &lt;- c(-1, 1.91, 1.38, -1.32, -1.5, 1.73, 1.66, 0.89, -1.82, -0.93, 1.89)
+Rtrue &lt;- c(1, 0.33, -0.62, -0.82, 0.5, 0.94, -0.22, -0.9, -0.08, 0.95, 0.3)
+
+# Noisy observations
+Vobs &lt;- Vtrue + rnorm(length(tvec), sd = 0.05)
+Robs &lt;- Rtrue + rnorm(length(tvec), sd = 0.1)
+
+# Prepare distance matrix for covariance kernel calculation
+foo &lt;- outer(tvec, t(tvec), '-')[, 1, ]
+r &lt;- abs(foo)
+r2 &lt;- r^2
+signr &lt;- -sign(foo)
+  
+# Choose some hyperparameter values to illustrate
+rphi &lt;- c(0.95, 3.27)
+vphi &lt;- c(1.98, 1.12)
+phiTest &lt;- cbind(vphi, rphi)
+
+# Covariance computations
+curCovV &lt;- calCov(phiTest[,1], r, signr, kerneltype = "generalMatern")
+curCovR &lt;- calCov(phiTest[,2], r, signr, kerneltype = "generalMatern")
+
+# Y and X inputs to MagiPosterior
+yInput &lt;- data.matrix(cbind(Vobs, Robs))
+xlatentTest &lt;- data.matrix(cbind(Vtrue, Rtrue))
+
+# Create odeModel list for FN equations
+fnmodel &lt;- list(
+  fOde = fnmodelODE,
+  fOdeDx = fnmodelDx,
+  fOdeDtheta = fnmodelDtheta,
+  thetaLowerBound = c(0, 0, 0),
+  thetaUpperBound = c(Inf, Inf, Inf)
+)
+
+MagiPosterior(yInput, xlatentTest, theta = c(0.2, 0.2, 3), sigma = c(0.05, 0.1),
+    list(curCovV, curCovR), fnmodel)
+
+
+</code></pre>
+
+
+</div>

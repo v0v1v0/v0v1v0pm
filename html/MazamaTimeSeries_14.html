@@ -1,0 +1,123 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mts_combine</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Combine multiple <em>mts</em> time series objects</h2>
+
+<h3>Description</h3>
+
+<p>Create a combined <em>mts</em> from any number of <em>mts</em>
+objects or from a list of <em>mts</em> objects. The resulting <em>mts</em>
+object with contain all <code>deviceDeploymentIDs</code> found in any incoming
+<em>mts</em> and will have a regular time axis covering the the entire range
+of incoming data.
+</p>
+<p>If incoming time ranges are non-contiguous, the resulting <em>mts</em> will
+have gaps filled with <code>NA</code> values.
+</p>
+<p>An error is generated if the incoming <em>mts</em> objects have
+non-identical metadata for the same <code>deviceDeploymentID</code> unless
+<code>replaceMeta = TRUE</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mts_combine(
+  ...,
+  replaceMeta = FALSE,
+  overlapStrategy = c("replace all", "replace na")
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Any number of valid <em>mts</em> objects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>replaceMeta</code></td>
+<td>
+<p>Logical specifying whether to allow replacement of
+metadata associated with <code>deviceDeploymentIDs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>overlapStrategy</code></td>
+<td>
+<p>Strategy to use when data found in time series
+overlaps.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An <em>mts</em> time series object containing all time series found
+in the incoming <code>mts</code> objects.
+(A list with <code>meta</code> and <code>data</code> dataframes.)
+</p>
+
+
+<h3>Note</h3>
+
+<p>Data for any <code>deviceDeploymentIDs</code> shared among <em>mts</em>
+objects are combined with a "later is better" sensibility where any
+data overlaps exist. To handle this, incoming <em>mts</em> objects are first
+split into "shared" and "unshared" parts.
+</p>
+<p>Any "shared" parts are ordered based on the
+time stamp of their last record. Then <code>dplyr::distinct()</code> is used to
+remove records with duplicate <code>datetime</code> fields.
+</p>
+<p>With <code>overlapStrategy = "replace all"</code>, any data records found
+in "later" <em>mts</em> objects are preferentially retained before the "shared"
+data are finally reordered by ascending <code>datetime</code>.
+</p>
+<p>With <code>overlapStrategy = "replace missing"</code>, only missing values in "earlier"
+<em>mts</em> objects are replaced with data records from "later" time series.
+</p>
+<p>The final step is combining the "shared" and "unshared" parts and placing
+them on a uniform time axis.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(MazamaTimeSeries)
+
+ids1 &lt;- example_mts$meta$deviceDeploymentID[1:5]
+ids2 &lt;- example_mts$meta$deviceDeploymentID[4:6]
+ids3 &lt;- example_mts$meta$deviceDeploymentID[8:10]
+
+mts1 &lt;-
+  example_mts %&gt;%
+  mts_filterMeta(deviceDeploymentID %in% ids1) %&gt;%
+  mts_filterDate(20190701, 20190703)
+
+mts2 &lt;-
+  example_mts %&gt;%
+  mts_filterMeta(deviceDeploymentID %in% ids2) %&gt;%
+  mts_filterDate(20190704, 20190706)
+
+mts3 &lt;-
+  example_mts %&gt;%
+  mts_filterMeta(deviceDeploymentID %in% ids3) %&gt;%
+  mts_filterDate(20190705, 20190708)
+
+mts &lt;- mts_combine(mts1, mts2, mts3)
+
+# Should have 1:6 + 8:10 = 9 meta records and the full date range
+nrow(mts$meta)
+range(mts$data$datetime)
+
+</code></pre>
+
+
+</div>

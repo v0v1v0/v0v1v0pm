@@ -1,0 +1,123 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MCMC-object-conversion</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Convert a draws component object to another format</h2>
+
+<h3>Description</h3>
+
+<p>Use <code>to_mcmc</code> to convert a draws component to class <code>mcmc.list</code>,
+allowing one to use MCMC diagnostic functions provided by package <span class="pkg">coda</span>.
+Use <code>as.array</code> to convert to an array of dimension <code>(draws, chains, parameters)</code>.
+The array format is supported by some packages for analysis or visualisation of MCMC
+simulation results, e.g. <span class="pkg">bayesplot</span>.
+Use <code>as.matrix</code> to convert to a matrix, concatenating the chains.
+Finally, use <code>to_draws_array</code> to convert either a draws component or
+(a subset of components of) an mcdraws object to a <code>draws_array</code> object
+as defined in package <span class="pkg">posterior</span>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">to_mcmc(x)
+
+to_draws_array(x, components = NULL)
+
+## S3 method for class 'dc'
+as.array(x, ...)
+
+## S3 method for class 'dc'
+as.matrix(x, colnames = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a component of an mcdraws object corresponding to a scalar or vector model parameter.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>components</code></td>
+<td>
+<p>optional character vector of names of draws components in an mcdraws object.
+This can be used to select a subset of components to convert to
+<code>draws_array</code> format.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>currently ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>colnames</code></td>
+<td>
+<p>whether column names should be set.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The draws component(s) coerced to an <code>mcmc.list</code> object,
+a <code>draws_array</code> object, an array, or a matrix.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data(iris)
+sampler &lt;- create_sampler(Sepal.Length ~ reg(~ Petal.Length + Species, name="beta"), data=iris)
+sim &lt;- MCMCsim(sampler, burnin=100, n.chain=2, n.iter=400)
+summary(sim)
+if (require("coda", quietly=TRUE)) {
+  mcbeta &lt;- to_mcmc(sim$beta)
+  geweke.diag(mcbeta)
+}
+if (require("posterior", quietly=TRUE)) {
+  mcbeta &lt;- to_draws_array(sim$beta)
+  mcbeta
+  draws &lt;- to_draws_array(sim)
+  str(draws)
+}
+str(as.array(sim$beta))
+str(as.matrix(sim$beta))
+
+# generate some example data
+n &lt;- 250
+dat &lt;- data.frame(x=runif(n), f=as.factor(sample(1:5, n, replace=TRUE)))
+gd &lt;- generate_data(~ reg(~ x + f, prior=pr_normal(precision=1), name="beta"), data=dat)
+dat$y &lt;- gd$y
+sampler &lt;- create_sampler(y ~ reg(~ x + f, name="beta"), data=dat)
+sim &lt;- MCMCsim(sampler, n.chain=2, n.iter=400)
+str(sim$beta)
+str(as.array(sim$beta))
+bayesplot::mcmc_hist(as.array(sim$beta))
+bayesplot::mcmc_dens_overlay(as.array(sim$beta))
+# fake data simulation check:
+bayesplot::mcmc_recover_intervals(as.array(sim$beta), gd$pars$beta)
+bayesplot::mcmc_recover_hist(as.array(sim$beta), gd$pars$beta)
+
+ex &lt;- mcmcsae_example()
+plot(ex$dat$fT, ex$dat$y)
+sampler &lt;- create_sampler(ex$model, data=ex$dat)
+sim &lt;- MCMCsim(sampler, n.chain=2, n.iter=400, store.all=TRUE)
+str(sim$beta)
+str(as.matrix(sim$beta))
+# fake data simulation check:
+bayesplot::mcmc_recover_intervals(as.matrix(sim$beta), ex$pars$beta)
+bayesplot::mcmc_recover_intervals(as.matrix(sim$u), ex$pars$u)
+
+
+</code></pre>
+
+
+</div>

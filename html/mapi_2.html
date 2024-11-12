@@ -1,0 +1,375 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mapi</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MAPI, general presentation</h2>
+
+<h3>Description</h3>
+
+<p>MAPI is an exploratory method providing graphical representations of the spatial variation of
+pairwise metrics (eg. distance, similarity coefficient, ...) computed between georeferenced samples.
+</p>
+
+
+<h4>Principle</h4>
+
+<p>As schematically illustrated Figure 1, MAPI relies on spatial joins between a hexagonal grid and a network
+of georeferenced samples connected by ellipses, i.e. polygons with 32 segments approaching an elliptical shape.
+</p>
+<p>The shape of the ellipses can be controlled through the eccentricity value and the sample locations can be
+"blurred" by applying an error circle of a given radius on the geographic coordinates.
+Each elliptical polygon is associated to 1) the value of the pairwise metric computed between the samples
+it connects and 2) a weight corresponding to the inverse of its area (i.e. larger ellipses have lower weights).
+</p>
+<p>Each cell of the grid receives the weighted mean of the pairwise metric values associated to the ellipses intersecting the cell.
+</p>
+
+<p><img src="../help/figures/fig3D.png" alt="fig3D.png"><br><em>Figure 1: Schematic principle of the MAPI method from Piry et al. 2016.</em>
+</p>
+
+
+<h4>Input data</h4>
+
+<p>The analysis requires two tables (data.frame or data.table):
+</p>
+
+<ol><li>
+<p> Information on samples: table with three mandatory columns and column names: 'ind' (sample name), 'x' and 'y' (projected coordinates).
+An optional column 'errRad' (radius of error circle on sample coordinates) can be provided.
+</p>
+</li></ol>
+<p>MAPI requires cartesian coordinates (ie. projected, such as UTM or Lambert) NOT (yet?) angular coordinates (eg. latitude/longitude).
+The package <span class="pkg">sf</span> provides the <code>st_transform</code> function for coordinates transformation and projection.
+GIS software such as QGis can also help with datum transformation.
+</p>
+<p>Example of 'samples' data:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+</td>
+<td style="text-align: left;"> ind   </td>
+<td style="text-align: right;"> x      </td>
+<td style="text-align: right;"> y      </td>
+<td style="text-align: right;"> errRad </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+1  </td>
+<td style="text-align: left;"> 2_42  </td>
+<td style="text-align: right;"> 12000  </td>
+<td style="text-align: right;"> 5000   </td>
+<td style="text-align: right;">     10 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+2  </td>
+<td style="text-align: left;"> 2_47  </td>
+<td style="text-align: right;"> 17000  </td>
+<td style="text-align: right;"> 5000   </td>
+<td style="text-align: right;">     10 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+3  </td>
+<td style="text-align: left;"> 1_82  </td>
+<td style="text-align: right;">  2000  </td>
+<td style="text-align: right;"> 9000   </td>
+<td style="text-align: right;">     10 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+4  </td>
+<td style="text-align: left;"> 2_100 </td>
+<td style="text-align: right;"> 20000  </td>
+<td style="text-align: right;"> 10000  </td>
+<td style="text-align: right;">     10 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+5  </td>
+<td style="text-align: left;"> 2_87  </td>
+<td style="text-align: right;"> 17000  </td>
+<td style="text-align: right;"> 9000   </td>
+<td style="text-align: right;">     10 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+6  </td>
+<td style="text-align: left;"> 1_11  </td>
+<td style="text-align: right;"> 1000   </td>
+<td style="text-align: right;"> 2000   </td>
+<td style="text-align: right;">     10 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+...  </td>
+<td style="text-align: left;"> ...  </td>
+<td style="text-align: right;"> ...   </td>
+<td style="text-align: right;"> ...    </td>
+<td style="text-align: right;">   ...  </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<ol><li>
+<p> Values of the pairwise metric computed between samples provided, either, as a complete matrix with the same number of columns and rows
+(column and row names must match the sample names provided in the 'samples' data) or as a table with three mandatory columns and
+column names: 'ind1', 'ind2' (sample names) and 'value' (pairwise metric values).
+</p>
+</li></ol>
+<p>Example of 'metric' data:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+</td>
+<td style="text-align: left;"> ind1  </td>
+<td style="text-align: left;"> ind2 </td>
+<td style="text-align: right;">   value </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+1   </td>
+<td style="text-align: left;">  1_1  </td>
+<td style="text-align: left;"> 1_2 </td>
+<td style="text-align: right;"> 0.055556 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+2   </td>
+<td style="text-align: left;">  1_1  </td>
+<td style="text-align: left;"> 1_3 </td>
+<td style="text-align: right;"> 0.020833 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+3   </td>
+<td style="text-align: left;">  1_1  </td>
+<td style="text-align: left;"> 1_4 </td>
+<td style="text-align: right;"> 0.125000 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+4   </td>
+<td style="text-align: left;">  1_1  </td>
+<td style="text-align: left;"> 1_5 </td>
+<td style="text-align: right;"> 0.125000 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+5   </td>
+<td style="text-align: left;">  1_1  </td>
+<td style="text-align: left;"> 1_6 </td>
+<td style="text-align: right;"> 0.020833 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+6   </td>
+<td style="text-align: left;">  1_1  </td>
+<td style="text-align: left;"> 1_7 </td>
+<td style="text-align: right;"> 0.090278 </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+... </td>
+<td style="text-align: left;"> ...   </td>
+<td style="text-align: left;"> ... </td>
+<td style="text-align: right;"> ...      </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<h4>Try it</h4>
+
+<p>Using the test dataset ('samples' and 'metric') included in the package, let's run an (almost) automatic MAPI analysis
+</p>
+<p>Test data result from population genetic simulations in which two panmictic populations are
+separated by a barrier to dispersal. As we use dummy coordinates, there is no appropriate crs, so we just use 'crs=3857'
+(a pseudo-mercator projection). Of course, in this case, sample position on earth is meaningless.
+For a real dataset, 'crs' must be the EPSG code of the projection of your cartesian coordinates.
+</p>
+<pre>
+ # Load the package
+ library(mapi)
+ 
+ # Load 'samples' data
+ data("samples")
+ 
+ # Load 'metric' data. For our simulated data set the parwise metric 
+ # computed between samples is the individual genetic distance â of Rousset (2000).
+ data("metric")
+ 
+ # Run MAPI the lazy way (automatic) with 1000 permutations 
+ # for detection of significant (dis)continuous areas.
+ # As crs must be set, we go with crs=3857 even if we use dummy coordinates.
+ # Of course, this have no geographical meaning.
+ # As we have a regular sampling, we use beta=0.5
+ my.results &lt;- MAPI_RunAuto(samples, metric, crs=3857, beta=0.5, nbPermuts=1000)
+ 
+ # Get significant areas with a FDR control at alpha=0.05 (5%, by default)
+ my.tails &lt;- MAPI_Tails(my.results, alpha=0.05)
+ 
+ # Look at the result Figure 2.
+ MAPI_Plot2(my.results, tails=my.tails)
+ </pre>
+<p>Spatial variation of the genetic distance is represented with a color scale from dark brown (lowest values) to dark blue (higher value). The central blue area identified as a significant area of discontinuity corresponds
+to the position of the simulated barrier. Note that due to the permutation procedure, delineation of the significant areas may vary slightly among runs.
+</p>
+
+<p><img src="../help/figures/mapiPlotOutput.png" alt="mapiPlotOutput.png"><br><em>Figure 2: MAPI graphical Output produced using the MAPI_Plot2 function.</em>
+</p>
+
+
+<h4>To go deeper</h4>
+
+<p><code>MAPI_RunAuto</code> is a wrapper which calls three other functions: <code>MAPI_CheckData</code>, <code>MAPI_GridAuto</code> and <code>MAPI_RunOnGrid</code>.
+</p>
+<p><code>MAPI_GridAuto</code> is itself another wrapper around <code>MAPI_EstimateHalfwidth</code> and <code>MAPI_GridHexagonal</code>.
+</p>
+<p>Typically, a "manual" MAPI analysis will involve the following ordered steps:
+</p>
+
+<ol>
+<li> <p><code>MAPI_CheckData</code> 
+</p>
+</li>
+<li> <p><code>MAPI_EstimateHalfwidth</code> 
+</p>
+</li>
+<li> <p><code>MAPI_GridHexagonal</code> 
+</p>
+</li>
+<li> <p><code>MAPI_RunOnGrid</code> 
+</p>
+</li>
+<li> <p><code>MAPI_Tails</code> 
+</p>
+</li>
+<li> <p><code>MAPI_Plot2</code> 
+</p>
+</li>
+</ol>
+<p>Within this general framework, you may, for example:
+</p>
+
+<ul>
+<li>
+<p>set your own value for 'halfwidth' (ignore step 2)
+</p>
+</li>
+<li>
+<p>use your own grid, or reuse one from another run (ignore steps 2 &amp; 3)
+</p>
+</li>
+<li>
+<p>tweak some MAPI parameters (such as dMin or dMax for filtering on geographic distances between samples)
+</p>
+</li>
+<li>
+<p>discard poorly supported cells prior detecting significant areas of (dis)continuity  (parameter <code>minQ</code>) and/or change significance level (parameter <code>alpha</code> in <code>MAPI_Tails</code>)
+</p>
+</li>
+<li>
+<p>build your MAPI maps with a GIS software (ignore step 6). See 'Export results' section below
+</p>
+</li>
+</ul>
+<h4>Export results</h4>
+
+<p>Output tables (weighted mean of the pairwise metric within cell and polygons delineating significant areas of (dis)continuity) are spatial objects built using the package <span class="pkg">sf</span>.
+Refer to <span class="pkg">sf</span> documentation to export MAPI results in various format.
+Below is an example of how MAPI results can be exported as ESRI Shapefiles:
+</p>
+<pre>
+library(sf)
+# Export results for our test dataset
+st_write(my.results, dsn=".", layer="myFirstMapiResult", 
+   driver="ESRI Shapefile", append=FALSE, delete_layer=TRUE)
+st_write(my.tails, dsn=".", layer="myFirstMapiResultTails", 
+   driver="ESRI Shapefile", append=FALSE, delete_layer=TRUE)
+</pre>
+<p>Alternatively, exporting layers in a geopackage is more convenient (only one file):
+</p>
+<pre>
+library(sf)
+# Export results for our test dataset
+st_write(my.results, dsn="myFirstMapi.gpkg", layer="Result", 
+   driver="GPKG", append=FALSE, delete_layer=TRUE)
+st_write(my.tails, dsn="myFirstMapi.gpkg", layer="Tails", 
+   driver="GPKG", append=FALSE, delete_layer=TRUE)
+</pre>
+<p>You may now open these files ‘<span class="file">myFirstMapiResult.shp</span>’ and ‘<span class="file">myFirstMapiResultTails.shp</span>’ or ‘<span class="file">myFirstMapi.gpkg</span>’ in a GIS software such as QGis and customize the layout.<br></p>
+<p>NOTE: recent versions of sf/gdal packages does not allow to export the 'permuts' column. As it was never used, MAPI &gt;=1.0.4 releases does not returns anymore this column.
+If you still use older MAPI versions, you can remove this column before exporting using the following command:
+</p>
+<pre>
+my.results$permuts &lt;- NULL
+</pre>
+<p>NOTE: If the area of significant zones is very large, the measure may not fit in Shapefiles fields. It is then possible to convert the area measure in km² by dividing the value by 1,000,000:
+</p>
+<pre>
+my.tails$area &lt;- as.numeric(my.tails$area) / 1e6
+</pre>
+<p>Overlaying MAPI results with landscape layouts can help in analyzing the relationship between environmental features and spatial genetic patterns (eg. Piry &amp; al., 2016; Piry &amp; al., 2018).
+</p>
+
+
+
+<h3>References</h3>
+
+
+
+<h4>Description of the MAPI method</h4>
+
+<p><br>
+Piry S., Chapuis M.-P., Gauffre B., Papaïx J., Cruaud A. and Berthier K. <b>(2016)</b>.
+Mapping Averaged Pairwise Information (MAPI): a new exploratory tool to uncover spatial structure.
+<em>Methods in Ecology and Evolution</em> <b>7</b>:(12), 1463–1475.
+doi: <a href="https://doi.org/10.1111/2041-210X.12616">10.1111/2041-210X.12616</a>
+</p>
+
+
+
+<h4>Applications of MAPI in Landscape Genetics</h4>
+
+
+<ul>
+<li>
+<p>Larson S., Gagne RB et al. <b>2021</b>
+Translocations maintain genetic diversity and increase connectivity in sea otters, <em>Enhydra lutris</em>
+<em>Marine Mammal Science</em>
+doi: <a href="https://doi.org/10.1111/mms.12841">10.1111/mms.12841</a>
+</p>
+</li>
+<li>
+<p>Stragier C., Piry S., et al. <b>2020</b>.
+Interplay between historical and current features of the cityscape in shaping the genetic structure of the house mouse (<em>Mus musculus domesticus</em>) in Dakar (Senegal, West Africa)
+<em>bioRxiv ; Version 4 of this preprint has been peer-reviewed and is recommended by Peer Community In Ecology (DOI:10.24072/pci.ecology.100044)</em>
+doi: <a href="https://doi.org/10.1101/557066">10.1101/557066</a>
+</p>
+</li>
+<li>
+<p>Piry S., Berthier K., Streiff R., Cros-Arteil S., Tatin L., Foucart A., Bröder L., Hochkirch A., and Chapuis M.-P. <b>(2018)</b>.
+Fine-scale interactions between habitat quality and genetic variation suggest an impact of grazing on the critically endangered Crau Plain grasshopper (Pamphagidae: <em>Prionotropis rhodanica</em>).
+<em>Journal of Orthoptera Research</em> <b>27</b>, 61–73.
+doi: <a href="https://doi.org/10.3897/jor.27.15036">10.3897/jor.27.15036</a>
+</p>
+</li>
+<li>
+<p>Dellicour S, Prunier JG, Piry S, et al. <b>(2019)</b>
+Landscape genetic analyses of <em>Cervus elaphus</em> and <em>Sus scrofa</em>: comparative study and analytical developments.
+<em>Heredity</em>.
+doi: <a href="https://doi.org/10.1038/s41437-019-0183-5">10.1038/s41437-019-0183-5</a>
+</p>
+</li>
+</ul>
+</div>

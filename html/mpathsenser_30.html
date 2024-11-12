@@ -1,0 +1,298 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>link</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Link y to the time scale of x</h2>
+
+<h3>Description</h3>
+
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt="[Stable]"></a>
+</p>
+<p>One of the key tasks in analysing mobile sensing data is being able to link it to other data.
+For example, when analysing physical activity data, it could be of interest to know how much
+time a participant spent exercising before or after an ESM beep to evaluate their stress level.
+<code>link()</code> allows you to map two data frames to each other that are on different time scales,
+based on a pre-specified offset before and/or after. This function assumes that both <code>x</code> and
+<code>y</code> have a column called <code>time</code> containing DateTimeClasses.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">link(
+  x,
+  y,
+  by = NULL,
+  time,
+  end_time = NULL,
+  y_time,
+  offset_before = 0,
+  offset_after = 0,
+  add_before = FALSE,
+  add_after = FALSE,
+  name = "data",
+  split = by
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x, y</code></td>
+<td>
+<p>A pair of data frames or data frame extensions (e.g. a tibble). Both <code>x</code> and <code>y</code> must
+have a column called <code>time</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>A character vector indicating the variable(s) to match by, typically the participant
+IDs. If NULL, the default, <code style="white-space: pre;">⁠*_join()⁠</code> will perform a natural join, using all variables in
+common across <code>x</code> and <code>y</code>. Therefore, all data will be mapped to each other based on the time
+stamps of <code>x</code> and <code>y</code>. A message lists the variables so that you can check they're correct;
+suppress the message by supplying by explicitly.
+</p>
+<p>To join by different variables on <code>x</code> and <code>y</code>, use a named vector. For example, <code>by = c('a' = 'b')</code> will match <code>x$a</code> to <code>y$b</code>.
+</p>
+<p>To join by multiple variables, use a vector with <code>length &gt; 1</code>. For example, <code>by = c('a', 'b')</code>
+will match <code>x$a</code> to <code>y$a</code> and <code>x$b</code> to <code>y$b</code>. Use a named vector to match different variables
+in <code>x</code> and <code>y</code>. For example, <code>by = c('a' = 'b', 'c' = 'd')</code> will match <code>x$a</code> to <code>y$b</code> and <code>x$c</code>
+to <code>y$d</code>.
+</p>
+<p>To perform a cross-join (when <code>x</code> and <code>y</code> have no variables in common), use <code>by = character()</code>.
+Note that the <code>split</code> argument will then be set to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>time</code></td>
+<td>
+<p>The name of the column containing the timestamps in <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>end_time</code></td>
+<td>
+<p>Optionally, the name of the column containing the end time in <code>x</code>. If specified,
+it means <code>time</code> defines the start time of the interval and <code>end_time</code> the end time. Note that
+this cannot be used at the same time as <code>offset_before</code> or <code>offset_after</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y_time</code></td>
+<td>
+<p>The name of the column containing the timestamps in <code>y</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offset_before</code></td>
+<td>
+<p>The time before each measurement in <code>x</code> that denotes the period in which <code>y</code>
+is matched. Must be convertible to a period by <code>lubridate::as.period()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offset_after</code></td>
+<td>
+<p>The time after each measurement in <code>x</code> that denotes the period in which <code>y</code>
+is matched. Must be convertible to a period by <code>lubridate::as.period()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>add_before</code></td>
+<td>
+<p>Logical value. Do you want to add the last measurement before the start of each
+interval?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>add_after</code></td>
+<td>
+<p>Logical value. Do you want to add the first measurement after the end of each
+interval?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>name</code></td>
+<td>
+<p>The name of the column containing the nested <code>y</code> data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>split</code></td>
+<td>
+<p>An optional grouping variable to split the computation by. When working with large
+data sets, the computation can grow so large it no longer fits in your computer's working
+memory (after which it will probably fall back on the swap file, which is very slow). Splitting
+the computation trades some computational efficiency for a large decrease in RAM usage. This
+argument defaults to <code>by</code> to automatically suppress some of its RAM usage.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>y</code> is matched to the time scale of <code>x</code> by means of time windows. These time windows are
+defined as the period between <code>x - offset_before</code> and <code>x + offset_after</code>. Note that either
+<code>offset_before</code> or <code>offset_after</code> can be 0, but not both. The "interval" of the measurements is
+therefore the associated time window for each measurement of <code>x</code> and the data of <code>y</code> that also
+falls within this period. For example, an <code>offset_before</code>  of
+<code>minutes(30)</code> means to match all data of <code>y</code> that occurred <em>before</em> each
+measurement in <code>x</code>. An <code>offset_after</code> of 900 (i.e. 15 minutes) means to match all data of <code>y</code>
+that occurred <em>after</em> each measurement in <code>x</code>. When both <code>offset_before</code> and <code>offset_after</code> are
+specified, it means all data of <code>y</code> is matched in an interval of 30 minutes before and 15
+minutes after each measurement of <code>x</code>, thus combining the two arguments.
+</p>
+<p>The arguments <code>add_before</code> and <code>add_after</code> let you decide whether you want to add the last
+measurement before the interval and/or the first measurement after the interval respectively.
+This could be useful when you want to know which type of event occurred right before or after
+the interval of the measurement. For example, at <code>offset_before = "30 minutes"</code>, the data may
+indicate that a participant was running 20 minutes before a measurement in <code>x</code>, However, with
+just that information there is no way of knowing what the participant was doing the first 10
+minutes of the interval. The same principle applies to after the interval. When <code>add_before</code> is
+set to <code>TRUE</code>, the last measurement of <code>y</code> occurring before the interval of <code>x</code> is added to the
+output data as the first row, having the <strong><code>time</code> of <code>x - offset_before</code></strong> (i.e. the start
+of the interval). When <code>add_after</code> is set to <code>TRUE</code>, the first measurement of <code>y</code> occurring
+after the interval of <code>x</code> is added to the output data as the last row, having the <strong><code>time</code> of
+<code>x + offset_after</code></strong> (i.e. the end of the interval). This way, it is easier to calculate the
+difference to other measurements of <code>y</code> later (within the same interval). Additionally, an
+extra column (<code>original_time</code>) is added in the nested <code>data</code> column, which is the original time
+of the <code>y</code> measurement and <code>NULL</code> for every other observation. This may be useful to check if
+the added measurement isn't too distant (in time) from the others. Note that multiple rows may
+be added if there were multiple measurements in <code>y</code> at exactly the same time. Also, if there
+already is a row with a timestamp exactly equal to the start of the interval (for <code>add_before = TRUE</code>) or to the end of the interval <code style="white-space: pre;">⁠(add_after = TRUE⁠</code>), no extra row is added.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A tibble with the data of <code>x</code> with a new column <code>data</code> with the matched data of <code>y</code>
+according to <code>offset_before</code> and <code>offset_after</code>.
+</p>
+
+
+<h3>Warning</h3>
+
+<p>Note that setting <code>add_before</code> and <code>add_after</code> each add one row to each nested
+<code>tibble</code> of the <code>data</code> column. Thus, if you are only interested in the total count (e.g.
+the number of total screen changes), remember to set these arguments to FALSE or make sure to
+filter out rows that do <em>not</em> have an <code>original_time</code>. Simply subtracting 1 or 2 does not work
+as not all measurements in <code>x</code> may have a measurement in <code>y</code> before or after (and thus no row
+is added).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Define some data
+x &lt;- data.frame(
+  time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 3), 2),
+  participant_id = c(rep("12345", 3), rep("23456", 3)),
+  item_one = rep(c(40, 50, 60), 2)
+)
+
+# Define some data that we want to link to x
+y &lt;- data.frame(
+  time = rep(seq.POSIXt(as.POSIXct("2021-11-14 12:50:00"), by = "5 min", length.out = 30), 2),
+  participant_id = c(rep("12345", 30), rep("23456", 30)),
+  x = rep(1:30, 2)
+)
+
+# Now link y within 30 minutes before each row in x
+# until the measurement itself:
+link(
+  x = x,
+  y = y,
+  by = "participant_id",
+  time = time,
+  y_time = time,
+  offset_before = "30 minutes"
+)
+
+# We can also link y to a period both before and after
+# each measurement in x.
+# Also note that time, end_time and y_time accept both
+# quoted names as well as character names.
+link(
+  x = x,
+  y = y,
+  by = "participant_id",
+  time = "time",
+  y_time = "time",
+  offset_before = "15 minutes",
+  offset_after = "15 minutes"
+)
+
+# It can be important to also know the measurements
+# just preceding the interval or just after the interval.
+# This adds an extra column called 'original_time' in the
+# nested data, containing the original time stamp. The
+# actual timestamp is set to the start time of the interval.
+link(
+  x = x,
+  y = y,
+  by = "participant_id",
+  time = time,
+  y_time = time,
+  offset_before = "15 minutes",
+  offset_after = "15 minutes",
+  add_before = TRUE,
+  add_after = TRUE
+)
+
+# If you participant_id is not important to you
+# (i.e. the measurements are interchangeable),
+# you can ignore them by leaving by empty.
+# However, in this case we'll receive a warning
+# since x and y have no other columns in common
+# (except time, of course). Thus, we can perform
+# a cross-join:
+link(
+  x = x,
+  y = y,
+  by = character(),
+  time = time,
+  y_time = time,
+  offset_before = "30 minutes"
+)
+
+# Alternatively, we can specify custom intervals.
+# That is, we can create variable intervals
+# without using fixed offsets.
+x &lt;- data.frame(
+  start_time = rep(
+    x = as.POSIXct(c(
+      "2021-11-14 12:40:00",
+      "2021-11-14 13:30:00",
+      "2021-11-14 15:00:00"
+    )),
+    times = 2
+  ),
+  end_time = rep(
+    x = as.POSIXct(c(
+      "2021-11-14 13:20:00",
+      "2021-11-14 14:10:00",
+      "2021-11-14 15:30:00"
+    )),
+    times = 2
+  ),
+  participant_id = c(rep("12345", 3), rep("23456", 3)),
+  item_one = rep(c(40, 50, 60), 2)
+)
+link(
+  x = x,
+  y = y,
+  by = "participant_id",
+  time = start_time,
+  end_time = end_time,
+  y_time = time,
+  add_before = TRUE,
+  add_after = TRUE
+)
+</code></pre>
+
+
+</div>

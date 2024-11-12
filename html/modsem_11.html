@@ -1,0 +1,147 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modsem</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate interaction effects in structural equation models (SEMs)</h2>
+
+<h3>Description</h3>
+
+<p><code>modsem()</code> is a function for estimating interaction effects between latent variables 
+in structural equation models (SEMs).
+Methods for estimating interaction effects in SEMs can basically be split into 
+two frameworks: 
+1. Product Indicator-based approaches (<code>"dblcent"</code>, <code>"rca"</code>, <code>"uca"</code>, 
+<code>"ca"</code>, <code>"pind"</code>)
+2. Distributionally based approaches (<code>"lms"</code>, <code>"qml"</code>).
+</p>
+<p>For the product indicator-based approaches, <code>modsem()</code> is essentially a fancy wrapper for <code>lavaan::sem()</code> which generates the 
+necessary syntax and variables for the estimation of models with latent product indicators.
+</p>
+<p>The distributionally based approaches are implemented separately and are 
+not estimated using <code>lavaan::sem()</code>, but rather using custom functions (largely
+written in <code>C++</code> for performance reasons). For greater control, it is advised that 
+you use one of the sub-functions (modsem_pi, modsem_da, modsem_mplus) directly, 
+as passing additional arguments to them via <code>modsem()</code> can lead to unexpected behavior.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modsem(model.syntax = NULL, data = NULL, method = "dblcent", ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model.syntax</code></td>
+<td>
+<p><code>lavaan</code> syntax</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>dataframe</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>method to use:
+<code>"rca"</code> = residual centering approach (passed to <code>lavaan</code>),
+<code>"uca"</code> = unconstrained approach (passed to <code>lavaan</code>),
+<code>"dblcent"</code> = double centering approach (passed to <code>lavaan</code>),
+<code>"pind"</code> = prod ind approach, with no constraints or centering (passed to <code>lavaan</code>),
+<code>"lms"</code> = latent model structural equations (not passed to <code>lavaan</code>),
+<code>"qml"</code> = quasi maximum likelihood estimation of latent model structural equations (not passed to <code>lavaan</code>),
+<code>"custom"</code> = use parameters specified in the function call (passed to <code>lavaan</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>arguments passed to other functions depending on the method (see <code>modsem_pi</code>, <code>modsem_da</code>, and <code>modsem_mplus</code>)</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>modsem</code> object with class <code>modsem_pi</code>, <code>modsem_da</code>, or <code>modsem_mplus</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(modsem)
+# For more examples, check README and/or GitHub.
+# One interaction
+m1 &lt;- '
+  # Outer Model
+  X =~ x1 + x2 +x3
+  Y =~ y1 + y2 + y3
+  Z =~ z1 + z2 + z3
+  
+  # Inner model
+  Y ~ X + Z + X:Z 
+'
+
+# Double centering approach
+est1 &lt;- modsem(m1, oneInt)
+summary(est1)
+
+## Not run: 
+# The Constrained Approach 
+est1_ca &lt;- modsem(m1, oneInt, method = "ca")
+summary(est1_ca)
+
+# LMS approach
+est1_lms &lt;- modsem(m1, oneInt, method = "lms")
+summary(est1_lms)
+
+# QML approach
+est1_qml &lt;- modsem(m1, oneInt, method = "qml")
+summary(est1_qml)
+
+## End(Not run)
+
+# Theory Of Planned Behavior
+tpb &lt;- ' 
+# Outer Model (Based on Hagger et al., 2007)
+  ATT =~ att1 + att2 + att3 + att4 + att5
+  SN =~ sn1 + sn2
+  PBC =~ pbc1 + pbc2 + pbc3
+  INT =~ int1 + int2 + int3
+  BEH =~ b1 + b2
+
+# Inner Model (Based on Steinmetz et al., 2011)
+  INT ~ ATT + SN + PBC
+  BEH ~ INT + PBC 
+  BEH ~ INT:PBC  
+'
+
+# Double centering approach
+est_tpb &lt;- modsem(tpb, data = TPB)
+summary(est_tpb)
+
+## Not run: 
+# The Constrained Approach 
+est_tpb_ca &lt;- modsem(tpb, data = TPB, method = "ca")
+summary(est_tpb_ca)
+
+# LMS approach
+est_tpb_lms &lt;- modsem(tpb, data = TPB, method = "lms")
+summary(est_tpb_lms)
+
+# QML approach
+est_tpb_qml &lt;- modsem(tpb, data = TPB, method = "qml")
+summary(est_tpb_qml)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,278 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvbutils.packaging.tools</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>How to create &amp; maintain packages with mvbutils</h2>
+
+<h3>Description</h3>
+
+<p>This document covers:
+</p>
+
+<ul>
+<li>
+<p> using <code>mvbutils</code> to create a new package from scratch;
+</p>
+</li>
+<li>
+<p> using <code>mvbutils</code> to maintain a package you've created (e.g. edit it while using it);
+</p>
+</li>
+<li>
+<p> converting an existing package into <code>mvbutils</code>-compatible format;
+</p>
+</li>
+<li>
+<p> how to customize the package-creation process.
+</p>
+</li>
+</ul>
+<p>For clarity, the simplest usage is presented first in each case. For how to do things differently, first look further down this document, then in the documentation for <code>pre.install</code> and perhaps <code>doc2Rd</code>.
+</p>
+<p>You need to understand <code>cd</code> and <code>fixr</code> before trying any of this.
+</p>
+
+
+<h3>Setting up a package from scratch</h3>
+
+<p>First, the simplest case: suppose you have some pure R code and maybe data that you'd like to make into a package called "Splendid". The bare-minimum steps you need are:-
+</p>
+
+<ul>
+<li>
+<p> Make sure all the code &amp; data lives in a single task called "Splendid".
+</p>
+</li>
+<li> <p><code>cd</code> to the task above "Splendid"
+</p>
+</li>
+<li> <p><code>maintain.packages( Splendid)</code>
+</p>
+</li>
+<li> <p><code>pre.install( Splendid)</code>. This will create a "source package" in a subdirectory of Splendid's task directory. The subdirectory will be called "Splendid".
+</p>
+</li>
+<li>
+<p> Make sure you have all the R build tools installed and on your path– see "R-exts" for details (and NB that if you need to install Latex, then google MikTex &amp; choose a <em>minimal</em> install).
+</p>
+</li>
+<li> <p><code>install.pkg( Splendid)</code> to do what you'd expect. On Windows, you can alternatively first do <code>build.pkg.binary( Splendid)</code>, then use R's menus to "Packages/Install from local zip files".
+</p>
+</li>
+<li> <p><code>library(Splendid)</code>; your package will be loaded for use, and is also ready for live-editing.
+</p>
+</li>
+</ul>
+<p>Your package will probably just about work now, but the result won't yet be perfect. The additional steps you'll likely need are these:
+</p>
+
+<ul>
+<li>
+<p> Sort out the <b>Description file or object</b>[(]see below[)]
+</p>
+</li>
+<li>
+<p> Provide <b>Documentation and metadata</b>[(]see below[)]
+</p>
+</li>
+<li>
+<p> Sort out any C/Fortran source code, pre-compiled code, demos, and other additional files (see <code>pre.install</code>)
+</p>
+</li>
+<li>
+<p> Move any subtasks of Splendid to one level up the task hierarchy (see <code>maintain.packages</code>)
+</p>
+</li>
+</ul>
+<p>Once you have set up "Splendid" so that <code>maintain.packages</code> works, you won't need to <code>cd</code> directly into "Splendid" again— which is good, because you're not allowed to.
+</p>
+
+
+<h4>Glossary</h4>
+
+<p><em>Task package</em> is a folder with at least an ".RData" file, linked into the <code>cd</code> hierarchy. It contains master copies of the objects in your package, plus perhaps a few other objects required to build the package (e.g. stand-alone items of documentation).
+</p>
+<p><em>In-memory task package</em> is an environment in the current R session that contains an image of the task package. Objects in it are never used directly, only as templates for editing. It is loaded by <code>maintain.packages</code>, and <code>Save.pos</code> uses it to update the task package (usually automatic).
+</p>
+<p><em>Source package</em> is a folder containing, yes, an R-style source package. It is created initially by <code>pre.install</code>, and subsequently by <code>patch.install</code> or <code>pre.install</code>.
+</p>
+<p><em>Installed package</em> is a folder containing, yes, an R-style installed package. It is always created from the source package, initially by <code>install.pkg</code> and subsequently by <code>patch.install</code> or <code>install.pkg</code>.
+</p>
+<p><em>Loaded package</em> is the in-memory version of an installed package, loaded by <code>library</code>.
+</p>
+<p><em>Tarball package</em> is a zipped-up version of a source package, for distro on non-Windows-Mac platforms or submission to CRAN and subsequent installation via "R CMD INSTALL". Usually it will not contain DLLs of any low-level code, just the source low-level code. It is created by <code>build.pkg</code>.
+</p>
+<p><em>Binary package</em> is a special zipped-up version for distro to Windows or Macs that includes actual DLLs, for installation via e.g. the "Packages/Install from local ZIP" menu. It is created by <code>build.pkg.binary</code>.
+</p>
+<p><em>Built package</em> is a tarball package or binary package.
+</p>
+
+
+
+<h3>Converting an existing package</h3>
+
+<p>Suppose you have already have a <em>source</em> package "hardway", and would like to try maintaining it via <code>mvbutils</code>. You'll need to create a task package, then create a new version of the source package, then re-install it. The first step is to call <code>unpackage( hardway)</code> to creat the task package "hardway" in a subdirectory of the current task. Plain-text documentation will be attached to functions, or stored as ".doc" text objects. All functions and documentation must thereafter be edited using <code>fixr</code>. The full sequence is something like:
+</p>
+<pre>
+  # Create task package in subdirectory of current:
+  unpackage( "path/to/existing/source/package/hardway")
+  #
+  # Load image into memory:
+  maintain.packages( hardway)
+  #
+  # Make new version of source package:
+  pre.install( hardway, ...) # use dir= to control where new source pkg goes
+  #
+  install.pkg( hardway) # or build.pkg.binary( hardway) followed by "install from local zip file" menu
+  #
+  library( hardway) # off yer go
+</pre>
+<p>If you get problems after <code>maintain.packages</code>, you might need <code>unmaintain.package( hardway)</code> to clear out the in-memory copy of the new task package.
+</p>
+
+
+<h3>Documentation and metadata</h3>
+
+<p>Documentation for functions can be stored as plain text just after a function's source code, as described in <code>flatdoc</code>. Just about anything will do– you don't absolutely have to follow the conventional structure of R help if you are really in a hurry. However, the easiest way to add kosheR but skeletal documentation to your function <code>brilliant</code>, is <code>fixr( brilliant, new.doc=TRUE)</code>; again, see <code>flatdoc</code> and <code>doc2Rd</code> if you want to understand what's going on. The format is almost exactly as displayed in plain-text help, i.e. from <code>help(..., help_type="text")</code>. My recommendation is to just start writing something that looks reasonable, and see if it works. To quickly test the ultimate appearance, you can use e.g. <code>docotest(..Splendid$brilliant)</code>. More generally, run <code>patch.install(Splendid)</code> which, as explained in <b>Maintaining a package</b> below, updates everything for your package including the help system, so you can then just do <code>?brilliant</code>. If you run into problems with writing documentation for your functions, then refer to <code>doc2Rd</code> for further details of format, such as how to document several functions in the same file.
+</p>
+<p>You can also provide three other types of documentation, for: (i) general use of your package (please do! it helps the user a lot; packages where the doco PDF consists only of an alphabetical list of functions/objects are a pain); (ii) more specific aspects of usage that are not tied to individual functions, such as this file; and (iii) datasets. These types of documentation should be stored in the package as text objects whose name ends in ".doc"; examples of the three types could be "Splendid.package.doc", "glitzograms.with.Splendid.doc", and "earlobes.doc" if you have a dataset <code>earlobes</code>. See <code>doc2Rd</code> for format details.
+</p>
+<p>You must document every function and dataset that the user will see, but you don't need to document any others. The foregoing applies iff your package has a <b>Namespace</b>, which it must for R 2.14 up.
+</p>
+
+
+<h4>Description file or object</h4>
+
+<p>When you first create a package from a task via <code>pre.install</code>, there probably won't be any DESCRIPTION information, so <code>mvbutils</code> will create a default "DESCRIPTION" file in your task folder, which it then copies to the source package. However, the default won't really be what you really want, as you'll realize if you type <code>library( help=Splendid)</code>. You can either manually edit the default "DESCRIPTION" file, or you can use <code>fixtext(Splendid.DESCRIPTION, pkg="Splendid")</code> to create a text object in your task package, which you then populate with the contents of the default "DESCRIPTION" file, and then edit. If a <code>Splendid.DESCRIPTION</code> object exists, <code>mvbutils</code> will use it in preference to a file; I find this tidier, because more of the package metadata lives in a single place, viz. inside the task package.
+</p>
+<p>Apart from the obvious changes needed to the default "DESCRIPTION" file or text object, the most important fields to add are "Imports:" (or "Depends:" for packages that are pre-R2.14 and that also don't have a namespace), to say what other packages are needed by "Splendid". The DESCRIPTION file/text should rarely need to be updated, since the "autoversion" feature (see <code>pre.install</code> doco) can be used to take care of version numbering. The most common reason to change the DESCRIPTION is probably to add/remove packages in "Imports"; at present, this pretty much requires you to unload &amp; reload the package, but I may try to expedite this in future versions.
+</p>
+
+
+
+<h4>Vignettes</h4>
+
+<p>In time, I plan to get <code>mvbutils</code> working nicely with <code>knitr</code>. At present (Jan 2013), the easiest way to create vignettes with <code>mvbutils</code> is to produce your own "homebrewed" PDFs however you prefer, and put them into the "inst/doc" folder. <code>pre.install/patch.install</code> will sort them out and link them into the help system. To provide more information than the filename, use <code>fixtext</code> to create a text object in your task package called e.g. <code>mypack.VIGNETTES</code>, with lines as follows:
+</p>
+<pre>
+  my.first.vignette: Behold leviathan, mate
+  my.second.vignette: What a good idea, to write a vignette
+</pre>
+<p>As a <em>very</em> experimental feature, you can also include R code for a homebrewed vignette, via a file with the same name but extension ".R" also in "inst/doc". Users can access it as normal for vignette code, via <code>edit( vignette( "my.first.vignette", package="mypack"))</code> or via doing something to <code>system.file( file.path( "doc", "my.first.vignette.R"), package="mypack")</code>.
+</p>
+<p>You can put full-on Sweave-style vignettes into a "vignettes" folder, and they should be set up correctly in the source package. Currently, though, they are <b>not</b> re-installed by <code>patch.install</code>; you need to use <code>build.pkg</code> and <code>install.pkg</code> (partly defeating the point of these package-building utilities).
+</p>
+
+
+<h5>Very technical details about homebrewed vignettes</h5>
+
+<p>"Rnw stubs" are created for all homebrewed vignettes so that the help system finds them. A rudimentary index will be created for vignettes not mentioned in <code>&lt;&lt;mypack&gt;&gt;.VIGNETTES</code>. If you create your own "inst/doc/index.html" file, this takes precedence over mvbutil's versions, so that <code>&lt;&lt;mypack&gt;&gt;.VIGNETTES</code> is not used.
+</p>
+
+
+
+
+<h4>Namespace</h4>
+
+<p>Usually this is automatic. <code>pre.install</code> etc automatically creates a "NAMESPACE" file for your package, ensuring inter alia that all documented objects are user-visible. To load DLLs, add a <code>.onLoad</code> function that contains the body code of <code>generic.dll.loader</code> in package <span class="pkg">mvbutils</span> (thus avoiding dependence on <code>mvbutils</code>). For more complicated fiddling, see <b>Customizing package creation</b>.
+</p>
+
+
+<h5>Packages without namespaces pre r 2 14</h5>
+
+<p>Namespaces only became compulsory with R 2.14. If you're setting up your package in an earlier version of R, <code>mvbutils</code> will <em>not</em> create a namespace unless it finds a <code>.onLoad</code> function. To trigger namespacing, just create a <code>.onLoad</code> with this definition: <code>function( libname, pkgname) {}</code>.
+</p>
+
+
+
+
+<h3>Maintaining a package</h3>
+
+<p>Once you have successfully gotten your "Splendid" package installed and loaded the first time, you should rarely need to call <code>install.pkg</code> or <code>build.pkg</code> etc again, except when you are about to distribute to others. In your own work, after calling <code>maintain.packages</code> and <code>library</code> in an R session, you can modify, add and delete functions, datasets, and documentation in your package via the standard functions <code>fixr</code>, <code>move</code>, and <code>rm.pkg</code> (or directly), and these changes will mostly be immediately manifested in the loaded package within your R session– this is "live editing". The changes are made first to the in-memory task package, which will be called e.g. <code>..Splendid</code>, and then propagated to the loaded package. Don't try to manipulate the loaded package's namespace directly. See <code>maintain.packages</code> for details.
+</p>
+<p>To update the installed package (on disk), call <code>patch.install( Splendid)</code>; this also calls <code>pre.install</code> to update the source package, updates the help system in the current session, and does a few other synchronizations. You need to call <code>patch.install</code> before quitting R to ensure that the changes are manifest in the loaded package the next time you start R; otherwise they will only exist in the in-memory task package, and won't be callable.
+</p>
+
+
+<h4>Troubleshooting</h4>
+
+<p>In rare cases, you may find that <code>maintain.packages( Splendid)</code> fails. If that happens, there won't be a <code>..Splendid</code> environment, which means you can't fix whatever caused the load failure. The load failure is (invariably in my experience) caused by a hidden attempt to load a namespaced package, which is failing for yet another reason, usually something in its <code>.onLoad</code>; that package might or might not be "Splendid" itself. If you can work out what other package is trying to load itself– say <code>badpack</code>– you can temporarily get round the problem by making use of the character vector <code>partial.namespaces</code>, which lives in the "mvb.session.info" search environment, as follows:
+</p>
+<pre>
+  partial.namespaces &lt;&lt;- c( partial.namespaces, "badpack")
+</pre>
+<p>That will prevent execution of <code>badpack:::.onLoad</code>. Consequently <code>badpack</code> won't be properly loaded, but at least the task package will be loaded into <code>..Splendid</code>, so that you can make a start on the problem. If you can't work out which package is causing the trouble, try
+</p>
+<pre>
+  partial.namespaces &lt;&lt;- "EVERY PACKAGE"
+</pre>
+<p>After that, no namespaced package will load properly, so remember to clear <code>partial.namespaces &lt;&lt;- NULL</code> before resuming normal service.
+</p>
+<p>Occasionally (usually during <code>patch.install</code>), you might see R errors like "cannot allocate vector of size 4.8Gb". I think this happens when some internal cache gets out-of-synch. It doesn't seem to cause much damage to the installed package, but once it's happened in an R session, it tends to happen again. I usually quit &amp; restart R.
+</p>
+<p>You might also find <code>find.lurking.envs</code> useful, via <code>eapply( ..Splendid, find.lurking.envs)</code>; this will show any functions (or other things) in <code>..Splendid</code> that have accidentally acquired a non-standard environment such as a namespace, which can trigger a "hidden" package load attempt. The environment for all functions in <code>..Splendid</code> <em>should</em> probably be <code>.GlobalEnv</code>; the environments in the <em>loaded</em> package will be different, of course.
+</p>
+<p>It's rare to need to manually inspect either the source package or the installed package. But if you do, then <code>spkg</code> helps for the former, e.g. <code>dir( spkg( mypack))</code>; and <code>system.file</code> helps for the latter, e.g. <code>system.file( package="mypack")</code>, or <code>system.file( file.path( "help", "AnIndex"), package="mypack")</code>.
+</p>
+
+
+
+<h3>Distributing and checking</h3>
+
+<p><code>build.pkg</code> calls R CMD BUILD to create a "tarball" of the package (a ".tar.gz" file), which is the appropriate format for distribution to Unix folk and submission to CRAN. <code>build.pkg.binary</code> creates a binary package (a ".zip" file), suitable for Windows or Macs. <code>check.pkg</code> runs R CMD CHECK (but see next paragraph for a quicker alternative), which is required by CRAN and sometimes useful at other times. These <code>.pkg</code> functions are pretty simple wrappers to the R CMD tools with similar names. However, for those with imperfect memories and limited time, there are enough arcane and mutable nuances with the "raw" R CMD commands (including the risk of inadvertently deleting existing installations) to make the wrappers in <code>mvbutils</code> useful.
+</p>
+<p>Various functions in the <span class="pkg">tools</span> package can be used to quickly check specific aspects of an <em>installed</em> package, without needing a full-on, and slow, R CMD CHECK. In particular, I sometimes use
+</p>
+<pre>
+  codoc( spkg( mypack)) # also spkg( "mypack"), spkg( ..mypack)
+  undoc( spkg( ..mypack))
+</pre>
+<p>Nothing is printed unless a problem is found, so a blank result is good news! It's also possible to run other tools such as <code>checkTnF</code> and <code>checkFF</code> similarly.
+</p>
+<p>By default, <code>mvbutils</code> adds code to the source package to circumvent the CRAN checks for "no visible function/binding", which I consider to be a waste of time; for example, unless circumvented they generate 338 false positives for package <span class="pkg">mvbutils</span>. If for some reason you actually want these checks, see "Overriding defaults" in <code>pre.install</code>.
+</p>
+
+
+<h3>Folders and different r versions</h3>
+
+<p>Life can get complicated when there are several versions of R around, particularly when they require different package formats at source or build or install time (eg R 2.10, 2.12, R 3.0). <code>install.pkg</code> etc do their best to simplify this for you. You won't normally need to know the details unless you are trying to maintain several versions of your package for different versions of R for distribution to other people who use those different R versions. But if you do need to know the details, then the default folder structure is as follows. If the task package lives in folder "mypack", then the source package is created by <code>pre.install</code> in "mypack/mypack", and the built package(s) will go into folders such as "mypack/R2.15" depending on what R version is running.
+</p>
+<p>Note that your <em>task package</em> can only ever have one version; if different behaviour is required for different R versions, then you need to code this up your functions, or via some trickery in <code>.onLoad</code>.
+</p>
+
+
+<h4>Built packages</h4>
+
+<p>Building comes first: the tarballed/zipped packages from <code>build.pkg</code> and <code>build.pkg.binary</code> are placed in a folder parallel to the source package, with a name of the form "Rx.y". <code>mvbutils</code> tries to be sensible about what "x.y" should be. It will never be newer than the <em>running</em> R version. It will never be older than the most recent major R version that required mandatory package rebuilds (eg R 3.0 and R 2.12). If one or more folders already exist that satisfy those properties, the highest-numbered one will be used. If not, a new folder will be created with the current R major version (eg R 2.15.3 will trigger a folder "R2.15"). You can create your own "Rx.y" folder, for instance if the current version of your package requires an R feature only found in R version "x.y". Also, <code>mvbutils</code> knows which R versions change the format of built packages, and will create a new folder for such a version if required.
+</p>
+<p>The default behaviour is therefore that <code>build.pkg.&lt;binary&gt;</code> will keep building into the same folder. For example, if at some point a "mypack/R2.12" folder was created, then that's where all builds will be sent regardless of the running R version, until you either manually create an "mypack/Rx.y" folder that's closer to the running R version, or the latter hits 3.0 which automatically triggers the creation of a new "mypack/R3.0" folder. Thanks to the "autoversion" feature of <code>pre.install</code>, the version number of the build will change whenever <code>&lt;pre/patch&gt;.install</code> is used. (Note that old built packages are not removed until/unless you explicitly call <code>cull.old.builds</code>, although it's "good housekeeping" to do the latter occasionally.) By manually creating new "Rx.y" folder when necessary, you can ensure that there <em>won't</em> be any updates to built packages for R older than "x.y", which gives a kind of "checkpoint" feature; your built packages for older versions of R (ie for distribution to users of those older R versions) won't be accidentally zapped by <code>cull.old.builds</code> housekeeping, and you can be sure that old code running under old versions of R will still work.
+</p>
+<p>What this does <em>not</em> let you do easily, is use your current R version to create updated versions of your package for R-versions that pre-date the most up-to-date "Rx.y" folder. For example, if you are running R3.0, there is guaranteed to be an "R3.0" folder, so calling <code>build.pkg&lt;.binary&gt;</code> won't build new packages in an "R2.15" folder. Again, usually this doesn't matter, because new "Rx.y" folders are only rarely created automatically, so builds will tend to stay in the same folder and the newest version will be accessible to all. But sometimes it is a hassle... Nevertheless, I have managed to maintain parallel versions of my packages across the R2.15-R3.0 change, by (sequentially) running two R versions and calling <code>build.pkg&lt;.binary&gt;</code> from each. (Note that <code>build.pkg&lt;.binary&gt;</code> can only build in the format of running R version– you can't "cross-build" for different built formats from the same R session.)
+</p>
+
+
+
+<h4>Source packages</h4>
+
+<p>R occasionally demands a change in <em>source</em> package format, as opposed to <em>built</em> package format (as with R 3.0). (IIRC one example is R 2.10, with the change in helpfile format.) Then you face the problem of how to keep several source packages. This can be controlled by <code>options("mvbutils.sourcepkgdir.postfix")</code>, which is appended to the name of the folder where your source package will be created and used for building or installing. The default is the empty string <code>""</code>, so that the default source package folder for "mypack" is "mypack/mypack". To allow for multiple source package versions, you could put something like this in your <code>.First</code> or ".Rprofile":
+</p>
+<pre>
+  if( getRversion() &gt;= numeric_version( '4.0')) {
+    # New source package format
+    options( mvbutils.sourcepkgdir.postfix='[R4]')
+  }
+</pre>
+<p>Everything <em>should</em> then work automatically; all source-package operations will refer to "mypack/mypack[R4]" if you are running version 4 or above, or to "mypack/mypack" if you are running an earlier R version, and you should never really need to know the source package foldername yourself (<code>build.pkg</code> etc do it all for you). This depends on you setting the option yourself, and <em>has not been tested</em> yet. Eventually I may hardwire the feature automatically into <code>mvbutils</code> (or is it better for each source package to go into an appropriate built-package folder? but that sounds a bit like version hell).
+</p>
+
+
+
+<h3>Customizing package creation</h3>
+
+<p>You can customize many aspects of the <span class="pkg">mvbutils</span> package-creation process, by adding a function <code>pre.install.hook.Splendid</code> to your package. See <code>pre.install</code> for further details.
+</p>
+
+
+</div>

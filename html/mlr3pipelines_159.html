@@ -1,0 +1,183 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_pipeops_learner_cv</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Wrap a Learner into a PipeOp with Cross-validated Predictions as Features</h2>
+
+<h3>Description</h3>
+
+<p>Wraps an <code>mlr3::Learner</code> into a <code>PipeOp</code>.
+</p>
+<p>Returns cross-validated predictions during training as a <code>Task</code> and stores a model of the
+<code>Learner</code> trained on the whole data in <code style="white-space: pre;">⁠$state⁠</code>. This is used to create a similar
+<code>Task</code> during prediction.
+</p>
+<p>The <code>Task</code> gets features depending on the capsuled <code>Learner</code>'s
+<code style="white-space: pre;">⁠$predict_type⁠</code>. If the <code>Learner</code>'s <code style="white-space: pre;">⁠$predict.type⁠</code> is <code>"response"</code>, a feature <code style="white-space: pre;">⁠&lt;ID&gt;.response⁠</code> is created,
+for <code style="white-space: pre;">⁠$predict.type⁠</code> <code>"prob"</code> the <code style="white-space: pre;">⁠&lt;ID&gt;.prob.&lt;CLASS&gt;⁠</code> features are created, and for <code style="white-space: pre;">⁠$predict.type⁠</code> <code>"se"</code> the new columns
+are <code style="white-space: pre;">⁠&lt;ID&gt;.response⁠</code> and <code style="white-space: pre;">⁠&lt;ID&gt;.se⁠</code>. <code style="white-space: pre;">⁠&lt;ID&gt;⁠</code> denotes the <code style="white-space: pre;">⁠$id⁠</code> of the <code>PipeOpLearnerCV</code> object.
+</p>
+<p>Inherits the <code style="white-space: pre;">⁠$param_set⁠</code> (and therefore <code style="white-space: pre;">⁠$param_set$values⁠</code>) from the <code>Learner</code> it is constructed from.
+</p>
+<p><code>PipeOpLearnerCV</code> can be used to create "stacking" or "super learning" <code>Graph</code>s that use the output of one <code>Learner</code>
+as feature for another <code>Learner</code>. Because the <code>PipeOpLearnerCV</code> erases the original input features, it is often
+useful to use <code>PipeOpFeatureUnion</code> to bind the prediction <code>Task</code> to the original input <code>Task</code>.
+</p>
+
+
+<h3>Format</h3>
+
+<p><code>R6Class</code> object inheriting from <code>PipeOpTaskPreproc</code>/<code>PipeOp</code>.
+</p>
+
+
+<h3>Construction</h3>
+
+<div class="sourceCode"><pre>PipeOpLearnerCV$new(learner, id = NULL, param_vals = list())
+</pre></div>
+
+<ul>
+<li> <p><code>learner</code> :: <code>Learner</code> <br><code>Learner</code> to use for cross validation / prediction, or a string identifying a
+<code>Learner</code> in the <code>mlr3::mlr_learners</code> <code>Dictionary</code>.
+This argument is always cloned; to access the <code>Learner</code> inside <code>PipeOpLearnerCV</code> by-reference, use <code style="white-space: pre;">⁠$learner⁠</code>.<br></p>
+</li>
+<li> <p><code>id</code> :: <code>character(1)</code>
+Identifier of the resulting object, internally defaulting to the <code>id</code> of the <code>Learner</code> being wrapped.
+</p>
+</li>
+<li> <p><code>param_vals</code> :: named <code>list</code><br>
+List of hyperparameter settings, overwriting the hyperparameter settings that would otherwise be set during construction. Default <code>list()</code>.
+</p>
+</li>
+</ul>
+<h3>Input and Output Channels</h3>
+
+<p><code>PipeOpLearnerCV</code> has one input channel named <code>"input"</code>, taking a <code>Task</code> specific to the <code>Learner</code>
+type given to <code>learner</code> during construction; both during training and prediction.
+</p>
+<p><code>PipeOpLearnerCV</code> has one output channel named <code>"output"</code>, producing a <code>Task</code> specific to the <code>Learner</code>
+type given to <code>learner</code> during construction; both during training and prediction.
+</p>
+<p>The output is a task with the same target as the input task, with features replaced by predictions made by the <code>Learner</code>.
+During training, this prediction is the out-of-sample prediction made by <code>resample</code>, during prediction, this is the
+ordinary prediction made on the data by a <code>Learner</code> trained on the training phase data.
+</p>
+
+
+<h3>State</h3>
+
+<p>The <code style="white-space: pre;">⁠$state⁠</code> is set to the <code style="white-space: pre;">⁠$state⁠</code> slot of the <code>Learner</code> object, together with the <code style="white-space: pre;">⁠$state⁠</code> elements inherited from the
+<code>PipeOpTaskPreproc</code>. It is a named <code>list</code> with the inherited members, as well as:
+</p>
+
+<ul>
+<li> <p><code>model</code> :: <code>any</code><br>
+Model created by the <code>Learner</code>'s <code style="white-space: pre;">⁠$.train()⁠</code> function.
+</p>
+</li>
+<li> <p><code>train_log</code> :: <code>data.table</code> with columns <code>class</code> (<code>character</code>), <code>msg</code> (<code>character</code>)<br>
+Errors logged during training.
+</p>
+</li>
+<li> <p><code>train_time</code> :: <code>numeric(1)</code><br>
+Training time, in seconds.
+</p>
+</li>
+<li> <p><code>predict_log</code> :: <code>NULL</code> | <code>data.table</code> with columns <code>class</code> (<code>character</code>), <code>msg</code> (<code>character</code>)<br>
+Errors logged during prediction.
+</p>
+</li>
+<li> <p><code>predict_time</code> :: <code>NULL</code> | <code>numeric(1)</code>
+Prediction time, in seconds.
+</p>
+</li>
+</ul>
+<p>This state is given the class <code>"pipeop_learner_cv_state"</code>.
+</p>
+
+
+<h3>Parameters</h3>
+
+<p>The parameters are the parameters inherited from the <code>PipeOpTaskPreproc</code>, as well as the parameters of the <code>Learner</code> wrapped by this object.
+Besides that, parameters introduced are:
+</p>
+
+<ul>
+<li> <p><code>resampling.method</code> :: <code>character(1)</code><br>
+Which resampling method do we want to use. Currently only supports <code>"cv"</code> and <code>"insample"</code>. <code>"insample"</code> generates
+predictions with the model trained on all training data.
+</p>
+</li>
+<li> <p><code>resampling.folds</code> :: <code>numeric(1)</code><br>
+Number of cross validation folds. Initialized to 3. Only used for <code>resampling.method = "cv"</code>.
+</p>
+</li>
+<li> <p><code>keep_response</code> :: <code>logical(1)</code><br>
+Only effective during <code>"prob"</code> prediction: Whether to keep response values, if available. Initialized to <code>FALSE</code>.
+</p>
+</li>
+</ul>
+<h3>Internals</h3>
+
+<p>The <code style="white-space: pre;">⁠$state⁠</code> is currently not updated by prediction, so the <code style="white-space: pre;">⁠$state$predict_log⁠</code> and <code style="white-space: pre;">⁠$state$predict_time⁠</code> will always be <code>NULL</code>.
+</p>
+
+
+<h3>Fields</h3>
+
+<p>Fields inherited from <code>PipeOp</code>, as well as:
+</p>
+
+<ul>
+<li> <p><code>learner</code> :: <code>Learner</code><br><code>Learner</code> that is being wrapped. Read-only.
+</p>
+</li>
+<li> <p><code>learner_model</code> :: <code>Learner</code><br><code>Learner</code> that is being wrapped. This learner contains the model if the <code>PipeOp</code> is trained. Read-only.
+</p>
+</li>
+</ul>
+<h3>Methods</h3>
+
+<p>Methods inherited from <code>PipeOpTaskPreproc</code>/<code>PipeOp</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>https://mlr-org.com/pipeops.html
+</p>
+<p>Other Meta PipeOps: 
+<code>mlr_pipeops_learner</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library("mlr3")
+
+task = tsk("iris")
+learner = lrn("classif.rpart")
+
+lrncv_po = po("learner_cv", learner)
+lrncv_po$learner$predict_type = "response"
+
+nop = mlr_pipeops$get("nop")
+
+graph = gunion(list(
+  lrncv_po,
+  nop
+)) %&gt;&gt;% po("featureunion")
+
+graph$train(task)
+
+graph$pipeops$classif.rpart$learner$predict_type = "prob"
+
+graph$train(task)
+
+</code></pre>
+
+
+</div>

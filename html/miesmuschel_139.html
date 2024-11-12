@@ -1,0 +1,310 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>dict_selectors_maybe</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Selector-Combination that Selects According to Two Selectors</h2>
+
+<h3>Description</h3>
+
+<p><code>Selector</code> that wraps two other <code>Selector</code>s given during construction and uses both for selection proportionally.
+Each of the resulting <code>n_select</code> individuals is chosen either from <code style="white-space: pre;">⁠$selector⁠</code>, or from <code style="white-space: pre;">⁠$selector_not⁠</code>.
+</p>
+<p>This makes it possible to implement selection methods such as random interleaving, where only a fraction of <code>p</code>
+individuals were selected by a criterion, while the others are taken randomly.
+</p>
+
+
+<h3>Algorithm</h3>
+
+<p>To perform selection, <code>n_selector_in</code> rows of <code>values</code> are given to <code style="white-space: pre;">⁠$selector⁠</code>, and the remaining
+<code>nrow(values) - n_selector_in</code> rows are given to <code style="white-space: pre;">⁠$selector_not⁠</code>. Both selectors are used to generate
+a subset of selected individuals: <code style="white-space: pre;">⁠$selector⁠</code> generates <code>n_selector_out</code> individuals, and <code style="white-space: pre;">⁠$selector_not⁠</code> generates
+<code>n_select - n_selector_out</code> individuals.
+</p>
+<p><code>n_selector_in</code> is either set to
+<code>round(nrow(values) * p_in)</code> when <code>proportion_in</code> is <code>"exact"</code>, or to <code>rbinom(1, nrow(values), p_in)</code> when <code>proportion_in</code> is <code>"random"</code>.
+</p>
+<p><code>n_selector_out</code> is set to <code>round(n_select * p_out)</code> when <code>proportion_out</code> is <code>"exact"</code>, or to <code>rbinom(1, n_select, p_out)</code> when <code>proportion_out</code> is <code>"random"</code>.
+</p>
+<p>When <code>odds_correction</code> is <code>TRUE</code>, then <code>p_out</code> is adjusted depending on the used <code>n_selector_in</code> value before being applied. Let <code>odds(p) = p/(1-p)</code>.
+Then the effective <code>p_out</code> is set such that <code style="white-space: pre;">⁠odds(effective p_out) = odds(p_out) * n_selector_in / (nrow(values) - n_selector_in) / odds(p_in)⁠</code>.
+This corrects for the discrepancy between the chosen <code>p_in</code> and the effective proportion of <code>n_selector_in / nrow(values)</code> caused either by rounding
+errors or when <code>proportion_in</code> is <code>"random"</code>.
+</p>
+<p>When <code>p_in</code> is exactly 1 or exactly 0, and <code>p_out</code> is not equal to <code>p_in</code>, then an error is given.
+</p>
+<p>If <code>nrow(values)</code> is 1, then this individuum is returned and <code style="white-space: pre;">⁠$selector⁠</code> / <code style="white-space: pre;">⁠$selector_not⁠</code> are not called.
+</p>
+<p>If <code>try_unique</code> is <code>TRUE</code>, then <code>n_selector_out</code> is set to at most <code>n_selector_in</code> and at least <code>n_select - nrow(values) + n_selector_in</code>,
+and an error is generated when <code>nrow(values)</code> is less than <code>n_select</code>.
+</p>
+<p>If <code>try_unique</code> is <code>FALSE</code> and <code>odds_correction</code> is <code>TRUE</code> and <code>n_selector_in</code> is either 0 or <code>nrow(values)</code>, then <code style="white-space: pre;">⁠$p_out⁠</code> is set to either 0 or 1, respectively.
+</p>
+<p>If <code>try_unique</code> is <code>FALSE</code> and <code>odds_correction</code> is <code>FALSE</code> and <code>n_selector_in</code> is either 0 or <code>nrow(values)</code>, and <code>n_selector_out</code> is not equal
+to 0 or <code>n_select</code>, respectively, then
+<code>n_selector_in</code> is increased / decreased by 1 to give <code style="white-space: pre;">⁠$selector_not⁠</code> / <code style="white-space: pre;">⁠$selector⁠</code> at least one individuum to choose from. While this behaviour
+may seem pathological, it is to ensure continuity with sampled values of <code>n_selector_in</code> that are close to 0 or <code>n_select</code>.
+</p>
+<p>If <code>n_selector_out</code> is <code>n_select</code> or 0, or if <code>n_selector_in</code> is <code>nrows(values) - 1</code> or 1,
+then only <code style="white-space: pre;">⁠$selector⁠</code> / <code style="white-space: pre;">⁠$selector_not⁠</code> is executed, respectively; possibly with a subset
+of <code>values</code> if <code>n_selector_in</code> differs from <code>nrow(values)</code> / 0.
+</p>
+
+
+<h3>Configuration Parameters</h3>
+
+<p>This operator has the configuration parameters of the <code>Selector</code>s that it wraps: The configuration parameters of the operator given to the <code>selector</code> construction argument
+are prefixed with <code>"maybe."</code>, the configuration parameters of the operator given to the <code>selector_not</code> construction argument are prefixed with <code>"maybe_not."</code>.
+</p>
+<p>Additional configuration parameters:
+</p>
+
+<ul>
+<li> <p><code>p_in</code> :: <code>numeric(1)</code> <br>
+Probability per individual (when <code>random_choise</code> is <code>TRUE</code>), or fraction of individuals (when <code>random_choice</code> is <code>FALSE</code>),
+that are given to <code style="white-space: pre;">⁠$selector⁠</code> instead of <code style="white-space: pre;">⁠$selector_not⁠</code>. This may be overriden when <code>try_unique</code> is <code>TRUE</code>, in which
+case at least as many rows are given to <code style="white-space: pre;">⁠$selector⁠</code> and <code style="white-space: pre;">⁠$selector_not⁠</code> as they are generating output values respectively.
+When this is exactly 1 or exactly 0, then <code>p_out</code> must be equal to <code>p_in</code>.
+Must be set by the user.
+</p>
+</li>
+<li> <p><code>p_out</code> :: <code>numeric(1)</code> <br>
+Probability per output value (when <code>random_choise</code> is <code>TRUE</code>), or fraction of output values (when <code>random_choice</code> is <code>FALSE</code>),
+that are generated by <code style="white-space: pre;">⁠$selector⁠</code> instead of <code style="white-space: pre;">⁠$selector_not⁠</code>. When this values is not given, it defaults to <code>p_in</code>.
+</p>
+</li>
+<li> <p><code>shuffle_input</code> :: <code>logical(1)</code> <br>
+Whether to distribute input values randomly to <code style="white-space: pre;">⁠$selector⁠</code> / <code style="white-space: pre;">⁠$selector_not⁠</code>. If <code>FALSE</code>, then the first part of <code>values</code>
+is given to <code style="white-space: pre;">⁠$selector⁠</code>. This only randomizes <em>which</em> lines of <code>values</code> are given to <code style="white-space: pre;">⁠$selector⁠</code> / <code style="white-space: pre;">⁠$selector_not⁠</code>, but it
+does not necessarily reorder the lines of values given to each. In particular, if <code>p_out</code> is 0 or 1, then no shuffling takes place. Initialized to <code>TRUE</code>.
+</p>
+</li>
+<li> <p><code>proportion_in</code> :: <code>character(1)</code> <br>
+When set to <code>"random"</code>, sample the number of individuals given to <code style="white-space: pre;">⁠$selector⁠</code> according to <code>rbinom(1, nrow(values), p_in)</code>.
+When set to <code>"exact"</code>, give <code style="white-space: pre;">⁠$selector⁠</code> <code>round(nrow(values) * p_in)</code> individuals. Initialized to <code>"exact"</code>.
+</p>
+</li>
+<li> <p><code>proportion_out</code> :: <code>character(1)</code> <br>
+When set to <code>"random"</code>, sample the number of individuals generated by <code style="white-space: pre;">⁠$selector⁠</code> according to <code>rbinom(1, n_select, p_out)</code>.
+When set to <code>"exact"</code>, have <code style="white-space: pre;">⁠$selector⁠</code> generate <code>round(n_select * p_out)</code> individuals.
+</p>
+</li>
+<li> <p><code>odds_correction</code> :: <code>logical(1)</code><br>
+When set, the effectively used value of <code>p_out</code> is set to
+<code>1 / (1 + ((nrow(values) - n_selector_in) * p_in * (1 - p_out)) / (n_selector_in * p_out * (1 - p_in)))</code>, see the <strong>Algorithm</strong> section.
+Initialized to <code>FALSE</code>.
+</p>
+</li>
+<li> <p><code>try_unique</code> :: <code>logical(1)</code><br>
+Whether to give at least as many rows of <code>values</code> to each of <code style="white-space: pre;">⁠$selector⁠</code> and <code style="white-space: pre;">⁠$selector_not⁠</code> as they are generating output
+values. This should be set to <code>TRUE</code> whenever <code>SelectorMaybe</code> is used to select unique values, and can be set to
+<code>FALSE</code> when selecting values multiple times is acceptable. When this is <code>TRUE</code>, then having <code>n_select &gt; nrow(values)</code>
+generates an error. Initialized to <code>TRUE</code>.
+</p>
+</li>
+</ul>
+<h3>Supported Operand Types</h3>
+
+<p>Supported <code>Domain</code> classes are the set intersection of supported classes of <code>selector</code> and <code>selector_not</code>.
+</p>
+
+
+<h3>Dictionary</h3>
+
+<p>This <code>Filtor</code> can be created with the short access form <code>ftr()</code>
+(<code>ftrs()</code> to get a list), or through the the dictionary
+<code>dict_filtors</code> in the following way:
+</p>
+<div class="sourceCode"><pre># preferred:
+ftr("maybe", &lt;selector&gt; [, &lt;selector_not&gt;])
+ftrs("maybe", &lt;selector&gt; [, &lt;selector_not&gt;])  # takes vector IDs, returns list of Filtors
+
+# long form:
+dict_filtors$get("maybe", &lt;selector&gt; [, &lt;selector_not&gt;])
+</pre></div>
+
+
+<h3>Super classes</h3>
+
+<p><code>miesmuschel::MiesOperator</code> -&gt; <code>miesmuschel::Selector</code> -&gt; <code>SelectorMaybe</code>
+</p>
+
+
+<h3>Active bindings</h3>
+
+<div class="r6-active-bindings">
+
+<dl>
+<dt><code>selector</code></dt>
+<dd>
+<p>(<code>Selector</code>)<br><code>Selector</code> being wrapped. This operator gets run with probability / proportion <code>p_in</code> and generates
+output with probability / proportion <code>p_out</code> (configuration parameters).</p>
+</dd>
+<dt><code>selector_not</code></dt>
+<dd>
+<p>(<code>Selector</code>)<br>
+Alternative <code>Selector</code> being wrapped. This operator gets run with probability / proportion <code>1 - p_in</code>
+and generates output with probability / proportion <code>1 - p_out</code> (configuration parameters).</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-SelectorMaybe-new"><code>SelectorMaybe$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-SelectorMaybe-prime"><code>SelectorMaybe$prime()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-SelectorMaybe-clone"><code>SelectorMaybe$clone()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="miesmuschel" data-topic="MiesOperator" data-id="help"><a href="../../miesmuschel/html/MiesOperator.html#method-MiesOperator-help"><code>miesmuschel::MiesOperator$help()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="miesmuschel" data-topic="MiesOperator" data-id="operate"><a href="../../miesmuschel/html/MiesOperator.html#method-MiesOperator-operate"><code>miesmuschel::MiesOperator$operate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="miesmuschel" data-topic="MiesOperator" data-id="print"><a href="../../miesmuschel/html/MiesOperator.html#method-MiesOperator-print"><code>miesmuschel::MiesOperator$print()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="miesmuschel" data-topic="MiesOperator" data-id="repr"><a href="../../miesmuschel/html/MiesOperator.html#method-MiesOperator-repr"><code>miesmuschel::MiesOperator$repr()</code></a></span></li>
+</ul></details><hr>
+<a id="method-SelectorMaybe-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Initialize the <code>SelectorMaybe</code> object.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>SelectorMaybe$new(selector, selector_not = SelectorRandom$new())</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>selector</code></dt>
+<dd>
+<p>(<code>Selector</code>)<br><code>Selector</code> to wrap. This operator gets run with probability / fraction <code>p_in</code> (Configuration parameter).<br>
+The constructed object gets a <em>clone</em> of this argument.
+The <code style="white-space: pre;">⁠$selector⁠</code> field will reflect this value.</p>
+</dd>
+<dt><code>selector_not</code></dt>
+<dd>
+<p>(<code>Selector</code>)<br>
+Another <code>Selector</code> to wrap. This operator runs when <code>selector</code> is not chosen. By
+default, this is <code>SelectorRandom</code>, i.e. selecting randomly.<br>
+The constructed object gets a <em>clone</em> of this argument.
+The <code style="white-space: pre;">⁠$selector_not⁠</code> field will reflect this value.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-SelectorMaybe-prime"></a>
+
+
+
+<h4>Method <code>prime()</code>
+</h4>
+
+<p>See <code>MiesOperator</code> method. Primes both this operator, as well as the wrapped operators
+given to <code>selector</code> and <code>selector_not</code> during construction.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>SelectorMaybe$prime(param_set)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>param_set</code></dt>
+<dd>
+<p>(<code>ParamSet</code>)<br>
+Passed to <code>MiesOperator</code><code style="white-space: pre;">⁠$prime()⁠</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>invisible <code>self</code>.
+</p>
+
+
+<hr>
+<a id="method-SelectorMaybe-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>SelectorMaybe$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>See Also</h3>
+
+<p>Other selectors: 
+<code>Selector</code>,
+<code>SelectorScalar</code>,
+<code>dict_selectors_best</code>,
+<code>dict_selectors_null</code>,
+<code>dict_selectors_proxy</code>,
+<code>dict_selectors_random</code>,
+<code>dict_selectors_sequential</code>,
+<code>dict_selectors_tournament</code>
+</p>
+<p>Other selector wrappers: 
+<code>dict_selectors_proxy</code>,
+<code>dict_selectors_sequential</code>
+</p>
+
+
+</div>

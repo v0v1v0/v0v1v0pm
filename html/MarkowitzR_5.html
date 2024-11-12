@@ -1,0 +1,246 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mp_vcov</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate Markowitz Portfolio</h2>
+
+<h3>Description</h3>
+
+<p>Estimates the Markowitz Portfolio or Markowitz Coefficient subject
+to subspace and hedging constraints, and heteroskedasticity.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mp_vcov(X,feat=NULL,vcov.func=vcov,fit.intercept=TRUE,weights=NULL,Jmat=NULL,Gmat=NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>an <code class="reqn">n \times p</code> matrix of observed returns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>feat</code></td>
+<td>
+<p>an <code class="reqn">n \times f</code> matrix of observed features.
+defaults to none, in which case <code>fit.intercept</code> must be
+<code>TRUE</code>. If <code>fit.intercept</code> is true, ones will be prepended
+to the features.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vcov.func</code></td>
+<td>
+<p>a function which takes an object of class <code>lm</code>,
+and computes a variance-covariance matrix. If equal to the string
+<code>"normal"</code>, we assume multivariate normal returns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fit.intercept</code></td>
+<td>
+<p>a boolean controlling whether we add a column
+of ones to the data, or fit the raw uncentered second moment.
+For now, must be true when assuming normal returns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>an optional <code class="reqn">n</code> vector of the weights. The returns
+and features will be multiplied by the weights. Weights should be
+inverse volatility estimates. Defaults to homoskedasticity.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Jmat</code></td>
+<td>
+<p>an optional <code class="reqn">p_j \times p</code> matrix of the
+subspace in which we constrain portfolios. Defaults essentially to the
+<code class="reqn">p \times p</code> identity matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Gmat</code></td>
+<td>
+<p>an optional <code class="reqn">p_g \times p</code> matrix of the
+subspace to which we constrain portfolios to have zero covariance. 
+The rowspace of <code>Gmat</code> must be spanned by the rowspace of <code>Jmat</code>.
+Defaults essentially to the <code class="reqn">0 \times p</code> empty matrix.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Suppose that the expectation of <code class="reqn">p</code>-vector <code class="reqn">x</code> is linear
+in the <code class="reqn">f</code>-vector <code class="reqn">f</code>, but the covariance of <code class="reqn">x</code> is
+stationary and independent of <code class="reqn">f</code>. The 'Markowitz Coefficient' 
+is the <code class="reqn">p \times f</code> matrix <code class="reqn">W</code> such that, 
+conditional on observing <code class="reqn">f</code>, the portfolio <code class="reqn">Wf</code> maximizes
+Sharpe. When <code class="reqn">f</code> is the constant 1, the Markowitz Coefficient
+is the traditional Markowitz Portfolio.
+</p>
+<p>Given <code class="reqn">n</code> observations of the returns and features, given
+as matrices <code class="reqn">X, F</code>, this code computes the Markowitz Coefficient
+along with the variance-covariance matrix of the Coefficient and the
+precision matrix.  One may give optional weights, which are inverse
+conditional volatility. One may also give optional matrix <code class="reqn">J, G</code>
+which define subspace and hedging constraints. Briefly, they constrain
+the portfolio optimization problem to portfolios in the row space of
+<code class="reqn">J</code> and with zero covariance with the rows of <code class="reqn">G</code>. It must 
+be the case that the rows of <code class="reqn">J</code> span the rows of <code class="reqn">G</code>. 
+<code class="reqn">J</code> defaults to the <code class="reqn">p \times p</code> identity matrix, 
+and <code class="reqn">G</code> defaults to a null matrix.
+</p>
+<p>One may use the default method for computing covariance,
+via the <code>vcov</code> function, or via a 'fancy' estimator,
+like <code>sandwich:vcovHAC</code>, <code>sandwich:vcovHC</code>, <em>etc.</em>
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list containing the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>mu</code></td>
+<td>
+<p>Letting <code class="reqn">r = f + p + fit.intercept</code>, this is a 
+<code class="reqn">q = (r)(r+1)/2</code> vector...</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Ohat</code></td>
+<td>
+<p>The <code class="reqn">q \times q</code> estimated variance covariance 
+matrix of <code>mu</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>W</code></td>
+<td>
+<p>The estimated Markowitz coefficient, a 
+<code class="reqn">p \times (fit.intercept + f)</code> matrix. The
+first column corresponds to the intercept term if it is fit. Note that
+for convenience this function performs the sign flip, which is not performed
+on <code>mu</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>What</code></td>
+<td>
+<p>The estimated variance covariance matrix of <code>vech(W)</code>.
+Letting <code class="reqn">s = p(fit.intercept + f)</code>, this is a <code class="reqn">s \times s</code>
+matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>widxs</code></td>
+<td>
+<p>The indices into <code>mu</code> giving <code>W</code>, and into
+<code>Ohat</code> giving <code>What</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>The number of rows in <code>X</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ff</code></td>
+<td>
+<p>The number of features plus <code>as.numeric(fit.intercept)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>The number of assets.</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>Should also modify to include the theta estimates.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Steven E. Pav <a href="mailto:shabbychef@gmail.com">shabbychef@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Pav, S. E. "Asymptotic Distribution of the Markowitz Portfolio."
+2013 <a href="https://arxiv.org/abs/1312.0557">https://arxiv.org/abs/1312.0557</a>
+</p>
+<p>Pav, S. E. "Portfolio Inference with this One Weird Trick."
+R in Finance, 2014 <a href="http://past.rinfinance.com/agenda/2014/talk/StevenPav.pdf">http://past.rinfinance.com/agenda/2014/talk/StevenPav.pdf</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>theta_vcov</code>, <code>itheta_vcov</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(1001)
+X &lt;- matrix(rnorm(1000*3),ncol=3)
+ism &lt;- mp_vcov(X,fit.intercept=TRUE)
+walds &lt;- ism$W / sqrt(diag(ism$What))
+print(t(walds))
+# subspace constraint
+Jmat &lt;- matrix(rnorm(6),ncol=3)
+ism &lt;- mp_vcov(X,fit.intercept=TRUE,Jmat=Jmat)
+walds &lt;- ism$W / sqrt(diag(ism$What))
+print(t(walds))
+# hedging constraint
+Gmat &lt;- matrix(1,nrow=1,ncol=3)
+ism &lt;- mp_vcov(X,fit.intercept=TRUE,Gmat=Gmat)
+walds &lt;- ism$W / sqrt(diag(ism$What))
+
+# now conditional expectation:
+
+# generate data with given W, Sigma
+Xgen &lt;- function(W,Sigma,Feat) {
+ Btrue &lt;- Sigma %*% W
+ Xmean &lt;- Feat %*% t(Btrue)
+ Shalf &lt;- chol(Sigma)
+ X &lt;- Xmean + matrix(rnorm(prod(dim(Xmean))),ncol=dim(Xmean)[2]) %*% Shalf
+}
+
+n.feat &lt;- 2
+n.ret &lt;- 8
+n.obs &lt;- 10000
+set.seed(101)
+Feat &lt;- matrix(rnorm(n.obs * n.feat),ncol=n.feat)
+Wtrue &lt;- 10 * matrix(rnorm(n.feat * n.ret),ncol=n.feat)
+Sigma &lt;- cov(matrix(rnorm(100*n.ret),ncol=n.ret))
+Sigma &lt;- Sigma + diag(seq(from=1,to=3,length.out=n.ret))
+X &lt;- Xgen(Wtrue,Sigma,Feat)
+ism &lt;- mp_vcov(X,feat=Feat,fit.intercept=TRUE)
+Wcomp &lt;- cbind(0,Wtrue)
+errs &lt;- ism$W - Wcomp
+dim(errs) &lt;- c(length(errs),1)
+Zerr &lt;- solve(t(chol(ism$What)),errs)
+
+</code></pre>
+
+
+</div>

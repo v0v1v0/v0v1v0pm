@@ -1,0 +1,210 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mscstexta4r</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>R Client for the Microsoft Cognitive Services Text Analytics REST API</h2>
+
+<h3>Description</h3>
+
+<p><span class="pkg">mscstexta4r</span> is a client/wrapper/interface for the Microsoft
+Cognitive Services (MSCS) Text Analytics (Text Analytics) REST API. To use this
+package, you MUST have a valid account with <a href="https://www.microsoft.com/cognitive-services">https://www.microsoft.com/cognitive-services</a>.
+Once you have an account, Microsoft will provide you with a (free) API key
+you can use with this package.
+</p>
+
+
+<h3>The MSCS Text Analytics REST API</h3>
+
+<p>Microsoft Cognitive Services – formerly known as Project Oxford – are a set
+of APIs, SDKs and services that developers can use to add AI features to
+their apps. Those features include emotion and video detection; facial,
+speech and vision recognition; as well as speech and NLP.
+</p>
+<p>The Text Analytics REST API provides tools for NLP and is documented at
+<a href="https://www.microsoft.com/cognitive-services/en-us/text-analytics/documentation">https://www.microsoft.com/cognitive-services/en-us/text-analytics/documentation</a>.
+This API supports the following operations:
+</p>
+
+<ul>
+<li>
+<p> Sentiment analysis - Is a sentence or document generally positive or negative?
+</p>
+</li>
+<li>
+<p> Topic detection - What's being discussed across a list of documents/reviews/articles?
+</p>
+</li>
+<li>
+<p> Language detection - What language is a document written in?
+</p>
+</li>
+<li>
+<p> Key talking points extraction - What's being discussed in a single document?
+</p>
+</li>
+</ul>
+<h3>
+<span class="pkg">mscstexta4r</span> Functions</h3>
+
+<p>The following <span class="pkg">mscstexta4r</span> core functions are used to wrap the
+MSCS Text Analytics REST API:
+</p>
+
+<ul>
+<li>
+<p> Sentiment analysis - <code>textaSentiment</code> function
+</p>
+</li>
+<li>
+<p> Topic detection - <code>textaDetectTopics</code> and <code>textaDetectTopicsStatus</code> functions
+</p>
+</li>
+<li>
+<p> Language detection - <code>textaDetectLanguages</code> function
+</p>
+</li>
+<li>
+<p> Extraction of key talking points - <code>textaKeyPhrases</code> function
+</p>
+</li>
+</ul>
+<p>The <code>textaInit</code> configuration function is used to set the REST
+API URL and the private API key. It needs to be called <em>only once</em>,
+after package load, or the core functions will not work properly.
+</p>
+
+
+<h3>Prerequisites</h3>
+
+<p>To use the <span class="pkg">mscstexta4r</span> R package, you <strong>MUST</strong> have a valid
+account with Microsoft Cognitive Services (see <a href="https://www.microsoft.com/cognitive-services/en-us/pricing">https://www.microsoft.com/cognitive-services/en-us/pricing</a>
+for details). Once you have an account, Microsoft will provide you with an
+API key listed under your subscriptions. After you've configured
+<span class="pkg">mscstexta4r</span> with your API key (as explained in the next section), you
+will be able to call the Text Analytics REST API from R, up to your
+maximum number of transactions per month and per minute.
+</p>
+
+
+<h3>Package Loading and Configuration</h3>
+
+<p>After loading the <span class="pkg">mscstexta4r</span> package with the <code>library()</code> function,
+you must call the <code>textaInit</code> before you can call any of
+the core <span class="pkg">mscstexta4r</span> functions.
+</p>
+<p>The <code>textaInit</code> configuration function will first check to see
+if the variable <code>MSCS_TEXTANALYTICS_CONFIG_FILE</code> exists in the system
+environment. If it does, the package will use that as the path to the
+configuration file.
+</p>
+<p>If <code>MSCS_TEXTANALYTICS_CONFIG_FILE</code> doesn't exist, it will look for
+the file <code>.mscskeys.json</code> in the current user's home directory (that's
+<code>~/.mscskeys.json</code> on Linux, and something like <code>C:/Users/Phil/Documents/.mscskeys.json</code>
+on Windows). If the file is found, the package will load the API key and URL
+from it.
+</p>
+<p>If using a file, please make sure it has the following structure:
+</p>
+<pre>
+{
+  "textanalyticsurl": "https://westus.api.cognitive.microsoft.com/texta/analytics/v2.0/",
+  "textanalyticskey": "...MSCS Text Analytics API key goes here..."
+}
+</pre>
+<p>If no configuration file is found, <code>textaInit</code> will attempt to
+pick up its configuration information from two Sys env variables instead:
+</p>
+<p><code>MSCS_TEXTANALYTICS_URL</code> - the URL for the Text Analytics REST API.
+</p>
+<p><code>MSCS_TEXTANALYTICS_KEY</code> -  your personal Text Analytics REST API key.
+</p>
+
+
+<h3>Synchronous vs Asynchronous Execution</h3>
+
+<p>All but <strong>ONE</strong> core text analytics functions execute exclusively in
+synchronous mode: <code>textaDetectTopics</code> is the only function that
+can be executed either synchronously or asynchronously. Why? Because topic
+detection is typically a "batch" operation meant to be performed on thousands
+of related documents (product reviews, research articles, etc.).
+</p>
+<p>What's the difference?
+</p>
+<p>When <code>textaDetectTopics</code> executes synchronously, you must wait
+for it to finish before you can move on to the next task. When
+<code>textaDetectTopics</code> executes asynchronously, you can move on to
+something else before topic detection has completed. In the latter case, you
+will need to call <code>textaDetectTopicsStatus</code> periodically yourself
+until the Microsoft Cognitive Services server complete topic detection and
+results become available.
+</p>
+<p>When to run which mode?
+</p>
+<p>If you're performing topic detection in batch mode (from an R script), we
+recommend using the <code>textaDetectTopics</code> function in synchronous
+mode, in which case it will return only after topic detection has completed.
+</p>
+<p><strong>IMPORTANT NOTE: If you're calling <code>textaDetectTopics</code> in
+synchronous mode within the R console REPL (interactive mode), it will
+appear as if the console has hanged. This is <em>EXPECTED</em>. The function
+hasn't crashed. It is simply in "sleep mode", activating itself periodically
+and then going back to sleep, until the results have become available. In
+sleep mode, even though it appears "stuck", <code>textaDetectTopics</code>
+doesn't use any CPU resources. While the function is operating in sleep
+mode, you <em>WILL NOT</em> be able to use the console before the function
+completes. If you need to operate the console while topic detection is being
+performed by the Microsoft Cognitive services servers, you should call
+<code>textaDetectTopics</code> in asynchronous mode and then call
+<code>textaDetectTopicsStatus</code> yourself repeteadly afterwards, until
+results are available.</strong>
+</p>
+
+
+<h3>S3 Objects of the Classes <code>texta</code> and <code>textatopics</code>
+</h3>
+
+<p>The sentiment analysis, language detection, and key talking points extraction
+functions of the <span class="pkg">mscstexta4r</span> package return S3 objects of the class
+<code>texta</code>. The <code>texta</code> object exposes results collected
+in a single dataframe, the REST API JSON response, and the original HTTP
+request.
+</p>
+<p>The functions <code>textaDetectTopics</code> returns a S3 object of the
+class <code>textatopics</code>. The <code>textatopics</code> object exposes
+formatted results using several dataframes (documents and their IDs, topics
+and their IDs, which topics are assigned to which documents), the REST API
+JSON response (should you care), and the HTTP request (mostly for debugging
+purposes).'
+</p>
+
+
+<h3>Error Handling</h3>
+
+<p>The MSCS Text Analytics API is a REST API. HTTP requests over a network and
+the Internet can fail. Because of congestion, because the web site is down
+for maintenance, because of firewall configuration issues, etc. There are
+many possible points of failure.
+</p>
+<p>The API can also fail if you've exhausted your call volume quota or are
+exceeding the API calls rate limit. Unfortunately, MSCS does not expose an
+API you can query to check if you're about to exceed your quota for instance.
+The only way you'll know for sure is by looking at the error code returned
+after an API call has failed.
+</p>
+<p>To help with error handling, we recommend the systematic use of
+<code>tryCatch()</code> when calling <span class="pkg">mscstexta4r</span>'s core functions. Its
+mechanism may appear a bit daunting at first, but it is well documented at <a href="http://www.inside-r.org/r-doc/base/signalCondition">http://www.inside-r.org/r-doc/base/signalCondition</a>.
+We use it in many of the code examples.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Phil Ferriere <a href="mailto:pferriere@hotmail.com">pferriere@hotmail.com</a>
+</p>
+
+
+</div>

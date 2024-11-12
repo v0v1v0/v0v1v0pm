@@ -1,0 +1,234 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvnBvs</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+The function to perform variable selection for multivariate normal responses
+</h2>
+
+<h3>Description</h3>
+
+<p>The function can be used to perform variable selection for multivariate normal responses incorporating not only information on the mean model, but also information on the variance-covariance structure of the outcomes. A multivariate prior is specified on the latent binary selection indicators to incorporate the dependence between outcomes into the variable selection procedure.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mvnBvs(Y, lin.pred, data, model = "unstructured", hyperParams, startValues, mcmcParams)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+
+<p>a data.frame containing <code class="reqn">q</code> continuous multivariate outcomes from <code>n</code> subjects. It is of dimension <code class="reqn">n\times q</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lin.pred</code></td>
+<td>
+
+<p>a list containing two formula objects: the first formula specifies the <code class="reqn">p</code> covariates for which variable selection is to be performed; the second formula specifies the confounders to be adjusted for (but on which variable selection is not to be performed) in the regression analysis.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>a data.frame containing the variables named in the formulas in <code>lin.pred</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+
+<p>a character that specifies the covariance structure of the model: either "unstructured" or "factor-analytic". 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hyperParams</code></td>
+<td>
+
+<p>a list containing lists or vectors for hyperparameter values in hierarchical models. Components include, 
+<code>eta</code> (a numeric value for the hyperparameter <code class="reqn">\eta</code> that regulates the extent to which the correlation between response variables influences the prior of the variable selection indicator), 
+<code>v</code> (a numeric vector of length <code class="reqn">q</code> for the standard deviation hyperparameter <code class="reqn">v</code> of the regression parameter <code class="reqn">\beta</code> prior), 
+<code>omega</code> (a numeric vector of length <code class="reqn">p</code> for the hyperparameter <code class="reqn">\omega</code> in the prior of the variable selection indicator), 		
+<code>beta0</code> (a numeric vector of length <code class="reqn">q+1</code> for hyperparameter <code class="reqn">\mu_0</code> and <code class="reqn">h_0</code> in the prior of the intercept <code class="reqn">\beta_0</code>), 
+<code>US</code> (a list containing numeric vectors for hyperparameters in the unstructured model: <code>US.Sigma</code>),
+<code>FA</code> (a list containing numeric vectors for hyperparameters in the factor-analytic model: <code>lambda</code> and <code>sigmaSq</code>).
+See Examples below.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>startValues</code></td>
+<td>
+
+<p>a numeric vector containing starting values for model parameters: c(<code>beta0</code>, <code>B</code>, <code>gamma</code>, <code>Sigma</code>) for the unstructured model; c(<code>beta0</code>, <code>B</code>, <code>gamma</code>, <code>sigmaSq</code>, <code>lambda</code>) for the factor-analytic model. See Examples below.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mcmcParams</code></td>
+<td>
+
+<p>a list containing variables required for MCMC sampling. Components include,
+<code>run</code> (a list containing numeric values for setting the overall run: 
+<code>numReps</code>, total number of scans; <code>thin</code>, extent of thinning; <code>burninPerc</code>, the proportion of burn-in).
+<code>tuning</code> (a list containing numeric values relevant to tuning parameters for specific updates in Metropolis-Hastings algorithm: 
+<code>mhProp_beta_var</code>, variance of the proposal density for <code class="reqn">B</code>; <code>mhrho_prop</code>, degrees of freedom of the inverse-Wishart proposal density for <code class="reqn">\Sigma</code> in the unstructured model; 
+<code>mhPsi_prop</code>, scale matrix of inverse-Wishart proposal density for <code class="reqn">\Sigma</code> in the unstructured model; 
+<code>mhProp_lambda_var</code>, variance of the proposal density for <code class="reqn">\lambda</code> in the factor-analytic model.)
+See Examples below.
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>mvnBvs</code> returns an object of class <code>mvnBvs</code>. <br></p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kyu Ha Lee, Mahlet G. Tadesse, Brent A. Coull <br>
+Maintainer: Kyu Ha Lee &lt;klee15239@gmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Lee, K. H., Tadesse, M. G., Baccarelli, A. A., Schwartz J., and Coull, B. A. (2017),
+Multivariate Bayesian variable selection exploiting dependence structure among outcomes: 
+application to air pollution effects on DNA methylation, <em>Biometrics</em>, Volume 73, Issue 1, pages 232-241. <br></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# loading a data set	
+data(simData_cont)
+Y &lt;- simData_cont$Y
+data &lt;- simData_cont$X
+form1 &lt;- as.formula( ~ cov.1+cov.2)
+form2 &lt;- as.formula( ~ 1)
+lin.pred &lt;- list(form1, form2)
+
+p 		&lt;- dim(data)[2]
+p_adj 	&lt;- 0
+q 		&lt;- dim(Y)[2]
+
+#####################
+## Hyperparameters ##
+
+## Common hyperparameters
+##
+eta = 0.1
+v = rep(10, q)
+omega = rep(log(0.5/(1-0.5)), p-p_adj)
+common.beta0 &lt;- c(rep(0, q), 10^6)
+
+## Unstructured model
+##
+rho0 	&lt;- q + 4
+Psi0	&lt;- diag(3, q)
+US.Sigma &lt;- c(rho0, Psi0)
+
+## Factor-analytic model
+##
+FA.lam		&lt;- c(rep(0, q), 10^6)
+FA.sigSq	&lt;- c(2, 1)
+
+##
+hyperParams &lt;- list(eta=eta, v=v, omega=omega, beta0=common.beta0,
+					US=list(US.Sigma=US.Sigma),
+					FA=list(lambda=FA.lam, sigmaSq=FA.sigSq))
+                    
+###################
+## MCMC SETTINGS ##
+
+## Setting for the overall run
+##
+numReps    &lt;- 50
+thin       &lt;- 1
+burninPerc &lt;- 0.5
+
+## Tuning parameters for specific updates
+##
+##  - those common to all models
+mhProp_beta_var  &lt;- matrix(0.5, p+p_adj, q)
+##
+## - those specific to the unstructured model
+mhrho_prop &lt;- 1000
+mhPsi_prop &lt;- diag(1, q)
+##
+## - those specific to the factor-analytic model
+mhProp_lambda_var  &lt;- 0.5
+      
+##
+mcmc.US &lt;- list(run=list(numReps=numReps, thin=thin, burninPerc=burninPerc),
+                tuning=list(mhProp_beta_var=mhProp_beta_var,
+                				mhrho_prop=mhrho_prop, mhPsi_prop=mhPsi_prop))
+                
+##
+mcmc.FA  &lt;- list(run=list(numReps=numReps, thin=thin, burninPerc=burninPerc),
+                tuning=list(mhProp_beta_var=mhProp_beta_var,
+                			mhProp_lambda_var=mhProp_lambda_var))
+                			
+#####################
+## Starting Values ##
+
+##  - those common to all models
+beta0		&lt;- rep(0, q)
+B			&lt;- matrix(sample(x=c(0.3, 0), size=q, replace = TRUE), p+p_adj, q)
+gamma		&lt;- B
+gamma[gamma != 0]	&lt;- 1
+##
+## - those specific to the unstructured model
+Sigma &lt;- diag(1, q) 
+##
+## - those specific to the factor-analytic model
+lambda		&lt;- rep(0.5, q)
+sigmaSq		&lt;- 1
+
+startValues    &lt;- as.vector(c(beta0, B, gamma, Sigma))
+                
+####################################
+## Fitting the unstructured model ##
+####################################
+
+fit.us &lt;- mvnBvs(Y, lin.pred, data, model="unstructured", hyperParams, 
+				startValues, mcmcParams=mcmc.US)
+				
+fit.us
+summ.fit.us &lt;- summary(fit.us); names(summ.fit.us)
+summ.fit.us				
+
+#######################################
+## Fitting the factor-analytic model ##
+#######################################
+ 
+startValues &lt;- as.vector(c(beta0, B, gamma, sigmaSq, lambda))
+
+fit.fa &lt;- mvnBvs(Y, lin.pred, data, model="factor-analytic", hyperParams, 
+				startValues, mcmcParams=mcmc.FA)
+				
+fit.fa
+summ.fit.fa &lt;- summary(fit.fa); names(summ.fit.fa)
+summ.fit.fa				
+
+
+</code></pre>
+
+
+</div>

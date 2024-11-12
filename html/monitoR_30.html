@@ -1,0 +1,131 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>eventEval</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Evaluate Detected Events with Known Event Sources and Times
+</h2>
+
+<h3>Description</h3>
+
+<p>Evaluate whether the detected events are True +, True -, False +, or False - detections by comparing the results to a table of events with known sources and times (such as annotations from <code>viewSpec</code>).  Events to evaluate may be either directly from an object of class <code>detectionList</code>, a csv file or data frame resulting from a call to <code>getPeaks</code> or <code>getDetections</code>, or a data frame downloaded from an acoustics database.  A value for score.cutoff must be supplied to distinguish between True + and False -, even if assessing all peaks.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">eventEval(detections, what = "detections", which.one, standard, 
+score.cutoff = 11, tol = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>detections</code></td>
+<td>
+<p>An object of class <code>detectionList</code>, a csv file, or data frame containing detection results.  See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>what</code></td>
+<td>
+<p>If a <code>detectionList</code> object is supplied for <code>detections</code> the character value of either "detections" (default; all peaks above the score cutoff) or all "peaks" may be selected.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>which.one</code></td>
+<td>
+<p>If the detection process involved multiple templates only one may be selected for evaluation.  Value can be either character (identifying the template name), or numerical (identifying the position in names(detections['template']).  See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>standard</code></td>
+<td>
+<p>The "standard" is the results from annotation with <code>viewSpec</code> (i.e. Gold Standard) containing the source and time of each event.  Can be a data frame or a file path to a csv file.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>score.cutoff</code></td>
+<td>
+<p>If no template is supplied a <code>score.cutoff</code> can be supplied to evaluate false negatives.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>Numeric value for tolerance, with units seconds.  If a detected event is within this value (actually +/- 0.5 x <code>tol</code>), the events are assumed to co-occur and be of the same origin.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Little checking is performed to ensure that evaluation is possible based on the values for detections and standard.  The standard must contain the fields <code>c("start.time", "end.time", "min.frq", "max.frq", "name")</code>.  Objects are assumed to be from an acoustics database if they contain the fields <code>c("fldTime", "fldScore", "fldTemplateName")</code>.  Data frames are assumed to be objects formerly of class <code>detectionList</code> if they contain the fields <code>c("time", "score", "template")</code>.<br></p>
+<p>Results from only one template from one survey may be evaluated in each call to <code>eventEval</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The detections data frame with an outcome field appended.
+</p>
+
+
+<h3>Note</h3>
+
+<p><code>eventEval</code> performs the evaluation by merging the detections and standard data frames, ordering by time, and checking to see which rows occur within a value of <code>tol</code> to the row above. True + are defined as a detected event that co-occurrs in time with an event from the standard AND scores above or equal to the score.cutoff.  Such an event that scores below the score.cutoff is classified as a False -.  False - events may also be the product of an event from the standard failing to co-occur with any detected events.  True - events don't co-occur with any standard events, and False + events similarly don't co-occur with standard events but score above or equal to the score.cutoff.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jon Katz
+</p>
+
+
+<h3>See Also</h3>
+
+<p>The function <code>timeAlign</code> operates similarly, but rather than evaluate a set of detections against a standard it merges detections from multiple templates and retains only the co-occurring detections with the highest scores.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Load data
+data(btnw)
+data(survey)
+
+# Write Wave objects to file (temporary directory used here)
+btnw.fp &lt;- file.path(tempdir(), "btnw.wav")
+survey.fp &lt;- file.path(tempdir(), "survey2010-12-31_120000_EST.wav")
+writeWave(btnw, btnw.fp)
+writeWave(survey, survey.fp)
+
+# Make a template
+btemp &lt;- makeBinTemplate(btnw.fp, frq.lim = c(2, 8), select = "auto", name = "btnw1", buffer =
+                         4, amp.cutoff = -31, binary = TRUE)
+
+# Binary point matching
+scores &lt;- binMatch(survey = survey.fp, templates = btemp, time.source = "fileinfo")
+
+# Isolate peaks
+pks &lt;- findPeaks(scores)
+
+# Evaluate peaks
+data(survey_anno)
+
+survey_anno &lt;- survey_anno[survey_anno['name'] == 'BTNW', ]  # Extract the "BTNW" rows
+
+peaks &lt;- getPeaks(pks) 
+
+eval &lt;- eventEval(detections = peaks, standard = survey_anno, score.cutoff = 15)
+
+
+
+</code></pre>
+
+
+</div>

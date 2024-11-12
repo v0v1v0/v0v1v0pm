@@ -1,0 +1,209 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>dt_mutate</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>'dplyr'-like interface for data.table.</h2>
+
+<h3>Description</h3>
+
+<p>Subset of 'dplyr' verbs to work with data.table. Note that there is no
+<code>group_by</code> verb - use <code>by</code> or <code>keyby</code> argument when needed.
+</p>
+
+<ul>
+<li> <p><code>dt_mutate</code> adds new variables or modify existing variables. If
+<code>data</code> is data.table then it modifies in-place.
+</p>
+</li>
+<li> <p><code>dt_summarize</code> computes summary statistics. Splits the data into
+subsets, computes summary statistics for each, and returns the result in the
+"data.table" form.
+</p>
+</li>
+<li> <p><code>dt_summarize_all</code> is the same as <code>dt_summarize</code> but work over all non-grouping variables.
+</p>
+</li>
+<li> <p><code>dt_filter</code> selects rows/cases where conditions are true. Rows
+where the condition evaluates to NA are dropped.
+</p>
+</li>
+<li> <p><code>dt_select</code> selects column/variables from the data set. Range of
+variables are supported, e. g. vs:carb. Characters which start with '^' or
+end with '$' considered as Perl-style regular expression patterns. For
+example, '^Petal' returns all variables started with 'Petal'. 'Width$'
+returns all variables which end with 'Width'. Pattern '^.' matches all
+variables and pattern '^.*my_str' is equivalent to <code style="white-space: pre;">⁠contains "my_str"⁠</code>. See
+examples.
+</p>
+</li>
+<li> <p><code>dt_arrange</code> sorts dataset by variable(-s). Use '-' to sort in
+descending order. If <code>data</code> is data.table then it modifies in-place.
+</p>
+</li>
+</ul>
+<h3>Usage</h3>
+
+<pre><code class="language-R">dt_mutate(data, ..., by)
+
+dt_summarize(data, ..., by, keyby, fun = NULL)
+
+dt_summarize_all(data, fun, by, keyby)
+
+dt_summarise(data, ..., by, keyby, fun = NULL)
+
+dt_summarise_all(data, fun, by, keyby)
+
+dt_select(data, ...)
+
+dt_filter(data, ...)
+
+dt_arrange(data, ..., na.last = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>data.table/data.frame data.frame will be automatically converted
+to data.table. <code>dt_mutate</code> modify data.table object in-place.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>List of variables or name-value pairs of summary/modifications
+functions. The name will be the name of the variable in the result. In the
+<code>mutate</code> function we can use <code>a = b</code> or <code>a := b</code> notation.
+Advantages of <code style="white-space: pre;">⁠:=⁠</code> are multiassignment (<code>c("a", "b") := list(1,2)</code>)
+and parametric assignment (<code>(a) := 2</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>unquoted name of grouping variable of list of unquoted names of
+grouping variables. For details see data.table</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keyby</code></td>
+<td>
+<p>Same as <code>by</code>, but with an additional <code>setkey()</code> run on the by
+columns of the result, for convenience. It is common practice to use
+'keyby=' routinely when you wish the result to be sorted. For details see
+data.table.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun</code></td>
+<td>
+<p>function which will be applied to all variables in
+<code>dt_summarize</code> and <code>dt_summarize_all</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na.last</code></td>
+<td>
+<p>logical. FALSE by default. If TRUE, missing values in the data
+are put last; if FALSE, they are put first.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>data.table
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># examples from 'dplyr'
+# newly created variables are available immediately
+mtcars  %&gt;%
+    dt_mutate(
+        cyl2 = cyl * 2,
+        cyl4 = cyl2 * 2
+    ) %&gt;%
+    head()
+
+
+# you can also use dt_mutate() to remove variables and
+# modify existing variables
+mtcars %&gt;%
+    dt_mutate(
+        mpg = NULL,
+        disp = disp * 0.0163871 # convert to litres
+    ) %&gt;%
+    head()
+
+
+# window functions are useful for grouped mutates
+mtcars %&gt;%
+    dt_mutate(
+        rank = rank(-mpg, ties.method = "min"),
+        keyby = cyl) %&gt;%
+    print()
+
+
+# You can drop variables by setting them to NULL
+mtcars %&gt;% dt_mutate(cyl = NULL) %&gt;% head()
+
+# A summary applied without by returns a single row
+mtcars %&gt;%
+    dt_summarise(mean = mean(disp), n = .N)
+
+# Usually, you'll want to group first
+mtcars %&gt;%
+    dt_summarise(mean = mean(disp), n = .N, by = cyl)
+
+
+# Multiple 'by' - variables
+mtcars %&gt;%
+    dt_summarise(cyl_n = .N, by = list(cyl, vs))
+
+# Newly created summaries immediately
+# doesn't overwrite existing variables
+mtcars %&gt;%
+    dt_summarise(disp = mean(disp),
+                  sd = sd(disp),
+                  by = cyl)
+
+# You can group by expressions:
+mtcars %&gt;%
+    dt_summarise_all(mean, by = list(vsam = vs + am))
+
+# filter by condition
+mtcars %&gt;%
+    dt_filter(am==0)
+
+# filter by compound condition
+mtcars %&gt;%
+    dt_filter(am==0,  mpg&gt;mean(mpg))
+
+
+# select
+mtcars %&gt;% dt_select(vs:carb, cyl)
+mtcars %&gt;% dt_select(-am, -cyl)
+
+# regular expression pattern
+dt_select(iris, "^Petal") # variables which start from 'Petal'
+dt_select(iris, "Width$") # variables which end with 'Width'
+# move Species variable to the front.
+# pattern "^." matches all variables
+dt_select(iris, Species, "^.")
+# pattern "^.*i" means "contains 'i'"
+dt_select(iris, "^.*i")
+dt_select(iris, 1:4) # numeric indexing - all variables except Species
+
+# sorting
+dt_arrange(mtcars, cyl, disp)
+dt_arrange(mtcars, -disp)
+</code></pre>
+
+
+</div>

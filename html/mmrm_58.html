@@ -1,0 +1,159 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mmrm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit an MMRM</h2>
+
+<h3>Description</h3>
+
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="../help/figures/lifecycle-experimental.svg" alt="[Experimental]"></a>
+</p>
+<p>This is the main function fitting the MMRM.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mmrm(
+  formula,
+  data,
+  weights = NULL,
+  reml = TRUE,
+  control = mmrm_control(...),
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>(<code>formula</code>)<br> the model formula, see details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>(<code>data</code>)<br> the data to be used for the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>(<code>vector</code>)<br> an optional vector of weights to be used in the fitting process.
+Should be NULL or a numeric vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reml</code></td>
+<td>
+<p>(<code>flag</code>)<br> whether restricted maximum likelihood (REML) estimation is used,
+otherwise maximum likelihood (ML) is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>(<code>mmrm_control</code>)<br> fine-grained fitting specifications list
+created with <code>mmrm_control()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>arguments passed to <code>mmrm_control()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <code>formula</code> typically looks like:
+<code>FEV1 ~ RACE + SEX + ARMCD * AVISIT + us(AVISIT | USUBJID)</code>
+so specifies response and covariates as usual, and exactly one special term
+defines which covariance structure is used and what are the time point and
+subject variables. The covariance structures in the formula can be
+found in <code>covariance_types</code>.
+</p>
+<p>The time points have to be unique for each subject. That is,
+there cannot be time points with multiple observations for any subject.
+The rationale is that these observations would need to be correlated, but it
+is not possible within the currently implemented covariance structure framework
+to do that correctly.
+</p>
+<p>When optimizer is not set, first the default optimizer
+(<code>L-BFGS-B</code>) is used to fit the model. If that converges, this is returned.
+If not, the other available optimizers from <code>h_get_optimizers()</code>,
+including <code>BFGS</code>, <code>CG</code> and <code>nlminb</code> are
+tried (in parallel if <code>n_cores</code> is set and not on Windows).
+If none of the optimizers converge, then the function fails. Otherwise
+the best fit is returned.
+</p>
+<p>Note that fine-grained control specifications can either be passed directly
+to the <code>mmrm</code> function, or via the <code>control</code> argument for bundling together
+with the <code>mmrm_control()</code> function. Both cannot be used together, since
+this would delete the arguments passed via <code>mmrm</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An <code>mmrm</code> object.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The <code>mmrm</code> object is also an <code>mmrm_fit</code> and an <code>mmrm_tmb</code> object,
+therefore corresponding methods also work (see <code>mmrm_tmb_methods</code>).
+</p>
+<p>Additional contents depend on the choice of the adjustment <code>method</code>:
+</p>
+
+<ul>
+<li>
+<p> If Satterthwaite adjustment is used, the Jacobian information <code>jac_list</code>
+is included.
+</p>
+</li>
+<li>
+<p> If Kenward-Roger adjustment is used, <code>kr_comp</code> contains necessary
+components and <code>beta_vcov_adj</code> includes the adjusted coefficients covariance
+matrix.
+</p>
+</li>
+</ul>
+<p>Use of the package <code>emmeans</code> is supported, see <code>emmeans_support</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">fit &lt;- mmrm(
+  formula = FEV1 ~ RACE + SEX + ARMCD * AVISIT + us(AVISIT | USUBJID),
+  data = fev_data
+)
+
+# Direct specification of control details:
+fit &lt;- mmrm(
+  formula = FEV1 ~ RACE + SEX + ARMCD * AVISIT + us(AVISIT | USUBJID),
+  data = fev_data,
+  weights = fev_data$WEIGHTS,
+  method = "Kenward-Roger"
+)
+
+# Alternative specification via control argument (but you cannot mix the
+# two approaches):
+fit &lt;- mmrm(
+  formula = FEV1 ~ RACE + SEX + ARMCD * AVISIT + us(AVISIT | USUBJID),
+  data = fev_data,
+  control = mmrm_control(method = "Kenward-Roger")
+)
+</code></pre>
+
+
+</div>

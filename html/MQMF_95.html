@@ -1,0 +1,94 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>spmboot</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>spmboot conducts a bootstrap analysis on a spm model</h2>
+
+<h3>Description</h3>
+
+<p>spmboot conducts a bootstrap analysis on a spm model. 
+It does this by saving the original fishery data, estimating 
+the cpue residuals, and multiplying the optimum predicted CPUE 
+by a bootstrap sample of the log-normal residuals (Haddon, 2011,
+p311; and the On Uncertainty chapter in the URMQMF book, p195). 
+This bootstrap sample of CPUE replaces the original 
+fish[,"cpue"] and the model is re-fitted. This is repeated iter 
+times and the outputs reported ready for the derivation of 
+percentile confidence intervals. The optimum solution is used 
+as the first bootstrap replicate (it is standard practice to 
+include the original fit in the bootstrap analysis). If 1000 
+replicates are run this procedure can take a couple of minutes 
+on a reasonably fast computer. A comparison of the mean with 
+the median should provide some notion of any bias in the 
+mean estimate.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">spmboot(optpar, fishery, iter = 1000, schaefer = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>optpar</code></td>
+<td>
+<p>The optimum model parameters from fitting a surplus production 
+model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fishery</code></td>
+<td>
+<p>fishery data containing the original observed cpue values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>the number of bootstrap replicates to be run, default=1000</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>schaefer</code></td>
+<td>
+<p>default=TRUE, should a Schaefer or a Fox model be run</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a list of two matrices. One containing the bootstrap parameters 
+and the other containing some of the dynamics, including the ModelB, 
+the bootstrap CPUE sample, the Depletion, and annual harvest rate.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"> data(dataspm); fish &lt;- as.matrix(dataspm)
+ pars &lt;- log(c(r=0.24,K=5150,Binit=2800,0.15))
+ ans &lt;- fitSPM(pars,dataspm,schaefer=TRUE,maxiter=1000)
+ boots &lt;- spmboot(ans$estimate,fishery=fish,iter=5,schaefer=TRUE) 
+ dynam &lt;- boots$dynam
+ bootpar &lt;- boots$bootpar
+ rows &lt;- colnames(bootpar)
+ columns &lt;- c(c(0.025,0.05,0.5,0.95,0.975),"Mean")
+ bootCI &lt;- matrix(NA,nrow=length(rows),ncol=length(columns),
+                dimnames=list(rows,columns))
+ for (i in 1:length(rows)) {
+   tmp &lt;- sort(bootpar[,i])
+   qtil &lt;- quantile(tmp,probs=c(0.025,0.05,0.5,0.95,0.975),na.rm=TRUE)
+   bootCI[i,] &lt;- c(qtil,mean(tmp,na.rm=TRUE))
+ }
+ round(bootCI,3) # we used only 5 bootstraps for a speedy example, normally 
+ pairs(bootpar[,c("r","K","Binit","MSY")]) # use 1000, 2000, or more
+</code></pre>
+
+
+</div>

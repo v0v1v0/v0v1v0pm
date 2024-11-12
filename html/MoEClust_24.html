@@ -1,0 +1,134 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MoE_estep</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>E-step for MoEClust Models</h2>
+
+<h3>Description</h3>
+
+<p>Softmax function to compute the responsibility matrix z and the log-likelihood for MoEClust models, with the aid of <code>MoE_dens</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MoE_estep(data,
+          mus,
+          sigs,
+          log.tau = 0L,
+          Vinv = NULL,
+          Dens = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>If there are no expert network covariates, <code>data</code> should be a numeric matrix or data frame, wherein rows correspond to observations (n) and columns correspond to variables (d). If there are expert network covariates, this should be a list of length G containing matrices/data.frames of (multivariate) WLS residuals for each component.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mus</code></td>
+<td>
+<p>The mean for each of G components. If there is more than one component, this is a matrix whose k-th column is the mean of the k-th component of the mixture model. For the univariate models, this is a G-vector of means. In the presence of expert network covariates, all values should be equal to <code>0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigs</code></td>
+<td>
+<p>The <code>variance</code> component in the parameters list from the output to e.g. <code>MoE_clust</code>. The components of this list depend on the specification of <code>modelName</code> (see <code>mclustVariance</code> for details). The number of components <code>G</code>, the number of variables <code>d</code>, and the <code>modelName</code> are inferred from <code>sigs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>log.tau</code></td>
+<td>
+<p>If covariates enter the gating network, an n times G matrix of mixing proportions, otherwise a G-vector of mixing proportions for the components of the mixture. <strong>Must</strong> be on the log-scale in both cases. The default of <code>0</code> effectively means densities (or log-densities) aren't scaled by the mixing proportions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Vinv</code></td>
+<td>
+<p>An estimate of the reciprocal hypervolume of the data region. See the function <code>noise_vol</code>. Used only if an initial guess as to which observations are noise is supplied. Mixing proportion(s) must be included for the noise component also.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Dens</code></td>
+<td>
+<p>(Optional) A numeric matrix whose <code>[i,k]</code>-th entry is the <strong>log</strong>-density of observation <em>i</em> in component <em>k</em>, scaled by the mixing proportions, to which the softmax function is to be applied, typically obtained by <code>MoE_dens</code> but this is not necessary. If this is supplied, all other arguments are ignored, otherwise <code>MoE_dens</code> is called according to the other supplied arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list containing two elements:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>z</code></td>
+<td>
+<p>A matrix with <code>n</code> rows and <code>G</code> columns containing the probability of cluster membership for each of <code>n</code> observations and <code>G</code> clusters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loglik</code></td>
+<td>
+<p>The estimated log-likelihood, computed efficiently via <code>rowLogSumExps</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>This softmax function is intended for joint use with <code>MoE_dens</code>, using the <strong>log</strong>-densities. Caution is advised using this function without explicitly naming the arguments. Models with a noise component are facilitated here too.
+</p>
+<p>The E-step can be replaced by a C-step, see <code>MoE_cstep</code> and the <code>algo</code> argument to <code>MoE_control</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Keefe Murphy - &lt;<a href="mailto:keefe.murphy@mu.ie">keefe.murphy@mu.ie</a>&gt;
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MoE_dens</code>, <code>MoE_clust</code>, <code>MoE_cstep</code>, <code>MoE_control</code>, <code>mclustVariance</code>, <code>rowLogSumExps</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(ais)
+hema   &lt;- ais[,3:7]
+model  &lt;- MoE_clust(hema, G=3, gating= ~ BMI + sex, modelNames="EEE", network.data=ais)
+Dens   &lt;- MoE_dens(data=hema, mus=model$parameters$mean,
+                   sigs=model$parameters$variance, log.tau=log(model$parameters$pro))
+
+# Construct the z matrix and compute the log-likelihood
+Estep  &lt;- MoE_estep(Dens=Dens)
+(ll    &lt;- Estep$loglik)
+
+# Check that the z matrix &amp; classification are the same as those from the model
+identical(max.col(Estep$z), as.integer(unname(model$classification))) #TRUE
+identical(Estep$z, model$z)                                           #TRUE
+
+# Call MoE_estep directly
+Estep2 &lt;- MoE_estep(data=hema, sigs=model$parameters$variance,
+                    mus=model$parameters$mean, log.tau=log(model$parameters$pro))
+identical(Estep2$loglik, ll)                                          #TRUE
+
+# The same can be done for models with expert covariates &amp;/or a noise component
+# Note for models with expert covariates that the mean has to be supplied as 0,
+# and the data has to be supplied as "resid.data"
+m2     &lt;- MoE_clust(hema, G=2, expert= ~ sex, modelNames="EVE", network.data=ais, tau0=0.1)
+Estep3 &lt;- MoE_estep(data=m2$resid.data, sigs=m2$parameters$variance, mus=0, 
+                    log.tau=log(m2$parameters$pro), Vinv=m2$parameters$Vinv)
+</code></pre>
+
+
+</div>

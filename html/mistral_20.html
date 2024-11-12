@@ -1,0 +1,248 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MonteCarlo</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Crude Monte Carlo method</h2>
+
+<h3>Description</h3>
+
+<p>Estimate a failure probability using a crude Monte Carlo method.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MonteCarlo(
+  dimension,
+  lsf,
+  N_max = 5e+05,
+  N_batch = foreach::getDoParWorkers(),
+  q = 0,
+  lower.tail = TRUE,
+  precision = 0.05,
+  plot = FALSE,
+  output_dir = NULL,
+  save.X = TRUE,
+  verbose = 0
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>dimension</code></td>
+<td>
+<p>the dimension of the input space.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lsf</code></td>
+<td>
+<p>the function defining safety/failure domain.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N_max</code></td>
+<td>
+<p>maximum number of calls to the <code>lsf</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N_batch</code></td>
+<td>
+<p>number of points evaluated at each iteration.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>q</code></td>
+<td>
+<p>the quantile.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower.tail</code></td>
+<td>
+<p>as for pxxxx functions, TRUE for estimating P(lsf(X) &lt; q), FALSE
+for P(lsf(X) &gt; q).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>precision</code></td>
+<td>
+<p>a targeted maximum value for the coefficient of variation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot</code></td>
+<td>
+<p>to plot the contour of the <code>lsf</code> as well as the generated samples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output_dir</code></td>
+<td>
+<p>to save a copy of the plot in a pdf. This name will be
+pasted with
+"_Monte_Carlo_brut.pdf".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>save.X</code></td>
+<td>
+<p>to save all the samples generated as a matrix. Can be set to FALSE
+to reduce output size.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>to control the level of outputs in the console; either 0 or 1 or 2 for
+almost no outputs to a high level output.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This implementation of the crude Monte Carlo method works with evaluating
+batchs of points sequentialy until a given precision is reached on the final
+estimator
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>list</code> containing the failure probability and some
+more outputs as described below:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>the estimated probabilty.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ecdf</code></td>
+<td>
+<p>the empiracal cdf got with the generated samples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cov</code></td>
+<td>
+<p>the coefficient of variation of the Monte Carlo estimator.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Ncall</code></td>
+<td>
+<p>the total numnber of calls to the <code>lsf</code>, ie the total
+number of generated samples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>the generated samples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+<p>the value <code>lsf(X)</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>Problem is supposed to be defined in the standard space. If not, use <code>UtoX</code>
+to do so. Furthermore, each time a set of vector is defined as a matrix, ‘nrow’
+= <code>dimension</code> and ‘ncol’ = number of vector to be consistent with
+<code>as.matrix</code> transformation of a vector.
+</p>
+<p>Algorithm calls lsf(X) (where X is a matrix as defined previously) and expects a vector
+in return. This allows the user to optimise the computation of a batch of points,
+either by vectorial computation, or by the use of external codes (optimised C or
+C++ codes for example) and/or parallel computation.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Clement WALTER <a href="mailto:clementwalter@icloud.com">clementwalter@icloud.com</a>
+</p>
+
+
+<h3>References</h3>
+
+
+<ul><li>
+<p>R. Rubinstein and D. Kroese:<br><em>Simulation and the Monte Carlo method</em> <br>
+Wiley (2008)<br></p>
+</li></ul>
+<h3>See Also</h3>
+
+<p><code>SubsetSimulation</code>
+<code>foreach</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#First some considerations on the usage of the lsf. 
+#Limit state function defined by Kiureghian &amp; Dakessian :
+# Remember you have to consider the fact that the input will be a matrix ncol &gt;= 1
+lsf_wrong = function(x, b=5, kappa=0.5, e=0.1) {
+  b - x[2] - kappa*(x[1]-e)^2 # work only with a vector of lenght 2
+}
+lsf_correct = function(x){
+  apply(x, 2, lsf_wrong)
+}
+lsf = function(x, b=5, kappa=0.5, e=0.1) {
+  x = as.matrix(x)
+  b - x[2,] - kappa*(x[1,]-e)^2 # vectorial computation, run fast
+}
+
+y = lsf(X &lt;- matrix(rnorm(20), 2, 10))
+#Compare running time
+## Not run: 
+  require(microbenchmark)
+  X = matrix(rnorm(2e5), 2)
+  microbenchmark(lsf(X), lsf_correct(X))
+
+## End(Not run)
+
+#Example of parallel computation
+require(doParallel)
+lsf_par = function(x){
+ foreach(x=iter(X, by='col'), .combine = 'c') %dopar% lsf(x)
+}
+
+#Try Naive Monte Carlo on a given function with different failure level
+## Not run: 
+  res = list()
+  res[[1]] = MonteCarlo(2,lsf,q = 0,plot=TRUE)
+  res[[2]] = MonteCarlo(2,lsf,q = 1,plot=TRUE)
+  res[[3]] = MonteCarlo(2,lsf,q = -1,plot=TRUE)
+  
+
+## End(Not run)
+
+
+#Try Naive Monte Carlo on a given function and change number of points.
+## Not run: 
+  res = list()
+  res[[1]] = MonteCarlo(2,lsf,N_max = 10000)
+  res[[2]] = MonteCarlo(2,lsf,N_max = 100000)
+  res[[3]] = MonteCarlo(2,lsf,N_max = 500000)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

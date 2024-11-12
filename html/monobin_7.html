@@ -1,0 +1,139 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sts.bin</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Four-stage monotonic binning procedure with statistical test correction</h2>
+
+<h3>Description</h3>
+
+<p><code>sts.bin</code> implements extension of the three-stage monotonic binning procedure (<code>iso.bin</code>)
+with final step of iterative merging of adjacent bins based on
+statistical test.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">sts.bin(
+  x,
+  y,
+  sc = c(NA, NaN, Inf, -Inf),
+  sc.method = "together",
+  y.type = NA,
+  min.pct.obs = 0.05,
+  min.avg.rate = 0.01,
+  p.val = 0.05,
+  force.trend = NA
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Numeric vector to be binned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Numeric target vector (binary or continuous).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sc</code></td>
+<td>
+<p>Numeric vector with special case elements. Default values are <code>c(NA, NaN, Inf, -Inf)</code>.
+Recommendation is to keep the default values always and add new ones if needed. Otherwise, if these values exist
+in <code>x</code> and are not defined in the <code>sc</code> vector, function will report the error.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sc.method</code></td>
+<td>
+<p>Define how special cases will be treated, all together or in separate bins.
+Possible values are <code>"together", "separately"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y.type</code></td>
+<td>
+<p>Type of <code>y</code>, possible options are <code>"bina"</code> (binary) and <code>"cont"</code> (continuous).
+If default value (<code>NA</code>) is passed, then algorithm will identify if <code>y</code> is 0/1 or continuous variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min.pct.obs</code></td>
+<td>
+<p>Minimum percentage of observations per bin. Default is 0.05 or minimum 30 observations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min.avg.rate</code></td>
+<td>
+<p>Minimum <code>y</code> average rate. Default is 0.01 or minimum 1 bad case for y 0/1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.val</code></td>
+<td>
+<p>Threshold for p-value of statistical test. Default is 0.05. For binary target test of two proportion
+is applied, while for continuous two samples independent t-test.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>force.trend</code></td>
+<td>
+<p>If the expected trend should be forced. Possible values: <code>"i"</code> for
+increasing trend (<code>y</code> increases with increase of <code>x</code>), <code>"d"</code> for decreasing trend
+(<code>y</code> decreases with decrease of <code>x</code>). Default value is <code>NA</code>.
+If the default value is passed, then trend will be identified based on the sign of the Spearman correlation
+coefficient between <code>x</code> and <code>y</code> on complete cases.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The command <code>sts.bin</code> generates a list of two objects. The first object, data frame <code>summary.tbl</code>
+presents a summary table of final binning, while <code>x.trans</code> is a vector of discretized values.
+In case of single unique value for <code>x</code> or <code>y</code> of complete cases (cases different than special cases),
+it will return data frame with info.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>iso.bin</code> for three-stage monotonic binning procedure.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">suppressMessages(library(monobin))
+data(gcd)
+#binary target
+maturity.bin &lt;- sts.bin(x = gcd$maturity, y = gcd$qual)
+maturity.bin[[1]]
+tapply(gcd$qual, maturity.bin[[2]], function(x) c(length(x), sum(x), mean(x)))
+prop.test(x = c(sum(gcd$qual[maturity.bin[[2]]%in%"01 (-Inf,8)"]), 
+	       sum(gcd$qual[maturity.bin[[2]]%in%"02 [8,16)"])), 
+       n = c(length(gcd$qual[maturity.bin[[2]]%in%"01 (-Inf,8)"]),
+	       length(gcd$qual[maturity.bin[[2]]%in%"02 [8,16)"])), 
+       alternative = "less", 
+       correct = FALSE)$p.value
+#continuous target
+age.bin &lt;- sts.bin(x = gcd$age, y = gcd$qual, y.type = "cont")
+age.bin[[1]]
+t.test(x = gcd$qual[age.bin[[2]]%in%"01 (-Inf,26)"], 
+    y = gcd$qual[age.bin[[2]]%in%"02 [26,35)"],
+    alternative = "greater")$p.value
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,135 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>stackingWeights</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Stacking model weights</h2>
+
+<h3>Description</h3>
+
+<p>Compute model weights based on a cross-validation-like procedure.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">stackingWeights(object, ..., data, R, p = 0.5)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object, ...</code></td>
+<td>
+<p>two or more fitted <code>glm</code> objects, or a
+<code>list</code> of such, or an <code>"averaging"</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a data frame containing the variables in the model, used for
+fitting and prediction.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>R</code></td>
+<td>
+<p>the number of replicates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>the proportion of the <code>data</code> to be used as training set.
+Defaults to 0.5.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Each model in a set is fitted to the training data: a subset of <code>p * N</code>
+observations in <code>data</code>. From these models a prediction is produced on
+the remaining part of <code>data</code> (the test
+or hold-out data). These hold-out predictions are fitted to the hold-out
+observations, by optimising the weights by which the models are combined. This
+process is repeated <code>R</code> times, yielding a distribution of weights for each
+model (which Smyth &amp; Wolpert (1998) referred to as an ‘empirical Bayesian
+estimate of posterior model probability’). A mean or median of model weights for
+each model is taken and re-scaled to sum to one.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A matrix with two rows, containing model weights
+calculated using <code>mean</code> and <code>median</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>This approach requires a sample size of at least <code class="reqn">2\times</code> the number
+of models.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Carsten Dormann, Kamil Bartoń
+</p>
+
+
+<h3>References</h3>
+
+<p>Wolpert, D. H. 1992 Stacked generalization. <em>Neural Networks</em> <strong>5</strong>, 241–259.
+</p>
+<p>Smyth, P. and Wolpert, D. 1998 <em>An Evaluation of Linearly Combining
+Density Estimators via Stacking. Technical Report No. 98–25.</em> Information
+and Computer Science Department, University of California, Irvine, CA.
+</p>
+<p>Dormann, C. et al. 2018 Model averaging in ecology: a review of Bayesian,
+information-theoretic, and tactical approaches for predictive inference.
+<em>Ecological Monographs</em> <strong>88</strong>, 485–504.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>Weights</code>, <code>model.avg</code>
+</p>
+<p>Other model weights: 
+<code>BGWeights()</code>,
+<code>bootWeights()</code>,
+<code>cos2Weights()</code>,
+<code>jackknifeWeights()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#simulated Cement dataset to increase sample size for the training data 
+fm0 &lt;- glm(y ~ X1 + X2 + X3 + X4, data = Cement, na.action = na.fail)
+dat &lt;- as.data.frame(apply(Cement[, -1], 2, sample, 50, replace = TRUE))
+dat$y &lt;- rnorm(nrow(dat), predict(fm0), sigma(fm0))
+
+# global model fitted to training data:
+fm &lt;- glm(y ~ X1 + X2 + X3 + X4, data = dat, na.action = na.fail)
+
+# generate a list of *some* subsets of the global model
+models &lt;- lapply(dredge(fm, evaluate = FALSE, fixed = "X1", m.lim = c(1, 3)), eval)
+
+wts &lt;- stackingWeights(models, data = dat, R = 10)
+
+ma &lt;- model.avg(models)
+Weights(ma) &lt;- wts["mean", ]
+
+predict(ma)
+
+</code></pre>
+
+
+</div>

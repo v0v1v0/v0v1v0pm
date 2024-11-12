@@ -1,0 +1,187 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict.spmeshed</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Posterior predictive sampling for models based on MGPs</h2>
+
+<h3>Description</h3>
+
+<p>Sample from the posterior predictive distribution of the outcomes at new spatial or spatiotemporal locations after MCMC.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'spmeshed'
+predict(object, newx, newcoords, 
+    n_threads=4, verbose=FALSE, ...)
+        
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>Object output from <code>spmeshed</code> with option <code>settings$saving=TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newx</code></td>
+<td>
+<p>matrix of covariate values at the new coordinates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newcoords</code></td>
+<td>
+<p>matrix of new coordinates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_threads</code></td>
+<td>
+<p>integer number of OpenMP threads. This is ineffective if <code>meshed</code> was not compiled with OpenMP support.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>boolean for progress messagging.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other arguments (unused).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>While this function can always be used to make predictions, in most cases it is more efficient to just include the prediction locations in the main data as <code>NA</code> values; <code>spmeshed</code> will sample from the posterior predictive distribution at those locations while doing MCMC. The <code>predict</code> method is only recommended when all 4 of the following are true:
+</p>
+<p>(1) <code>spmeshed</code> was run with <code>settings$forced_grid=FALSE</code> and
+</p>
+<p>(2) the prediction locations are uniformly scattered on the domain (or rather, they are not clustered as a large empty area) and
+</p>
+<p>(3) the number of prediction locations is a large portion of the number of observed data points and 
+</p>
+<p>(4) the prediction locations are not on a grid. 
+</p>
+<p>In all other cases the main <code>spmeshed</code> function is setup to be more efficient in automatically performing predictions during MCMC.
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>coords_out</code></td>
+<td>
+<p>matrix with the prediction location coordinates (order updated after predictions).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>preds_out</code></td>
+<td>
+<p>array of dimension (<code class="reqn">n_{o}, q, m</code>) where <code class="reqn">n_{o}</code> is the number of prediction locations, <code class="reqn">q</code> is the output dimension, <code class="reqn">m</code> is the number of MCMC samples.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Michele Peruzzi <a href="mailto:michele.peruzzi@duke.edu">michele.peruzzi@duke.edu</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Peruzzi, M., Banerjee, S., and Finley, A.O. (2020)
+Highly Scalable Bayesian Geostatistical Modeling via Meshed Gaussian Processes on Partitioned Domains. <em>Journal of the American Statistical Association</em>, in press. <a href="https://doi.org/10.1080/01621459.2020.1833889">doi:10.1080/01621459.2020.1833889</a>
+</p>
+<p>Peruzzi, M., Banerjee, S., Dunson, D.B., and Finley, A.O.  (2021)
+Grid-Parametrize-Split (GriPS) for Improved Scalable Inference in Spatial Big Data Analysis. <a href="https://arxiv.org/abs/2101.03579">https://arxiv.org/abs/2101.03579</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# toy example with tiny dataset and short MCMC
+# on a univariate outcome
+library(magrittr)
+library(dplyr)
+library(meshed)
+
+set.seed(2021)
+
+SS &lt;- 12
+n &lt;- SS^2 # total n. locations, including missing ones
+
+coords &lt;- data.frame(Var1=runif(n), Var2=runif(n)) %&gt;%
+  as.matrix()
+
+# generate data
+sigmasq &lt;- 2.3
+phi &lt;- 6
+tausq &lt;- .1
+B &lt;- c(-1,.5,1)
+
+CC &lt;- sigmasq * exp(-phi * as.matrix(dist(coords)))
+LC &lt;- t(chol(CC))
+w &lt;- LC %*% rnorm(n)
+p &lt;- length(B)
+X &lt;- rnorm(n * p) %&gt;% matrix(ncol=p)
+y_full &lt;- X %*% B + w + tausq^.5 * rnorm(n)
+
+set_missing &lt;- rbinom(n, 1, 0.1)
+
+simdata &lt;- data.frame(coords,
+                      y_full = y_full,
+                      w_latent = w) %&gt;%
+  mutate(y_observed = ifelse(set_missing==1, NA, y_full))
+
+# MCMC setup
+mcmc_keep &lt;- 500
+mcmc_burn &lt;- 100
+mcmc_thin &lt;- 2
+
+y &lt;- simdata$y_observed
+ybar &lt;- mean(y, na.rm=TRUE)
+
+# training set
+y_in &lt;- (y-ybar)[!is.na(y)]
+X_in &lt;- X[!is.na(y),]
+coords_in &lt;- coords[!is.na(y),]
+
+# suppose we dont want to have gridded knots
+# i.e. we are fixing the MGP reference set at the observed locations
+# (this may be inefficient in big data settings)
+meshout &lt;- spmeshed(y_in, X_in, coords_in,
+                    axis_partition=c(4,4),
+                    n_samples = mcmc_keep, 
+                    n_burn = mcmc_burn, 
+                    n_thin = mcmc_thin, 
+                    settings = list(forced_grid=FALSE, cache=FALSE),
+                    prior=list(phi=c(1,15)),
+                    verbose = 0,
+                    n_threads = 1)
+
+# test set
+coords_out &lt;- coords[is.na(y),]
+X_out &lt;- X[is.na(y),]
+
+df_predict &lt;- predict(meshout, newx=X_out, newcoords=coords_out)
+
+y_posterior_predictive_mean &lt;- df_predict$preds_out[,1,] %&gt;% 
+  apply(1, mean) %&gt;% add(ybar)
+df_predicted &lt;- df_predict$coords_out %&gt;% cbind(y_posterior_predictive_mean)
+
+</code></pre>
+
+
+</div>

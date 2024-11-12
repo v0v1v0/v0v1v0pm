@@ -1,0 +1,197 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>simuExperiment</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Perform simulation experiments</h2>
+
+<h3>Description</h3>
+
+<p>Perform simulation experiments</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">simuExperiment(model, simu, est, N = 100, use_true = FALSE,
+               raw = FALSE, init_name = "init", keep = identity,
+               summary_fun = .fsummary, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>the model, see 'Details'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>simu</code></td>
+<td>
+<p>arguments for the simulation function, a list, see 'Details'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est</code></td>
+<td>
+<p>arguments for the estimation function, a list, see 'Details'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N</code></td>
+<td>
+<p>number of simulations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_true</code></td>
+<td>
+<p>if TRUE, use also the "true" coefficients as initial
+values, see 'Details'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>raw</code></td>
+<td>
+<p>if TRUE, include the list of estimated models in the
+returned value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init_name</code></td>
+<td>
+<p>name of the argument of the estimation function
+which specifies the initial values for estimation, not always used,
+see ‘Details’.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep</code></td>
+<td>
+<p>what values to keep from each simulation run, a function,
+see 'Details'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary_fun</code></td>
+<td>
+<p>A function to apply at the end of the experiment to
+obtain a summary, see 'Details'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments to pass on to the summary
+function. NOTE: this may change.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Argument <code>model</code> specifies the underlying model and is not always
+needed, see the examples.
+Argument <code>simu</code> specifies how to simulate the data.
+Argument <code>est</code> specifies the estimation procedure.
+Argument <code>N</code> specifies the number of simulation runs.
+The remaining arguments control details of the simulations, mostly
+what is returned.
+</p>
+<p>Basically, <code>simuExperiment</code> does <code>N</code> simulation-estimation
+runs.
+The <code>keep</code> function is applied to the value obtained from each
+run.
+The results from <code>keep</code> are assembled in a list (these are the
+'raw' results).
+Finally, the summary function (argument <code>summary_fun</code>) is applied
+to the raw list.
+</p>
+<p><code>simu</code> and <code>est</code> are lists with two elements: <code>fun</code> and
+<code>args</code>. <code>fun</code> is a function or the name of a
+function. <code>args</code> is a list of arguments to that function. The
+first argument of the estimation function, <code>est$fun</code>, is the
+simulated data. This argument is inserted by <code>simuExperiment</code> and
+should not be put in <code>est$args</code>.
+</p>
+<p>The value returned by the summary function is the main part of the
+result. If <code>raw = TRUE</code>, then the raw list is returned, as well.
+Further fields may be made possible through additional arguments but
+'Summary' and 'Raw' are guaranteed to be as described here.
+</p>
+<p><code>simuExperiment</code> uses <code>init_name</code> only if <code>use_true</code> is
+TRUE to arrange a call of the estimation function with initial value
+<code>model</code>.  Obviously, <code>simuExperiment</code> does not know how (or
+if) the estimation function does with its arguments.
+</p>
+<p>The function specified by argument <code>keep</code> is called with one
+argument when <code>use_true</code> is FALSE and two arguments otherwise.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with one or more elements, depending on the arguments.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Summary</code></td>
+<td>
+<p>a summary of the experiment, by default sample means
+and standard deviations of the estimates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Raw</code></td>
+<td>
+<p>A list of the estimated models.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Georgi N. Boshnakov
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## explore dist. of the mean of a random sample of length 5.
+## (only illustration, such simple cases hardly need simuExperiment)
+sim1 &lt;- list(fun="rnorm", args = list(n=5, mean=3, sd = 2))
+est1 &lt;- list(fun=mean, args = list())
+
+# a basic report function
+fsum1 &lt;-  function(x){ wrk &lt;- do.call("c",x)
+                       c(n = length(wrk), mean = mean(wrk), sd = sd(wrk))}
+
+a1 &lt;- simuExperiment(TRUE, simu = sim1, est = est1, N = 1000, summary_fun = fsum1)
+
+# explore also the dist. of the sample s.d.
+est2 &lt;- est1
+est2$fun &lt;- function(x) c(xbar = mean(x), s = sd(x))
+
+a2  &lt;- simuExperiment(TRUE, simu = sim1, est = est2, N = 1000)
+
+# keep the raw sample means and s.d.'s for further use
+a2a &lt;- simuExperiment(TRUE, simu = sim1, est = est2, N = 1000, raw = TRUE)
+a2a$Summary
+
+# replicate a2a$Summary
+s5 &lt;- sapply(a2a$Raw, identity)
+apply(s5, 1, mean)
+apply(s5, 1, sd)
+
+hist(s5[1,], prob=TRUE)
+lines(density(s5[1,]))
+curve(dnorm(x, mean(s5[1,]), sd(s5[1,])), add = TRUE, col = "red")
+
+mixAR:::.fsummary(a2a$Raw)
+mixAR:::.fsummary(a2a$Raw, merge = TRUE)
+</code></pre>
+
+
+</div>

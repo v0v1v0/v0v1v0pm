@@ -1,0 +1,167 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>REimpact</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate the weighted mean of fitted values for various levels of
+random effect terms.</h2>
+
+<h3>Description</h3>
+
+<p><code>REimpact</code> calculates the average predicted value for each row of a
+new data frame across the distribution of <code>expectedRank</code> for a
+merMod object. This allows the user to make meaningful comparisons about the
+influence of random effect terms on the scale of the response variable,
+for user-defined inputs, and accounting for the variability in grouping terms.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">REimpact(merMod, newdata, groupFctr = NULL, term = NULL, breaks = 3, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>merMod</code></td>
+<td>
+<p>An object of class merMod</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>a data frame of observations to calculate group-level differences
+for</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>groupFctr</code></td>
+<td>
+<p>The name of the grouping factor over which the random
+coefficient of interest varies.  This is the variable to the right of the
+pipe, <code>|</code>, in the [g]lmer formula. This parameter is optional, if not
+specified, it will perform the calculation for the first effect listed
+by <code>ranef</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>term</code></td>
+<td>
+<p>The name of the random coefficient of interest. This is the
+variable to the left of the pipe, <code>|</code>, in the [g]lmer formula. Partial
+matching is attempted on the intercept term so the following character
+strings will all return rankings based on the intercept (<em>provided that
+they do not match the name of another random coefficient for that factor</em>):
+<code>c("(Intercept)", "Int", "intercep", ...)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>breaks</code></td>
+<td>
+<p>an integer representing the number of bins to divide the group
+effects into, the default is 3; alternatively it can specify breaks from 0-100
+for how to cut the expected rank distribution</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments to pass to <code>predictInterval</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function predicts the response at every level in the random effect term
+specified by the user. Then, the expected rank of each group level is binned
+to the number of bins specified by the user. Finally, a weighted mean of the
+fitted value for all observations in each bin of the expected ranks is
+calculated using the inverse of the variance as the weight – so that less
+precise estimates are downweighted in the calculation of the mean for the bin.
+Finally, a standard error for the bin mean is calculated.
+</p>
+<p>This function uses the formula for variance of a weighted mean
+recommended by Cochran (1977).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A data.frame with all unique combinations of the number of cases, rows
+in the newdata element, and number of bins:
+</p>
+
+<dl>
+<dt>case</dt>
+<dd>
+<p>The row number of the observation from newdata.</p>
+</dd>
+<dt>bin</dt>
+<dd>
+<p>The ranking bin for the expected rank, the higher the bin number,
+the greater the expected rank of the groups in that bin.</p>
+</dd>
+<dt>AvgFitWght</dt>
+<dd>
+<p>The weighted mean of the fitted values for case i in bin k</p>
+</dd>
+<dt>AvgFitWghtSE</dt>
+<dd>
+<p>The standard deviation of the mean of the fitted values
+for case i in bin k.</p>
+</dd>
+<dt>nobs</dt>
+<dd>
+<p>The number of group effects contained in that bin.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Gatz, DF and Smith, L. The Standard Error of a Weighted Mean Concentration.
+I. Bootstrapping vs other methods. <em>Atmospheric Environment</em>.
+1995;11(2)1185-1193. Available at
+<a href="https://www.sciencedirect.com/science/article/pii/135223109400210C">https://www.sciencedirect.com/science/article/pii/135223109400210C</a>
+</p>
+<p>Cochran, WG. 1977. Sampling Techniques (3rd Edition). Wiley, New York.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>expectedRank</code>, <code>predictInterval</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+#For a one-level random intercept model
+m1 &lt;- lmer(Reaction ~ Days + (1 | Subject), sleepstudy)
+m1.er &lt;- REimpact(m1, newdata = sleepstudy[1, ], breaks = 2)
+#For a one-level random intercept model with multiple random terms
+m2 &lt;- lmer(Reaction ~ Days + (Days | Subject), sleepstudy)
+#ranked by the random slope on Days
+m2.er1 &lt;- REimpact(m2,  newdata = sleepstudy[1, ],
+           groupFctr = "Subject", term="Days")
+#ranked by the random intercept
+m2.er2 &lt;- REimpact(m2, newdata = sleepstudy[1, ],
+             groupFctr = "Subject", term="int")
+
+# You can also pass additional arguments to predictInterval through REimpact
+g1 &lt;- lmer(y ~ lectage + studage + (1|d) + (1|s), data=InstEval)
+zed &lt;- REimpact(g1, newdata = InstEval[9:12, ], groupFctr = "d", n.sims = 50,
+                include.resid.var = TRUE)
+zed2 &lt;- REimpact(g1, newdata = InstEval[9:12, ], groupFctr = "s", n.sims = 50,
+                 include.resid.var = TRUE)
+zed3 &lt;- REimpact(g1, newdata = InstEval[9:12, ], groupFctr = "d", breaks = 5,
+                n.sims = 50, include.resid.var = TRUE)
+
+</code></pre>
+
+
+</div>

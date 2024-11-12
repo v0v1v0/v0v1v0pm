@@ -1,0 +1,231 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>traitglm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Fits a fourth corner model for abundance as a function of environmental variables and species traits.
+</h2>
+
+<h3>Description</h3>
+
+<p>Fits a fourth corner model - a model to study how variation in environmental response across taxa can be explained by their traits. The function to use for fitting can be (pretty well) any predictive model, default is a generalised linear model, another good option is to add a LASSO penalty via <code>glm1path</code>. Can handle overdispersed counts via  <code>family="negative.binomial"</code>, which is the default <code>family</code> argument.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R"> 
+traitglm(L, R, Q = NULL, family="negative.binomial", formula = NULL, method = "manyglm",
+            composition = FALSE, col.intercepts = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>L</code></td>
+<td>
+
+<p>A data frame (or matrix) containing the abundances for each taxon (columns) across all sites (rows).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>R</code></td>
+<td>
+
+<p>A data frame (or matrix) of environmental variables (columns) across all sites (rows).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Q</code></td>
+<td>
+
+<p>A data frame (or matrix) of traits (columns) across all taxa (rows). If not specified, a different environmental response will be specified for each taxon.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+
+<p>The family of the response variable, see <code>family</code>. Negative binomial with unknown overdispersion and a log-link can be specified as "negative.binomial", and is the default.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+
+<p>A one-sided formula specifying exactly how to model abundance as a function of environmental and trait variables (as found in <code>R</code> and <code>Q</code> respectively).  Default is to include all terms additively, with quadratics for quantitative terms, and all environment-by-trait interactions.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>The function to use to fit the model. Default is <code>manyglm</code>, some other available options are <code>glm1path</code>, <code>cv.glm1path</code> for LASSO-penalised fits, but in principle any model-fitting function that accepts formula input and a family argument should work.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>composition</code></td>
+<td>
+<p>logical. TRUE includes a row effect in the model, adjusting for different sampling intensities across different samples. This can be understood as a compositional term in the sense that all other terms then model relative abundance at a site. FALSE (default) does not include a row effect, hence the model is of absolute abundance.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>col.intercepts</code></td>
+<td>
+<p>logical. TRUE (default) includes a column effect in the model, to adjust for different levels of abundance of different response (column) variables. FALSE removes this column effect.
+</p>
+</td>
+</tr>
+</table>
+<table><tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Arguments passed to the function specified at <code>method</code> that will be used to fit the model.</p>
+</td>
+</tr></table>
+<h3>Details</h3>
+
+<p>This function fits a fourth corner model, that is, a model to predict abundance across several taxa (stored in <code>L</code>) as a function of environmental variables (<code>R</code>) and traits (<code>Q</code>). The environment-trait interaction can be understood as the fourth corner, giving the set of coefficients that describe how environmental response across taxa varies as traits vary. A species effect is include in the model (i.e. a different intercept term for each species), so that traits are used to explain patterns in relative abundance across taxa not patterns in absolute abundance.
+</p>
+<p>The actual function used to fit the model is determined by the user through the <code>method</code> argument. The default is to use <code>manyglm</code> to fit a GLM, although for predictive modelling, it might be better to use a LASSO penalty as in <code>glm1path</code> and <code>cv.glm1path</code>. In <code>glm1path</code>, the penalty used for BIC calculation is <code>log(dim(L)[1])</code>, i.e. log(number of sites).
+</p>
+<p>The model is fitted by vectorising <code>L</code> then constructing a big matrix from repeated values of <code>R</code>, <code>Q</code>, their quadratic terms (if required) and interactions. Hence this function will hit memory issues if any of these matrices are large, and can slow down (especially if using <code>cv.glm1path</code>). If <code>formula</code> is left unspecified, the design matrix is constructed using all environmental variables and traits specified in <code>R</code> and <code>Q</code>, and quadratic terms for any of these variables that are quantitative, and all environment-trait interactions, after standardising these variables. Specifying a one-sided <code>formula</code> as a function of the variables in <code>R</code> and <code>Q</code> would instead give the user control over the precise model that is fitted, and drops the internal standardisations. The arguments <code>composition</code> and <code>col.intercepts</code> optionally add terms to the model for row and column total abundance, irrespective of whether a <code>formula</code> has been specified.
+</p>
+<p>Note: when specifying a <code>formula</code>, if there are no penalties on coefficients (as for <code>manyglm</code>), then main effects for <code>R</code> can be excluded if including row effects (via <code>composition=TRUE</code>), and main effects for <code>Q</code> can be excluded if including column effects (via <code>col.intercepts=TRUE</code>), because those terms are redundant (trying to explain main effects for row/column when these main effects are already in the model). If using penalised likelihood (as in <code>glm1path</code> and <code>cv.glm1path</code>) or a random effects model, by all means include main effects as well as row/column effects, and the penalties will sort out which terms to use.
+</p>
+<p>If trait matrix <code>Q</code> is not specified, default behaviour will fit a different environmental response for each taxon (and the outcome will be very similar to <code>manyglm(L~R)</code>). This can be understood as a fourth corner model where species identities are used as the species traits (i.e. no attempt is made to explain differences across species).
+</p>
+<p>These functions inherit default behaviour from their fitting functions. e.g. use <code>plot</code> for a Dunn-Smyth residual plot from a traits model fitted using <code>manyglm</code> or <code>glm1path</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns a <code>traitglm</code> object, a list that contains at least the following components:
+</p>
+
+<dl>
+<dt>...</dt>
+<dd>
+<p>Exactly what is included in output depends on the fitting function - by default, a <code>manyglm</code> object is returned, so all usual <code>manyglm</code> output is included (coefficients, residuals, deviance, etc).</p>
+</dd>
+<dt>family</dt>
+<dd>
+<p>A <code>family</code> object matching the final model.</p>
+</dd>
+<dt>fourth.corner</dt>
+<dd>
+<p>A matrix of fourth corner coefficients. If <code>formula</code> has been manually entered, this will be a vector not a matrix.</p>
+</dd>
+<dt>R.des</dt>
+<dd>
+<p>The reduced-size design matrix for environmental variables, including further arguments:
+</p>
+
+<dl>
+<dt>X</dt>
+<dd>
+<p>Data frame of (possibly standardised) environmental variables</p>
+</dd>
+<dt>X.squ</dt>
+<dd>
+<p>A data frame containing the leading term in a quadratic expression (where appropriate) for environmental variables</p>
+</dd>
+<dt>var.type</dt>
+<dd>
+<p>A vector with the same dimension as the number of columns of X, listing the type of ecah enviromental variable (<code>"quantitative"</code>" or <code>"factor"</code>")</p>
+</dd>
+<dt>coefs</dt>
+<dd>
+<p>Coefficients used in transforming variables to orthogonality. These are used later to make predictions.</p>
+</dd>
+</dl>
+</dd>
+<dt>Q.des</dt>
+<dd>
+<p>The reduced-size design matrix for traits, set up as for <code>R.des</code>.</p>
+</dd>
+<dt>spp.penalty</dt>
+<dd>
+<p>For LASSO fits: a vector of the same length as the final design matrix, indicating which variables had a penalty imposed on them in model fitting.</p>
+</dd>
+<dt>L</dt>
+<dd>
+<p>The data frame of abundances specified as input.</p>
+</dd>
+<dt>any.penalty</dt>
+<dd>
+<p>Logical, is any penalty applied to parameters at all (not if using a <code>manyglm</code> fit).</p>
+</dd>
+<dt>scaling</dt>
+<dd>
+<p>A list of coefficients describing the standaridsations of variables used in analyses. Stored for use later if making predictions.</p>
+</dd>
+<dt>call</dt>
+<dd>
+<p>The original call <code>traitglm</code> call.</p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>David I. Warton &lt;David.Warton@unsw.edu.au&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Brown AM, Warton DI, Andrew NR, Binns M, Cassis G and Gibb H (2014) The fourth corner solution - using species traits to better understand how species traits interact with their environment, Methods in Ecology and Evolution 5, 344-352.
+</p>
+<p>Warton DI, Shipley B &amp; Hastie T (2015) CATS regression - a model-based approach to studying trait-based community assembly, Methods in Ecology and Evolution 6, 389-398.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>glm1path</code>, <code>glm1</code>, <code>manyglm</code>, <code>family</code>, <code>residuals.manyglm</code>, <code>plot.manyany</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(antTraits)
+
+ft=traitglm(antTraits$abund,antTraits$env,antTraits$traits,method="manyglm")
+ft$fourth #print fourth corner terms
+
+# for a pretty picture of fourth corner coefficients, uncomment the following lines:
+# library(lattice)
+# a        = max( abs(ft$fourth.corner) )
+# colort   = colorRampPalette(c("blue","white","red")) 
+# plot.4th = levelplot(t(as.matrix(ft$fourth.corner)), xlab="Environmental Variables",
+#   ylab="Species traits", col.regions=colort(100), at=seq(-a, a, length=100),
+#   scales = list( x= list(rot = 45)))
+# print(plot.4th)
+
+plot(ft) # for a Dunn-smyth residual plot
+qqnorm(residuals(ft)); abline(c(0,1),col="red") # for a normal quantile plot.
+
+# predict to the first five sites
+predict(ft,newR=antTraits$env[1:5,])
+
+# refit using LASSO and less variables, including row effects and only two interaction terms:
+ft1=traitglm(antTraits$abund,antTraits$env[,3:4],antTraits$traits[,c(1,3)],
+      formula=~Shrub.cover:Femur.length+Shrub.cover:Pilosity,composition=TRUE,method="glm1path")
+ft1$fourth #notice LASSO penalty has one interaction to zero
+
+</code></pre>
+
+
+</div>

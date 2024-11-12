@@ -1,0 +1,296 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>SummarizeOUCH</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Summarize parameters estimated under a (multivariate) OU motion model
+</h2>
+
+<h3>Description</h3>
+
+<p>Compiles a summary (appropriate moments, conditional moments, information criteria)
+of parameters of a (multivariate) OU model at a given time point. The user is recommended 
+to install the suggested package <span class="pkg">PCMBaseCpp</span> which significantly speeds up the 
+calculations (see Details).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">SummarizeOUCH(phyltree, mData, modelParams, regimes = NULL, 
+regimes.times = NULL, t = c(1), dof = NULL, M.error = NULL, 
+predictors = NULL, Atype = "Invertible", Syytype = "UpperTri", min_bl = 0.0003)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>phyltree</code></td>
+<td>
+
+<p>The phylogeny in <code>phylo</code> format. The tree can be obtained from e.g. a <code>nexus</code> file 
+by the <code>read.nexus()</code> function from the <span class="pkg">ape</span> package. The "standard" <span class="pkg">ape</span> node
+indexing is assumed: for a tree with <code class="reqn">n</code> tips, the tips should have indices <code>1:n</code> 
+and the root index <code>n+1</code>. The <code>root.edge</code> field is ignored.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mData</code></td>
+<td>
+
+<p>A matrix with the rows corresponding to the tip species while the columns correspond to the traits.
+The rows should be named by species <br> (field <code>phyltree$tip.label</code>), if not, then a warning
+is thrown and the order of the species is assumed to be the same as the order in which the 
+species are in the phylogeny (i.e. correspond to the node indices <code>1:n</code>, 
+where <code class="reqn">n</code> is the number of tips). The columns should be named by traits, otherwise
+a warning is thrown and generic names are generated.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modelParams</code></td>
+<td>
+
+<p>A list of model parameters, as returned in <code>ParamsInModel</code> part of <code>ouchModel</code>'s output.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regimes</code></td>
+<td>
+
+<p>A vector or list of regimes. If vector then each entry corresponds to each of <code>phyltree</code>'s
+branches, i.e. to each row of <code>phyltree$edge</code>.If list then each list entry corresponds to a tip node
+and is a vector for regimes on that lineage. If <code>NULL</code>, then a constant regime is assumed on
+the whole tree.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regimes.times</code></td>
+<td>
+
+<p>A list of vectors for each tree node, it starts with 0 and ends with the current time of the species.
+In between are the times where the regimes (niches) changed. If <code>NULL</code>, then each branch is
+considered to be a regime.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t</code></td>
+<td>
+
+<p>A vector of time points at which the summary is to be calculated. This allows for
+one to study (and plot) the (conditional) mean and covariance as functions of time.
+The function additionally returns the parameter summary at the tree's height.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dof</code></td>
+<td>
+
+<p>Number of unknown parameters in the model, can be extracted from the output of
+<code>ouchModel()</code>. If not provided all parameters are assumed unknown.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M.error</code></td>
+<td>
+
+<p>An optional measurement error covariance structure. The measurement errors between species are assumed 
+independent. The program tries to recognize the structure of the passed matrix and accepts the following 
+possibilities :
+</p>
+
+<ul>
+<li>
+<p>a single number that is a common measurement error for all tips and species,
+</p>
+</li>
+<li>
+<p>a m element vector with each value corresponding to a variable, measurement errors are independent
+between variables and each species is assumed to have the same measurement errors,
+</p>
+</li>
+<li>
+<p>a m x m ((number of variables) x (number of variables)) matrix, all species will
+have the same measurement error,
+</p>
+</li>
+<li>
+<p>a list of length n (number of species), each list element is the covariance structure 
+for the appropriate (numbering according to tree) species, either a single number 
+(each variable has same variance), vector (of length m for each variable), or m x m matrix, 
+the order of the list has to correspond to the order of the nodes in the <code>phyltree</code> object,
+</p>
+</li>
+<li>
+<p>NULL no measurement error.
+</p>
+</li>
+</ul>
+<p>From version <code>2.0.0</code> of <span class="pkg">mvSLOUCH</span> it is impossible to pass a single joint measurement error matrix 
+for all the species and traits. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>predictors</code></td>
+<td>
+<p>A vector giving the numbers of the columns from <code>data</code> which are to be considered
+predictor ones, <em>i.e.</em> conditioned on in the program output. If not provided, then none will be treated as 
+predictors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Atype</code></td>
+<td>
+
+<p>What class does the A matrix in the multivariate OUBM model belong to, possible values :
+<code>"SingleValueDiagonal"</code>, <code>"Diagonal"</code>, <code>"UpperTri"</code>, <code>"LowerTri"</code>,
+<code>Symmetric</code>, <code>SymmetricPositiveDefinite</code>, <br><code>"DecomposablePositive"</code>, 
+<code>"DecomposableNegative"</code>, <br><code>"DecomposableReal"</code>, <code>"Invertible"</code>, <code>"TwoByTwo"</code>, <code>"Any"</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Syytype</code></td>
+<td>
+
+<p>What class does the Syy matrix in the multivariate OUBM model belong to, possible values :
+<code>"SingleValueDiagonal"</code>, <code>"Diagonal"</code>, <code>"UpperTri"</code>, <code>"LowerTri"</code>,
+<code>"Symmetric"</code>, <code>"Any"</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min_bl</code></td>
+<td>
+<p>Value to which <span class="pkg">PCMBase</span>'s <code>PCMBase.Threshold.Skip.Singular</code> should be set.
+It indicates that branches of length shorter than <code>min_bl</code> should be skipped in likelihood
+calculations. Short branches can result in singular covariance matrices for the transition
+density along a branch. The user should adjust this value if a lot of warnings are raised by
+<span class="pkg">PCMBase</span>  about singularities during the likelihood calculations.
+However, this does not concern tip branches-these cannot be skipped and hence should be long
+enough so that numerical issues are not raised.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The likelihood calculations are done by the <span class="pkg">PCMBase</span> package. However, there is a
+C++ backend, <span class="pkg">PCMBaseCpp</span>. If it is not available, then the likelihood is calculated
+slower using pure R. However, with the calculations in C++ up to a 100-fold increase in
+speed is possible (more realistically 10-20 times). The <span class="pkg">PCMBaseCpp</span> package is available
+from <a href="https://github.com/venelin/PCMBaseCpp">https://github.com/venelin/PCMBaseCpp</a>.
+</p>
+<p>The setting <code>Atype="Any"</code> means that one assumes the matrix <code>A</code> is eigendecomposable.
+If <code>A</code> is defective, then the output will be erroneous.
+</p>
+<p>From version <code>2.0.0</code> of <span class="pkg">mvSLOUCH</span> the data has to be passed as a matrix.
+To underline this the data parameter's name has been changed to <code>mData</code>. 
+</p>
+<p>From version <code>2.0.0</code> of <span class="pkg">mvSLOUCH</span> the parameter <code>calcCI</code> has been removed. 
+The package now offers the possibility of bootstrap confidence intervals, see
+function <code>parametric.bootstrap</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list for each provided time point. See the help of <code>mvslouchModel</code> for what the 
+summary at each time point is.</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Krzysztof Bartoszek</p>
+
+
+<h3>References</h3>
+
+<p>Bartoszek, K. and Pienaar, J. and Mostad. P. and Andersson, S. and Hansen, T. F. (2012)
+A phylogenetic comparative method for studying  multivariate adaptation.
+Journal of Theoretical Biology 314:204-215.
+</p>
+<p>Butler, M.A. and A.A. King (2004) 
+Phylogenetic comparative analysis: a modeling approach for adaptive evolution.  
+American Naturalist 164:683-695.
+</p>
+<p>Hansen, T.F. (1997) 
+Stabilizing selection and the comparative analysis of adaptation. 
+Evolution 51:1341-1351.
+</p>
+<p>Hansen, T.F. and Bartoszek, K. (2012)
+Interpreting the evolutionary regression: the interplay between observational and biological 
+errors in phylogenetic comparative studies.
+Systematic Biology 61(3):413-425.
+</p>
+<p>Pienaar et al (in prep) An overview of comparative methods for
+testing adaptation to external environments.  
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>hansen</code>, <code>ouchModel</code>, <code>simulOUCHProcPhylTree</code>, <code>parametric.bootstrap</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">RNGversion(min(as.character(getRversion()),"3.6.1"))
+set.seed(12345, kind = "Mersenne-Twister", normal.kind = "Inversion")
+### We will first simulate a small phylogenetic tree using functions from ape.
+### For simulating the tree one could also use alternative functions, e.g. sim.bd.taxa 
+### from the TreeSim package
+phyltree&lt;-ape::rtree(5)
+
+## The line below is not necessary but advisable for speed
+phyltree&lt;-phyltree_paths(phyltree)
+
+### Define a vector of regimes.
+regimes&lt;-c("small","small","large","small","small","large","large","large")
+
+### Define the SDE parameters to be able to simulate data under the OUOU model.
+OUOUparameters&lt;-list(vY0=matrix(c(1,-1,0.5),nrow=3,ncol=1),
+A=rbind(c(9,0,0),c(0,5,0),c(0,0,1)),mPsi=cbind("small"=c(1,-1,0.5),
+"large"=c(-1,1,0.5)),Syy=rbind(c(1,0.25,0.3),c(0,1,0.2),c(0,0,1)))
+
+### Now simulate the data.
+OUOUdata&lt;-simulOUCHProcPhylTree(phyltree,OUOUparameters,regimes,NULL)
+OUOUdata&lt;-OUOUdata[phyltree$tip.label,,drop=FALSE]
+
+## Here we do not do any recovery step
+OUOU.summary&lt;-SummarizeOUCH(phyltree,OUOUdata,OUOUparameters,
+regimes,t=c(1),dof=15)
+RNGversion(as.character(getRversion()))
+
+## Not run:  ##It takes too long to run this
+## Now we take a less trivial simulation setup
+### Recover the parameters of the OUOU model.
+OUOUestim&lt;-ouchModel(phyltree,OUOUdata,regimes,Atype="DecomposablePositive",
+Syytype="UpperTri",diagA="Positive",maxiter=c(10,100))
+
+### Summarize them.
+OUOU.summary&lt;-SummarizeOUCH(phyltree,OUOUdata,OUOUestim$FinalFound$ParamsInModel,
+regimes,t=c(1),dof=OUOUestim$FinalFound$ParamSummary$dof)
+
+
+### And finally bootstrap with particular interest in the evolutionary regression
+OUOUbootstrap&lt;-parametric.bootstrap(estimated.model=OUOUestim,phyltree=phyltree,
+values.to.bootstrap=c("evolutionary.regression"),regimes=regimes,root.regime="small",
+M.error=NULL,predictors=c(3),kY=NULL,numboot=5,Atype=NULL,Syytype=NULL,diagA=NULL)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,454 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>adam_reg</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>General Interface for ADAM Regression Models</h2>
+
+<h3>Description</h3>
+
+<p><code>adam_reg()</code> is a way to generate a <em>specification</em> of an ADAM model
+before fitting and allows the model to be created using
+different packages. Currently the only package is <code>smooth</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">adam_reg(
+  mode = "regression",
+  ets_model = NULL,
+  non_seasonal_ar = NULL,
+  non_seasonal_differences = NULL,
+  non_seasonal_ma = NULL,
+  seasonal_ar = NULL,
+  seasonal_differences = NULL,
+  seasonal_ma = NULL,
+  use_constant = NULL,
+  regressors_treatment = NULL,
+  outliers_treatment = NULL,
+  outliers_ci = NULL,
+  probability_model = NULL,
+  distribution = NULL,
+  loss = NULL,
+  information_criteria = NULL,
+  seasonal_period = NULL,
+  select_order = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>mode</code></td>
+<td>
+<p>A single character string for the type of model.
+The only possible value for this model is "regression".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ets_model</code></td>
+<td>
+<p>The type of ETS model. The first letter stands for the type of the error term ("A" or "M"),
+the second (and sometimes the third as well) is for the trend ("N", "A", "Ad", "M" or "Md"), and the last one is
+for the type of seasonality ("N", "A" or "M").</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>non_seasonal_ar</code></td>
+<td>
+<p>The order of the non-seasonal auto-regressive (AR) terms. Often denoted "p" in pdq-notation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>non_seasonal_differences</code></td>
+<td>
+<p>The order of integration for non-seasonal differencing. Often denoted "d" in pdq-notation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>non_seasonal_ma</code></td>
+<td>
+<p>The order of the non-seasonal moving average (MA) terms. Often denoted "q" in pdq-notation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seasonal_ar</code></td>
+<td>
+<p>The order of the seasonal auto-regressive (SAR) terms. Often denoted "P" in PDQ-notation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seasonal_differences</code></td>
+<td>
+<p>The order of integration for seasonal differencing. Often denoted "D" in PDQ-notation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seasonal_ma</code></td>
+<td>
+<p>The order of the seasonal moving average (SMA) terms. Often denoted "Q" in PDQ-notation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_constant</code></td>
+<td>
+<p>Logical, determining, whether the constant is needed in the model or not. This is mainly needed for
+ARIMA part of the model, but can be used for ETS as well.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regressors_treatment</code></td>
+<td>
+<p>The variable defines what to do with the provided explanatory variables: "use" means that all
+of the data should be used, while "select" means that a selection using ic should be done, "adapt" will trigger the
+mechanism of time varying parameters for the explanatory variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outliers_treatment</code></td>
+<td>
+<p>Defines what to do with outliers: "ignore", so just returning the model, "detect" outliers based
+on specified level and include dummies for them in the model, or detect and "select" those of them that reduce ic value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outliers_ci</code></td>
+<td>
+<p>What confidence level to use for detection of outliers. Default is 99%.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>probability_model</code></td>
+<td>
+<p>The type of model used in probability estimation. Can be "none" - none, "fixed" - constant
+probability, "general" - the general Beta model with two parameters, "odds-ratio" - the Odds-ratio model with b=1 in
+Beta distribution, "inverse-odds-ratio" - the model with a=1 in Beta distribution, "direct" - the TSB-like
+(Teunter et al., 2011) probability update mechanism a+b=1, "auto" - the automatically selected type of occurrence model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distribution</code></td>
+<td>
+<p>what density function to assume for the error term. The full name of the distribution should be
+provided, starting with the letter "d" - "density".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loss</code></td>
+<td>
+<p>The type of Loss Function used in optimization.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>information_criteria</code></td>
+<td>
+<p>The information criterion to use in the model selection / combination procedure.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seasonal_period</code></td>
+<td>
+<p>A seasonal frequency. Uses "auto" by default.
+A character phrase of "auto" or time-based phrase of "2 weeks"
+can be used if a date or date-time variable is provided.
+See Fit Details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>select_order</code></td>
+<td>
+<p>If <code>TRUE</code>, then the function will select the most appropriate order. The values list(ar=...,i=...,ma=...)
+specify the maximum orders to check in this case.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The data given to the function are not saved and are only used
+to determine the <em>mode</em> of the model. For <code>adam_reg()</code>, the
+mode will always be "regression".
+</p>
+<p>The model can be created using the <code>fit()</code> function using the
+following <em>engines</em>:
+</p>
+
+<ul>
+<li>
+<p> "auto_adam" (default) - Connects to <code>smooth::auto.adam()</code>
+</p>
+</li>
+<li>
+<p> "adam" - Connects to <code>smooth::adam()</code>
+</p>
+</li>
+</ul>
+<p><strong>Main Arguments</strong>
+</p>
+<p>The main arguments (tuning parameters) for the model are:
+</p>
+
+<ul>
+<li> <p><code>seasonal_period</code>: The periodic nature of the seasonality. Uses "auto" by default.
+</p>
+</li>
+<li> <p><code>non_seasonal_ar</code>: The order of the non-seasonal auto-regressive (AR) terms.
+</p>
+</li>
+<li> <p><code>non_seasonal_differences</code>: The order of integration for non-seasonal differencing.
+</p>
+</li>
+<li> <p><code>non_seasonal_ma</code>: The order of the non-seasonal moving average (MA) terms.
+</p>
+</li>
+<li> <p><code>seasonal_ar</code>: The order of the seasonal auto-regressive (SAR) terms.
+</p>
+</li>
+<li> <p><code>seasonal_differences</code>: The order of integration for seasonal differencing.
+</p>
+</li>
+<li> <p><code>seasonal_ma</code>: The order of the seasonal moving average (SMA) terms.
+</p>
+</li>
+<li> <p><code>ets_model</code>: The type of ETS model.
+</p>
+</li>
+<li> <p><code>use_constant</code>: Logical, determining, whether the constant is needed in the model or not.
+</p>
+</li>
+<li> <p><code>regressors_treatment</code>: The variable defines what to do with the provided explanatory variables.
+</p>
+</li>
+<li> <p><code>outliers_treatment</code>: Defines what to do with outliers.
+</p>
+</li>
+<li> <p><code>probability_model</code>: The type of model used in probability estimation.
+</p>
+</li>
+<li> <p><code>distribution</code>: what density function to assume for the error term.
+</p>
+</li>
+<li> <p><code>loss</code>: The type of Loss Function used in optimization.
+</p>
+</li>
+<li> <p><code>information_criteria</code>: The information criterion to use in the model selection / combination procedure.
+</p>
+</li>
+</ul>
+<p>These arguments are converted to their specific names at the
+time that the model is fit.
+</p>
+<p>Other options and argument can be
+set using <code>set_engine()</code> (See Engine Details below).
+</p>
+<p>If parameters need to be modified, <code>update()</code> can be used
+in lieu of recreating the object from scratch.
+</p>
+<p><strong>auto_adam (default engine)</strong>
+</p>
+<p>The engine uses <code>smooth::auto.adam()</code>.
+</p>
+<p>Function Parameters:
+</p>
+<div class="sourceCode"><pre>#&gt; function (data, model = "ZXZ", lags = c(frequency(data)), orders = list(ar = c(3, 
+#&gt;     3), i = c(2, 1), ma = c(3, 3), select = TRUE), formula = NULL, regressors = c("use", 
+#&gt;     "select", "adapt"), occurrence = c("none", "auto", "fixed", "general", 
+#&gt;     "odds-ratio", "inverse-odds-ratio", "direct"), distribution = c("dnorm", 
+#&gt;     "dlaplace", "ds", "dgnorm", "dlnorm", "dinvgauss", "dgamma"), outliers = c("ignore", 
+#&gt;     "use", "select"), level = 0.99, h = 0, holdout = FALSE, persistence = NULL, 
+#&gt;     phi = NULL, initial = c("optimal", "backcasting", "complete"), arma = NULL, 
+#&gt;     ic = c("AICc", "AIC", "BIC", "BICc"), bounds = c("usual", "admissible", 
+#&gt;         "none"), silent = TRUE, parallel = FALSE, ...)
+</pre></div>
+<p>The <em>MAXIMUM</em> nonseasonal ARIMA terms (<code>max.p</code>, <code>max.d</code>, <code>max.q</code>) and
+seasonal ARIMA terms (<code>max.P</code>, <code>max.D</code>, <code>max.Q</code>) are provided to
+<code>forecast::auto.arima()</code> via <code>arima_reg()</code> parameters.
+Other options and argument can be set using <code>set_engine()</code>.
+</p>
+<p>Parameter Notes:
+</p>
+
+<ul>
+<li>
+<p> All values of nonseasonal pdq and seasonal PDQ are maximums.
+The <code>smooth::auto.adam()</code> model will select a value using these as an upper limit.
+</p>
+</li>
+<li> <p><code>xreg</code> - This is supplied via the parsnip / modeltime <code>fit()</code> interface
+(so don't provide this manually). See Fit Details (below).
+</p>
+</li>
+</ul>
+<p><strong>adam</strong>
+</p>
+<p>The engine uses <code>smooth::adam()</code>.
+</p>
+<p>Function Parameters:
+</p>
+<div class="sourceCode"><pre>#&gt; function (data, model = "ZXZ", lags = c(frequency(data)), orders = list(ar = c(0), 
+#&gt;     i = c(0), ma = c(0), select = FALSE), constant = FALSE, formula = NULL, 
+#&gt;     regressors = c("use", "select", "adapt"), occurrence = c("none", "auto", 
+#&gt;         "fixed", "general", "odds-ratio", "inverse-odds-ratio", "direct"), 
+#&gt;     distribution = c("default", "dnorm", "dlaplace", "ds", "dgnorm", "dlnorm", 
+#&gt;         "dinvgauss", "dgamma"), loss = c("likelihood", "MSE", "MAE", "HAM", 
+#&gt;         "LASSO", "RIDGE", "MSEh", "TMSE", "GTMSE", "MSCE"), outliers = c("ignore", 
+#&gt;         "use", "select"), level = 0.99, h = 0, holdout = FALSE, persistence = NULL, 
+#&gt;     phi = NULL, initial = c("optimal", "backcasting", "complete"), arma = NULL, 
+#&gt;     ic = c("AICc", "AIC", "BIC", "BICc"), bounds = c("usual", "admissible", 
+#&gt;         "none"), silent = TRUE, ...)
+</pre></div>
+<p>The nonseasonal ARIMA terms (<code>orders</code>) and seasonal ARIMA terms (<code>orders</code>)
+are provided to <code>smooth::adam()</code> via <code>adam_reg()</code> parameters.
+Other options and argument can be set using <code>set_engine()</code>.
+</p>
+<p>Parameter Notes:
+</p>
+
+<ul><li> <p><code>xreg</code> - This is supplied via the parsnip / modeltime <code>fit()</code> interface
+(so don't provide this manually). See Fit Details (below).
+</p>
+</li></ul>
+<h3>Fit Details</h3>
+
+<p><strong>Date and Date-Time Variable</strong>
+</p>
+<p>It's a requirement to have a date or date-time variable as a predictor.
+The <code>fit()</code> interface accepts date and date-time features and handles them internally.
+</p>
+
+<ul><li> <p><code>fit(y ~ date)</code>
+</p>
+</li></ul>
+<p><em>Seasonal Period Specification</em>
+</p>
+<p>The period can be non-seasonal (<code style="white-space: pre;">⁠seasonal_period = 1 or "none"⁠</code>) or
+yearly seasonal (e.g. For monthly time stamps, <code>seasonal_period = 12</code>, <code>seasonal_period = "12 months"</code>, or <code>seasonal_period = "yearly"</code>).
+There are 3 ways to specify:
+</p>
+
+<ol>
+<li> <p><code>seasonal_period = "auto"</code>: A seasonal period is selected based on the periodicity of the data (e.g. 12 if monthly)
+</p>
+</li>
+<li> <p><code>seasonal_period = 12</code>: A numeric frequency. For example, 12 is common for monthly data
+</p>
+</li>
+<li> <p><code>seasonal_period = "1 year"</code>: A time-based phrase. For example, "1 year" would convert to 12 for monthly data.
+</p>
+</li>
+</ol>
+<p><strong>Univariate (No xregs, Exogenous Regressors):</strong>
+</p>
+<p>For univariate analysis, you must include a date or date-time feature. Simply use:
+</p>
+
+<ul><li>
+<p> Formula Interface (recommended): <code>fit(y ~ date)</code> will ignore xreg's.
+</p>
+</li></ul>
+<p><strong>Multivariate (xregs, Exogenous Regressors)</strong>
+</p>
+<p>The <code>xreg</code> parameter is populated using the <code>fit()</code> function:
+</p>
+
+<ul>
+<li>
+<p> Only <code>factor</code>, <code style="white-space: pre;">⁠ordered factor⁠</code>, and <code>numeric</code> data will be used as xregs.
+</p>
+</li>
+<li>
+<p> Date and Date-time variables are not used as xregs
+</p>
+</li>
+<li> <p><code>character</code> data should be converted to factor.
+</p>
+</li>
+</ul>
+<p><em>Xreg Example:</em> Suppose you have 3 features:
+</p>
+
+<ol>
+<li> <p><code>y</code> (target)
+</p>
+</li>
+<li> <p><code>date</code> (time stamp),
+</p>
+</li>
+<li> <p><code>month.lbl</code> (labeled month as a ordered factor).
+</p>
+</li>
+</ol>
+<p>The <code>month.lbl</code> is an exogenous regressor that can be passed to the <code>arima_reg()</code> using
+<code>fit()</code>:
+</p>
+
+<ul><li> <p><code>fit(y ~ date + month.lbl)</code> will pass <code>month.lbl</code> on as an exogenous regressor.
+</p>
+</li></ul>
+<p>Note that date or date-time class values are excluded from <code>xreg</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>fit.model_spec()</code>, <code>set_engine()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+
+library(dplyr)
+library(parsnip)
+library(rsample)
+library(timetk)
+library(smooth)
+
+# Data
+m750 &lt;- m4_monthly %&gt;% filter(id == "M750")
+m750
+
+# Split Data 80/20
+splits &lt;- initial_time_split(m750, prop = 0.8)
+
+# ---- AUTO ADAM ----
+
+# Model Spec
+model_spec &lt;- adam_reg() %&gt;%
+    set_engine("auto_adam")
+
+# Fit Spec
+model_fit &lt;- model_spec %&gt;%
+    fit(log(value) ~ date, data = training(splits))
+model_fit
+
+
+# ---- STANDARD ADAM ----
+
+# Model Spec
+model_spec &lt;- adam_reg(
+        seasonal_period          = 12,
+        non_seasonal_ar          = 3,
+        non_seasonal_differences = 1,
+        non_seasonal_ma          = 3,
+        seasonal_ar              = 1,
+        seasonal_differences     = 0,
+        seasonal_ma              = 1
+    ) %&gt;%
+    set_engine("adam")
+
+# Fit Spec
+model_fit &lt;- model_spec %&gt;%
+    fit(log(value) ~ date, data = training(splits))
+model_fit
+
+
+</code></pre>
+
+
+</div>

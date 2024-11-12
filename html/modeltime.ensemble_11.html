@@ -1,0 +1,145 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ensemble_nested_weighted</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Nested Ensemble Weighted</h2>
+
+<h3>Description</h3>
+
+<p>Creates an Ensemble Model using Weighted Averaging in the
+Modeltime Nested Forecasting Workflow.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ensemble_nested_weighted(
+  object,
+  loadings,
+  scale_loadings = TRUE,
+  metric = "rmse",
+  keep_submodels = TRUE,
+  model_ids = NULL,
+  control = control_nested_fit()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A nested modeltime object (inherits class <code>nested_mdl_time</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loadings</code></td>
+<td>
+<p>A vector of weights corresponding to the loadings</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale_loadings</code></td>
+<td>
+<p>If TRUE, divides by the sum of the loadings
+to proportionally weight the submodels.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>metric</code></td>
+<td>
+<p>The accuracy metric to rank models by the test accuracy table.
+Loadings are then applied in the order from best to worst models.
+Default: <code>"rmse"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep_submodels</code></td>
+<td>
+<p>Whether or not to keep the submodels in the
+nested modeltime table results</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model_ids</code></td>
+<td>
+<p>A vector of id's (<code>.model_id</code>) identifying which submodels to
+use in the ensemble.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>Controls various aspects of the ensembling process. See <code>modeltime::control_nested_fit()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>If we start with a nested modeltime table, we can add ensembles.
+</p>
+<div class="sourceCode r"><pre>nested_modeltime_tbl
+
+# Nested Modeltime Table
+Trained on: .splits | Model Errors: [0]
+# A tibble: 2 x 5
+  id    .actual_data       .future_data      .splits         .modeltime_tables
+  &lt;fct&gt; &lt;list&gt;             &lt;list&gt;            &lt;list&gt;          &lt;list&gt;
+1 1_1   &lt;tibble [104 x 2]&gt; &lt;tibble [52 x 2]&gt; &lt;split [52|52]&gt; &lt;mdl_time_tbl [2 x 5]&gt;
+2 1_3   &lt;tibble [104 x 2]&gt; &lt;tibble [52 x 2]&gt; &lt;split [52|52]&gt; &lt;mdl_time_tbl [2 x 5]&gt;
+</pre></div>
+<p>An ensemble can be added to a Nested modeltime table.
+</p>
+<div class="sourceCode r"><pre>ensem &lt;- nested_modeltime_tbl %&gt;%
+    ensemble_nested_weighted(
+        loadings       = c(2,1),
+        control        = control_nested_fit(allow_par = FALSE, verbose = TRUE)
+    )
+</pre></div>
+<p>We can then verify the model has been added.
+</p>
+<div class="sourceCode r"><pre>ensem %&gt;% extract_nested_modeltime_table()
+</pre></div>
+<p>This produces an ensemble .model_id 3, which is an ensemble of the first two models.
+</p>
+<div class="sourceCode"><pre># A tibble: 4 x 6
+  id    .model_id .model         .model_desc                   .type .calibration_data
+  &lt;fct&gt;     &lt;dbl&gt; &lt;list&gt;         &lt;chr&gt;                         &lt;chr&gt; &lt;list&gt;
+1 1_3           1 &lt;workflow&gt;     PROPHET                       Test  &lt;tibble [52 x 4]&gt;
+2 1_3           2 &lt;workflow&gt;     XGBOOST                       Test  &lt;tibble [52 x 4]&gt;
+3 1_3           3 &lt;ensemble [2]&gt; ENSEMBLE (WEIGHTED): 2 MODELS Test  &lt;tibble [52 x 4]&gt;
+</pre></div>
+<p>We can verify the loadings have been applied correctly. Note that the loadings will be
+applied based on the model with the lowest RMSE.
+</p>
+<div class="sourceCode r"><pre>ensem %&gt;%
+    extract_nested_modeltime_table(1) %&gt;%
+    slice(3) %&gt;%
+    pluck(".model", 1)
+</pre></div>
+<p>Note that the xgboost model gets the 66% loading and prophet gets 33% loading.
+This is because xgboost has the lower RMSE in this case.
+</p>
+<div class="sourceCode r"><pre>-- Modeltime Ensemble -------------------------------------------
+    Ensemble of 2 Models (WEIGHTED)
+
+# Modeltime Table
+# A tibble: 2 x 6
+  .model_id .model     .model_desc .type .calibration_data .loadings
+      &lt;int&gt; &lt;list&gt;     &lt;chr&gt;       &lt;chr&gt; &lt;list&gt;                &lt;dbl&gt;
+1         1 &lt;workflow&gt; PROPHET     Test  &lt;tibble [52 x 4]&gt;     0.333
+2         2 &lt;workflow&gt; XGBOOST     Test  &lt;tibble [52 x 4]&gt;     0.667
+</pre></div>
+
+
+<h3>Value</h3>
+
+<p>The nested modeltime table with an ensemble model added.
+</p>
+
+
+</div>

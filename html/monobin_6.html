@@ -1,0 +1,124 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pct.bin</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Monotonic binning based on percentiles</h2>
+
+<h3>Description</h3>
+
+<p><code>pct.bin</code> implements percentile-based monotonic binning by the iterative discretization.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pct.bin(
+  x,
+  y,
+  sc = c(NA, NaN, Inf, -Inf),
+  sc.method = "together",
+  g = 15,
+  y.type = NA,
+  woe.trend = TRUE,
+  force.trend = NA
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Numeric vector to be binned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Numeric target vector (binary or continuous).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sc</code></td>
+<td>
+<p>Numeric vector with special case elements. Default values are <code>c(NA, NaN, Inf, -Inf)</code>.
+Recommendation is to keep the default values always and add new ones if needed. Otherwise, if these values exist
+in <code>x</code> and are not defined in the <code>sc</code> list some statistics cannot be calculated properly.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sc.method</code></td>
+<td>
+<p>Define how special cases will be treated, all together or in separate bins.
+Possible values are <code>"together", "separately"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>g</code></td>
+<td>
+<p>Number of starting groups. Default is 15.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y.type</code></td>
+<td>
+<p>Type of <code>y</code>, possible options are <code>"bina"</code> (binary) and <code>"cont"</code> (continuous).
+If default value is passed, then algorithm will identify if y is 0/1 or continuous variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>woe.trend</code></td>
+<td>
+<p>Applied only for a continuous target (<code>y</code>) as weights of evidence (WoE) trend check. Default is TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>force.trend</code></td>
+<td>
+<p>If the expected trend should be forced. Possible values: <code>"i"</code> for
+increasing trend (<code>y</code> increases with increase of <code>x</code>), <code>"d"</code> for decreasing trend
+(<code>y</code> decreases with decrease of <code>x</code>). Default value is <code>NA</code>.
+If the default value is passed, algorithm will stop if perfect negative or positive correlation (Spearman) is achieved
+between average <code>y</code> and average <code>x</code> per bin. Otherwise, it will stop only if the forced trend is achieved.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The command <code>pct.bin</code> generates a list of two objects. The first object, data frame <code>summary.tbl</code>
+presents a summary table of final binning, while <code>x.trans</code> is a vector of discretized values.
+In case of single unique value for <code>x</code> or <code>y</code> of complete cases (cases different than special cases),
+it will return data frame with info.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">suppressMessages(library(monobin))
+data(gcd)
+#binary target
+mat.bin &lt;- pct.bin(x = gcd$maturity, y = gcd$qual)
+mat.bin[[1]]
+table(mat.bin[[2]])
+#continuous target, separate groups for special cases
+set.seed(123)
+gcd$age.d &lt;- gcd$age
+gcd$age.d[sample(1:nrow(gcd), 10)] &lt;- NA
+gcd$age.d[sample(1:nrow(gcd), 3)] &lt;- 9999999999
+age.d.bin &lt;- pct.bin(x = gcd$age.d, 
+			   	y = gcd$qual, 
+			   	sc = c(NA, NaN, Inf, -Inf, 9999999999), 
+			  	sc.method = "separately",
+			   	force.trend = "d")
+age.d.bin[[1]]
+gcd$age.d.bin &lt;- age.d.bin[[2]]
+gcd %&gt;% group_by(age.d.bin) %&gt;% summarise(n = n(), y.avg = mean(qual))
+
+</code></pre>
+
+
+</div>

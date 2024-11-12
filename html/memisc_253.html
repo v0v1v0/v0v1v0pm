@@ -1,0 +1,220 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Groups</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Operate on grouped data in data frames and data sets</h2>
+
+<h3>Description</h3>
+
+<p><code>Group</code> creates a grouped variant of an object of
+class "data.frame" or of class "data.set", for which methods for
+<code>with</code> and <code>within</code> are defined, so that these well-known
+functions can be applied "groupwise".
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R"># Create an object of class "grouped.data" from a
+# data frame or a data set.
+Groups(data,by,...)
+## S3 method for class 'data.frame'
+Groups(data,by,...)
+## S3 method for class 'data.set'
+Groups(data,by,...)
+## S3 method for class 'grouped.data'
+Groups(data,by,...)
+
+# Recombine grouped data into a data fame or a data set
+recombine(x,...)
+## S3 method for class 'grouped.data.frame'
+recombine(x,...)
+## S3 method for class 'grouped.data.set'
+recombine(x,...)
+
+# Recombine grouped data and coerce the result appropriately:
+## S3 method for class 'grouped.data'
+as.data.frame(x,...)
+## S4 method for signature 'grouped.data.frame'
+as.data.set(x,row.names=NULL,...)
+## S4 method for signature 'grouped.data.set'
+as.data.set(x,row.names=NULL,...)
+
+# Methods of the generics "with" and "within" for grouped data
+## S3 method for class 'grouped.data'
+with(data,expr,...)
+## S3 method for class 'grouped.data'
+within(data,expr,recombine=FALSE,...)
+
+# This is equivalent to with(Groups(data,by),expr,...)
+withGroups(data,by,expr,...)
+# This is equivalent to within(Groups(data,by),expr,recombine,...)
+withinGroups(data,by,expr,recombine=TRUE,...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>an object of the classes "data.frame", "data.set" if an
+argument to <code>Groups</code>, <code>withGroups</code>, <code>withinGroups</code>,
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>a formula with the factors the levels of which define the
+groups.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expr</code></td>
+<td>
+<p>an expression, or several expressions enclosed in curly
+braces.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recombine</code></td>
+<td>
+<p>a logical vector; should the resulting grouped
+data be recombined?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>an object of class "grouped.data".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>row.names</code></td>
+<td>
+<p>an optional character vector with row names.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other arguments, ignored.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>When applied to a data frame <code>Groups</code> returns an object with class attributes
+"grouped.data.frame", "grouped.data", and "data.frame", when applied do an object with class
+"data.set", it returns an object with class attributes "grouped.data.set",
+"grouped.data", and "data.set".
+</p>
+<p>When applied to objects with class attributed
+"grouped.data", both the functions <code>with()</code> amd <code>within()</code>
+evaluate <code>expr</code> separately for each group defined by
+<code>Groups</code>. <code>with()</code> returns an array composed of the results
+of <code>expr</code>, while <code>within()</code> returns a modified copy of its
+<code>data</code> argument, which will be a "grouped.data" object
+("grouped.data.frame" or "grouped.data.set"), unless the argument
+<code>recombine=TRUE</code> is set.
+</p>
+<p>The expression <code>expr</code> may contain references to the variables
+<code>n_</code>, <code>N_</code>, and <code>i_</code>. <code>n_</code> is equal to the size of
+the respective group (the number of rows belonging to it), while
+<code>N_</code> is equal to the total number of observations in all
+groups. The variable <code>i_</code> equals to the indices of the rows
+belonging to the respective group of observations.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">some.data &lt;- data.frame(x=rnorm(n=100))
+some.data &lt;- within(some.data,{
+    f &lt;- factor(rep(1:4,each=25),labels=letters[1:4])
+    g &lt;- factor(rep(1:5,each=4,5),labels=LETTERS[1:5])
+    y &lt;- x + rep(1:4,each=25) +  0.75*rep(1:5,each=4,5)
+})
+
+# For demonstration purposes, we create an
+# 'empty' group:
+some.data &lt;- subset(some.data,
+                       f!="a" | g!="C")
+
+some.grouped.data &lt;- Groups(some.data,
+                           ~f+g)    
+
+# Computing the means of y for each combination f and g
+group.means &lt;- with(some.grouped.data,
+                    mean(y))
+group.means
+
+# Obtaining a groupwise centered variant of y
+some.grouped.data &lt;- within(some.grouped.data,{
+    y.cent &lt;- y - mean(y)
+},recombine=FALSE)
+
+# The groupwise centered variable should have zero mean
+# whithin each group
+group.means &lt;- with(some.grouped.data,
+                    round(mean(y.cent),15))
+group.means
+
+# The following demonstrates the use of n_, N_, and i_
+# An external copy of y
+y1 &lt;- some.data$y
+group.means.n &lt;- with(some.grouped.data,
+                      c(mean(y),  # Group means for y
+                        n_,       # Group sizes
+                        sum(y)/n_,# Group means for y
+                        n_/N_,    # Relative group sizes
+                        sum(y1)/N_,# NOT the grand mean
+                        sum(y1[i_])/n_)) # Group mean for y1
+group.means.n
+
+# Names can be attached to the groupwise results
+with(some.grouped.data,
+     c(Centered=round(mean(y.cent),15),
+       Uncentered=mean(y)))
+
+some.data.ungrouped &lt;- recombine(some.grouped.data)
+str(some.data.ungrouped)
+
+# It all works with "data.set" objects
+some.dataset &lt;- as.data.set(some.data)
+some.grouped.dataset &lt;- Groups(some.dataset,~f+g)
+
+with(some.grouped.dataset,
+     c(Mean=mean(y),
+       Variance=var(y)))
+
+# The following two expressions are equivalent:
+with(Groups(some.data,~f+g),mean(y))
+withGroups(some.data,~f+g,mean(y))
+
+# The following two expressions are equivalent:
+some.data &lt;- within(Groups(some.data,~f+g),{
+    y.cent &lt;- y - mean(y)
+    y.cent.1 &lt;- y - sum(y)/n_
+})
+
+some.data &lt;- withinGroups(some.data,~f+g,{
+    y.cent &lt;- y - mean(y)
+    y.cent.1 &lt;- y - sum(y)/n_
+})
+
+# Both variants of groupwise centred varaibles should
+# have zero groupwise means:
+withGroups(some.data,~f+g,{
+    c(round(mean(y.cent),15),
+      round(mean(y.cent.1),15))
+})
+
+</code></pre>
+
+
+</div>

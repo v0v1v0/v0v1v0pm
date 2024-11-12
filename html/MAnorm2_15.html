@@ -1,0 +1,190 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>estParamHyperChIP</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>The Parameter Estimation Framework of HyperChIP</h2>
+
+<h3>Description</h3>
+
+<p>Given a <code>bioCond</code> object with which a mean-variance curve has
+been associated, <code>estParamHyperChIP</code> estimates the related parameters
+(i.e., the number of prior degrees of freedom and the variance ratio factor)
+by following the framework designed in HyperChIP.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">estParamHyperChIP(
+  cond,
+  occupy.only = TRUE,
+  prob = 0.1,
+  subset = NULL,
+  p_low = 0.01,
+  p_up = 0.1,
+  return.d0 = FALSE,
+  .call = TRUE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>cond</code></td>
+<td>
+<p>A <code>bioCond</code> object with which a mean-variance curve
+been associated (see also <code>fitMeanVarCurve</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>occupy.only</code></td>
+<td>
+<p>A logical scalar. If it is <code>TRUE</code> (default),
+only occupied genomic intervals are used for the parameter estimation
+process. Otherwise, all intervals are used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prob</code></td>
+<td>
+<p>The proportion of the intervals with the lowest (observed) mean
+signal intensities that shall be used in the subsequent Winsorization
+procedure (see "Details").</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>Alternatively, you can set this argument to a logical vector
+to directly specify the intervals to be used in the Winsorization
+procedure. This option overrides <code>occupy.only</code> and <code>prob</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p_low, p_up</code></td>
+<td>
+<p>Lower- and upper-proportions of extreme values to be
+Winsorized (see "References"). Each of them must be strictly larger than
+0, and their sum must be strictly smaller than 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>return.d0</code></td>
+<td>
+<p>A logical scalar. If set to <code>TRUE</code>, the function
+simply returns the estimated number of prior degrees of freedom.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.call</code></td>
+<td>
+<p>Never care about this argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments to be passed to
+<code>estimatePriorDfRobust</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Technically, <code>estParamHyperChIP</code> first derives a lower quantile of the
+observed mean signal intensities in different genomic intervals based on the
+<code>prob</code> argument. It then selects the intervals whose mean intensities
+are less than or equal to the quantile. Finally, it applies the
+Winsorization technique to the selected intervals to finish the parameter
+estimation (see also "References"), by using the
+<code>estimatePriorDfRobust</code> function as the underlying engine.
+</p>
+<p><code>estParamHyperChIP</code> is primarily designed for coordinating with
+<code>varTestBioCond</code> to call hypervariable and lowly variable
+intervals across samples. See "Examples" for the workflow of a
+standard HyperChIP analysis.
+</p>
+
+
+<h3>Value</h3>
+
+<p>By default, <code>estParamHyperChIP</code> returns the argument
+<code>bioCond</code> object, whose
+<code>"df.prior"</code> and <code>"ratio.var"</code> components
+have been updated. If <code>return.d0</code> is set to <code>TRUE</code>,
+it simply returns the estimated number of prior degrees of freedom.
+</p>
+
+
+<h3>References</h3>
+
+<p>Tukey, J.W., <em>The future of data analysis.</em> The annals of
+mathematical statistics, 1962. <strong>33</strong>(1): p. 1-67.
+</p>
+<p>Phipson, B., et al., <em>Robust Hyperparameter Estimation
+Protects against Hypervariable Genes and Improves Power to Detect
+Differential Expression.</em> Annals of Applied Statistics, 2016.
+<strong>10</strong>(2): p. 946-963.
+</p>
+<p>Chen, H., et al., <em>HyperChIP: identification of hypervariable signals
+across ChIP-seq or ATAC-seq samples.</em> Genome Biol, 2022.
+<strong>23</strong>(1): p. 62.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>bioCond</code> for creating a <code>bioCond</code> object;
+<code>fitMeanVarCurve</code> for fitting a mean-variance curve and
+using a <code>fit.info</code> field to characterize it;
+<code>estimatePriorDfRobust</code> for estimating the number of
+prior degrees of freedom and adjusting the variance ratio factors of
+a set of <code>bioCond</code>s <em>in a robust manner</em>;
+<code>varTestBioCond</code>
+for calling hypervariable and invariant intervals across ChIP-seq
+samples contained in a <code>bioCond</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(H3K27Ac, package = "MAnorm2")
+attr(H3K27Ac, "metaInfo")
+
+## Treat all the samples as independent and perform a HyperChIP analysis.
+
+# Use a pseudo-reference profile as baseline in the MA normalization
+# process.
+autosome &lt;- !(H3K27Ac$chrom %in% c("chrX", "chrY"))
+norm &lt;- normalize(H3K27Ac, 4:8, 9:13, baseline = "pseudo-reference",
+                  common.peak.regions = autosome)
+plot(attr(norm, "MA.cor"), symbreaks = TRUE, margins = c(8, 8))
+
+# Construct a bioCond.
+cond &lt;- bioCond(norm[4:8], norm[9:13], occupy.num = 1,
+                name = "all")
+
+# Fit a mean-variance curve by using local regression.
+cond &lt;- fitMeanVarCurve(list(cond), method = "local",
+                        occupy.only = TRUE, args.lp = list(nn = 1))[[1]]
+summary(cond)
+
+# Apply the parameter estimation framework of HyperChIP.
+cond &lt;- estParamHyperChIP(cond)
+summary(cond)
+
+# Perform statistical tests and visualize the results.
+res &lt;- varTestBioCond(cond)
+head(res)
+hist(res$pval, breaks = 100, col = "red")
+plot(res)
+
+</code></pre>
+
+
+</div>

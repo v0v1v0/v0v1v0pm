@@ -1,0 +1,169 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bayesRegress</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Perform full-dependency Bayesian regression for a sample.</h2>
+
+<h3>Description</h3>
+
+<p>This method performs full-dependency regression by
+discretizing the continuous target variable into ranges (buckets),
+then finding the most probable ranges. It can either regress on
+the values in the most likely range or sample from all ranges,
+according to their likelihood.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bayesRegress(
+  df,
+  features,
+  targetCol,
+  selectedFeatureNames = c(),
+  shiftAmount = 0.1,
+  retainMinValues = 2,
+  doEcdf = FALSE,
+  useParallel = NULL,
+  numBuckets = ceiling(log2(nrow(df))),
+  sampleFromAllBuckets = TRUE,
+  regressor = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>data.frame that contains all the feature's data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>features</code></td>
+<td>
+<p>data.frame with bayes-features. One of the features needs
+to be the label-column.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetCol</code></td>
+<td>
+<p>string with the name of the feature that represents the
+label.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>selectedFeatureNames</code></td>
+<td>
+<p>vector default <code>c()</code>. Vector of strings
+that are the names of the features the to-predict label depends on. If an
+empty vector is given, then all of the features are used (except for the
+label). The order then depends on the features' order.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>shiftAmount</code></td>
+<td>
+<p>numeric an offset value used to increase any one
+probability (factor) in the full built equation. In scenarios with many
+dependencies, it is more likely that a single conditional probability
+becomes zero, which would result in the entire probability being zero.
+Since this is often useless, the 'shiftAmount' can be added to each
+factor, resulting in a non-zero probability that can at least be used
+to order samples by likelihood. Note that, with a positive 'shiftAmount',
+the result of this function cannot be said to be a probability any
+longer, but rather results in a comparable likelihood (a 'probability
+score').</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>retainMinValues</code></td>
+<td>
+<p>integer to require a minimum amount of data points
+when segmenting the data feature by feature.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>doEcdf</code></td>
+<td>
+<p>default FALSE a boolean to indicate whether to use the
+empirical CDF to return a probability when inferencing a continuous
+feature. If false, uses the empirical PDF to return the rel. likelihood.
+This parameter does not have any effect if all of the variables are
+discrete or when doing a regression. Otherwise, for each continuous
+variable, the probability to find a value less then or equal - given
+the conditions - is returned. Note that the interpretation of probability
+using the ECDF much deviates and must be used with care, especially
+since it affects each factor in Bayes equation that is continuous. This
+is especially true for the case where <code>shiftAmount &gt; 0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>useParallel</code></td>
+<td>
+<p>default NULL a boolean to indicate whether to use a
+previously registered parallel backend. If no explicit value was given,
+calls <code>foreach::getDoParRegistered()</code> to check for a parallel
+backend. When using parallelism, this function calculates each factor
+in the numerator and denominator of the final equation in parallel.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>numBuckets</code></td>
+<td>
+<p>integer the amount of buckets to for discretization.
+Buckets are built in an equidistant manner, not as quantiles (i.e., one
+bucket has likely a different amount of values than another).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sampleFromAllBuckets</code></td>
+<td>
+<p>default TRUE boolean to indicate how to
+obtain values for regression from the buckets. If true, than takes
+values from those buckets with a non-zero probability, and according
+to their probability. If false, selects all values from the bucket
+with the highest probability.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regressor</code></td>
+<td>
+<p>Function that is given the collected values for
+regression and thus finally used to select a most likely value. Defaults
+to the built-in estimator for the empirical PDF and returns its argmax.
+However, any other function can be used, too, such as min, max, median,
+average etc. You may also use this function to obtain the raw values
+for further processing.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Sebastian Hönel <a href="mailto:sebastian.honel@lnu.se">sebastian.honel@lnu.se</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">w &lt;- mmb::getWarnings()
+mmb::setWarnings(FALSE)
+
+df &lt;- iris[, ]
+set.seed(84735)
+rn &lt;- base::sample(rownames(df), 150)
+dfTrain &lt;- df[1:120, ]
+dfValid &lt;- df[121:150, ]
+tf &lt;- mmb::sampleToBayesFeatures(dfValid[1,], "Sepal.Length")
+mmb::bayesRegress(dfTrain, tf, "Sepal.Length")
+
+mmb::setWarnings(w)
+</code></pre>
+
+
+</div>

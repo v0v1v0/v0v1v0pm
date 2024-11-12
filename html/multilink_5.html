@@ -1,0 +1,244 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>gibbs_sampler</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Gibbs Sampler for Posterior Inference</h2>
+
+<h3>Description</h3>
+
+<p>Run a Gibbs sampler to explore the posterior distribution of partitions of
+records.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">gibbs_sampler(
+  comparison_list,
+  prior_list,
+  n_iter = 2000,
+  Z_init = 1:sum(comparison_list$file_sizes),
+  seed = 70,
+  single_likelihood = FALSE,
+  chaperones_info = NA,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>comparison_list</code></td>
+<td>
+<p>The output from a call to
+<code>create_comparison_data</code> or <code>reduce_comparison_data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior_list</code></td>
+<td>
+<p>The output from a call to <code>specify_prior</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_iter</code></td>
+<td>
+<p>The number of iterations of the Gibbs sampler to run.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Z_init</code></td>
+<td>
+<p>Initialization of the partition of records, represented as an
+<code>integer</code> vector of arbitrary labels of length
+<code>sum(comparison_list$file_sizes)</code>. The default initialization places
+each record in its own cluster. See <code>initialize_partition</code> for an
+alternative initialization when there are no duplicates in each file.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>The seed to use while running the Gibbs sampler.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>single_likelihood</code></td>
+<td>
+<p>A <code>logical</code> indicator of whether to use a
+single likelihood for comparisons for all file pairs, or whether to use a
+separate likelihood for comparisons for each file pair. When
+<code>single_likelihood=TRUE</code>, a single likelihood is used, and the prior
+hyperparameters for <code>m</code> and <code>u</code> from the first file pair are used.
+We do not recommend using a single likelihood in general.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chaperones_info</code></td>
+<td>
+<p>If <code>chaperones_info</code> is set to <code>NA</code>, then
+Gibbs updates to the partition are used during the Gibbs sampler, as
+described in Aleshin-Guendel &amp; Sadinle (2022). Else, Chaperones updates,
+as described in Miller et al. (2015) and Betancourt et al. (2016), are used
+and <code>chaperones_info</code> should be a <code>list</code> with five elements
+controlling Chaperones updates to the partition during the Gibbs sampler:
+<code>chap_type</code>, <code>num_chap_iter</code>, <code>nonuniform_chap_type</code>,
+<code>extra_gibbs</code>, <code>num_restrict</code>. <code>chap_type</code> is <code>0</code> if
+using a uniform Chaperones distribution, and <code>1</code> if
+using a nonuniform Chaperones distribution. <code>num_chap_iter</code> is the
+number of Chaperones updates to the partition that are made during each
+iteration of the Gibbs sampler. When using a nonuniform Chaperones
+distribution, <code>nonuniform_chap_type</code> is <code>0</code> if using the exact
+version, or <code>1</code> if using the partial version. <code>extra_gibbs</code> is a
+<code>logical</code> indicator of whether a Gibbs update to the partition should be
+done after the Chaperones updates, at each iteration of the Gibbs sampler.
+<code>num_restrict</code> is the number of restricted Gibbs steps to take during
+each Chaperones update to the partition.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>A <code>logical</code> indicator of whether progress messages should
+be print (default <code>TRUE</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Given the prior specified using <code>specify_prior</code>, this function
+runs a Gibbs sampler to explore the posterior distribution of partitions of
+records, conditional on the comparison data created using
+<code>create_comparison_data</code> or <code>reduce_comparison_data</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list containing:
+</p>
+
+<dl>
+<dt><code>m</code></dt>
+<dd>
+<p>Posterior samples of the <code>m</code> parameters. Each column
+is one sample.</p>
+</dd>
+<dt><code>u</code></dt>
+<dd>
+<p>Posterior samples of the <code>u</code> parameters. Each column
+is one sample.</p>
+</dd>
+<dt><code>partitions</code></dt>
+<dd>
+<p>Posterior samples of the partition. Each column
+is one sample. Note that the partition is represented as an <code>integer</code>
+vector of arbitrary labels of length
+<code>sum(comparison_list$file_sizes)</code>.</p>
+</dd>
+<dt><code>contingency_tables</code></dt>
+<dd>
+<p>Posterior samples of the overlap table.
+Each column is one sample. This incorporates counts of records determined
+not to be candidate matches to any other records using
+<code>reduce_comparison_data</code>.</p>
+</dd>
+<dt><code>cluster_sizes</code></dt>
+<dd>
+<p>Posterior samples of the size of each cluster
+(associated with an arbitrary label from <code>1</code> to
+<code>sum(comparison_list$file_sizes)</code>). Each column is one sample.</p>
+</dd>
+<dt><code>sampling_time</code></dt>
+<dd>
+<p>The time in seconds it took to run the
+sampler.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Serge Aleshin-Guendel &amp; Mauricio Sadinle (2022). Multifile Partitioning for Record Linkage and Duplicate Detection. <em>Journal of the
+American Statistical Association</em>. [doi: <a href="https://doi.org/10.1080/01621459.2021.2013242">10.1080/01621459.2021.2013242</a>][<a href="https://arxiv.org/abs/2110.03839">arXiv</a>]
+</p>
+<p>Jeffrey Miller, Brenda Betancourt, Abbas Zaidi, Hanna Wallach, &amp; Rebecca C. Steorts (2015).
+Microclustering: When the cluster sizes grow sublinearly with the size of the data set.
+<em>NeurIPS Bayesian Nonparametrics: The Next Generation Workshop Series</em>. [<a href="https://arxiv.org/abs/1512.00792">arXiv</a>]
+</p>
+<p>Brenda Betancourt, Giacomo Zanella, Jeffrey Miller, Hanna Wallach, Abbas Zaidi, &amp; Rebecca C. Steorts (2016).
+Flexible Models for Microclustering with Application to Entity Resolution.
+<em>Advances in neural information processing systems</em>. [<a href="https://proceedings.neurips.cc/paper/2016/hash/670e8a43b246801ca1eaca97b3e19189-Abstract.html">Published</a>] [<a href="https://arxiv.org/abs/1610.09780">arXiv</a>]
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Example with small no duplicate dataset
+data(no_dup_data_small)
+
+# Create the comparison data
+comparison_list &lt;- create_comparison_data(no_dup_data_small$records,
+ types = c("bi", "lv", "lv", "lv", "lv", "bi", "bi"),
+ breaks = list(NA,  c(0, 0.25, 0.5),  c(0, 0.25, 0.5),
+               c(0, 0.25, 0.5), c(0, 0.25, 0.5),  NA, NA),
+ file_sizes = no_dup_data_small$file_sizes,
+ duplicates = c(0, 0, 0))
+
+# Specify the prior
+prior_list &lt;- specify_prior(comparison_list, mus = NA, nus = NA, flat = 0,
+ alphas = rep(1, 7), dup_upper_bound = c(1, 1, 1),
+ dup_count_prior_family = NA, dup_count_prior_pars = NA,
+ n_prior_family = "uniform", n_prior_pars = NA)
+
+# Find initialization for the matching (this step is optional)
+# The following line corresponds to only keeping pairs of records as
+# potential matches in the initialization for which neither gname nor fname
+# disagree at the highest level
+pairs_to_keep &lt;- (comparison_list$comparisons[, "gname_DL_3"] != TRUE) &amp;
+ (comparison_list$comparisons[, "fname_DL_3"] != TRUE)
+Z_init &lt;- initialize_partition(comparison_list, pairs_to_keep, seed = 42)
+
+# Run the Gibbs sampler
+{
+results &lt;- gibbs_sampler(comparison_list, prior_list, n_iter = 1000,
+ Z_init = Z_init, seed = 42)
+}
+
+# Example with small duplicate dataset
+data(dup_data_small)
+
+# Create the comparison data
+comparison_list &lt;- create_comparison_data(dup_data_small$records,
+ types = c("bi", "lv", "lv", "lv", "lv", "bi", "bi"),
+ breaks = list(NA,  c(0, 0.25, 0.5),  c(0, 0.25, 0.5),
+               c(0, 0.25, 0.5), c(0, 0.25, 0.5),  NA, NA),
+ file_sizes = dup_data_small$file_sizes,
+ duplicates = c(1, 1, 1))
+
+# Reduce the comparison data
+# The following line corresponds to only keeping pairs of records for which
+# neither gname nor fname disagree at the highest level
+pairs_to_keep &lt;- (comparison_list$comparisons[, "gname_DL_3"] != TRUE) &amp;
+ (comparison_list$comparisons[, "fname_DL_3"] != TRUE)
+reduced_comparison_list &lt;- reduce_comparison_data(comparison_list,
+ pairs_to_keep, cc = 1)
+
+# Specify the prior
+prior_list &lt;- specify_prior(reduced_comparison_list, mus = NA, nus = NA,
+ flat = 0, alphas = rep(1, 7), dup_upper_bound = c(10, 10, 10),
+ dup_count_prior_family = c("Poisson", "Poisson", "Poisson"),
+ dup_count_prior_pars = list(c(1), c(1), c(1)), n_prior_family = "uniform",
+ n_prior_pars = NA)
+
+# Run the Gibbs sampler
+{
+results &lt;- gibbs_sampler(reduced_comparison_list, prior_list, n_iter = 1000,
+ seed = 42)
+}
+</code></pre>
+
+
+</div>

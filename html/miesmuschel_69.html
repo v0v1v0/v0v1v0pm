@@ -1,0 +1,80 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mies_generation</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Get the Last Generation that was Evaluated</h2>
+
+<h3>Description</h3>
+
+<p>Gets the last generation that was evaluated as counted by the <code>"dob"</code> column in the <code>OptimInstance</code>'s <code>Archive</code>.
+</p>
+<p>This accepts <code>OptimInstance</code>s that were not evaluated with <code>miesmuschel</code> and are therefore missing the <code>"dob"</code> column, returning
+a value of 0. However, if the <code>"dob"</code> column is invalid (the inferred generation is not integer numeric or not non-negative), an error is thrown.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mies_generation(inst)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table><tr style="vertical-align: top;">
+<td><code>inst</code></td>
+<td>
+<p>(<code>OptimInstance</code>)<br>
+Optimization instance to evaluate.</p>
+</td>
+</tr></table>
+<h3>Value</h3>
+
+<p>a scalar integer value indicating the last generation that was evaluated in <code>inst</code>. It is 0 when <code>inst</code> is empty, and also typically 0 if all evaluations
+in <code>inst</code> so far were performed outside of <code>miesmuschel</code>. Every call of <code>mies_init_population</code> that actually performs evaluations, as well as each call to
+<code>mies_evaluate_offspring</code> with non-empty <code>offspring</code>, increases the generation by 1.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library("bbotk")
+lgr::threshold("warn")
+
+# Define the objective to optimize
+objective &lt;- ObjectiveRFun$new(
+  fun = function(xs) {
+    z &lt;- 10 - exp(-xs$x^2 - xs$y^2) + 2 * exp(-(2 - xs$x)^2 - (2 - xs$y)^2)
+    list(Obj = z)
+  },
+  domain = ps(x = p_dbl(-2, 4), y = p_dbl(-2, 4)),
+  codomain = ps(Obj = p_dbl(tags = "minimize"))
+)
+
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 6)
+)
+
+op &lt;- opt("mies",
+  lambda = 2, mu = 2,
+  mutator = mut("gauss", sdev = 0.1),
+  recombinator = rec("xounif"),
+  parent_selector = sel("best")
+)
+set.seed(1)
+
+mies_generation(oi)
+
+op$optimize(oi)
+mies_generation(oi)
+
+oi$terminator = trm("evals", n_evals = 10)
+
+op$optimize(oi)
+mies_generation(oi)
+</code></pre>
+
+
+</div>

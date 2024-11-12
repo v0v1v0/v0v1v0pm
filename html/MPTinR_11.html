@@ -1,0 +1,186 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>get.mpt.fia</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Convenient function to get FIA for MPT
+</h2>
+
+<h3>Description</h3>
+
+<p><code>get.mpt.fia</code> is a comfortable wrapper for the R-port of Wu, Myung, and Batchelder's (2010) BMPTFIA <code>bmpt.fia</code>. It takes data, a model file, and (optionally) a restrictions file, computes the context-free representation of this file and then feeds this into <code>bmpt.fia</code> which returns the FIA.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">get.mpt.fia(data, model.filename, restrictions.filename = NULL, Sample = 2e+05, 
+	model.type = c("easy", "eqn", "eqn2"), round.digit = 6, 
+	multicore = FALSE, split = NULL, mConst = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>Same as in <code>fit.mpt</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.filename</code></td>
+<td>
+
+<p>Same as in <code>fit.mpt</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>restrictions.filename</code></td>
+<td>
+
+<p>Same as in <code>fit.mpt</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Sample</code></td>
+<td>
+
+<p>The number of random samples to be drawn in the Monte Carlo algorithm. Default is 200000.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.type</code></td>
+<td>
+
+<p>Same as in <code>fit.mpt</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>round.digit</code></td>
+<td>
+
+<p>scalar numeric indicating to which decimal the ratios between ns in trees should be rounded (for minimizing computations with differing ns, see Details)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>multicore</code></td>
+<td>
+
+<p>Same as in <code>bmpt.fia</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>split</code></td>
+<td>
+
+<p>Same as in <code>bmpt.fia</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mConst</code></td>
+<td>
+
+<p>A constant which is added in the Monte Carlo integration to avoid numerical underflows and is later subtracted (after appropriate transformation). Should be a power of 2 to avoid unnecessary numerical imprecision. 
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function is called from <code>fit.mpt</code> to obtain the FIA, but can also be called independently.
+</p>
+<p>It performs the following steps:<br>
+1.) Equality restrictions (if present) are applied to the model.<br>
+2.) The representation of the model as equations is transformed to the string representation of the model into the context-free language of MPT models (L-BMPT; Purdy &amp; Batchelder, 2009). For this step to be successful it is <em>absolutely necessary</em> that the equations representing the model perfectly map the tree structure of the MPT. That is, the model file is only allowed to contain parameters, their negations (e.g., <code>Dn</code> and <code>(1 - Dn)</code>) and the operators + and *, but nothing else. Simplifications of the equations will seriously distort this step. This step is achieved by calling <code>make.mpt.cf</code>.<br>
+Note that inequality restrictions are not included in this transformation.<br>
+3.) The context free representation of the model is then fed into the MCMC function computing the FIA (the port of BMPTFIA provided by Wu, Myung, &amp; Batchelder, 2010; see <code>bmpt.fia</code>).<br>
+If inequality restrictions are present, these are specified in the call to <code>bmpt.fia</code>.
+</p>
+<p>For multi-individual data sets (i.e., <code>data</code> is a <code>matrix</code> or <code>data.frame</code>), <code>get.mpt.fia</code> tries to minimize computation time. That is done by comparing the ratios of the number items between trees. To not run into problems related to floating point precision, these values are rounded to <code>round.digit</code>. Then, <code>get.mpt.fia</code> will only call <code>bmpt.fia</code> as many times as there are differing ratios. As a consequence, the final penalty factor for FIA (<code>CFIA</code>) is calculated by <code>get.mpt.fia</code>, <em>without providing confidence intervals for the penalty factor</em>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>data.frame</code> containing the results as returned by <code>bmpt.fia</code>:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>CFIA</code></td>
+<td>
+<p>The FIA complexity value of the model with the corresponding confidence interval <code>CI.l</code> (lower bound) and <code>CI.u</code> (upper bound).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lnInt</code></td>
+<td>
+<p>The log integral term in C_FIA (Wu, Myung, &amp; Batchelder, 2010a; Equation 7) for models without inequality constraints. When inequality constraints are present, 'lnInt' does not take into account the change in the normalizing constant in the proposal distribution and must be adjusted with the output argument ‘lnconst’. The corresponding confidence interval ranges from <code>CI.lnint.l</code> (lower bound) to <code>CI.lnint.u</code> (upper bound).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lnconst</code></td>
+<td>
+<p>When inequality constraints are present, <code>lnconst</code> serves as an adjustment of codelnInt. It estimates the logarithm of the proportion of parameter space [0,1]^S that satisfies those inequality constraints, and the log integral term is given by <code>lnInt+lnconst</code>.
+</p>
+<p>The next [two] output argument [CI.lnconst] give the Monte Carlo confidence interval of ‘lnconst’. [.l = lower &amp; .u = upper bound of the CI]</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Henrik Singmann
+</p>
+
+
+<h3>References</h3>
+
+<p>Purdy, B. P., &amp; Batchelder, W. H. (2009). A context-free language for binary multinomial processing tree models. <em>Journal of Mathematical Psychology</em>, 53, 547-561.
+</p>
+<p>Wu, H., Myung, J.I., &amp; Batchelder, W.H. (2010). Minimum description length model selection of multinomial processing tree models. <em>Psychonomic Bulletin &amp; Review</em>, 17, 275-286.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>calls <code>bmpt.fia</code><br>
+is called by <code>fit.mpt</code>, the main function for fitting MPT models
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Get the FIA for the 40 datasets from Broeder &amp; Schuetz (2009, Experiment 3)
+# for the 2HTM model with inequality restrictions
+# (Can take a while.)
+
+data(d.broeder)
+m.2htm &lt;- system.file("extdata", "5points.2htm.model", package = "MPTinR")
+i.2htm &lt;- system.file("extdata", "broeder.2htm.ineq", package = "MPTinR")
+
+get.mpt.fia(d.broeder, m.2htm, Sample = 1000) # Way too little samples
+get.mpt.fia(d.broeder, m.2htm, i.2htm, Sample = 1000)
+
+## Not run: 
+# should produce very similar results:
+get.mpt.fia(d.broeder, m.2htm, i.2htm)
+get.mpt.fia(d.broeder, m.2htm, i.2htm, mConst = 2L^8)
+
+## End(Not run)
+  </code></pre>
+
+
+</div>

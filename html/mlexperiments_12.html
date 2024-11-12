@@ -1,0 +1,554 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MLNestedCV</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>R6 Class to perform nested cross-validation experiments</h2>
+
+<h3>Description</h3>
+
+<p>The <code>MLNestedCV</code> class is used to construct a nested cross validation object
+and to perform a nested cross validation for a specified machine learning
+algorithm by performing a hyperparameter optimization with the in-sample
+observations of each of the k outer folds and validate them directly on the
+out-of-sample observations of the respective fold.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The <code>MLNestedCV</code> class requires to provide a named list of predefined
+row indices for the outer cross validation folds, e.g., created with the
+function <code>splitTools::create_folds()</code>. This list also defines the <code>k</code> of
+the k-fold cross-validation. Furthermore, a strategy needs to be chosen
+("grid" or "bayesian") for the hyperparameter optimization as well as the
+parameter <code>k_tuning</code> to define the number of inner cross validation folds.
+</p>
+
+
+<h3>Super classes</h3>
+
+<p><code>mlexperiments::MLBase</code> -&gt; <code>mlexperiments::MLExperimentsBase</code> -&gt; <code>mlexperiments::MLCrossValidation</code> -&gt; <code>MLNestedCV</code>
+</p>
+
+
+<h3>Public fields</h3>
+
+<div class="r6-fields">
+
+<dl>
+<dt><code>strategy</code></dt>
+<dd>
+<p>A character. The strategy to optimize the hyperparameters
+(either <code>"grid"</code> or <code>"bayesian"</code>).</p>
+</dd>
+<dt><code>parameter_bounds</code></dt>
+<dd>
+<p>A named list of tuples to define the parameter
+bounds of the Bayesian hyperparameter optimization. For further details
+please see the documentation of the <code>ParBayesianOptimization</code> package.</p>
+</dd>
+<dt><code>parameter_grid</code></dt>
+<dd>
+<p>A matrix with named columns in which each column
+represents a parameter that should be optimized and each row represents
+a specific hyperparameter setting that should be tested throughout the
+procedure. For <code>strategy = "grid"</code>, each row of the <code>parameter_grid</code> is
+considered as a setting that is evaluated. For <code>strategy = "bayesian"</code>,
+the <code>parameter_grid</code> is passed further on to the <code>initGrid</code> argument of
+the function <code>ParBayesianOptimization::bayesOpt()</code> in order to
+initialize the Bayesian process. The maximum rows considered for
+initializing the Bayesian process can be specified with the R option
+<code>option("mlexperiments.bayesian.max_init")</code>, which is set to <code>50L</code> by
+default.</p>
+</dd>
+<dt><code>optim_args</code></dt>
+<dd>
+<p>A named list of tuples to define the parameter
+bounds of the Bayesian hyperparameter optimization. For further details
+please see the documentation of the <code>ParBayesianOptimization</code> package.</p>
+</dd>
+<dt><code>split_type</code></dt>
+<dd>
+<p>A character. The splitting strategy to construct the
+k cross-validation folds. This parameter is passed further on to the
+function <code>splitTools::create_folds()</code> and defaults to <code>"stratified"</code>.</p>
+</dd>
+<dt><code>split_vector</code></dt>
+<dd>
+<p>A vector If another criteria than the provided <code>y</code>
+should be considered for generating the cross-validation folds, it can
+be defined here. It is important, that a vector of the same length as
+<code>x</code> is provided here.</p>
+</dd>
+<dt><code>k_tuning</code></dt>
+<dd>
+<p>An integer to define the number of cross-validation folds
+used to tune the hyperparameters.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-MLNestedCV-new"><code>MLNestedCV$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-MLNestedCV-execute"><code>MLNestedCV$execute()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-MLNestedCV-clone"><code>MLNestedCV$clone()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLExperimentsBase" data-id="set_data"><a href="../../mlexperiments/html/MLExperimentsBase.html#method-MLExperimentsBase-set_data"><code>mlexperiments::MLExperimentsBase$set_data()</code></a></span></li>
+</ul></details><hr>
+<a id="method-MLNestedCV-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Create a new <code>MLNestedCV</code> object.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>MLNestedCV$new(
+  learner,
+  strategy = c("grid", "bayesian"),
+  k_tuning,
+  fold_list,
+  seed,
+  ncores = -1L,
+  return_models = FALSE
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>learner</code></dt>
+<dd>
+<p>An initialized learner object that inherits from class
+<code>"MLLearnerBase"</code>.</p>
+</dd>
+<dt><code>strategy</code></dt>
+<dd>
+<p>A character. The strategy to optimize the hyperparameters
+(either <code>"grid"</code> or <code>"bayesian"</code>).</p>
+</dd>
+<dt><code>k_tuning</code></dt>
+<dd>
+<p>An integer to define the number of cross-validation folds
+used to tune the hyperparameters.</p>
+</dd>
+<dt><code>fold_list</code></dt>
+<dd>
+<p>A named list of predefined row indices for the cross
+validation folds, e.g., created with the function
+<code>splitTools::create_folds()</code>.</p>
+</dd>
+<dt><code>seed</code></dt>
+<dd>
+<p>An integer. Needs to be set for reproducibility purposes.</p>
+</dd>
+<dt><code>ncores</code></dt>
+<dd>
+<p>An integer to specify the number of cores used for
+parallelization (default: <code>-1L</code>).</p>
+</dd>
+<dt><code>return_models</code></dt>
+<dd>
+<p>A logical. If the fitted models should be returned
+with the results (default: <code>FALSE</code>).</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Details</h5>
+
+<p>The <code>MLNestedCV</code> class requires to provide a named list of predefined
+row indices for the outer cross validation folds, e.g., created with
+the function <code>splitTools::create_folds()</code>. This list also defines the
+<code>k</code> of the k-fold cross-validation. Furthermore, a strategy needs to
+be chosen ("grid" or "bayesian") for the hyperparameter optimization
+as well as the parameter <code>k_tuning</code> to define the number of inner
+cross validation folds.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>dataset &lt;- do.call(
+  cbind,
+  c(sapply(paste0("col", 1:6), function(x) {
+    rnorm(n = 500)
+    },
+    USE.NAMES = TRUE,
+    simplify = FALSE
+   ),
+   list(target = sample(0:1, 500, TRUE))
+))
+
+fold_list &lt;- splitTools::create_folds(
+  y = dataset[, 7],
+  k = 3,
+  type = "stratified",
+  seed = 123
+)
+
+cv &lt;- MLNestedCV$new(
+  learner = LearnerKnn$new(),
+  strategy = "grid",
+  fold_list = fold_list,
+  k_tuning = 3L,
+  seed = 123,
+  ncores = 2
+)
+
+</pre>
+</div>
+
+
+<hr>
+<a id="method-MLNestedCV-execute"></a>
+
+
+
+<h4>Method <code>execute()</code>
+</h4>
+
+<p>Execute the nested cross validation.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>MLNestedCV$execute()</pre></div>
+
+
+
+<h5>Details</h5>
+
+<p>All results of the cross validation are saved in the field <code style="white-space: pre;">⁠$results⁠</code> of
+the <code>MLNestedCV</code> class. After successful execution of the nested cross
+validation, <code style="white-space: pre;">⁠$results⁠</code> contains a list with the items:
+</p>
+
+<ul>
+<li>
+<p> "results.optimization" A list with the results of the hyperparameter
+optimization.
+</p>
+</li>
+<li>
+<p> "fold" A list of folds containing the following items for each
+cross validation fold:
+</p>
+
+<ul>
+<li>
+<p> "fold_ids" A vector with the utilized in-sample row indices.
+</p>
+</li>
+<li>
+<p> "ground_truth" A vector with the ground truth.
+</p>
+</li>
+<li>
+<p> "predictions" A vector with the predictions.
+</p>
+</li>
+<li>
+<p> "learner.args" A list with the arguments provided to the learner.
+</p>
+</li>
+<li>
+<p> "model" If <code>return_models = TRUE</code>, the fitted model.
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p> "summary" A data.table with the summarized results (same as
+the returned value of the <code>execute</code> method).
+</p>
+</li>
+<li>
+<p> "performance" A list with the value of the performance metric
+calculated for each of the cross validation folds.
+</p>
+</li>
+</ul>
+<h5>Returns</h5>
+
+<p>The function returns a data.table with the results of the nested
+cross validation. More results are accessible from the field <code style="white-space: pre;">⁠$results⁠</code>
+of the <code>MLNestedCV</code> class.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>dataset &lt;- do.call(
+  cbind,
+  c(sapply(paste0("col", 1:6), function(x) {
+    rnorm(n = 500)
+    },
+    USE.NAMES = TRUE,
+    simplify = FALSE
+   ),
+   list(target = sample(0:1, 500, TRUE))
+))
+
+fold_list &lt;- splitTools::create_folds(
+  y = dataset[, 7],
+  k = 3,
+  type = "stratified",
+  seed = 123
+)
+
+cv &lt;- MLNestedCV$new(
+  learner = LearnerKnn$new(),
+  strategy = "grid",
+  fold_list = fold_list,
+  k_tuning = 3L,
+  seed = 123,
+  ncores = 2
+)
+
+# learner args (not optimized)
+cv$learner_args &lt;- list(
+  l = 0,
+  test = parse(text = "fold_test$x")
+)
+
+# parameters for hyperparameter tuning
+cv$parameter_grid &lt;- expand.grid(
+  k = seq(4, 68, 8)
+)
+cv$split_type &lt;- "stratified"
+
+# performance parameters
+cv$predict_args &lt;- list(type = "response")
+cv$performance_metric &lt;- metric("bacc")
+
+# set data
+cv$set_data(
+  x = data.matrix(dataset[, -7]),
+  y = dataset[, 7]
+)
+
+cv$execute()
+
+</pre>
+</div>
+
+
+<hr>
+<a id="method-MLNestedCV-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>MLNestedCV$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>See Also</h3>
+
+<p><code>splitTools::create_folds()</code>
+</p>
+<p><code>splitTools::create_folds()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">dataset &lt;- do.call(
+  cbind,
+  c(sapply(paste0("col", 1:6), function(x) {
+    rnorm(n = 500)
+    },
+    USE.NAMES = TRUE,
+    simplify = FALSE
+   ),
+   list(target = sample(0:1, 500, TRUE))
+))
+
+fold_list &lt;- splitTools::create_folds(
+  y = dataset[, 7],
+  k = 3,
+  type = "stratified",
+  seed = 123
+)
+
+cv &lt;- MLNestedCV$new(
+  learner = LearnerKnn$new(),
+  strategy = "grid",
+  fold_list = fold_list,
+  k_tuning = 3L,
+  seed = 123,
+  ncores = 2
+)
+
+# learner args (not optimized)
+cv$learner_args &lt;- list(
+  l = 0,
+  test = parse(text = "fold_test$x")
+)
+
+# parameters for hyperparameter tuning
+cv$parameter_grid &lt;- expand.grid(
+  k = seq(4, 16, 8)
+)
+cv$split_type &lt;- "stratified"
+
+# performance parameters
+cv$predict_args &lt;- list(type = "response")
+cv$performance_metric &lt;- metric("bacc")
+
+# set data
+cv$set_data(
+  x = data.matrix(dataset[, -7]),
+  y = dataset[, 7]
+)
+
+cv$execute()
+
+
+## ------------------------------------------------
+## Method `MLNestedCV$new`
+## ------------------------------------------------
+
+dataset &lt;- do.call(
+  cbind,
+  c(sapply(paste0("col", 1:6), function(x) {
+    rnorm(n = 500)
+    },
+    USE.NAMES = TRUE,
+    simplify = FALSE
+   ),
+   list(target = sample(0:1, 500, TRUE))
+))
+
+fold_list &lt;- splitTools::create_folds(
+  y = dataset[, 7],
+  k = 3,
+  type = "stratified",
+  seed = 123
+)
+
+cv &lt;- MLNestedCV$new(
+  learner = LearnerKnn$new(),
+  strategy = "grid",
+  fold_list = fold_list,
+  k_tuning = 3L,
+  seed = 123,
+  ncores = 2
+)
+
+
+## ------------------------------------------------
+## Method `MLNestedCV$execute`
+## ------------------------------------------------
+
+dataset &lt;- do.call(
+  cbind,
+  c(sapply(paste0("col", 1:6), function(x) {
+    rnorm(n = 500)
+    },
+    USE.NAMES = TRUE,
+    simplify = FALSE
+   ),
+   list(target = sample(0:1, 500, TRUE))
+))
+
+fold_list &lt;- splitTools::create_folds(
+  y = dataset[, 7],
+  k = 3,
+  type = "stratified",
+  seed = 123
+)
+
+cv &lt;- MLNestedCV$new(
+  learner = LearnerKnn$new(),
+  strategy = "grid",
+  fold_list = fold_list,
+  k_tuning = 3L,
+  seed = 123,
+  ncores = 2
+)
+
+# learner args (not optimized)
+cv$learner_args &lt;- list(
+  l = 0,
+  test = parse(text = "fold_test$x")
+)
+
+# parameters for hyperparameter tuning
+cv$parameter_grid &lt;- expand.grid(
+  k = seq(4, 68, 8)
+)
+cv$split_type &lt;- "stratified"
+
+# performance parameters
+cv$predict_args &lt;- list(type = "response")
+cv$performance_metric &lt;- metric("bacc")
+
+# set data
+cv$set_data(
+  x = data.matrix(dataset[, -7]),
+  y = dataset[, 7]
+)
+
+cv$execute()
+
+</code></pre>
+
+
+</div>

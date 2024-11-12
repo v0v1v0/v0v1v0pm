@@ -1,0 +1,216 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bootstrap_MRF</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Bootstrap observations to estimate MRF parameter coefficients</h2>
+
+<h3>Description</h3>
+
+<p>This function runs <code>MRFcov</code> models multiple times to capture uncertainty
+in parameter esimates. The dataset is shuffled and missing
+values (if found) are imputed in each bootstrap iteration.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bootstrap_MRF(
+  data,
+  n_bootstraps,
+  sample_seed,
+  symmetrise,
+  n_nodes,
+  n_cores,
+  n_covariates,
+  family,
+  sample_prop,
+  spatial = FALSE,
+  coords = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Dataframe. The input data where the <code>n_nodes</code>
+left-most variables are variables that are to be represented by nodes in the graph.
+Note that <code>NA</code>'s are allowed for covariates. If present, these missing values
+will be imputed from the distribution <code>rnorm(mean = 0, sd = 1)</code>, which assumes that
+all covariates are scaled and centred (i.e. by using the function
+<code>scale</code> or similar)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_bootstraps</code></td>
+<td>
+<p>Positive integer. Represents the total number of bootstrap samples
+to test. Default is <code>100</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sample_seed</code></td>
+<td>
+<p>Numeric. Used as the seed value for generating bootstrap replicates, allowing
+users to generate replicated datasets on different systems. Default is a random seed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>symmetrise</code></td>
+<td>
+<p>The method to use for symmetrising corresponding parameter estimates
+(which are taken from separate regressions). Options are <code>min</code> (take the coefficient with the
+smallest absolute value), <code>max</code> (take the coefficient with the largest absolute value)
+or <code>mean</code> (take the mean of the two coefficients). Default is <code>mean</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_nodes</code></td>
+<td>
+<p>Positive integer. The index of the last column in <code>data</code>
+which is represented by a node in the final graph. Columns with index
+greater than <code>n_nodes</code> are taken as covariates. Default is the number of
+columns in <code>data</code>, corresponding to no additional covariates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_cores</code></td>
+<td>
+<p>Integer. The number of cores to spread the job across using
+<code>makePSOCKcluster</code>. Default is 1 (no parallelisation)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_covariates</code></td>
+<td>
+<p>Positive integer. The number of covariates in <code>data</code>,
+before cross-multiplication. Default is <code>NCOL(data) - n_nodes</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>The response type. Responses can be quantitative continuous (<code>family = "gaussian"</code>),
+non-negative counts (<code>family = "poisson"</code>) or binomial 1s and 0s (<code>family = "binomial"</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sample_prop</code></td>
+<td>
+<p>Positive probability value indicating the proportion of rows to sample from
+<code>data</code> in each bootstrap iteration. Default is no subsampling (<code>sample_prop == 1</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spatial</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, spatial MRF / CRF models are bootstrapped using
+<code>MRFcov_spatial</code>. Note, GPS coordinates must be supplied as <code>coords</code> for spatial
+models to be run.
+Smoothed spatial splines will be included in each node-wise regression as covariates.
+This ensures resulting node interaction parameters are estimated after accounting for
+possible spatial autocorrelation. Note that interpretation of spatial autocorrelation is difficult,
+and so it is recommended to compare predictive capacities spatial and non-spatial CRFs through
+the <code>predict_MRF</code> function</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coords</code></td>
+<td>
+<p>A two-column <code>dataframe</code> (with <code>nrow(coords) == nrow(data)</code>)
+representing the spatial coordinates of each observation in <code>data</code>. Ideally, these
+coordinates will represent Latitude and Longitude GPS points for each observation.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>MRFcov</code> models are fit via cross-validation using
+<code>cv.glmnet</code>. For each model, the <code>data</code> is bootstrapped
+by shuffling row observations and fitting models to a subset of observations
+to account for uncertainty in parameter estimates.
+Parameter estimates from the set of bootstrapped models are summarised
+to present means and confidence intervals (as 95 percent quantiles).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>list</code> containing:
+</p>
+
+<ul>
+<li> <p><code>direct_coef_means</code>: <code>dataframe</code> containing mean coefficient values taken from all
+bootstrapped models across the iterations
+</p>
+</li>
+<li> <p><code>direct_coef_upper90</code> and <code>direct_coef_lower90</code>: <code>dataframe</code>s
+containing coefficient 95 percent and 5 percent quantiles taken from all
+bootstrapped models across the iterations
+</p>
+</li>
+<li> <p><code>indirect_coef_mean</code>: <code>list</code> of symmetric matrices
+(one matrix for each covariate) containing mean effects of covariates
+on pairwise interactions
+</p>
+</li>
+<li> <p><code>mean_key_coefs</code>: <code>list</code> of matrices of length <code>n_nodes</code>
+containing mean covariate coefficient values and their relative importances
+(using the formula <code>x^2 / sum (x^2)</code>
+taken from all bootstrapped models across iterations. Only coefficients
+with mean relative importances <code>&gt;0.01</code> are returned. Note, relative importance are only
+useful if all covariates are on a similar scale.
+</p>
+</li>
+<li> <p><code>mod_type</code>: A character stating the type of model that was fit
+(used in other functions)
+</p>
+</li>
+<li> <p><code>mod_family</code>: A character stating the family of model that was fit
+(used in other functions)
+</p>
+</li>
+<li> <p><code>poiss_sc_factors</code>: A vector of the square-root mean scaling factors
+used to standardise <code>poisson</code> variables (only returned if <code>family = "poisson"</code>)
+</p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+<p><code>MRFcov</code>, <code>MRFcov_spatial</code>,
+<code>cv.glmnet</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data("Bird.parasites")
+
+# Perform 2 quick bootstrap replicates using 70% of observations
+bootedCRF &lt;- bootstrap_MRF(data = Bird.parasites,
+                          n_nodes = 4,
+                          family = 'binomial',
+                          sample_prop = 0.7,
+                          n_bootstraps = 2)
+
+
+# Small example of using spatial coordinates for a spatial CRF
+Latitude &lt;- sample(seq(120, 140, length.out = 100), nrow(Bird.parasites), TRUE)
+Longitude &lt;- sample(seq(-19, -22, length.out = 100), nrow(Bird.parasites), TRUE)
+coords &lt;- data.frame(Latitude = Latitude, Longitude = Longitude)
+bootedSpatial &lt;- bootstrap_MRF(data = Bird.parasites, n_nodes = 4,
+                             family = 'binomial',
+                             spatial = TRUE,
+                             coords = coords,
+                             sample_prop = 0.5,
+                             n_bootstraps = 2)
+</code></pre>
+
+
+</div>

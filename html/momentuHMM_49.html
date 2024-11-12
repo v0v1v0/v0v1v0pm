@@ -1,0 +1,240 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>getParDM</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Get starting values on working scale based on design matrix and other parameter constraints</h2>
+
+<h3>Description</h3>
+
+<p>Convert starting values on the natural scale of data stream probability distributions to
+a feasible set of working scale parameters based on a design matrix and other parameter constraints.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">getParDM(data, ...)
+
+## Default S3 method:
+getParDM(
+  data = data.frame(),
+  nbStates,
+  dist,
+  Par,
+  zeroInflation = NULL,
+  oneInflation = NULL,
+  estAngleMean = NULL,
+  circularAngleMean = NULL,
+  DM = NULL,
+  userBounds = NULL,
+  workBounds = NULL,
+  ...
+)
+
+## S3 method for class 'hierarchical'
+getParDM(
+  data = data.frame(),
+  hierStates,
+  hierDist,
+  Par,
+  zeroInflation = NULL,
+  oneInflation = NULL,
+  estAngleMean = NULL,
+  circularAngleMean = NULL,
+  DM = NULL,
+  userBounds = NULL,
+  workBounds = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Optional <code>momentuHMMData</code> object, <code>momentuHierHMMData</code> object, or a data frame containing the covariate values. 
+<code>data</code> must be specified if covariates are included in <code>DM</code>.
+</p>
+<p>If a data frame is provided, then either <code>nbStates</code> and <code>dist</code> must be specified (for a regular HMM) or <code>hierStates</code> and <code>hierDist</code>
+must be specified (for a hierarchical HMM).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments passed to or from other methods</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nbStates</code></td>
+<td>
+<p>Number of states of the HMM.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dist</code></td>
+<td>
+<p>A named list indicating the probability distributions of the data streams. Currently
+supported distributions are 'bern', 'beta', 'exp', 'gamma', 'lnorm', 'norm', 'mvnorm2' (bivariate normal distribution), 'mvnorm3' (trivariate normal distribution),
+'pois', 'rw_norm' (normal random walk), 'rw_mvnorm2' (bivariate normal random walk), 'rw_mvnorm3' (trivariate normal random walk), 'vm', 'vmConsensus', 'weibull', and 'wrpcauchy'. For example,
+<code>dist=list(step='gamma', angle='vm', dives='pois')</code> indicates 3 data streams ('step', 'angle', and 'dives')
+and their respective probability distributions ('gamma', 'vm', and 'pois').</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Par</code></td>
+<td>
+<p>A named list containing vectors of state-dependent probability distribution parameters for 
+each data stream specified in <code>dist</code>. The parameters should be on the natural scale,
+in the order expected by the pdfs of <code>dist</code>, and any zero-mass parameters should be the last.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>zeroInflation</code></td>
+<td>
+<p>A named list of logicals indicating whether the probability distributions of the data streams should be zero-inflated. If <code>zeroInflation</code> is <code>TRUE</code> 
+for a given data stream, then values for the zero-mass parameters should be
+included in the corresponding element of <code>Par</code>. Ignored if <code>data</code> is a <code>momentuHMMData</code> or <code>momentuHierHMMData</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>oneInflation</code></td>
+<td>
+<p>Named list of logicals indicating whether the probability distributions of the data streams are one-inflated. If <code>oneInflation</code> is <code>TRUE</code> 
+for a given data stream, then values for the one-mass parameters should be
+included in the corresponding element of <code>Par</code>. Ignored if <code>data</code> is a <code>momentuHMMData</code> or <code>momentuHierHMMData</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estAngleMean</code></td>
+<td>
+<p>An optional named list indicating whether or not to estimate the angle mean for data streams with angular 
+distributions ('vm' and 'wrpcauchy'). Any <code>estAngleMean</code> elements corresponding to data streams that do not have angular distributions are ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>circularAngleMean</code></td>
+<td>
+<p>An optional named list indicating whether to use circular-linear or circular-circular 
+regression on the mean of circular distributions ('vm' and 'wrpcauchy') for turning angles.  See <code>fitHMM</code>. <code>circularAngleMean</code> elements corresponding to angular data 
+streams are ignored unless the corresponding element of <code>estAngleMean</code> is <code>TRUE</code>. Any <code>circularAngleMean</code> elements 
+corresponding to data streams that do not have angular distributions are ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>DM</code></td>
+<td>
+<p>A named list indicating the design matrices to be used for the probability distribution parameters of each data 
+stream. Each element of <code>DM</code> can either be a named list of linear regression formulas or a matrix.  For example, for a 2-state 
+model using the gamma distribution for a data stream named 'step', <code>DM=list(step=list(mean=~cov1, sd=~1))</code> specifies the mean 
+parameters as a function of the covariate 'cov1' for each state.  This model could equivalently be specified as a 4x6 matrix using 
+character strings for the covariate: 
+<code>DM=list(step=matrix(c(1,0,0,0,'cov1',0,0,0,0,1,0,0,0,'cov1',0,0,0,0,1,0,0,0,0,1),4,6))</code>
+where the 4 rows correspond to the state-dependent paramaters (mean_1,mean_2,sd_1,sd_2) and the 6 columns correspond to the regression 
+coefficients.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>userBounds</code></td>
+<td>
+<p>An optional named list of 2-column matrices specifying bounds on the natural (i.e, real) scale of the probability 
+distribution parameters for each data stream. For example, for a 2-state model using the wrapped Cauchy ('wrpcauchy') distribution for 
+a data stream named 'angle' with <code>estAngleMean$angle=TRUE)</code>, <code>userBounds=list(angle=matrix(c(-pi,-pi,-1,-1,pi,pi,1,1),4,2))</code> 
+specifies (-1,1) bounds for the concentration parameters instead of the default [0,1) bounds.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>workBounds</code></td>
+<td>
+<p>An optional named list of 2-column matrices specifying bounds on the working scale of the probability distribution, transition probability, and initial distribution parameters. For each matrix, the first column pertains to the lower bound and the second column the upper bound.
+For data streams, each element of <code>workBounds</code> should be a k x 2 matrix with the same name of the corresponding element of 
+<code>Par0</code>, where k is the number of parameters. For transition probability parameters, the corresponding element of <code>workBounds</code> must be a k x 2 matrix named “beta”, where k=<code>length(beta0)</code>. For initial distribution parameters, the corresponding element of <code>workBounds</code> must be a k x 2 matrix named “delta”, where k=<code>length(delta0)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hierStates</code></td>
+<td>
+<p>A hierarchical model structure <code>Node</code> for the states.  See <code>fitHMM</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hierDist</code></td>
+<td>
+<p>A hierarchical data structure <code>Node</code> for the data streams. See <code>fitHMM</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>If design matrix includes non-factor covariates, then natural scale parameters are assumed to correspond to the 
+mean value(s) for the covariate(s) (if <code>nrow(data)&gt;1</code>) and <code>getParDM</code> simply returns one possible solution to the 
+system of linear equations defined by <code>Par</code>, <code>DM</code>, and any other constraints using singular value decomposition. 
+This can be helpful for exploring relationships between the natural and working scale parameters when covariates are included, but <code>getParDM</code>
+will not necessarily return “good” starting values (i.e., <code>Par0</code>) for <code>fitHMM</code> or <code>MIfitHMM</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of parameter values that can be used as starting values (<code>Par0</code>) in <code>fitHMM</code> or <code>MIfitHMM</code>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>getPar</code>, <code>getPar0</code>, <code>fitHMM</code>, <code>MIfitHMM</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># data is a momentuHMMData object, automatically loaded with the package
+data &lt;- example$m$data
+stepDist &lt;- "gamma"
+angleDist &lt;- "vm"
+nbStates &lt;- 2
+stepPar0 &lt;- c(15,50,10,20) # natural scale mean_1, mean_2, sd_1, sd_2
+anglePar0 &lt;- c(0.7,1.5) # natural scale conentration_1, concentration_2
+
+# get working parameters for 'DM' that constrains step length mean_1 &lt; mean_2
+stepDM &lt;- matrix(c(1,1,0,0,0,1,0,0,0,0,1,0,0,0,0,1),4,4,
+          dimnames=list(NULL,c("mean:(Intercept)","mean_2",
+                               "sd_1:(Intercept)","sd_2:(Intercept)")))
+stepworkBounds &lt;- matrix(c(-Inf,Inf),4,2,byrow=TRUE,
+                         dimnames=list(colnames(stepDM),c("lower","upper")))
+stepworkBounds["mean_2","lower"] &lt;- 0 #coefficient for 'mean_2' constrained to be positive
+wPar0 &lt;- getParDM(nbStates=2,dist=list(step=stepDist),
+                      Par=list(step=stepPar0),
+                      DM=list(step=stepDM),workBounds=list(step=stepworkBounds))
+
+## Not run: 
+# Fit HMM using wPar0 as initial values for the step data stream
+mPar &lt;- fitHMM(data,nbStates=2,dist=list(step=stepDist,angle=angleDist),
+               Par0=list(step=wPar0$step,angle=anglePar0),
+               DM=list(step=stepDM),workBounds=list(step=stepworkBounds))
+
+## End(Not run)
+
+# get working parameters for 'DM' using 'cov1' and 'cov2' covariates
+stepDM2 &lt;- list(mean=~cov1,sd=~cov2)
+wPar20 &lt;- getParDM(data,nbStates=2,dist=list(step=stepDist),
+                      Par=list(step=stepPar0),
+                      DM=list(step=stepDM2))
+
+## Not run: 
+# Fit HMM using wPar20 as initial values for the step data stream
+mPar2 &lt;- fitHMM(data,nbStates=2,dist=list(step=stepDist,angle=angleDist),
+               Par0=list(step=wPar20$step,angle=anglePar0),
+               DM=list(step=stepDM2))
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

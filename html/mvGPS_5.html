@@ -1,0 +1,212 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvGPS</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multivariate Generalized Propensity Score</h2>
+
+<h3>Description</h3>
+
+<p>Estimate propensity scores for multivariate continuous exposure
+by assuming joint normal conditional densities. Simultaneously estimate 
+stabilized inverse probability of treatment weights (IPTW) using joint normal
+density for marginal distribution of exposure.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mvGPS(D, C, common = FALSE, trim_w = FALSE, trim_quantile = 0.99)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>D</code></td>
+<td>
+<p>numeric matrix of dimension <code class="reqn">n</code> by <code class="reqn">m</code> designating values of the exposures</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C</code></td>
+<td>
+<p>either a list of numeric matrices of length <code class="reqn">m</code> of dimension 
+<code class="reqn">n</code> by <code class="reqn">p_j</code> designating values of the confounders for each exposure 
+value or if <code>common</code> is TRUE a single matrix of of dimension <code class="reqn">n</code> by
+<code class="reqn">p</code> that represents common confounders for all exposures.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>common</code></td>
+<td>
+<p>logical indicator for whether C is a single matrix of common
+confounders for all exposures. default is FALSE meaning C must be specified
+as list of confounders of length <code class="reqn">m</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trim_w</code></td>
+<td>
+<p>logical indicator for whether to trim weights. default is FALSE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trim_quantile</code></td>
+<td>
+<p>numeric scalar used to specify the upper quantile to 
+trim weights if applicable. default is 0.99</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Generalized propensity scores (GPS) were proposed by 
+Hirano and Imbens (2004) and 
+Imai and Van Dyk (2004) to extend propensity scores to
+handle continuous exposures. The GPS is constructed using the conditional 
+density of the exposure given a set of confounders. These original methods 
+and the subsequent literature have focused on the case of a single continuous
+exposure where the GPS could be estimated using normal densities, kernel 
+smoothing (Kennedy et al. 2017), gradient boosting 
+(Zhu et al. 2015), and empirical likelihoods 
+(Fong et al. 2018). In this package we provide an extension to this
+literature to allow for multivariate continuous exposures to be estimated.
+</p>
+
+
+<h4>Notation</h4>
+
+<p>Assume that we have a set of continuous exposures, <code class="reqn">D</code>, of length 
+<code>m</code>, i.e., <code class="reqn">\mathbf{D}=D_{1}, \dots, D_{m}</code> collected on <code class="reqn">n</code> 
+units. Further, we assume that there exists a set of confounders 
+<code class="reqn">\mathbf{C}_{1},\dots,\mathbf{C}_{m}</code> for each
+exposure of length <code class="reqn">p_{j}</code> for <code class="reqn">j=1,\dots,m</code>. The confounders are 
+related to both the exposures and the outcome of interest such. Note that
+the confounders need not be identical for all exposures. 
+</p>
+<p>In our function we therefore expect that the argument <code>D</code> is a numeric
+matrix of dimension <code class="reqn">n\times m</code>, and that <code>C</code> is a list of length
+<code class="reqn">m</code> where each element is a matrix of dimension <code class="reqn">n\times p_{j}</code>. For 
+the case where we assume that all exposures have common confounders we 
+set <code>common=TRUE</code> and <code>C</code> must be a matrix of dimension 
+<code class="reqn">n\times p</code>.
+</p>
+
+
+
+<h4>mvGPS</h4>
+
+<p>We define the multivariate generalized propensity score, mvGPS, as
+</p>
+<p style="text-align: center;"><code class="reqn">mvGPS=f_{\mathbf{D}\mid \mathbf{C}_{1},\dots,\mathbf{C}_{m}}</code>
+</p>
+
+<p>where <code class="reqn">f</code> represents a joint multivariate conditional density function.
+For our current development we specify <code class="reqn">f</code> as multivariate normal, i.e.,
+</p>
+<p style="text-align: center;"><code class="reqn">\mathbf{D}\mid \mathbf{C}_{1},\dots,\mathbf{C}_{m}\sim N_{m}(\boldsymbol{\mu}, \Sigma).</code>
+</p>
+
+<p>Factorizing this joint density we can rewrite the mvGPS as the product of 
+univariate conditional densities, i.e.,
+</p>
+<p style="text-align: center;"><code class="reqn">mvGPS=f_{D_{m}\mid \mathbf{C}_{m}, D_{m-1},\dots,D_{1}}\times\cdots\times f_{D_{1}\mid\mathbf{C}_{1}}.</code>
+</p>
+
+<p>We use this factorized version in our implementation, with parameters for each
+distribution estimated through least squares.
+</p>
+
+
+
+<h4>Constructing Weights</h4>
+
+<p>Following Robins et al. (2000), we use the mvGPS to 
+construct stabilized inverse probability of treatment (IPTW) weights. These 
+have been shown to balance confounders and return unbiased estimated of the
+dose-response. Weights are constructed as
+</p>
+<p style="text-align: center;"><code class="reqn">w=\frac{f_{\mathbf{D}}}{f_{\mathbf{D}\mid \mathbf{C}_{1},\dots,\mathbf{C}_{m}}},</code>
+</p>
+
+<p>where the marginal density <code class="reqn">f_{\mathbf{D}}</code> of the exposures is assumed 
+to be multivariate normal as well.
+</p>
+<p>Writing the weights using completely factorized densities we have
+</p>
+<p style="text-align: center;"><code class="reqn">w=\frac{f_{D_{m}\mid D_{m-1},\dots, D_{1}}\times\cdots\times f_{D_{1}}}{f_{D_{m}\mid \mathbf{C}_{m}, D_{m-1},\dots,D_{1}}\times\cdots\times f_{D_{1}\mid\mathbf{C}_{1}}}.</code>
+</p>
+
+
+
+
+<h4>Trimming</h4>
+
+<p>Often when using weights based on the propensity score, practitioners are 
+concerned about the effect of extreme weights. It has been shown that an 
+effective way to protect extreme weights is to trim them at a particular 
+percentile (Crump et al. 2009; Lee et al. 2011). We allow
+users to specify whether trimmed weights should be returned and at which
+threshold. To trim weights set <code>trim_w=TRUE</code> and specify the desired
+percentile as <code>trim_quantile=q</code>. Note that trimming is applied at 
+both the upper and lower percentile thresholds, i.e.,
+</p>
+<p style="text-align: center;"><code class="reqn">w^{*}=w 1_{\{Q(w, 1-q)\le w \le Q(w, q)\}}+Q(w, 1-q) 1_{\{w &lt; Q(w, 1-q)\}} + Q(w, q) 1_{\{w &gt; Q(w, q)\}}</code>
+</p>
+
+
+
+
+<h3>Value</h3>
+
+<p>list of score and wts, where score is the mvGPS score values and 
+wts are the corresponding stabilized inverse probability of treatment weights
+</p>
+
+
+<h3>References</h3>
+
+<p>Crump RK, Hotz VJ, Imbens GW, Mitnik OA (2009).
+“Dealing with limited overlap in estimation of average treatment effects.”
+<em>Biometrika</em>, <b>96</b>(1), 187-199.<br><br> Fong C, Hazlett C, Imai K (2018).
+“Covariate balancing propensity score for a continuous treatment: application to the efficacy of political advertisements.”
+<em>Annals of Applied Statistics</em>, <b>In-Press</b>.<br><br> Hirano K, Imbens GW (2004).
+“The propensity score with continuous treatments.”
+In Gelman A, Meng X (eds.), <em>Applied Bayesian Modeling and Causal Inference from Incomplete-Data Perspectives</em>, 73-84.<br><br> Imai K, Van Dyk DA (2004).
+“Causal inference with general treatment regimes: generalizing the propensity score.”
+<em>Journal of the American Statistical Association</em>, <b>99</b>(467), 854-866.<br><br> Kennedy EH, Ma Z, McHugh MD, Small DS (2017).
+“Non-parametric methods for doubly robust estimation of continuous treatment effects.”
+<em>Journal of the Royal Statistical Society: Series B</em>, <b>79</b>(4), 1229-1245.<br><br> Lee BK, Lessler J, Stuart EA (2011).
+“Weight trimming and propensity score weighting.”
+<em>PloS One</em>, <b>6</b>(3).<br><br> Robins JM, Hernan MA, Brumback B (2000).
+“Marginal structural models and causal inference in epidemiology.”
+<em>Epidemiology</em>, <b>11</b>(5), 550-560.<br><br> Zhu Y, Coffman DL, Ghosh D (2015).
+“A boosting algorithm for estimating generalized propensity scores with continuous treatments.”
+<em>Journal of Causal Inference</em>, <b>3</b>(1), 25-40.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#generating confounded bivariate exposure
+sim_dt &lt;- gen_D(method="u", n=200, rho_cond=0.2, s_d1_cond=2, s_d2_cond=2, k=3, 
+C_mu=rep(0, 3), C_cov=0.1, C_var=1, d1_beta=c(0.5, 1, 0), d2_beta=c(0, 0.3, 0.75), seed=06112020)
+D &lt;- sim_dt$D
+C &lt;- sim_dt$C
+
+#generating weights and mvGPS
+out_mvGPS &lt;- mvGPS(D=D, C=list(C[, 1:2], C[, 2:3]))
+
+# can apply trimming with default 99th percentile
+out_mvGPS_trim &lt;- mvGPS(D=D, C=list(C[, 1:2], C[, 2:3]), trim_w=TRUE)
+
+#or assume all exposures have equivalent confounders
+out_mvGPS_common &lt;- mvGPS(D=D, C=C, common=TRUE)
+
+</code></pre>
+
+
+</div>

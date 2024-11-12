@@ -1,0 +1,104 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>flexMItest</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Wrapper for gaussMItest, disMItest and mixMItest</h2>
+
+<h3>Description</h3>
+
+<p>A plug-in conditional independence test for <code>pcalg::skeleton</code>, <code>pcalg::pc</code> or
+<code>pcalg::fci</code> when multiply imputed data sets are available. <code>flexMItest</code> detects whether
+variables are continuous, discrete or mixed, and automatically switches between <code>gaussMItest</code> (continuous only),
+<code>link{disMItest}</code> (discrete only) and <code>mixMItest</code> (mixed).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">flexMItest(x, y, S = NULL, suffStat)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x, y, S</code></td>
+<td>
+<p>(integer) position of variable X, Y and set of variables S,
+respectively, in the dataset. It is tested whether X and Y are conditionally
+independent given the subset S of the remaining variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>suffStat</code></td>
+<td>
+<p>a list generated using <code>getSuff</code> with <code>test="flexMItest"</code>. See below for details.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>suffStat</code> needs to be a list with four elements named <code>datlist</code>, <code>corlist</code>,
+<code>conpos</code> and <code>dispos</code>. <code>datlist</code> is the list of imputed datasets. <code>corlist</code>
+is a list with M+1 elements, where M is the number of imputed datasets. For i=1,...,M, the
+the i-th element of <code>corlist</code> is the correlation matrix of the continuous variables in the i-th imputed dataset;
+the (M+1)-the element is the number of rows in each imputed dataset.
+<code>conpos</code> is a vector containing the integer positions of the continuous variables in the original dataset.
+<code>dispos</code> is a vector containing the integer positions of the discrete variables in the original dataset.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A p-value.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>gaussMItest</code>, <code>disMItest</code> and <code>mixMItest</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## load data (numeric and factor variables)
+library(ranger)
+dat &lt;- toenail2[1:400, ]
+
+## delete some observations
+set.seed(123)
+dat[sample(400, 20), 2] &lt;- NA
+dat[sample(400, 30), 4] &lt;- NA
+
+## impute missing values using random forests
+imp &lt;- mice::mice(dat, method = "rf", m = 3, printFlag = FALSE)
+
+## obtain correct input 'suffStat' for 'flexMItest'
+suff &lt;- getSuff(imp, test="flexMItest")
+
+## analyse data
+# continuous variables only
+flexMItest(4,5,NULL, suffStat = suff)
+implist &lt;- complete(imp, action="all")
+gaussSuff &lt;- c(lapply(implist, function(i){cor(i[ ,c(4,5)])}), n = 400)
+gaussMItest(1,2,NULL, suffStat = gaussSuff)
+flexCItwd(4, 5, NULL, dat)
+
+# discrete variables only
+flexMItest(2,3,NULL, suffStat = suff)
+disMItest(2,3,NULL, suffStat = complete(imp, action="all"))
+flexCItwd(2,3,NULL, dat)
+
+# mixed variables
+flexMItest(2,3,4, suffStat = suff)
+mixMItest(2,3,4, suffStat = complete(imp, action="all"))
+flexCItwd(2,3,4, dat)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,136 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>epsilon</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Epsilon metric</h2>
+
+<h3>Description</h3>
+
+<p>Computes the epsilon metric, either additive or multiplicative.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">epsilon_additive(x, reference, maximise = FALSE)
+
+epsilon_mult(x, reference, maximise = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p><code>matrix()</code>|<code>data.frame()</code><br> Matrix or data frame of numerical
+values, where each row gives the coordinates of a point.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reference</code></td>
+<td>
+<p><code>matrix</code>|<code>data.frame</code><br> Reference set as a matrix or
+data.frame of numerical values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maximise</code></td>
+<td>
+<p><code>logical()</code><br> Whether the objectives must be maximised
+instead of minimised. Either a single logical value that applies to all
+objectives or a vector of logical values, with one value per objective.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The epsilon metric of a set <code class="reqn">A</code> with respect to a reference set <code class="reqn">R</code>
+is defined as
+</p>
+<p style="text-align: center;"><code class="reqn">epsilon(A,R) = \max_{r \in R} \min_{a \in A} \max_{1 \leq i \leq n} epsilon(a_i, r_i)</code>
+</p>
+
+<p>where <code class="reqn">a</code> and <code class="reqn">b</code> are objective vectors and, in the case of
+minimization of objective <code class="reqn">i</code>, <code class="reqn">epsilon(a_i,b_i)</code> is computed as
+<code class="reqn">a_i/b_i</code> for the multiplicative variant (respectively, <code class="reqn">a_i - b_i</code>
+for the additive variant), whereas in the case of maximization of objective
+<code class="reqn">i</code>, <code class="reqn">epsilon(a_i,b_i) = b_i/a_i</code> for the multiplicative variant
+(respectively, <code class="reqn">b_i - a_i</code> for the additive variant). This allows
+computing a single value for problems where some objectives are to be
+maximized while others are to be minimized. Moreover, a lower value
+corresponds to a better approximation set, independently of the type of
+problem (minimization, maximization or mixed). However, the meaning of the
+value is different for each objective type. For example, imagine that
+objective 1 is to be minimized and objective 2 is to be maximized, and the
+multiplicative epsilon computed here for <code class="reqn">epsilon(A,R) = 3</code>. This means
+that <code class="reqn">A</code> needs to be multiplied by 1/3 for all <code class="reqn">a_1</code> values and by 3
+for all <code class="reqn">a_2</code> values in order to weakly dominate <code class="reqn">R</code>. The
+computation of the multiplicative version for negative values doesn't make
+sense.
+</p>
+<p>Computation of the epsilon indicator requires <code class="reqn">O(n \cdot |A| \cdot
+|R|)</code>, where <code class="reqn">n</code> is the number of objectives (dimension of vectors).
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>numeric(1)</code><br> A single numerical value.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Manuel López-Ibáñez
+</p>
+
+
+<h3>References</h3>
+
+<p>Eckart Zitzler, Lothar Thiele, Marco Laumanns, Carlos
+M. Fonseca, Viviane Grunert da Fonseca (2003).
+“Performance Assessment of Multiobjective Optimizers: an Analysis and Review.”
+<em>IEEE Transactions on Evolutionary Computation</em>, <b>7</b>(2), 117–132.
+doi: <a href="https://doi.org/10.1109/TEVC.2003.810758">10.1109/TEVC.2003.810758</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Fig 6 from Zitzler et al. (2003).
+A1 &lt;- matrix(c(9,2,8,4,7,5,5,6,4,7), ncol=2, byrow=TRUE)
+A2 &lt;- matrix(c(8,4,7,5,5,6,4,7), ncol=2, byrow=TRUE)
+A3 &lt;- matrix(c(10,4,9,5,8,6,7,7,6,8), ncol=2, byrow=TRUE)
+if (requireNamespace("graphics", quietly = TRUE)) {
+   plot(A1, xlab=expression(f[1]), ylab=expression(f[2]),
+        panel.first=grid(nx=NULL), pch=4, cex=1.5, xlim = c(0,10), ylim=c(0,8))
+   points(A2, pch=0, cex=1.5)
+   points(A3, pch=1, cex=1.5)
+   legend("bottomleft", legend=c("A1", "A2", "A3"), pch=c(4,0,1),
+          pt.bg="gray", bg="white", bty = "n", pt.cex=1.5, cex=1.2)
+}
+epsilon_mult(A1, A3) # A1 epsilon-dominates A3 =&gt; e = 9/10 &lt; 1
+epsilon_mult(A1, A2) # A1 weakly dominates A2 =&gt; e = 1
+epsilon_mult(A2, A1) # A2 is epsilon-dominated by A1 =&gt; e = 2 &gt; 1
+
+# A more realistic example
+extdata_path &lt;- system.file(package="moocore","extdata")
+path.A1 &lt;- file.path(extdata_path, "ALG_1_dat.xz")
+path.A2 &lt;- file.path(extdata_path, "ALG_2_dat.xz")
+A1 &lt;- read_datasets(path.A1)[,1:2]
+A2 &lt;- read_datasets(path.A2)[,1:2]
+ref &lt;- filter_dominated(rbind(A1, A2))
+epsilon_additive(A1, ref)
+epsilon_additive(A2, ref)
+# Multiplicative version of epsilon metric
+ref &lt;- filter_dominated(rbind(A1, A2))
+epsilon_mult(A1, ref)
+epsilon_mult(A2, ref)
+</code></pre>
+
+
+</div>

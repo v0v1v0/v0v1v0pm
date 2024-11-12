@@ -1,0 +1,120 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>compare_metrics</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compare different metrics</h2>
+
+<h3>Description</h3>
+
+<p>Compare learners with respect to to one or multiple metrics.
+Metrics can but be but are not limited to fairness metrics.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">compare_metrics(object, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>(PredictionClassif | BenchmarkResult | ResampleResult)<br>
+The object to create a plot for.
+</p>
+
+<ul>
+<li>
+<p> If provided a (PredictionClassif).
+Then the visualization will compare the fairness metrics among the binary level from protected field
+through bar plots.
+</p>
+</li>
+<li>
+<p> If provided a (ResampleResult).
+Then the visualization will generate the boxplots for fairness metrics, and compare them among
+the binary level from protected field.
+</p>
+</li>
+<li>
+<p> If provided a (BenchmarkResult).
+Then the visualization will generate the boxplots for fairness metrics, and compare them among
+both the binary level from protected field and the models implemented.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>The arguments to be passed to methods, such as:
+</p>
+
+<ul>
+<li> <p><code>fairness_measures</code> (list of Measure)<br>
+The fairness measures that will evaluated on object, could be single Measure or list of Measures.
+Default measure set to be <code>msr("fairness.acc")</code>.
+</p>
+</li>
+<li> <p><code>task</code> (TaskClassif)<br>
+The data task that contains the protected column, only required when object is (PredictionClassif).
+</p>
+</li>
+</ul>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A 'ggplot2' object.
+</p>
+
+
+<h3>Protected Attributes</h3>
+
+<p>The protected attribute is specified as a <code>col_role</code> in the corresponding <code>Task()</code>:<br><code style="white-space: pre;">⁠&lt;Task&gt;$col_roles$pta = "name_of_attribute"⁠</code> <br>
+This also allows specifying more than one protected attribute,
+in which case fairness will be considered on the level of intersecting groups defined by all columns
+selected as a predicted attribute.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library("mlr3")
+library("mlr3learners")
+
+# Setup the Fairness Measures and tasks
+task = tsk("adult_train")$filter(1:500)
+learner = lrn("classif.ranger", predict_type = "prob")
+learner$train(task)
+predictions = learner$predict(task)
+design = benchmark_grid(
+  tasks = task,
+  learners = lrns(c("classif.ranger", "classif.rpart"),
+    predict_type = "prob", predict_sets = c("train", "predict")),
+  resamplings = rsmps("cv", folds = 3)
+)
+
+bmr = benchmark(design)
+fairness_measure = msr("fairness.tpr")
+fairness_measures = msrs(c("fairness.tpr", "fairness.fnr", "fairness.acc"))
+
+# Predictions
+compare_metrics(predictions, fairness_measure, task)
+compare_metrics(predictions, fairness_measures, task)
+
+# BenchmarkResult and ResamplingResult
+compare_metrics(bmr, fairness_measure)
+compare_metrics(bmr, fairness_measures)
+</code></pre>
+
+
+</div>

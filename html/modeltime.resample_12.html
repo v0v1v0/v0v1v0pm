@@ -1,0 +1,119 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modeltime_fit_resamples</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fits Models in a Modeltime Table to Resamples</h2>
+
+<h3>Description</h3>
+
+<p>Resampled predictions are commonly used for:
+</p>
+
+<ol>
+<li>
+<p> Analyzing accuracy and stability of models
+</p>
+</li>
+<li>
+<p> As inputs to Ensemble methods (refer to the <code>modeltime.ensemble</code> package)
+</p>
+</li>
+</ol>
+<h3>Usage</h3>
+
+<pre><code class="language-R">modeltime_fit_resamples(object, resamples, control = control_resamples())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A Modeltime Table</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resamples</code></td>
+<td>
+<p>An <code>rset</code> resample object.
+Used to generate sub-model predictions for the meta-learner.
+See <code>timetk::time_series_cv()</code> or <code>rsample::vfold_cv()</code> for making resamples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>A <code>tune::control_resamples()</code> object to provide
+control over the resampling process.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function is a wrapper for <code>tune::fit_resamples()</code> to iteratively train and predict models
+contained in a Modeltime Table on resample objects.
+One difference between <code>tune::fit_resamples()</code> and <code>modeltime_fit_resamples()</code>
+is that predictions are always returned
+(i.e. <code>control = tune::control_resamples(save_pred = TRUE)</code>). This is needed for
+<code>ensemble_model_spec()</code>.
+</p>
+<p><strong>Resampled Prediction Accuracy</strong>
+</p>
+<p>Calculating Accuracy Metrics on models fit to resamples can help
+to understand the model performance and stability under different
+forecasting windows. See <code>modeltime_resample_accuracy()</code> for
+getting resampled prediction accuracy for each model.
+</p>
+<p><strong>Ensembles</strong>
+</p>
+<p>Fitting and Predicting Resamples is useful in
+creating Stacked Ensembles using <code>modeltime.ensemble::ensemble_model_spec()</code>.
+The sub-model cross-validation predictions are used as the input to the meta-learner model.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A Modeltime Table (<code>mdl_time_tbl</code>) object with a column containing
+resample results (<code>.resample_results</code>)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(tidymodels)
+library(modeltime)
+library(timetk)
+library(tidyverse)
+
+# Make resamples
+resamples_tscv &lt;- training(m750_splits) %&gt;%
+    time_series_cv(
+        assess      = "2 years",
+        initial     = "5 years",
+        skip        = "2 years",
+        # Normally we do more than one slice, but this speeds up the example
+        slice_limit = 1
+    )
+
+
+# Fit and generate resample predictions
+m750_models_resample &lt;- m750_models %&gt;%
+    modeltime_fit_resamples(
+        resamples = resamples_tscv,
+        control   = control_resamples(verbose = TRUE)
+    )
+
+# A new data frame is created from the Modeltime Table
+#  with a column labeled, '.resample_results'
+m750_models_resample
+
+
+</code></pre>
+
+
+</div>

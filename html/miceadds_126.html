@@ -1,0 +1,193 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mice.impute.pmm3</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Imputation by Predictive Mean Matching (in <span class="pkg">miceadds</span>)
+</h2>
+
+<h3>Description</h3>
+
+<p>This function imputes values by predictive mean matching like
+the <code>mice::mice.impute.pmm</code>
+method in the <span class="pkg">mice</span> package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mice.impute.pmm3(y, ry, x, donors=3, noise=10^5, ridge=10^(-5), ...)
+mice.impute.pmm4(y, ry, x, donors=3, noise=10^5, ridge=10^(-5), ...)
+mice.impute.pmm5(y, ry, x, donors=3, noise=10^5, ridge=10^(-5), ...)
+mice.impute.pmm6(y, ry, x, donors=3, noise=10^5, ridge=10^(-5), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Incomplete data vector of length <code>n</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ry</code></td>
+<td>
+
+<p>Vector of missing data pattern (<code>FALSE</code> – missing,
+<code>TRUE</code> – observed)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Matrix (<code>n</code> x <code>p</code>) of complete
+covariates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>donors</code></td>
+<td>
+
+<p>Number of donors used for imputation
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>noise</code></td>
+<td>
+
+<p>Numerical value to break ties
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ridge</code></td>
+<td>
+
+<p>Ridge parameter in the diagonal of <code class="reqn"> \bold{X}'\bold{X}</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Further arguments to be passed
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The imputation method <code>pmm3</code> imitates
+<code>mice::mice.impute.pmm</code> imputation method
+in <span class="pkg">mice</span>.
+</p>
+<p>The imputation method <code>pmm4</code> ignores ties in predicted <code class="reqn">y</code> values.
+With many predictors, this does not probably implies any substantial problem.
+</p>
+<p>The imputation method <code>pmm5</code> suffers from the same problem. Contrary to
+the other PMM methods, it searches <code class="reqn">D</code> donors (specified by <code>donors</code>)
+smaller than the predicted value and <code class="reqn">D</code> donors larger than the
+predicted value and randomly samples a value from this set of <code class="reqn">2 \cdot D</code>
+donors.
+</p>
+<p>The imputation method <code>pmm6</code> is just the <span class="pkg">Rcpp</span> implementation
+of <code>pmm5</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A vector of length <code>nmis=sum(!ry)</code> with imputed values.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See <code>data.largescale</code> and <code>data.smallscale</code>
+for speed comparisons of different functions for predictive mean
+matching.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+#############################################################################
+# SIMULATED EXAMPLE 1: Two variables x and y with missing y
+#############################################################################
+set.seed(1413)
+
+rho &lt;- .6   # correlation between x and y
+N &lt;- 6800    # number of cases
+x &lt;- stats::rnorm(N)
+My &lt;- .35   # mean of y
+y.com &lt;- y &lt;- My + rho * x + stats::rnorm(N, sd=sqrt( 1 - rho^2 ) )
+
+# create missingness on y depending on rho.MAR parameter
+rho.mar &lt;- .4    # correlation response tendency z and x
+missrate &lt;- .25  # missing response rate
+# simulate response tendency z and missings on y
+z &lt;- rho.mar * x + stats::rnorm(N, sd=sqrt( 1 - rho.mar^2 ) )
+y[ z &lt; stats::qnorm( missrate ) ] &lt;- NA
+dat &lt;- data.frame(x, y )
+
+# mice imputation
+impmethod &lt;- rep("pmm", 2 )
+names(impmethod) &lt;- colnames(dat)
+
+# pmm (in mice)
+imp1 &lt;- mice::mice( as.matrix(dat), m=1, maxit=1, method=impmethod)
+# pmm3 (in miceadds)
+imp3 &lt;- mice::mice( as.matrix(dat), m=1, maxit=1,
+           method=gsub("pmm","pmm3",impmethod)  )
+# pmm4 (in miceadds)
+imp4 &lt;- mice::mice( as.matrix(dat), m=1, maxit=1,
+           method=gsub("pmm","pmm4",impmethod)  )
+# pmm5 (in miceadds)
+imp5 &lt;- mice::mice( as.matrix(dat), m=1, maxit=1,
+           method=gsub("pmm","pmm5",impmethod)  )
+# pmm6 (in miceadds)
+imp6 &lt;- mice::mice( as.matrix(dat), m=1, maxit=1,
+           method=gsub("pmm","pmm6",impmethod)  )
+
+dat.imp1 &lt;- mice::complete( imp1, 1 )
+dat.imp3 &lt;- mice::complete( imp3, 1 )
+dat.imp4 &lt;- mice::complete( imp4, 1 )
+dat.imp5 &lt;- mice::complete( imp5, 1 )
+dat.imp6 &lt;- mice::complete( imp6, 1 )
+
+dfr &lt;- NULL
+# means
+dfr &lt;- rbind( dfr, c( mean( y.com ), mean( y, na.rm=TRUE ), mean( dat.imp1$y),
+    mean( dat.imp3$y), mean( dat.imp4$y), mean( dat.imp5$y),  mean( dat.imp6$y)  ) )
+# SD
+dfr &lt;- rbind( dfr, c( stats::sd( y.com ), stats::sd( y, na.rm=TRUE ),
+      stats::sd( dat.imp1$y), stats::sd( dat.imp3$y), stats::sd( dat.imp4$y),
+      stats::sd( dat.imp5$y), stats::sd( dat.imp6$y) ) )
+# correlations
+dfr &lt;- rbind( dfr, c( stats::cor( x,y.com ),
+    stats::cor( x[ ! is.na(y) ], y[ ! is.na(y) ] ),
+    stats::cor( dat.imp1$x, dat.imp1$y), stats::cor( dat.imp3$x, dat.imp3$y),
+    stats::cor( dat.imp4$x, dat.imp4$y), stats::cor( dat.imp5$x, dat.imp5$y),
+    stats::cor( dat.imp6$x, dat.imp6$y)
+        ) )
+rownames(dfr) &lt;- c("M_y", "SD_y", "cor_xy" )
+colnames(dfr) &lt;- c("compl", "ld", "pmm", "pmm3", "pmm4", "pmm5","pmm6")
+##           compl     ld    pmm   pmm3   pmm4   pmm5   pmm6
+##   M_y    0.3306 0.4282 0.3314 0.3228 0.3223 0.3264 0.3310
+##   SD_y   0.9910 0.9801 0.9873 0.9887 0.9891 0.9882 0.9877
+##   cor_xy 0.6057 0.5950 0.6072 0.6021 0.6100 0.6057 0.6069
+
+## End(Not run)
+</code></pre>
+
+
+</div>

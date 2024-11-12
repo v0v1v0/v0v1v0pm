@@ -1,0 +1,108 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>score</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Score benchmark results
+</h2>
+
+<h3>Description</h3>
+
+<p>Computes a data table of scores.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">score(bench.result, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>bench.result</code></td>
+<td>
+
+<p>Output of <code>benchmark()</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Additional arguments to pass to <code>bench.result$score</code>, for
+example <code>measures</code>. 
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>data table with scores.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Toby Dylan Hocking
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+N &lt;- 100
+library(data.table)
+set.seed(1)
+reg.dt &lt;- data.table(
+  x=runif(N, -2, 2),
+  person=rep(1:2, each=0.5*N))
+reg.pattern.list &lt;- list(
+  easy=function(x, person)x^2,
+  impossible=function(x, person)(x^2+person*3)*(-1)^person)
+reg.task.list &lt;- list()
+for(pattern in names(reg.pattern.list)){
+  f &lt;- reg.pattern.list[[pattern]]
+  yname &lt;- paste0("y_",pattern)
+  reg.dt[, (yname) := f(x,person)+rnorm(N, sd=0.5)][]
+  task.dt &lt;- reg.dt[, c("x","person",yname), with=FALSE]
+  task.obj &lt;- mlr3::TaskRegr$new(
+    pattern, task.dt, target=yname)
+  task.obj$col_roles$stratum &lt;- "person"
+  task.obj$col_roles$subset &lt;- "person"
+  reg.task.list[[pattern]] &lt;- task.obj
+}
+same_other &lt;- mlr3resampling::ResamplingSameOtherSizesCV$new()
+reg.learner.list &lt;- list(
+  mlr3::LearnerRegrFeatureless$new())
+if(requireNamespace("rpart")){
+  reg.learner.list$rpart &lt;- mlr3::LearnerRegrRpart$new()
+}
+(bench.grid &lt;- mlr3::benchmark_grid(
+  reg.task.list,
+  reg.learner.list,
+  same_other))
+bench.result &lt;- mlr3::benchmark(bench.grid)
+bench.score &lt;- mlr3resampling::score(bench.result)
+if(require(animint2)){
+  ggplot()+
+    geom_point(aes(
+      regr.mse, train.subsets, color=algorithm),
+      shape=1,
+      data=bench.score)+
+    facet_grid(
+      test.subset ~ task_id,
+      labeller=label_both,
+      scales="free")+
+    scale_x_log10()
+}
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,116 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>getNormalizedData</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Extracts qPCR model predictions
+</h2>
+
+<h3>Description</h3>
+
+<p>Generates a table of model-derived log2-transformed transcript abundances without global sample effects (i.e., corresponding to efficiency-corrected and normalized qPCR data)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">getNormalizedData(model, data, controls=NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+
+<p>qPCR model: the output of mcmc.qpcr or mcmc.qpcr.lognormal function fitted with two additional options: random="sample", pr=TRUE . These options do not change the inferences of main effects but make it possible to retain among-sample variation of expression for each gene while still subtracting the global sample effects (i.e., perform "normalization")
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>The dataset that was analysed to generate the model (output of cq2counts or cq2log functions)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>controls</code></td>
+<td>
+
+<p>List of control genes; required if the mcmc.qpcr model was fit with the option normalize=TRUE
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The function returns a list of two data frames. The first one, normData, is the model-predicted log2-transformed transcript abundances table. It has one column per gene and one row per sample. The second data frame, conditions, is a table of experimental conditions corresponding to the normData table.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Mikhail V. Matz, University of Texas at Austin
+&lt;matz@utexas.edu&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Matz MV, Wright RM, Scott JG (2013) No Control Genes Required: Bayesian Analysis of qRT-PCR Data. PLoS ONE 8(8): e71448. doi:10.1371/journal.pone.0071448
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(MCMC.qpcr)
+
+# loading Cq data and amplification efficiencies
+data(coral.stress) 
+data(amp.eff) 
+
+genecolumns=c(5,6,16,17) # specifying columns corresponding to genes of interest
+conditions=c(1:4) # specifying columns containing factors  
+
+# calculating molecule counts and reformatting:
+dd=cq2counts(data=coral.stress,genecols=genecolumns,
+condcols=conditions,effic=amp.eff,Cq1=37) 
+
+# fitting the model (must include random="sample", pr=TRUE options)
+mm=mcmc.qpcr(
+	fixed="condition",
+	data=dd,
+	controls=c("nd5","rpl11"),
+	nitt=4000,
+	pr=TRUE,
+	random="sample"
+)
+
+# extracting model predictions
+pp=getNormalizedData(mm,dd)
+
+# here is the normalized data:
+pp$normData
+
+# and here are the corresponding conditions:
+pp$conditions
+
+# putting them together for plotting:
+ppcombo=cbind(stack(pp$normData),rep(pp$conditions))
+names(ppcombo)[1:2]=c("expression","gene")
+
+# plotting boxplots of normalized data:
+ggplot(ppcombo,aes(condition,expression,colour=timepoint))+
+	geom_boxplot()+
+	facet_wrap(~gene,scales="free")+
+	theme_bw()
+</code></pre>
+
+
+</div>

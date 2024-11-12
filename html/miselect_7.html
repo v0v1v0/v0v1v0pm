@@ -1,0 +1,184 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>galasso</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multiple Imputation Grouped Adaptive LASSO</h2>
+
+<h3>Description</h3>
+
+<p><code>galasso</code> fits an adaptive LASSO for multiply imputed data. "galasso"
+supports both continuous and binary responses.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">galasso(
+  x,
+  y,
+  pf,
+  adWeight,
+  family = c("gaussian", "binomial"),
+  nlambda = 100,
+  lambda.min.ratio = ifelse(isTRUE(all.equal(adWeight, rep(1, p))), 0.001, 1e-06),
+  lambda = NULL,
+  maxit = 10000,
+  eps = 1e-05
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A length <code>m</code> list of <code>n * p</code> numeric matrices. No matrix
+should contain an intercept, or any missing values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>A length <code>m</code> list of length <code>n</code> numeric response vectors.
+No vector should contain missing values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pf</code></td>
+<td>
+<p>Penalty factor. Can be used to differentially penalize certain
+variables</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>adWeight</code></td>
+<td>
+<p>Numeric vector of length p representing the adaptive weights
+for the L1 penalty</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>The type of response. "gaussian" implies a continuous response
+and "binomial" implies a binary response. Default is "gaussian".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nlambda</code></td>
+<td>
+<p>Length of automatically generated "lambda" sequence. If
+"lambda" is non NULL, "nlambda" is ignored. Default is 100</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.min.ratio</code></td>
+<td>
+<p>Ratio that determines the minimum value of "lambda"
+when automatically generating a "lambda" sequence. If "lambda" is not
+NULL, "lambda.min.ratio" is ignored. Default is 1e-4</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>Optional numeric vector of lambdas to fit. If NULL,
+<code>galasso</code> will automatically generate a lambda sequence based off
+of <code>nlambda</code> and <code>lambda.min.ratio</code>. Default is NULL</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit</code></td>
+<td>
+<p>Maximum number of iterations to run. Default is 10000</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>Tolerance for convergence. Default is 1e-5</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>galasso</code> works by adding a group penalty to the aggregated objective
+function to ensure selection consistency across imputations. The objective
+function is:
+</p>
+<p style="text-align: center;"><code class="reqn">argmin_{\beta_{jk}} - L(\beta_{jk}| X_{ijk}, Y_{ik})</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">+ \lambda * \Sigma_{j=1}^{p} \hat{a}_j * pf_j * \sqrt{\Sigma_{k=1}^{m} \beta_{jk}^2}</code>
+</p>
+
+<p>Where L is the log likelihood,<code>a</code> is the adaptive weights, and
+<code>pf</code> is the penalty factor. Simulations suggest that the "stacked"
+objective function approach (i.e., <code>saenet</code>) tends to be more
+computationally efficient and have better estimation and selection
+properties. However, the advantage of <code>galasso</code> is that it allows one
+to look at the differences between coefficient estimates across imputations.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object with type galasso and subtype
+galasso.gaussian or galasso.binomial, depending on which family was used.
+Both subtypes have 4 elements:
+</p>
+
+<dl>
+<dt>lambda</dt>
+<dd>
+<p>Sequence of lambda fit.</p>
+</dd>
+<dt>coef</dt>
+<dd>
+<p>a list of length D containing the coefficient estimates from running 
+galasso at each value of lambda. Each element in the list is a nlambda x (p+1) matrix.</p>
+</dd>
+<dt>df</dt>
+<dd>
+<p>Number of nonzero betas at each value of lambda.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Du, J., Boss, J., Han, P., Beesley, L. J., Kleinsasser, M., Goutman, S. A., ... 
+&amp; Mukherjee, B. (2022). Variable selection with multiply-imputed datasets: 
+choosing between stacked and grouped methods. Journal of Computational and 
+Graphical Statistics, 31(4), 1063-1075. &lt;doi:10.1080/10618600.2022.2035739&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(miselect)
+library(mice)
+
+mids &lt;- mice(miselect.df, m = 5, printFlag = FALSE)
+dfs &lt;- lapply(1:5, function(i) complete(mids, action = i))
+
+# Generate list of imputed design matrices and imputed responses
+x &lt;- list()
+y &lt;- list()
+for (i in 1:5) {
+    x[[i]] &lt;- as.matrix(dfs[[i]][, paste0("X", 1:20)])
+    y[[i]] &lt;- dfs[[i]]$Y
+}
+
+pf       &lt;- rep(1, 20)
+adWeight &lt;- rep(1, 20)
+
+fit &lt;- galasso(x, y, pf, adWeight)
+
+</code></pre>
+
+
+</div>

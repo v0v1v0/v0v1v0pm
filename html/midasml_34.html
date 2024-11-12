@@ -1,0 +1,160 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sglfit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fits sg-LASSO regression</h2>
+
+<h3>Description</h3>
+
+<p>Fits sg-LASSO regression model.
+The function fits sg-LASSO regression model for a sequence of <code class="reqn">\lambda</code> tuning parameter and fixed <code class="reqn">\gamma</code> tuning parameter. The optimization is based on block coordinate-descent. Optionally, fixed effects are fitted.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">sglfit(x, y, gamma = 1.0, nlambda = 100L, method = c("single", "pooled", "fe"), 
+       nf = NULL, lambda.factor = ifelse(nobs &lt; nvars, 1e-02, 1e-04), 
+       lambda = NULL, pf = rep(1, nvars), gindex = 1:nvars, 
+       dfmax = nvars + 1, pmax = min(dfmax * 1.2, nvars), standardize = FALSE, 
+       intercept = FALSE, eps = 1e-08, maxit = 1000000L, peps = 1e-08)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>T by p data matrix, where T and p respectively denote the sample size and the number of regressors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>T by 1 response variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma</code></td>
+<td>
+<p>sg-LASSO mixing parameter. <code class="reqn">\gamma</code> = 1 gives LASSO solution and <code class="reqn">\gamma</code> = 0 gives group LASSO solution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nlambda</code></td>
+<td>
+<p>number of <code class="reqn">\lambda</code>'s to use in the regularization path; used if <code>lambda = NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>choose between 'single', 'pooled' and 'fe'; 'single' implies standard sg-LASSO regression, 'pooled' forces the intercept to be fitted, 'fe' computes the fixed effects. User needs to input the number of fixed effects <code>nf</code>. Default is set to 'single'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nf</code></td>
+<td>
+<p>number of fixed effects. Used only if <code>method = 'fe'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.factor</code></td>
+<td>
+<p>The factor for getting the minimal <code class="reqn">\lambda</code> in the <code class="reqn">\lambda</code> sequence, where <code>min(lambda) = lambda.factor * max(lambda)</code>. max(lambda) is the smallest value of lambda for which all coefficients are zero. λ <sub>max</sub> is determined for each <code class="reqn">\gamma</code> tuning parameter separately. The default depends on the relationship between <code>T</code> (the sample size) and <code>p</code> (the number of predictors). If <code>T &lt; p</code>, the default is <code>0.01</code>. If <code>T &gt; p</code>, the default is <code>0.0001</code>, closer to zero. The smaller the value of <code>lambda.factor</code> is, the denser is the fit for λ<sub>min</sub>. Used only if <code>lambda = NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>a user-supplied lambda sequence. By leaving this option unspecified (recommended), users can have the program compute its own <code>lambda</code> sequence based on <code>nlambda</code> and <code>lambda.factor.</code> It is better to supply, if necessary, a decreasing sequence of lambda values than a single (small) value, as warm-starts are used in the optimization algorithm. The program will ensure that the user-supplied <code class="reqn">\lambda</code> sequence is sorted in decreasing order before fitting the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pf</code></td>
+<td>
+<p>the ℓ<sub>1</sub> penalty factor of length <code>p</code> used for the adaptive sg-LASSO. Separate ℓ<sub>1</sub> penalty weights can be applied to each coefficient to allow different ℓ<sub>1</sub> + ℓ<sub>2,1</sub> shrinkage. Can be 0 for some variables, which imposes no shrinkage, and results in that variable always be included in the model. Default is 1 for all variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gindex</code></td>
+<td>
+<p>p by 1 vector indicating group membership of each covariate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dfmax</code></td>
+<td>
+<p>the maximum number of variables allowed in the model. Useful for very large <code>p</code> when a partial path is desired. Default is <code>p+1</code>. In case <code>method='fe'</code>, <code>dfmax</code> is ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pmax</code></td>
+<td>
+<p>the maximum number of coefficients allowed ever to be nonzero. For example, once β<sub>i</sub> ≠ 0  for some i ∈ [p], no matter how many times it exits or re-enters the model through the path, it will be counted only once. Default is <code>min(dfmax*1.2, p)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>standardize</code></td>
+<td>
+<p>logical flag for variable standardization, prior to fitting the model sequence. The coefficients are always returned to the original scale. It is recommended to keep <code>standardize=TRUE</code>. Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intercept</code></td>
+<td>
+<p>whether intercept be fitted (<code>TRUE</code>) or set to zero (<code>FALSE</code>). Default is <code>FALSE</code>. In case <code>method='pooled'</code>, <code>intercept=TRUE</code> is forced. In case <code>method='fe'</code>, <code>intercept=FALSE</code> is forced and <code>entity</code> specific intercepts are fitted in a separate output variable <code>a0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>convergence threshold for block coordinate descent. Each inner block coordinate-descent loop continues until the maximum change in the objective after any coefficient update is less than thresh times the null deviance. Defaults value is <code>1e-8</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit</code></td>
+<td>
+<p>maximum number of outer-loop iterations allowed at fixed lambda values. Default is <code>1e6</code>. If the algorithm does not converge, consider increasing <code>maxit</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>peps</code></td>
+<td>
+<p>convergence threshold for proximal map of sg-LASSO penalty. Each loop continues until G group difference sup-norm, || β<sup>k</sup><sub>G</sub> - β<sup>k-1</sup><sub>G</sub> ||<sub>∞</sub>, is less than <code>peps</code>. Defaults value is <code>1e-8</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+The sequence of linear regression models implied by λ vector is fit by block coordinate-descent. The objective function is  <br><br> ||y - ια - xβ||<sup>2</sup><sub>T</sub> + 2λ  Ω<sub>γ</sub>(β), <br> where ι∈R<sup>T</sup>enter&gt; and ||u||<sup>2</sup><sub>T</sub>=&lt;u,u&gt;/T is the empirical inner product. The penalty function Ω<sub>γ</sub>(.) is applied on  β coefficients and is <br><br> Ω<sub>γ</sub>(β) = γ |β|<sub>1</sub> + (1-γ)|β|<sub>2,1</sub>, <br> a convex combination of LASSO and group LASSO penalty functions.
+
+
+<h3>Value</h3>
+
+<p>sglfit object.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jonas Striaukas
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(1)
+x = matrix(rnorm(100 * 20), 100, 20)
+beta = c(5,4,3,2,1,rep(0, times = 15))
+y = x%*%beta + rnorm(100)
+gindex = sort(rep(1:4,times=5))
+sglfit(x = x, y = y, gindex = gindex, gamma = 0.5)
+</code></pre>
+
+
+</div>

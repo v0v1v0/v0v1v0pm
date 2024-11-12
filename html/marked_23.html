@@ -1,0 +1,565 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>crm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Capture-recapture model fitting function</h2>
+
+<h3>Description</h3>
+
+<p>Fits user specified models to some types of capture-recapture wholly in R
+and not with MARK.  A single function that processes data, creates the
+design data, makes the crm model and runs it
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">crm(
+  data,
+  ddl = NULL,
+  begin.time = 1,
+  model = "CJS",
+  title = "",
+  model.parameters = list(),
+  design.parameters = list(),
+  initial = NULL,
+  groups = NULL,
+  time.intervals = NULL,
+  debug = FALSE,
+  method = NULL,
+  hessian = FALSE,
+  accumulate = TRUE,
+  chunk_size = 1e+07,
+  control = list(),
+  refit = 1,
+  itnmax = 5000,
+  scale = NULL,
+  run = TRUE,
+  burnin = 100,
+  iter = 1000,
+  use.admb = FALSE,
+  use.tmb = FALSE,
+  crossed = NULL,
+  reml = FALSE,
+  compile = FALSE,
+  extra.args = NULL,
+  strata.labels = NULL,
+  clean = NULL,
+  save.matrices = FALSE,
+  simplify = FALSE,
+  getreals = FALSE,
+  real.ids = NULL,
+  check = FALSE,
+  prior = FALSE,
+  prior.list = NULL,
+  useHess = FALSE,
+  optimize = TRUE,
+  unit_scale = TRUE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Either the raw data which is a dataframe with at least one
+column named ch (a character field containing the capture history) or a
+processed dataframe</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ddl</code></td>
+<td>
+<p>Design data list which contains a list element for each parameter
+type; if NULL it is created</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>begin.time</code></td>
+<td>
+<p>Time of first capture(release) occasion</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>Type of c-r model (eg, "cjs", "js")</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>title</code></td>
+<td>
+<p>Optional title; not used at present</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.parameters</code></td>
+<td>
+<p>List of model parameter specifications</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>design.parameters</code></td>
+<td>
+<p>Specification of any grouping variables for design
+data for each parameter</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial</code></td>
+<td>
+<p>Optional list of named vectors of initial values for beta parameters or a previously
+run model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>groups</code></td>
+<td>
+<p>Vector of names factor variables for creating groups</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>time.intervals</code></td>
+<td>
+<p>Intervals of time between the capture occasions</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>debug</code></td>
+<td>
+<p>if TRUE, shows optimization output</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>optimization method</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hessian</code></td>
+<td>
+<p>if TRUE, computes v-c matrix using hessian</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>accumulate</code></td>
+<td>
+<p>if TRUE, like capture-histories are accumulated to reduce
+computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chunk_size</code></td>
+<td>
+<p>specifies amount of memory to use in accumulating capture
+histories and design matrices; amount used is 8*chunk_size/1e6 MB (default
+80MB)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>control string for optimization functions</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>refit</code></td>
+<td>
+<p>non-zero entry to refit</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>itnmax</code></td>
+<td>
+<p>maximum number of iterations for optimization</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p>vector of scale values for parameters</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>run</code></td>
+<td>
+<p>if TRUE, it runs model; otherwise if FALSE can be used to test model build components</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p>number of iterations for mcmc burnin; specified default not realistic for actual use</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>number of iterations after burnin for mcmc (not realistic default)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use.admb</code></td>
+<td>
+<p>if TRUE uses ADMB for cjs, mscjs or mvms models</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use.tmb</code></td>
+<td>
+<p>if TRUE runs TMB for cjs, mscjs or mvms models</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>crossed</code></td>
+<td>
+<p>if TRUE it uses cjs.tpl or cjs_reml.tpl if reml=FALSE or TRUE respectively; if FALSE, then it uses cjsre which can use Gauss-Hermite integration</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reml</code></td>
+<td>
+<p>if TRUE uses restricted maximum likelihood</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>compile</code></td>
+<td>
+<p>if TRUE forces re-compilation of tpl file</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>extra.args</code></td>
+<td>
+<p>optional character string that is passed to admb if use.admb==TRUE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strata.labels</code></td>
+<td>
+<p>labels for strata used in capture history; they are converted to numeric in the order listed. Only needed to specify unobserved strata. For any unobserved strata p=0..</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>clean</code></td>
+<td>
+<p>if TRUE, deletes the tpl and executable files for amdb if use.admb=T</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>save.matrices</code></td>
+<td>
+<p>for HMM models this option controls whether the gamma,dmat and delta matrices are saved in the model object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>simplify</code></td>
+<td>
+<p>if TRUE, design matrix is simplified to unique valus including fixed values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>getreals</code></td>
+<td>
+<p>if TRUE, compute real values and std errors for TMB models; may want to set as FALSE until model selection is complete</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>real.ids</code></td>
+<td>
+<p>vector of id values for which real parameters should be output with std error information for TMB models; if NULL all ids used</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>check</code></td>
+<td>
+<p>if TRUE values of gamma, dmat and delta are checked to make sure the values are valid with initial parameter values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>if TRUE will expect vectors of prior values in list prior.list; currently only implemented for cjsre_tmb</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior.list</code></td>
+<td>
+<p>which contains list of prior parameters that will be model dependent</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>useHess</code></td>
+<td>
+<p>if TRUE, the TMB hessian function is used for optimization; using hessian is typically slower with many parameters but can result in a better solution</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optimize</code></td>
+<td>
+<p>if TRUE, optimizes to get parameter estimates; set to FALSE to extract estimates of ADREPORTed values only</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>unit_scale</code></td>
+<td>
+<p>default TRUE, if FALSE any time scaled parameter (e.g. Phi,S) is scaled when computing real value such that it represents the length of the interval rather than a unit interval</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>optional arguments passed to js or cjs and optimx</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function is operationally similar to the function <code>mark in RMark</code>
+in that is is a shell that calls several other functions to perform the
+following steps: 1) <code>process.data</code> to setup data and parameters
+and package them into a list (processed data),2)
+<code>make.design.data</code> to create the design data for each parameter
+in the specified model, 3) <code>create.dm</code> to create the design
+matrices for each parameter based on the formula provided for each
+parameter, 4) call to the specific function for model fitting. As with <code>mark</code> the calling
+arguments for <code>crm</code> are a compilation of the calling arguments for each
+of the functions it calls (with some arguments renamed to avoid conflicts).
+expects to find a value for <code>ddl</code>.  Likewise, if the data have not been
+processed, then <code>ddl</code> should be NULL.  This dual calling structure
+allows either a single call approach for each model or alternatively the preferred method
+where the data area processed and the design data (<code>ddl</code>) created once and
+then a whole series of models can be analyzed without repeating those steps.
+</p>
+<p>There are some optional arguments that can be used to set initial values and
+control other aspects of the optimization.  The optimization is done with
+the R package/function <code>optimx</code> and the arguments <code>method</code> and
+<code>hessian</code> are described with the help for that function.  In addition,
+any arguments not matching those in the fitting functions (eg <code>cjs_admb</code>) are passed to
+<code>optimx</code> allowing any of the other parameters to be set.  If you set
+<code>debug=TRUE</code>, then at each function evaluation (<code>cjs.lnl</code>
+the current values of the parameters and -2*log-likelihood value are output.
+</p>
+<p>In the current implementation, a logit link is used to constrain the
+parameters in the unit interval (0,1) except for probability of entry which
+uses an mlogit and N which uses a log link. For the probitCJS model, a probit link is
+used for the parameters. These could be generalized to
+use other link functions. Following the notation of MARK, the parameters in
+the link space are referred to as <code>beta</code> and those in the actual
+parameter space of <code>Phi</code> and <code>p</code> as reals.
+</p>
+<p>Initial values can be set in 2 ways.  1) Define a list of named vectors with 
+the initial beta parameter values (eg logit link) in <code>initial</code>. 
+The names of the vectors should be the parameter names in the model. Any unspecified
+values are set to 0. 2) Specify a previously run model for initial. The code will match the names of the
+current design matrix to the names in <code>beta</code> and use the appropriate
+initial values. Any non-specified values are set to 0.  If no value is specified for initial,
+all beta are started at a value of 0, except for the CJS model which attempts to use a glm approach to
+setting starting values. If the glm fails then they are set to 0.
+</p>
+<p>If you have a study with unequal time intervals between capture occasions,
+then these can be specified with the argument <code>time.intervals</code>.
+</p>
+<p>The argument <code>accumulate</code> defaults to <code>TRUE</code>.  When it is
+<code>TRUE</code> it will accumulate common capture histories that also have
+common design and common fixed values (see below) for the parameters.  This
+will speed up the analysis because in the calculation of the likelihood
+(<code>cjs.lnl</code> it loops over the unique values. In general the
+default will be the best unless you have many capture histories and are
+using many individual covariate(s) in the formula that would make each entry
+unique. In that case there will be no effect of accumulation but the code
+will still try to accumulate. In that particular case by setting
+<code>accumulate=FALSE</code> you can skip the code run for accumulation.
+</p>
+<p>Most of the arguments controlling the fitted model are contained in lists in
+the arguments <code>model.parameters</code> and <code>design.parameters</code> which are
+similar to their counterparts in <code>mark inb RMark</code>. Each is a named list
+with the names being the parameters in the model (e.g., Phi and p in "cjs"
+and "Phi","p","pent","N" in "js"). Each named element is also a list
+containing various values defining the design data and model for the
+parameter. The elements of <code>model.parameters</code> can include
+<code>formula</code> which is an R formula to create the design matrix for the
+parameter and <code>fixed</code> is a matrix of fixed values as described below.
+The elements of <code>design.parameters</code> can include <code>time.varying</code>,
+<code>fields</code>, <code>time.bins</code>,<code>age.bins</code>, and <code>cohort.bins</code>. See
+<code>create.dmdf</code> for a description of the first 2 and
+<code>create.dm</code> for a description of the last 3.
+</p>
+<p>Real parameters can be set to fixed values using <code>fixed=x</code> where x is a
+matrix with 3 columns and any number of rows.  The first column specifies
+the particular animal (capture history) as the row number in the dataframe
+<code>x</code>.  The second specifies the capture occasion number for the real
+parameter to be fixed.  For <code>Phi</code> and <code>pent</code> these are 1 to
+<code>nocc</code>-1 and for <code>p</code> they are 2 to <code>nocc</code> for "cjs" and 1 to
+<code>nocc</code> for "js". This difference is due to the parameter labeling by
+the beginning of the interval for Phi (e.g., survival from occasion 1 to 2)
+and by the occasion for <code>p</code>.  For "cjs" <code>p</code> is not estimated for
+occasion 1. The third element in the row is the real value in the closed
+unit interval [0,1] for the fixed parameter.  This approach is completely
+general allowing you to fix a particular real parameter for a specific
+animal and occasion but it is a bit kludgy. Alternatively, you can set fixed
+values by specifying values for a field called fix in the design data for a parameter.
+If the value of fix is NA the parameter is estimated and if it is not NA then the real
+parameter is fixed at that value.  If you also specify fixed as decribed above, they will over-ride any 
+values you have also set with fix in the design data. To set all of the real values for a
+particular occasion you can use the following example with the dipper data
+as a template:
+</p>
+<p><code>model.parameters=list(Phi=list(formula=~1,</code>
+<code>fixed=cbind(1:nrow(dipper),rep(2,nrow(dipper)),rep(1,nrow(dipper)))))</code>
+</p>
+<p>The above sets <code>Phi</code> to 1 for the interval between occasions 2 and 3
+for all animals. 
+</p>
+<p>Alternatively, you could do as follows:
+</p>
+<p>data(dipper)
+dp=process.data(dipper)
+ddl=make.design.data(dp)
+ddl$Phi$fix=ifelse(ddl$Phi$time==2,1,NA)
+</p>
+<p>At present there is no modification of the parameter count
+to address fixing of real parameters except that if by fixing reals, a beta is not needed in the design it will be dropped.
+For example, if you were to use ~time for Phi with survival fixed to 1 for time 2, then then beta for that time would not
+be included.
+</p>
+<p>To use ADMB (use.admb=TRUE), you need to install: 1) the R package R2admb, 2) ADMB, and 3) a C++ compiler (I recommend gcc compiler).
+The following are instructions for installation with Windows. For other operating systems see (<a href="http://www.admb-project.org/">http://www.admb-project.org/</a>) and 
+(<a href="https://www.admb-project.org/tools/gcc/">https://www.admb-project.org/tools/gcc/</a>). 
+</p>
+<p>Windows Instructions:
+</p>
+<p>1) In R use install.packages function or choose Packages/Install Packages from menu and select R2admb.
+</p>
+<p>2) Install ADMB 11: <a href="https://www.admb-project.org/downloads/">https://www.admb-project.org/downloads/</a>. Put the software in C:/admb to
+avoid problems with spaces in directory name and for the function below to work.
+</p>
+<p>3) Install gcc compiler from: <a href="https://www.admb-project.org/tools/gcc/">https://www.admb-project.org/tools/gcc/</a>. Put in c:/MinGW
+</p>
+<p>I use the following function in R to setup R2admb to access ADMB rather than adding to my path so gcc versions
+with Rtools don't conflict. 
+</p>
+<pre>
+prepare_admb=function()
+{
+  Sys.setenv(PATH = paste("c:/admb/bin;c:admb/utilities;c:/MinGW/bin;", 
+        Sys.getenv("PATH"), sep = ";"))
+    Sys.setenv(ADMB_HOME = "c:/admb")
+    invisible()
+}
+</pre>
+<p>To use different locations you'll need to change the values used above
+</p>
+<p>Before running crm with use.admb=T, execute the function prepare_admb().  You could put this function or the code it 
+contains in your .First or .Rprofile so it runs each time you start R.
+</p>
+
+
+<h3>Value</h3>
+
+<p>crm model object with class=("crm",submodel), eg "CJS".
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jeff Laake
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>cjs_admb</code>, <code>js</code>,
+<code>make.design.data</code>,<code>process.data</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">{
+# cormack-jolly-seber model
+# fit cjs models with crm
+data(dipper)
+dipper.proc=process.data(dipper,model="cjs",begin.time=1)
+dipper.ddl=make.design.data(dipper.proc)
+mod.Phit.pt=crm(dipper.proc,dipper.ddl,
+   model.parameters=list(Phi=list(formula=~time),p=list(formula=~time)))
+mod.Phit.pt
+mod.Phisex.pdot=crm(dipper.proc,dipper.ddl,
+   model.parameters=list(Phi=list(formula=~sex),p=list(formula=~1)))
+mod.Phisex.pdot
+# demo initial value setting
+mod.Phisex.ptime=crm(dipper.proc,dipper.ddl,
+   model.parameters=list(Phi=list(formula=~sex),p=list(formula=~time)),initial=mod.Phit.pt)
+mod.Phisex.ptime
+mod.Phisex.ptime=crm(dipper.proc,dipper.ddl,
+   model.parameters=list(Phi=list(formula=~sex),p=list(formula=~time)),initial=list(Phi=0,p=0))
+mod.Phisex.ptime
+
+## if you have RMark installed you can use this code to run the same models 
+## by removing the comment symbol
+#library(RMark)
+#data(dipper)
+#mod0=mark(dipper,
+#model.parameters=list(Phi=list(formula=~time),p=list(formula=~time)),output=FALSE)
+#summary(mod0,brief=TRUE)
+#mod1=mark(dipper,
+#model.parameters=list(Phi=list(formula=~1),p=list(formula=~1)),output=FALSE)
+#summary(mod1,brief=TRUE)
+#mod2&lt;-mark(dipper,groups="sex",
+#model.parameters=list(Phi=list(formula=~sex),p=list(formula=~1)),output=FALSE)
+#summary(mod2,brief=TRUE)
+# jolly seber model
+crm(dipper,model="js",groups="sex",
+   model.parameters=list(pent=list(formula=~sex),N=list(formula=~sex)),accumulate=FALSE)
+# examples showing use of unit.scale
+dipper.proc=process.data(dipper,model="cjs",begin.time=1,time.intervals=c(.1,.2,.3,.4,.5,.6))
+dipper.ddl=make.design.data(dipper.proc)
+mod.Phit.p=crm(dipper.proc,dipper.ddl,
+               model.parameters=list(Phi=list(formula=~time),p=list(formula=~1)),
+               hessian=TRUE,unit_scale=TRUE)
+mod.Phit.p
+mod.Phit.p$results$reals
+
+dipper.proc=process.data(dipper,model="cjs",begin.time=1,time.intervals=c(.1,.2,.3,.4,.5,.6))
+dipper.ddl=make.design.data(dipper.proc)
+mod.Phit.p=crm(dipper.proc,dipper.ddl,
+               model.parameters=list(Phi=list(formula=~time),p=list(formula=~1)),
+               hessian=TRUE,unit_scale=FALSE)
+mod.Phit.p
+mod.Phit.p$results$reals
+
+# This example is excluded from testing to reduce package check time
+# if you have RMark installed you can use this code to run the same models 
+# by removing the comment 
+#data(dipper)
+#data(mstrata)
+#mark(dipper,model.parameters=list(p=list(formula=~time)),output=FALSE)$results$beta
+#mark(mstrata,model="Multistrata",model.parameters=list(p=list(formula=~1),
+# S=list(formula=~1),Psi=list(formula=~-1+stratum:tostratum)),
+# output=FALSE)$results$beta
+#mod=mark(dipper,model="POPAN",groups="sex",
+#   model.parameters=list(pent=list(formula=~sex),N=list(formula=~sex)))
+#summary(mod)
+#CJS example with hmm
+crm(dipper,model="hmmCJS",model.parameters = list(p = list(formula = ~time)))
+##MSCJS example with hmm
+data(mstrata)
+ms=process.data(mstrata,model="hmmMSCJS",strata.labels=c("A","B","C"))
+ms.ddl=make.design.data(ms)
+ms.ddl$Psi$fix=NA
+ms.ddl$Psi$fix[ms.ddl$Psi$stratum==ms.ddl$Psi$tostratum]=1
+crm(ms,ms.ddl,model.parameters=list(Psi=list(formula=~-1+stratum:tostratum)))
+
+}
+</code></pre>
+
+
+</div>

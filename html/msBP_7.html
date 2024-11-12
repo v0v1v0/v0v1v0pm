@@ -1,0 +1,243 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>msBP.Gibbs</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Gibbs sampling for density estimation for msBP model
+</h2>
+
+<h3>Description</h3>
+
+<p>Gibbs sampling for Markov Chain Motecarlo sampling from the posterior distribution of an msBP model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">msBP.Gibbs(x, a, b, g0 = "normal", g0par=c(0,1), mcmc, 
+	grid = list(n.points=40, low=0.001, upp=0.999), state=NULL, hyper, 
+	printing=0, maxScale=5, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+
+<p>the observed sample
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>a</code></td>
+<td>
+
+<p>scalar a parameter
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b</code></td>
+<td>
+
+<p>scalar b parameter
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>g0</code></td>
+<td>
+
+<p>prior guess for the density of <code>x</code>. Currently only "normal", "unif", "gamma", and "empirical" are supported. From version 1.1 random paramters are also allowed (only with <code>g0="normal"</code>).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>g0par</code></td>
+<td>
+
+<p>additional scalar parameters for <code>g0</code>. If "normal" corresponds to mean and standard deviation, if "uniform" to upper and lower bounds, if "gamma" to shape and rate parameters. If "empirical" this value is not used. From version 1.1 random paramters are also allowed (only with <code>g0="normal"</code>). 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mcmc</code></td>
+<td>
+<p>a list giving the MCMC parameters. It must include the
+following integers: <code>nb</code> giving the number of burn-in iterations, <code>nrep</code> giving
+the total number of iterations (including <code>nb</code>), and <code>ndisplay</code> giving
+the multiple of iterations to be displayed on screen while the <code>C++</code> routine is running (a message will be printed every <code>ndisplay</code> iterations).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grid</code></td>
+<td>
+
+<p>a list giving the parameters for plotting the posterior mean density over a finite grid. It must include the following values: <code>low</code> and <code>upp</code> giving the lower and upper bound respectively of the grid and <code>n.points</code>, an integer giving the number of points of the grid</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>state</code></td>
+<td>
+<p>a list giving the current value of the parameters. This list is used if the current analysis is the continuation of a
+previous analysis or if we want to start the MCMC algorithm from some particular value of the parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hyper</code></td>
+<td>
+<p>a list containing the values of the hyperparameters for <code>a</code> and <code>b</code> or for the parameters of the prior guess (only if <code>g0="normal"</code>) . It must contains <code>hyperprior</code>, a list of three logical values determining if hyperpriors for <code>a</code>, <code>b</code> and <code>g0</code> are used (TRUE) or if <code>a</code>, <code>b</code>, or <code>g0</code> are fixed (FALSE), and <code>hyperpar</code> a list containing the hyperparameters for the hyperprior distributions: <code>beta</code>, <code>gamma</code>, <code>delta</code>, <code>lambda</code>, <code>mu0</code>, <code>kappa0</code>, <code>alpha0</code>, and <code>beta0</code>. See details. <code>gridB</code> is a grid of values for which the prior (and posterior) for <code>b</code> is evaluated with a Griddy Gibbs approach (Ritter and Tanner, 1992). See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>printing</code></td>
+<td>
+<p>Vector of integers if the internal C++ function need to print what is doing</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxScale</code></td>
+<td>
+<p>maximum scale of the binary trees.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Before calling the proper C++ subrouting the function center the sample on an initial guess for the density of the data. If <code>g0 = 'empirical'</code> the data are transformed so that the expctation of the msBP prior is centered on the kernel density estimate of <code>x</code>.
+</p>
+<p>The algorithm consists of two primary steps: (i) allocate each observation 
+to a multiscale cluster, conditionally on the values of the weights (see also <code>msBP.postCluster</code>); 
+(ii) update the weights, conditionally on the cluster allocations. 
+All the procedure is written in C++ and additional R scripts are used to pre- and post-process the data and the output.
+</p>
+<p>If <code>hyper$hyperpriors$a</code> or <code>hyper$hyperpriors$b</code> is true, additional hyperpriors for <code>a</code> and <code>b</code> are assumed. Specifically the algorithm implements <code class="reqn">a \sim Ga(\beta,\gamma)</code> and  <code class="reqn">b \sim Ga(\delta, \lambda)</code>. 
+For the former parameter the full conditional posterior distribution is available in closed form, i.e.
+</p>
+<p style="text-align: center;"><code class="reqn"> a | -  \sim Ga\left(\beta + 2^{s'+1} - 1, \gamma - \sum_{s=0}^{s'} \sum_{h=1}^{2^s} \log(1-S_{s,h}) \right),</code>
+</p>
+
+<p>while for the latter its full conditional posterior is proportional to 
+</p>
+<p style="text-align: center;"><code class="reqn">
+	\frac{b^{\delta-1}}{B(b,b)^{2^{s+1}-1}} \exp \left\{b \left(
+	\sum_{s=0}^{s'} \sum_{h=1}^{2^s} \log\{R_{s,h} (1 - R_{s,h} )\} - \lambda\right) \right\},
+</code>
+</p>
+
+<p>where <code class="reqn">s'</code> is the maximum occupied scale and <code class="reqn">B(p, q)</code> is the Beta function. To sample
+from the latter distribution, a griddy Gibbs approach over the grid defined by <code>hyper$hyperpar$gridB</code> is used. See Ritter and Tanner (1992).
+From Version 1.1, if <code>hyper$hyperpriors$base=TRUE</code> and <code>g0="normal"</code> additional hyperpriors for the parameter of the centering normal density are assumed. Specifically the model is
+</p>
+<p style="text-align: center;"><code class="reqn">
+	y = \Phi(x; \mu, \sigma^2)
+</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">
+	(\mu, \sigma^2) \sim N(\mu; \mu_0, \kappa_0\sigma^2)\mbox{I-Ga}(\sigma^2; \alpha_0, \beta_0)
+</code>
+</p>
+
+<p>and an addtional step simulating the values of <code class="reqn">\mu</code> and <code class="reqn">\sigma^2</code> from their conditional posterior distribution is added to the Gibbs sampler of Canale and Dunson (2016). Specifically, a Metropolis-Hastings step with proposal equal to the prior is implemented.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing 
+
+
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>density</code></td>
+<td>
+<p>A list containing <code>postMeanDens</code>, the posterior mean density estimate evaluated over <code>xDens</code> and <code>postLowDens</code> and <code>postUppDens</code>, the lower and upper pointwise 95% credible bands,</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mcmc</code></td>
+<td>
+<p>A list containing the MCMC chains: <code>dens</code> is a matrix (<code>nrep</code>-<code>nb</code>) times <code>n.grid</code>, <code>a</code> and <code>b</code> are the vectors with the MCMC chains for the two parameters (if <code>hyperprior</code> was TRUE), <code>scale</code> is a matix where each column is a MCMC chain of the total mass for each scale, <code>R</code> and <code>S</code>, are matrices where each column in the <code>tree2vec</code> form of the corresponding trees, <code>weights</code> is a matrix where each column is the <code>tree2vec</code> form of the corresponding tree of weights, <code>s</code> and <code>h</code> are matrices where each column is the MCMC chain for the node labels for a subject.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>postmean</code></td>
+<td>
+<p>A list containing posterior means over the MCMC samples of <code>a</code>, <code>b</code>, and of all binary trees</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fit</code></td>
+<td>
+<p>A list containing the LPML, mean and median of the log CPO.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Canale, A. and Dunson, D. B. (2016), "Multiscale Bernstein polynomials for densities", Statistica Sinica, 26(3), 1175-1195.
+</p>
+<p>Canale, A. (2017), "msBP: An R Package to Perform Bayesian Nonparametric Inference Using Multiscale Bernstein Polynomials Mixtures". Journal of Statistical Software, 78(6), 1-19. 
+</p>
+<p>Ritter C., Tanner M. (1992). "Facilitating the Gibbs Sampler: the Gibbs Stopper and the Griddy-Gibbs Sampler." Journal of the American Statistical Association, 87, 861-868.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>msBP.postCluster</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+data(galaxy)
+galaxy &lt;- data.frame(galaxy)
+speeds &lt;- galaxy$speed/1000
+set.seed(1)
+#with fixed g0 and random a, b
+fit.msbp.1 &lt;- msBP.Gibbs(speeds, a = 10, b = 5, g0 = "empirical", 
+	mcmc=list(nrep = 10000, nb = 5000, ndisplay = 1000), 
+	hyper=list(hyperprior=list(a = TRUE, b = TRUE, g0 = FALSE), 
+	hyperpar=list(beta=5,gamma = 1,delta = 1,lambda = 1)), 
+	printing = 0, maxS = 7, grid = list(n.points = 150, low = 5, upp = 38))
+
+#with random a, b and hyperparameters of g0
+fit.msbp.2 &lt;- msBP.Gibbs(speeds, a = 10, b=5, g0 = "normal", 
+	mcmc=list(nrep = 10000, nb = 5000, ndisplay = 1000), 
+	hyper=list(hyperprior = list(a = TRUE, b = TRUE, g0 = TRUE), 
+  hyperpar = list(beta = 50, gamma = 5, delta = 10, lambda = 1,
+	gridB = seq(0, 20, length = 30),
+	mu0 = 21, kappa0 = 0.1, alpha0 = 1, beta0 = 20)), 
+	printing = 0, maxS = 7, grid = list(n.points = 150, lo w= 5, upp = 38))	
+
+hist(speeds, prob=TRUE,br=10, ylim=c(0,0.23), main="", col='grey')
+points(fit.msbp.1$density$postMeanDens~fit.msbp.1$density$xDens, ty='l', lwd=2)
+points(fit.msbp.1$density$postUppDens~fit.msbp.1$density$xDens, ty='l',lty=2, lwd=2)
+points(fit.msbp.1$density$postLowDens~fit.msbp.1$density$xDens, ty='l',lty=2, lwd=2)
+
+hist(speeds, prob=TRUE,br=10, ylim=c(0,0.23), main="", col='grey')
+points(fit.msbp.2$density$postMeanDens~fit.msbp.2$density$xDens, ty='l', lwd=2)
+points(fit.msbp.2$density$postUppDens~fit.msbp.2$density$xDens, ty='l',lty=2, lwd=2)
+points(fit.msbp.2$density$postLowDens~fit.msbp.2$density$xDens, ty='l',lty=2, lwd=2)
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

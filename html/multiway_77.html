@@ -1,0 +1,132 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>USalcohol</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+United States Alcohol Consumption Data (1970-2013)
+</h2>
+
+<h3>Description</h3>
+
+<p>This dataset contains yearly (1970-2013) consumption data from the 50 United States and the District of Columbia for three types of alcoholic beverages: spirits, wine, and beer. The data were obtained from the National Institute on Alcohol Abuse and Alcoholism (NIAAA) Surveillance Report #102 (see below link).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">data("USalcohol")</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 6732 observations on the following 8 variables.
+</p>
+
+<dl>
+<dt><code>year</code></dt>
+<dd>
+<p>integer Year (1970-2013)</p>
+</dd>
+<dt><code>state</code></dt>
+<dd>
+<p>factor State Name (51 levels)</p>
+</dd>
+<dt><code>region</code></dt>
+<dd>
+<p>factor Region Name (4 levels)</p>
+</dd>
+<dt><code>type</code></dt>
+<dd>
+<p>factor Beverage Type (3 levels)</p>
+</dd>
+<dt><code>beverage</code></dt>
+<dd>
+<p>numeric Beverage Consumed (thousands of gallons)</p>
+</dd>
+<dt><code>ethanol</code></dt>
+<dd>
+<p>numeric Absolute Alcohol Consumed (thousands of gallons)</p>
+</dd>
+<dt><code>pop14</code></dt>
+<dd>
+<p>numeric Population Age 14 and Older (thousands of people)</p>
+</dd>
+<dt><code>pop21</code></dt>
+<dd>
+<p>numeric Population Age 21 and Older (thousands of people)</p>
+</dd>
+</dl>
+<h3>Details</h3>
+
+<p>In the data source, the population age 21 and older for Mississippi in year 1989 is reported to be 3547.839 thousand, which is incorrect. In this dataset, the miscoded population value has been replaced with the average of the corresponding 1988 population (1709 thousand) and the 1990 population (1701.527 thousand). 
+</p>
+
+
+<h3>Source</h3>
+
+<p><a href="https://pubs.niaaa.nih.gov/publications/surveillance102/pcyr19702013.txt">https://pubs.niaaa.nih.gov/publications/surveillance102/pcyr19702013.txt</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Haughwout, S. P., LaVallee, R. A., &amp; Castle, I-J. P. (2015). 
+Surveillance Report #102: Apparent Per Capita Alcohol Consumption: 
+National, State, and Regional Trends, 1977-2013. Bethesda, MD: NIAAA,
+Alcohol Epidemiologic Data System.
+</p>
+<p>Helwig, N. E. (2017). Estimating latent trends in multivariate longitudinal data via Parafac2 with functional and structural constraints. <em>Biometrical Journal, 59</em>(4), 783-803.
+</p>
+<p>Nephew, T. M., Yi, H., Williams, G. D., Stinson, F. S., &amp; Dufour, M.C., (2004). 
+U.S. Alcohol Epidemiologic Data Reference Manual, Vol. 1, 4th ed. 
+U.S. Apparent Consumption of Alcoholic Beverages Based on State Sales, 
+Taxation, or Receipt Data. Bethesda, MD: NIAAA, Alcohol Epidemiologic Data 
+System. NIH Publication No. 04-5563.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># load data and print first six rows
+data(USalcohol)
+head(USalcohol)
+
+# form tensor (time x variables x state)
+Xbev &lt;- with(USalcohol, tapply(beverage/pop21, list(year, type, state), c))
+Xeth &lt;- with(USalcohol, tapply(ethanol/pop21, list(year, type, state), c))
+X &lt;- array(0, dim=c(44, 6, 51))
+X[, c(1,3,5) ,] &lt;- Xbev
+X[, c(2,4,6) ,] &lt;- Xeth
+dnames &lt;- dimnames(Xbev)
+dnames[[2]] &lt;- c(paste0(dnames[[2]],".bev"), paste0(dnames[[2]],".eth"))[c(1,4,2,5,3,6)]
+dimnames(X) &lt;- dnames
+
+# center each variable across time (within state)
+Xc &lt;- ncenter(X, mode = 1)
+
+# scale each variable to have mean square of 1 (across time and states)
+Xs &lt;- nscale(Xc, mode = 2)
+
+# fit parafac model with 3 factors
+set.seed(1)
+pfac &lt;- parafac(Xs, nfac = 3, nstart = 1)
+
+# fit parafac model with functional constraints
+set.seed(1)
+pfacF &lt;- parafac(Xs, nfac = 3, nstart = 1, 
+                 const = c("smooth", NA, NA))
+
+# fit parafac model with functional and structural constraints
+Bstruc &lt;- matrix(c(rep(c(TRUE,FALSE), c(2,4)), 
+                   rep(c(FALSE,TRUE,FALSE), c(2,2,2)),
+                   rep(c(FALSE,TRUE), c(4,2))), nrow=6, ncol=3)
+set.seed(1)
+pfacFS &lt;- parafac(Xs, nfac = 3, nstart = 1, 
+                  const = c("smooth", NA, NA), Bstruc = Bstruc)
+
+</code></pre>
+
+
+</div>

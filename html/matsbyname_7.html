@@ -1,0 +1,213 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>aggregate_pieces_byname</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Aggregate a matrix by pieces of row and/or column names</h2>
+
+<h3>Description</h3>
+
+<p>Aggregate a matrix (or list of matrices or a column in a <code>matsindf</code> data frame)
+by pieces of the row and column names.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">aggregate_pieces_byname(
+  a,
+  piece,
+  margin = list(c(1, 2)),
+  inf_notation = TRUE,
+  notation = list(RCLabels::notations_list),
+  choose_most_specific = FALSE,
+  prepositions = list(RCLabels::prepositions_list),
+  aggregation_map = NULL,
+  pattern_type = "exact"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>a</code></td>
+<td>
+<p>A matrix or list of matrices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>piece</code></td>
+<td>
+<p>A character string indicating which piece of the row or column names to retain,
+one of "noun", "pps", "pref" or "suff", or a preposition,
+indicating which part of the row or column name is to be retained.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>margin</code></td>
+<td>
+<p>As a character, the row type or column type to be renamed.
+As an integer, the margin to be renamed.
+Default is <code>c(1, 2)</code>, meaning that both
+rows (<code>margin = 1</code>) and columns (<code>margin = 2</code>)
+will be renamed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inf_notation</code></td>
+<td>
+<p>A boolean that tells whether to infer notation.
+Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>notation</code></td>
+<td>
+<p>The notation used for row and column labels.
+Default is <code>list(RCLabels::notations_list)</code>.
+The default value is wrapped in a list,
+because <code>RCLabels::notations_list</code> is, itself, a list.
+See <code>RCLabels</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>choose_most_specific</code></td>
+<td>
+<p>A boolean that indicates whether the most-specific notation
+will be inferred when more than one of <code>notation</code> matches
+a row or column label
+and <code>allow_multiple = FALSE</code>.
+When <code>FALSE</code>, the first matching notation in <code>notations</code>
+is returned when <code>allow_multiple = FALSE</code>.
+Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prepositions</code></td>
+<td>
+<p>Prepositions that can be used in the row and column label.
+Default is <code>RCLabels::prepositions_list</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>aggregation_map</code></td>
+<td>
+<p>A named list of rows or columns to be aggregated (or <code>NULL</code>). See <code>details</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pattern_type</code></td>
+<td>
+<p>See <code>RCLabels::make_or_pattern()</code>.
+Default is "exact".</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This is a convenience function that bundles two others
+for common use cases:
+<code>rename_to_piece_byname()</code> followed by <code>aggregate_byname()</code>.
+Note that after renaming to the piece,
+there may be rows or columns that are identically named.
+If those identically named names aren't included in the <code>aggregation_map</code>,
+an error will result.
+So, <code>aggregate_byname()</code> is called twice;
+first with <code>aggregation_map = NULL</code> to sweep up any
+rows or columns that are identically named
+after renaming and
+second with <code>aggregation_map = aggregation_map</code> to
+sum the desired rows or columns.
+See examples.
+</p>
+<p>When <code>aggregation_map</code> is <code>NULL</code> (the default),
+rows (or columns or both) of same name are aggregated together.
+</p>
+<p>If <code>aggregation_map</code> is not <code>NULL</code>, it must be a named list.
+The name of each <code>aggregation_map</code> item is the name of a row or column in output
+that will contain the specified aggregation.
+The value of each item in <code>aggregation_map</code> must be a vector of names of rows or columns in <code>a</code>.
+The names in the value are aggregated and inserted into the output with the name of the value.
+For example <code>aggregation_map = list(new_row = c("r1", "r2"))</code>
+will aggregate rows "r1" and "r2", delete rows "r1" and "r2", and insert a new row
+whose name is "new_row" and whose value is the sum of rows "r1" and "r2'.
+</p>
+<p>The values in the <code>aggregation_map</code> are interpreted as regular expressions, and
+they are escaped using <code>Hmisc::escapeRegex()</code> prior to use.
+</p>
+<p><code>aggregation_map</code> should aggregate by pieces,
+not by the full, original row and/or column names.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A version of <code>a</code> with rows and/or columns aggregated according to <code>aggregation_map</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">a &lt;- matrix(c(1, 2, 3, 
+              4, 5, 6), nrow = 2, ncol = 3, byrow = TRUE, 
+            dimnames = list(c("a [from b]", "c [from d]"), 
+                            c("e [from f]", "g [from h]", "i [from j]")))
+a %&gt;%
+  aggregate_pieces_byname(piece = "suff", 
+                          notation = RCLabels::from_notation,
+                          aggregation_map = list(rows = c("b", "d"), 
+                                                 cols = c("h", "j")))
+m &lt;- matrix(c(1, 0, 0, 
+              0, 1, 1, 
+              0, 1, 1), nrow = 3, ncol = 3, byrow = TRUE, 
+            dimnames = list(c("Gasoline [from Oil refineries]", 
+                              "Electricity [from Main activity producer electricity plants]", 
+                              "Electricity [from Hydro]"),
+                            c("Automobiles", "LED lamps", "CFL lamps"))) %&gt;%
+  setrowtype("Product") %&gt;% setcoltype("Industry")
+mT &lt;- transpose_byname(m)
+# Aggregate the "Electricity" rows.
+aggregate_pieces_byname(m, piece = "noun", margin = "Product",
+                        notation = RCLabels::bracket_notation)
+# Also works in a list.
+aggregate_pieces_byname(a = list(m, mT), piece = "noun", 
+                        margin = "Product",
+                        notation = RCLabels::bracket_notation)
+# Use an aggregation map
+aggregate_pieces_byname(a = list(m, mT), piece = "noun", 
+                        margin = "Product",
+                        aggregation_map = list(list(final = c("Electricity", "Gasoline"))),
+                        notation = RCLabels::bracket_notation)
+# Also works in a data frame.
+df &lt;- tibble::tibble(m = list(m, mT), 
+                     pce = "noun",
+                     mgn = "Product",
+                     agg_map = list(list(final = c("Electricity", "Gasoline"))), 
+                     notn = list(RCLabels::bracket_notation)) %&gt;%
+  dplyr::mutate(
+    agg = aggregate_pieces_byname(a = m, piece = pce, margin = mgn, 
+                                  aggregation_map = agg_map,
+                                  notation = notn)
+  )
+df$agg
+# Works when renaming to the piece results in identical row or col names.
+b &lt;- matrix(1:6, nrow = 3, ncol = 2, 
+            dimnames = list(c("a [from b]", "c [from d]", "c [from e]"), 
+                            c("c1", "c2")))
+b
+# This aggregation works, because the "c" rows
+# are aggregated before applying the aggregation_map,
+# which, itself, does NOT aggregate the "c" rows.
+b %&gt;% 
+  aggregate_pieces_byname(piece = "noun",
+                          margin = 1,
+                          inf_notation = FALSE, 
+                          notation = RCLabels::bracket_notation, 
+                          aggregation_map = list(f = c("a", "b")))
+</code></pre>
+
+
+</div>

@@ -1,0 +1,158 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mortcast</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Coherent Rotated Lee-Carter Prediction</h2>
+
+<h3>Description</h3>
+
+<p>Predict age-specific mortality rates using the coherent rotated Lee-Carter method.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mortcast(
+  e0m,
+  e0f,
+  lc.pars,
+  rotate = TRUE,
+  keep.lt = FALSE,
+  constrain.all.ages = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>e0m</code></td>
+<td>
+<p>A time series of future male life expectancy.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>e0f</code></td>
+<td>
+<p>A time series of future female life expectancy.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lc.pars</code></td>
+<td>
+<p>A list of coherent Lee-Carter parameters with elements <code>bx</code>, <code>ultimate.bx</code>,
+<code>ages</code>, <code>nx</code>, 
+<code>female</code> and <code>male</code> as returned by <code>lileecarter.estimate</code>. 
+The <code>female</code> and <code>male</code> objects are again lists that should contain a vector
+<code>ax</code> and optionally a matrix <code>axt</code> if the <code class="reqn">a_x</code> parameter 
+needs to be defined as time dependent. In such a case, rows are age groups and columns are 
+time periods corresponding to the length of the <code>e0f</code> and <code>e0m</code> vectors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rotate</code></td>
+<td>
+<p>If <code>TRUE</code> the rotation method of <code class="reqn">b_x</code> is used as described in Li et al. (2013).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep.lt</code></td>
+<td>
+<p>Logical. If <code>TRUE</code> additional life table columns are kept in the 
+resulting object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>constrain.all.ages</code></td>
+<td>
+<p>By default the method constrains the male mortality to be above female 
+mortality for old ages if the male life expectancy is below the female life expectancy. Setting 
+this argument to <code>TRUE</code> causes this constraint to be applied to all ages.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional life table arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function implements Steps 6-9 of Algorithm 2 in Sevcikova et al. (2016). 
+It uses the abridged or unabridged life table function to find the level of mortality that coresponds to the given 
+life expectancy. Thus, it can be used for both, mortality for 5- or 1-year age groups.
+</p>
+
+
+<h3>Value</h3>
+
+<p>List with elements <code>female</code> and <code>male</code>, each of which contains a matrix <code>mx</code>
+with the predicted mortality rates. If <code>keep.lt</code> is <code>TRUE</code>, it also 
+contains matrices <code>sr</code> (survival rates), and life table quantities <code>Lx</code> and <code>lx</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Li, N., Lee, R. D. and Gerland, P. (2013). Extending the Lee-Carter method to model the rotation 
+of age patterns of mortality decline for long-term projections. Demography, 50, 2037-2051.
+</p>
+<p>Sevcikova H., Li N., Kantorova V., Gerland P., Raftery A.E. (2016). 
+Age-Specific Mortality and Fertility Rates for Probabilistic Population Projections. 
+In: Schoen R. (eds) Dynamic Demographic Analysis. The Springer Series on Demographic Methods
+and Population Analysis, vol 39. Springer, Cham
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>rotate.leecarter</code>, <code>leecarter.estimate</code>, <code>lileecarter.estimate</code>,
+<code>mortcast.blend</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># estimate parameters from historical mortality data (5-year age groups)
+data(mxM, mxF, e0Fproj, e0Mproj, package = "wpp2017")
+country &lt;- "Brazil"
+mxm &lt;- subset(mxM, name == country)[,4:16]
+mxf &lt;- subset(mxF, name == country)[,4:16]
+rownames(mxm) &lt;- rownames(mxf) &lt;- c(0,1, seq(5, 100, by=5))
+lc &lt;- lileecarter.estimate(mxm, mxf)
+
+# project into future for given levels of life expectancy
+e0f &lt;- as.numeric(subset(e0Fproj, name == country)[-(1:2)])
+e0m &lt;- as.numeric(subset(e0Mproj, name == country)[-(1:2)])
+pred &lt;- mortcast(e0m, e0f, lc)
+
+# plot first projection in black and the remaining ones in grey 
+plot(lc$ages, pred$female$mx[,1], type="b", log="y", ylim=range(pred$female$mx),
+    ylab="female mx", xlab="Age", main=paste(country, "(5-year age groups)"), cex=0.5)
+for(i in 2:ncol(pred$female$mx)) lines(lc$ages, pred$female$mx[,i], col="grey")
+
+# similarly for 1-year age groups
+# derive toy 1-year mx using model life tables at given level of e0
+mxm1y &lt;- mlt(seq(65, 71, length = 4), sex = "male", nx = 1)
+mxf1y &lt;- mlt(seq(73, 78, length = 4), sex = "female", nx = 1)
+
+# estimate parameters
+lc1y &lt;- lileecarter.estimate(mxm1y, mxf1y, nx = 1)
+ 
+# project into the future 
+pred1y &lt;- mortcast(e0m, e0f, lc1y)
+
+# plot first projection in black and the remaining ones in grey 
+plot(lc1y$ages, pred1y$female$mx[,1], type="b", log="y", ylim=range(pred1y$female$mx),
+    ylab="female mx", xlab="Age", main="1-year age groups", cex=0.5)
+for(i in 2:ncol(pred1y$female$mx)) lines(lc1y$ages, pred1y$female$mx[,i], col="grey")
+
+</code></pre>
+
+
+</div>

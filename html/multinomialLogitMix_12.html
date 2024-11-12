@@ -1,0 +1,233 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mix_mnm_logistic</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+EM algorithm
+</h2>
+
+<h3>Description</h3>
+
+<p>Estimation of the multinomial logit mixture using the EM algorithm. The algorithm exploits a careful initialization procedure (Papastamoulis et al., 2016) combined with a ridge-stabilized implementation of the Newton-Raphson
+method (Goldfeld et al., 1966) in the M-step.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mix_mnm_logistic(y, X, Kmax = 10, maxIter = 100, emthreshold = 1e-08, 
+	maxNR = 5, nCores, tsplit = 8, msplit = 5, split = TRUE, 
+	shake = TRUE, random = TRUE, criterion = "ICL", 
+	plotting = FALSE, R0 = 0.1, method = 5)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+
+<p>matrix of counts
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+
+<p>design matrix (including constant term).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Kmax</code></td>
+<td>
+
+<p>Maximum number of mixture components. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxIter</code></td>
+<td>
+
+<p>Maximum number of iterations. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>emthreshold</code></td>
+<td>
+
+<p>Minimum loglikelihood difference between successive iterations in order to terminate. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxNR</code></td>
+<td>
+
+<p>maximum number of Newton Raphson iterations
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nCores</code></td>
+<td>
+
+<p>number of cores for parallel computations. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tsplit</code></td>
+<td>
+
+<p>positive integer denoting the number of different runs for each call of the splitting small EM used by split-small EM initialization procedure.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>msplit</code></td>
+<td>
+
+<p>positive integer denoting the number of different runs for each call of the splitting small EM.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>split</code></td>
+<td>
+
+<p>Boolean indicating if the split initialization should be enabled in the small-EM scheme.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>shake</code></td>
+<td>
+
+<p>Boolean indicating if the shake initialization should be enabled in the small-EM scheme.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random</code></td>
+<td>
+
+<p>Boolean indicating if random initializations should be enabled in the small-EM scheme.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>criterion</code></td>
+<td>
+
+<p>set to "ICL" to select the number of clusters according to the ICL criterion. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plotting</code></td>
+<td>
+
+<p>Boolean for displaying intermediate graphical output. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>R0</code></td>
+<td>
+
+<p>controls the step size of the update: smaller values result to larger step
+sizes. See description in paper.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>this should be set to 5. 
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>estimated_K</code></td>
+<td>
+<p>selected value of the number of clusters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>all_runs</code></td>
+<td>
+<p>detailed output per run.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>BIC_values</code></td>
+<td>
+<p>values of bayesian information criterion.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ICL_BIC_values</code></td>
+<td>
+<p>values of ICL-BIC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimated_clustering</code></td>
+<td>
+<p>Single best-clustering of the data, according to the MAP rule.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Panagiotis Papastamoulis
+</p>
+
+
+<h3>References</h3>
+
+<p>Papastamoulis P (2022). Model-based clustering of multinomial count data.  arXiv:2207.13984 [stat.ME]
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#	Generate synthetic data
+
+	K &lt;- 2
+	p &lt;- 2
+	D &lt;- 3
+	n &lt;- 2
+	set.seed(116)
+	simData &lt;- simulate_multinomial_data(K = K, p = p, D = D, n = n, size = 20, prob = 0.025)   
+
+	
+	SplitShakeSmallEM &lt;- mix_mnm_logistic(y = simData$count_data, 
+		X = simData$design_matrix, Kmax = 2, maxIter = 1, 
+		emthreshold = 1e-8, maxNR = 1, nCores = 2, tsplit = 1, 
+		msplit = 2, split = TRUE, R0 = 0.1, method = 5, 
+		plotting = FALSE)
+	#selected number of clusters
+	SplitShakeSmallEM$estimated_K
+	#estimated single best-clustering, according to MAP rule
+	SplitShakeSmallEM$estimated_clustering
+	# detailed output for all parameters of the selected number of clusters
+	SplitShakeSmallEM$all_runs[[SplitShakeSmallEM$estimated_K]]
+	
+</code></pre>
+
+
+</div>

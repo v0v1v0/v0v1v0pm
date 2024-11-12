@@ -1,0 +1,168 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>LMCLRTest</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Monte Carlo Likelihood Ratio Test</h2>
+
+<h3>Description</h3>
+
+<p>This function performs the Local Monte Carlo likelihood ratio 
+test (LMC-LRT) proposed in Rodriguez-Rondon &amp; Dufour (2022).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">LMCLRTest(Y, p, k0, k1, control = list())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+<p>Series to be tested. Must be a (<code>T x q</code>) matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>Number of autoregressive lags. Must be greater than or equal to 0.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k0</code></td>
+<td>
+<p>Number of regimes under null hypothesis. Must be greater than or equal to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k1</code></td>
+<td>
+<p>Number of regimes under alternative hypothesis. Must be greater than <code>k0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>List with test procedure options including: 
+</p>
+
+<ul>
+<li>
+<p> N: Integer determining the number of Monte Carlo simulations. Default is set to <code>99</code> as in paper.
+</p>
+</li>
+<li>
+<p> burnin: Number of simulated observations to remove from beginning. Default is <code>100</code>.
+</p>
+</li>
+<li>
+<p> converge_check: String of NULL determining if convergence of model(s) should be verified. Allowed inputs are: "null", "alt", "both", or <code>NULL</code>. If <code>NULL</code> (default) no model convergence is verified.
+</p>
+</li>
+<li>
+<p> workers: Integer determining the number of workers to use for parallel computing version of test. Note that parallel pool must already be open. Default is <code>0</code>.
+</p>
+</li>
+<li>
+<p> mdl_h0_control: List with restricted model options. See <code>Nmdl</code>, <code>ARmdl</code>, <code>VARmdl</code>, <code>HMmdl</code>, <code>MSARmdl</code>, or <code>MSVARmdl</code> documentation for available and default values.
+</p>
+</li>
+<li>
+<p> mdl_h1_control: List with unrestricted model options. See <code>HMmdl</code>, <code>MSARmdl</code>, or <code>MSVARmdl</code> documentation for available and default values.
+</p>
+</li>
+<li>
+<p> use_diff_init_sim: Value which determines the number of initial values to use when estimating models for null distribution. Default is set to use the same as specified in <code>mdl_h0_control</code> and <code>mdl_h1_control</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>List of class <code>LMCLRTest</code> (<code>S3</code> object) with attributes including: 
+</p>
+
+<ul>
+<li>
+<p> mdl_h0: List with restricted model attributes. See <code>Nmdl</code>, <code>ARmdl</code>, <code>VARmdl</code>, <code>HMmdl</code>, <code>MSARmdl</code>, or <code>MSVARmdl</code> documentation for return values.
+</p>
+</li>
+<li>
+<p> mdl_h0: List with unrestricted model attributes. See <code>HMmdl</code>, <code>MSARmdl</code>, or <code>MSVARmdl</code> documentation for return values.
+</p>
+</li>
+<li>
+<p> LRT_0: Value of test statistic from observed data.
+</p>
+</li>
+<li>
+<p> LRN: A (<code>N x 1</code>) vector of test statistics from data simulated under the null hypothesis.
+</p>
+</li>
+<li>
+<p> pval: P-value of Local Monte Carlo Likelihood Ratio Test.
+</p>
+</li>
+<li>
+<p> LRN_cv: Vector with 90%, 95%, and 99% Monte Carlo critical values (from vector <code>LRN</code>).
+</p>
+</li>
+<li>
+<p> control: List with test procedure options used.
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>Rodriguez-Rondon, Gabriel and Jean-Marie Dufour. 2022. "Simulation-Based Inference for Markov Switching Models” <em>JSM Proceedings, Business and Economic Statistics Section: American Statistical Association</em>.
+</p>
+<p>Rodriguez-Rondon, Gabriel and Jean-Marie Dufour. 2023. “Monte Carlo Likelihood Ratio Tests for Markov Switching Models.” <em>Unpublished manuscript</em>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(1234)
+# Define DGP of MS AR process
+mdl_ms2 &lt;- list(n     = 200, 
+                mu    = c(5,10),
+                sigma = c(1,4),
+                phi   = c(0.5),
+                k     = 2,
+                P     = rbind(c(0.90, 0.10),
+                              c(0.10, 0.90)))
+
+# Simulate process using simuMSAR() function
+y_ms_simu &lt;- simuMSAR(mdl_ms2)
+
+
+# ------ MS-AR example ----- #
+# Set test procedure options
+lmc_control = list(N = 19,
+                   burnin = 100,
+                   converge_check = NULL,
+                   mdl_h0_control = list(const  = TRUE, 
+                                         getSE  = TRUE),
+                   mdl_h1_control = list(msmu   = TRUE, 
+                                         msvar  = TRUE,
+                                         getSE  = TRUE,
+                                         method = "EM",
+                                         maxit  = 300,
+                                         use_diff_init = 1))
+
+
+  lmctest &lt;- LMCLRTest(y_ms_simu$y, p = 1, k0 = 1 , k1 = 2, lmc_control)
+  summary(lmctest)
+
+</code></pre>
+
+
+</div>

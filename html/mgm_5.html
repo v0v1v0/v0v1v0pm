@@ -1,0 +1,276 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bwSelect</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Select optimal bandwidth for time-varying MGMs and mVAR Models
+</h2>
+
+<h3>Description</h3>
+
+<p>Selects the bandwidth parameter with lowest out of sample prediction error for MGMs and mVAR Models.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bwSelect(data, type, level, bwSeq, bwFolds,
+         bwFoldsize, modeltype, pbar, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>A n x p data matrix.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+
+<p>p vector indicating the type of variable for each column in <code>data</code>. "g" for Gaussian, "p" for Poisson, "c" for categorical.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>level</code></td>
+<td>
+
+<p>p vector indicating the number of categories of each variable. For continuous variables set to 1.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bwSeq</code></td>
+<td>
+
+<p>A sequence with candidate bandwidth values (0, s] with s &lt; Inf. Note that the bandwidth is applied relative to the unit time interval [0,1] and hence a banwidth of &gt; 2 corresponds roughly to equal weights for all time points and hence gives similar estimates as the stationary model estimated via <code>mvar()</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bwFolds</code></td>
+<td>
+
+<p>The number of folds (see details below).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bwFoldsize</code></td>
+<td>
+
+<p>The size of each fold (see details below).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modeltype</code></td>
+<td>
+
+<p>If <code>modeltype = "mvar"</code> model, the optimal bandwidth parameter for a <code>tvmvar()</code> model is selected. If <code>modeltype = "mgm"</code> model, the optimal bandwidth parameter for a <code>tvmgm()</code> model is selected. Additional arguments to <code>tvmvar()</code> or <code>tvmgm()</code> can be passed via the <code>...</code> argument.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pbar</code></td>
+<td>
+
+<p>If TRUE a progress bar is shown. Defaults to <code>pbar = "TRUE"</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Arguments passed to <code>tvmgm</code> or <code>tvmvar</code>.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Performs a cross-validation scheme that is specified by <code>bwFolds</code> and <code>bwFoldsize</code>. In the first fold, the test set is defined by an equally spaced sequence between [1,  n - <code>bwFolds</code>] of length <code>bwFoldsize</code>. In the second fold, the test set is defined by an equally spaced sequence between [2, n - <code>bwFolds</code> + 1] of length <code>bwFoldsize</code>, etc. . Note that if <code>bwFoldsize</code> = n / <code>bwFolds</code>, this procedure is equal to <code>bwFolds</code>-fold cross valildation. However, full cross validation is computationally very expensive and a single split in test/training set by setting <code>bwFolds = 1</code> is sufficient in many situations. The procedure selects the bandwidth with the lowest prediction error, averaged over variables and time points in the test set.
+</p>
+<p><code>bwSelect</code> computes the absolute error (continuous) or 0/1-loss (categorical) for each time point in the test set defined by <code>bwFoldsize</code> as described in the previous paragraph for every fold specified in <code>bwFolds</code>, separately for each variable. The computed errors are returned in different levels of aggregation in the output list (see below). Note that continuous variables are scaled (centered and divided by their standard deviation), hence the absolute error and 0/1-loss are roughly on the scale scale.
+</p>
+<p>Note that selecting the bandwidth with the EBIC is no alternative. This is because the EBIC always selects the intercept model with the lowest bandwidth.  The reason is that the unregularized intercept closely models the noise in the data and hence the penalty sets all other parameters to zero. This problem is solved by using out of sample prediction error in the cross validation scheme.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The function returns a list with the following entries:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+
+<p>Contains all provided input arguments. If <code>saveData = TRUE</code>, it also contains the data.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bwModels</code></td>
+<td>
+
+<p>Contains the models estimated at the time points in the tests set. For details see <code>tvmvar</code> or <code>tvmgm</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fullErrorFolds</code></td>
+<td>
+
+<p>List with number of entries equal to the length of <code>bwSeq</code> entries. Each entry contains a list with <code>bwFolds</code> entries. Each of those entries contains a contains a <code>bwFoldsize</code> times p matrix of out of sample prediction errors.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fullError</code></td>
+<td>
+
+<p>The same as <code>fullErrorFolds</code> but pooled over folds.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meanError</code></td>
+<td>
+
+<p>List with number of entries equal to the length of <code>bwSeq</code> entries. Each entry contains the average prediction error over variables and time points in the test set.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>testsets</code></td>
+<td>
+
+<p>List with <code>bwFolds</code> entries, which contain the rows of the test sample for each fold.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>zeroweights</code></td>
+<td>
+
+<p>List with <code>bwFolds</code> entries, which contains the observation weights used to fit the model at the <code>bwFoldsize</code> time points.
+</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Jonas Haslbeck &lt;jonashaslbeck@gmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Barber, R. F., &amp; Drton, M. (2015). High-dimensional Ising model selection with Bayesian information criteria. Electronic Journal of Statistics, 9(1), 567-607.
+</p>
+<p>Foygel, R., &amp; Drton, M. (2010). Extended Bayesian information criteria for Gaussian graphical models. In Advances in neural information processing systems (pp. 604-612).
+</p>
+<p>Haslbeck, J. M. B., &amp; Waldorp, L. J. (2020). mgm: Estimating time-varying Mixed Graphical Models in high-dimensional Data. Journal of Statistical Software, 93(8), pp. 1-46. DOI: 10.18637/jss.v093.i08
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+
+
+## A) bwSelect for tvmgm() 
+
+# A.1) Generate noise data set
+p &lt;- 5
+n &lt;- 100
+data_n &lt;- matrix(rnorm(p*n), nrow=100)
+head(data_n)
+
+type &lt;- c("c", "c", rep("g", 3))
+level &lt;- c(2, 2, 1, 1, 1)
+x1 &lt;- data_n[,1]
+x2 &lt;- data_n[,2]
+data_n[x1&gt;0,1] &lt;- 1
+data_n[x1&lt;0,1] &lt;- 0
+data_n[x2&gt;0,2] &lt;- 1
+data_n[x2&lt;0,2] &lt;- 0
+
+head(data_n)
+
+# A.2) Estimate optimal bandwidth parameter
+
+bwobj_mgm &lt;- bwSelect(data = data_n,
+                      type = type,
+                      level = level,
+                      bwSeq = seq(0.05, 1, length=3),
+                      bwFolds = 1,
+                      bwFoldsize = 3,
+                      modeltype = "mgm",
+                      k = 3,
+                      pbar = TRUE,
+                      overparameterize = TRUE)
+
+
+print.mgm(bwobj_mgm)
+
+
+
+## B) bwSelect for tvmVar() 
+
+# B.1) Generate noise data set
+
+p &lt;- 5
+n &lt;- 100
+data_n &lt;- matrix(rnorm(p*n), nrow=100)
+head(data_n)
+
+type &lt;- c("c", "c", rep("g", 3))
+level &lt;- c(2, 2, 1, 1, 1)
+x1 &lt;- data_n[,1]
+x2 &lt;- data_n[,2]
+data_n[x1&gt;0,1] &lt;- 1
+data_n[x1&lt;0,1] &lt;- 0
+data_n[x2&gt;0,2] &lt;- 1
+data_n[x2&lt;0,2] &lt;- 0
+
+head(data_n)
+
+# B.2) Estimate optimal bandwidth parameter
+
+bwobj_mvar &lt;- bwSelect(data = data_n,
+                       type = type,
+                       level = level,
+                       bwSeq = seq(0.05, 1, length=3),
+                       bwFolds = 1,
+                       bwFoldsize = 3,
+                       modeltype = "mvar",
+                       lags = 1:3,
+                       pbar = TRUE,
+                       overparameterize = TRUE)
+
+
+print.mgm(bwobj_mvar)
+
+# For more examples see https://github.com/jmbh/mgmDocumentation
+
+
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

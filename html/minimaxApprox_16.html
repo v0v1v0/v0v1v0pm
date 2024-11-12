@@ -1,0 +1,426 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>minimaxApprox</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Minimax Approximation of Functions</h2>
+
+<h3>Description</h3>
+
+<p>Calculates minimax approximations to functions. Polynomial approximation uses
+the Remez (1962) algorithm. Rational approximation uses the Cody-Fraser-Hart
+(Cody et al., 1968) version of the algorithm. When using monomials as the
+polynomial basis, the Compensated Horner Scheme of Langlois et al. (2006) is
+used.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">minimaxApprox(fn, lower, upper, degree, relErr = FALSE, basis ="Chebyshev",
+              xi = NULL, opts = list())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>fn</code></td>
+<td>
+<p>function; A vectorized univariate function having <code>x</code> as its
+first argument. This could be a built-in <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span> function, a predefined function,
+or an anonymous function defined in the call; see <strong>Examples</strong>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower</code></td>
+<td>
+<p>numeric; The lower bound of the approximation interval.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper</code></td>
+<td>
+<p>numeric; The upper bound of the approximation interval.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>degree</code></td>
+<td>
+<p>integer; Either a single value representing the requested
+degree for polynomial approximation or a vector of length 2 representing the
+requested degrees of the numerator and denominator for rational
+approximation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>relErr</code></td>
+<td>
+<p>logical; If <code>TRUE</code>, calculate the minimax approximation
+using <em>relative</em> error. The default is <code>FALSE</code> which uses
+<em>absolute</em> error.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>basis</code></td>
+<td>
+<p>character; Which polynomial basis to use in the analysis.
+<code>"Monomial"</code> uses the standard <code class="reqn">x^k</code> basis. <code>"Chebyshev"</code> uses
+the Chebyshev polynomials of the first kind, <code class="reqn">T_k</code>. The default is
+<code>"Chebyshev"</code>, and the parameter is case-insensitive and may be
+abbreviated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xi</code></td>
+<td>
+<p>numeric; For rational approximation, a vector of initial points of
+the correct length—<code class="reqn">\sum(\code{degree}) + 2</code>. If
+missing, the approximation will use the appropriate Chebyshev nodes.
+Polynomial approximation <strong>always</strong> uses Chebyshev nodes and will
+ignore <code>xi</code> with a message.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>opts</code></td>
+<td>
+<p>list; Configuration options including:
+</p>
+
+<ul>
+<li> <p><code>maxiter</code>: integer; The maximum number of iterations to
+attempt convergence. Defaults to 100.
+</p>
+</li>
+<li> <p><code>miniter</code>:  integer; The minimum number of iterations
+before allowing convergence. Defaults to 10.
+</p>
+</li>
+<li> <p><code>conviter</code>: integer; The number of successive iterations
+with the same results allowed before assuming no further convergence
+is possible. Defaults to 30. Will overwrite <code>maxiter</code> and
+<code>miniter</code> if <code>conviter</code> is explicitly passed and is larger
+than either one.
+</p>
+</li>
+<li> <p><code>showProgress</code>: logical; If <code>TRUE</code> will print error
+values at each iteration.
+</p>
+</li>
+<li> <p><code>convrat</code>: numeric; The convergence ratio tolerance.
+Defaults to <code class="reqn">1 + 1 \times 10^{-9}</code>. See <strong>Details</strong>.
+</p>
+</li>
+<li> <p><code>tol</code>: numeric; The absolute difference tolerance.
+Defaults to <code class="reqn">1 \times 10^{-14}</code>. See <strong>Details</strong>.
+</p>
+</li>
+<li> <p><code>tailtol</code>: numeric; The tolerance of the coefficient of
+the largest power of <code>x</code> to be ignored when performing the
+polynomial approximation a second time. Defaults to the smaller of
+<code class="reqn">1 \times 10^{-10}</code> or
+<code class="reqn">\frac{\code{upper} - \code{lower}}{10^6}</code>. Set to <code>NULL</code> to skip the
+<code>degree + 1</code> check completely. See <strong>Details</strong>.
+</p>
+</li>
+<li> <p><code>ztol</code>: numeric; The tolerance for each polynomial or
+rational numerator or denominator coefficient's contribution to
+<strong>not</strong> to be set to 0. Similar to polynomial <code>tailtol</code>
+but applied at each step of the algorithm. Defaults to
+<code>NULL</code> which leaves all coefficients as they are regardless
+of magnitude. See <strong>Details</strong>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+
+
+<h4>Convergence</h4>
+
+<p>The function implements the Remez algorithm using linear approximation, chiefly
+as described by Cody et al. (1968). Convergence is considered achieved when all
+three of the following criteria are met:
+</p>
+
+<ol>
+<li>
+<p> The observed error magnitudes are within tolerance of the expected
+error—the <strong>Distance Test</strong>.
+</p>
+</li>
+<li>
+<p> The observed error magnitudes are within tolerance of each
+other—the <strong>Magnitude Test</strong>.
+</p>
+</li>
+<li>
+<p> The observed error signs oscillate—the
+<strong>Oscillation Test</strong>.
+</p>
+</li>
+</ol>
+<p>“Within tolerance” can be met in one of two ways:
+</p>
+
+<ol>
+<li> <p><strong>Difference</strong>: The difference between the absolute
+magnitudes is less than or equal to <code>tol</code>.
+</p>
+</li>
+<li> <p><strong>Ratio</strong>: The ratio between the absolute magnitudes of the
+larger and smaller is less than or equal to <code>convrat</code>.
+</p>
+</li>
+</ol>
+<p>For efficiency, the <strong>Distance Test</strong> is taken between the absolute value
+of the largest observed error and the absolute value of the expected error.
+Similarly, the <strong>Magnitude Test</strong> is taken between the absolute value of
+the largest observed error and the absolute value of the smallest observed
+error. Both tests can be passed by <strong>either</strong> being within <code>tol</code> or
+<code>convrat</code> as described above. However, when the <strong>Difference</strong> test
+returns values less than machine precision, it is ignored in favor of the
+<strong>Ratio</strong> test.
+</p>
+<p>When the error values remain within tolerance of each other over <code>conviter</code>
+iterations, the algorithm will stop, as it is expected that no further precision
+will be gained by continued iterations.
+</p>
+
+
+
+<h4>Polynomial Evaluation</h4>
+
+<p>Monomial polynomials are evaluated using the Compensated Horner Scheme of
+Langlois et al. (2006) to enhance both stability and precision. Chebyshev
+polynomials are evaluated normally. There may be cases where the algorithm will
+fail using the monomial basis but succeed using Chebyshev polynomials and vice
+versa. The default is to use the Chebyshev polynomials.
+</p>
+
+
+
+<h4>Polynomial Algorithm “Singular Error” Response</h4>
+
+<p>When too high of a degree is requested for the tolerance of the algorithm, it
+often fails with a singular matrix error. In this case, for the
+<em>polynomial</em> version, the algorithm will try looking for an approximation
+of degree <code>n + 1</code>. If it finds one, <strong>and</strong> the contribution of that
+coefficient to the approximation is <code class="reqn">\le</code> <code>tailtol</code>, it will ignore
+that coefficient and return the resulting degree <code>n</code> polynomial, as the
+largest coefficient is effectively 0. The contribution is measured by
+multiplying that coefficient by the endpoint with the larger absolute magnitude
+raised to the <code>n + 1</code> power. This is done to prevent errors in cases where
+a very small coefficient is found on a range with very large absolute values and
+the resulting contribution to the approximation is <strong>not</strong>
+<em>de minimis</em>. Setting <code>tailtol</code> to <code>NULL</code> will skip the
+<code>n + 1</code> test completely.
+</p>
+
+
+
+<h4>Close-to-Zero Tolerance</h4>
+
+<p>For each step of the algorithms' iterations, the contribution of the found
+coefficient to the total sum (as measured in the above section) is compared to
+the <code>ztol</code> option. When less than or equal to <code>ztol</code>, that coefficient
+is set to 0. Setting <code>ztol</code> to <code>NULL</code> skips the test completely. For
+intervals near or containing zero, setting this option to anything other than
+<code>NULL</code> may result in either non-convergence or poor results. It is
+recommended to keep it as <code>NULL</code>, although there are edge cases where
+it may allow convergence where a standard call may fail.
+</p>
+
+
+
+<h3>Value</h3>
+
+<p><code>minimaxApprox</code> returns an object of class <code>"minimaxApprox"</code>
+which inherits from the class list.
+</p>
+<p>The generic accessor function <code>coef</code> will extract the numerator and
+denominator vectors. There are also default <code>print</code> and <code>plot</code>
+methods.
+</p>
+<p>An object of class <code>"minimaxApprox"</code> is a list containing the following
+components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>a</code></td>
+<td>
+<p>The polynomial or rational numerator coefficients. When using
+Chebyshev polynomials, these are the coefficients for <code class="reqn">T_k</code>. When using
+monomials, these are the coefficients for <code class="reqn">x^k</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b</code></td>
+<td>
+<p>The rational denominator coefficients. When using Chebyshev
+polynomials, these are the coefficients for <code class="reqn">T_k</code>. When using monomials,
+these are the coefficients for <code class="reqn">x^k</code>. Missing for polynomial
+approximation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>aMono</code></td>
+<td>
+<p>When using Chebyshev polynomials, these are the polynomial or
+rational numerator coefficients for monomial expansion in <code class="reqn">x^k</code>. Missing
+for monomial-based approximation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bMono</code></td>
+<td>
+<p>When using Chebyshev polynomials, these are the rational
+denominator coefficients for monomial expansion in <code class="reqn">x^k</code>. Missing for
+both polynomial and monomial-based rational approximation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ExpErr</code></td>
+<td>
+<p>The absolute value of the expected error as calculated by the
+Remez algorithms.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ObsErr</code></td>
+<td>
+<p>The absolute value of largest observed error between the
+function and the approximation at the extremal points.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iterations</code></td>
+<td>
+<p>The number of iterations of the algorithm. This does not
+include any iterations required to converge the error value in rational
+approximation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Extrema</code></td>
+<td>
+<p>The extrema at which the minimax error was achieved.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Warning</code></td>
+<td>
+<p>A logical flag indicating if any warnings were thrown.</p>
+</td>
+</tr>
+</table>
+<p>The object also contains the following attributes:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>"Rational" or "Polynomial".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>basis</code></td>
+<td>
+<p>"Monomial" or "Chebyshev".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>func</code></td>
+<td>
+<p>The function being approximated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>range</code></td>
+<td>
+<p>The range on which the function is being approximated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>relErr</code></td>
+<td>
+<p>A logical indicating that relative error was used. If
+<code>FALSE</code>, then absolute error was used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>The tolerance used for the <strong>Distance Test</strong>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convrat</code></td>
+<td>
+<p>The tolerance used for the <strong>Magnitude Test</strong>.</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>At present, the algorithms are implemented using machine double precision, which
+means that the approximations are at best slightly worse. Research proceeds on
+more precise, stable, and efficient implementations. So long as the package
+remains in an experimental state—noted by a 0 major version—the API may
+change at any time.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Avraham Adler <a href="mailto:Avraham.Adler@gmail.com">Avraham.Adler@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Remez, E. I. (1962) <em>General computational methods of Chebyshev
+approximation: The problems with linear real parameters</em>. US Atomic Energy
+Commission, Division of Technical Information. AEC-tr-4491
+</p>
+<p>Fraser W. and Hart J. F. (1962) “On the computation of rational
+approximations to continuous functions”, <em>Communications of the ACM</em>,
+<b>5</b>(7), 401–403, <a href="https://doi.org/10.1145/368273.368578">doi:10.1145/368273.368578</a>
+</p>
+<p>Cody, W. J. and Fraser W. and Hart J. F. (1968) “Rational Chebyshev
+approximation using linear equations”, <em>Numerische Mathematik</em>, <b>12</b>,
+242–251, <a href="https://doi.org/10.1007/BF02162506">doi:10.1007/BF02162506</a>
+</p>
+<p>Langlois, P. and Graillat, S. and Louvet, N. (2006) “Compensated Horner
+Scheme”, in <em>Algebraic and Numerical Algorithms and Computer-assisted
+Proofs.</em> Dagstuhl Seminar Proceedings, <b>5391</b>,
+<a href="https://doi.org/10.4230/DagSemProc.05391.3">doi:10.4230/DagSemProc.05391.3</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>minimaxEval</code>, <code>minimaxErr</code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">minimaxApprox(exp, 0, 1, 5)                              # Built-in &amp; polynomial
+
+fn &lt;- function(x) sin(x) ^ 2 + cosh(x)                   # Pre-defined
+minimaxApprox(fn, 0, 1, c(2, 3), basis = "m")            # Rational
+
+minimaxApprox(function(x) x ^ 3 / sin(x), 0.7, 1.6, 6L)  # Anonymous
+
+fn &lt;- function(x) besselJ(x, nu = 0)                     # More than one input
+b0 &lt;- 0.893576966279167522                               # Zero of besselY
+minimaxApprox(fn, 0, b0, c(3L, 3L))                      # Cf. DLMF 3.11.19
+</code></pre>
+
+
+</div>

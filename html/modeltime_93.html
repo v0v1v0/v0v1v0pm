@@ -1,0 +1,147 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modeltime_refit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Refit one or more trained models to new data</h2>
+
+<h3>Description</h3>
+
+<p>This is a wrapper for <code>fit()</code> that takes a
+Modeltime Table and retrains each model on <em>new data</em> re-using the parameters
+and preprocessing steps used during the training process.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modeltime_refit(object, data, ..., control = control_refit())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A Modeltime Table</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A <code>tibble</code> that contains data to retrain the model(s) using.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments to control refitting.
+</p>
+<p><strong>Ensemble Model Spec (<code>modeltime.ensemble</code>):</strong>
+</p>
+<p>When making a meta-learner with <code>modeltime.ensemble::ensemble_model_spec()</code>,
+used to pass <code>resamples</code> argument containing results
+from <code>modeltime.resample::modeltime_fit_resamples()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>Used to control verbosity and parallel processing.
+See <code>control_refit()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Refitting is an important step prior to forecasting time series models.
+The <code>modeltime_refit()</code> function makes it easy to recycle models,
+retraining on new data.
+</p>
+<p><strong>Recycling Parameters</strong>
+</p>
+<p>Parameters are recycled during retraining using the following criteria:
+</p>
+
+<ul>
+<li> <p><strong>Automated models</strong> (e.g. "auto arima") will have parameters recalculated.
+</p>
+</li>
+<li> <p><strong>Non-automated models</strong> (e.g. "arima") will have parameters preserved.
+</p>
+</li>
+<li>
+<p> All preprocessing steps will be reused on the data
+</p>
+</li>
+</ul>
+<p><strong>Refit</strong>
+</p>
+<p>The <code>modeltime_refit()</code> function is used to retrain models trained with <code>fit()</code>.
+</p>
+<p><strong>Refit XY</strong>
+</p>
+<p>The XY format is not supported at this time.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A Modeltime Table containing one or more re-trained models.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>control_refit()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(dplyr)
+library(lubridate)
+library(timetk)
+library(parsnip)
+library(rsample)
+
+# Data
+m750 &lt;- m4_monthly %&gt;% filter(id == "M750")
+
+# Split Data 80/20
+splits &lt;- initial_time_split(m750, prop = 0.9)
+
+# --- MODELS ---
+
+model_fit_prophet &lt;- prophet_reg() %&gt;%
+    set_engine(engine = "prophet") %&gt;%
+    fit(value ~ date, data = training(splits))
+
+
+# ---- MODELTIME TABLE ----
+
+models_tbl &lt;- modeltime_table(
+    model_fit_prophet
+)
+
+# ---- CALIBRATE ----
+# - Calibrate on training data set
+
+calibration_tbl &lt;- models_tbl %&gt;%
+    modeltime_calibrate(new_data = testing(splits))
+
+
+# ---- REFIT ----
+# - Refit on full data set
+
+refit_tbl &lt;- calibration_tbl %&gt;%
+    modeltime_refit(m750)
+
+
+</code></pre>
+
+
+</div>

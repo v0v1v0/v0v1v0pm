@@ -1,0 +1,173 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>selectMap</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Interactively Select Map Features</h2>
+
+<h3>Description</h3>
+
+<p>Interactively Select Map Features
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">selectMap(x, ...)
+
+## S3 method for class 'leaflet'
+selectMap(
+  x = NULL,
+  styleFalse = list(fillOpacity = 0.2, weight = 1, opacity = 0.4),
+  styleTrue = list(fillOpacity = 0.7, weight = 3, opacity = 0.7),
+  ns = "mapedit-select",
+  viewer = shiny::paneViewer(),
+  title = "Select features",
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p><code>leaflet</code> or <code>mapview</code> map to use for selection</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other arguments</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>styleFalse, styleTrue</code></td>
+<td>
+<p>names <code>list</code> of CSS styles used
+for selected (<code>styleTrue</code>) and deselected (<code>styleFalse</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ns</code></td>
+<td>
+<p><code>string</code> name for the Shiny <code>namespace</code> to use.  The <code>ns</code>
+is unlikely to require a change.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>viewer</code></td>
+<td>
+<p><code>function</code> for the viewer. See Shiny <code>viewer</code>.
+NOTE: when using <code>browserViewer(browser = getOption("browser"))</code> to
+open the app in the default browser, the browser window will automatically
+close when closing the app (by pressing "done" or "cancel") in most browsers.
+Firefox is an exception. See Details for instructions on how to enable this
+behaviour in Firefox.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>title</code></td>
+<td>
+<p><code>string</code> to customize the title of the UI window.  The default
+is "Select features".</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>When setting <code>viewer = browserViewer(browser = getOption("browser"))</code> and
+the systems default browser is Firefox, the browser window will likely not
+automatically close when the app is closed (by pressing "done" or "cancel").
+To enable automatic closing of tabs/windows in Firefox try the following:
+</p>
+
+<ul>
+<li>
+<p>input "about:config " to your firefox address bar and hit enter
+</p>
+</li>
+<li>
+<p>make sure your "dom.allow_scripts_to_close_windows" is true
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+library(mapedit)
+library(mapview)
+
+lf &lt;- mapview()
+
+# draw some polygons that we will select later
+drawing &lt;- lf %&gt;%
+  editMap()
+
+# little easier now with sf
+mapview(drawing$finished)
+
+# especially easy with selectFeatures
+selectFeatures(drawing$finished)
+
+
+# use @bhaskarvk USA Albers with leaflet code
+#  https://bhaskarvk.github.io/leaflet/examples/proj4Leaflet.html
+#devtools::install_github("hrbrmstr/albersusa")
+library(albersusa)
+library(sf)
+library(leaflet)
+library(mapedit)
+
+spdf &lt;- usa_sf()
+pal &lt;- colorNumeric(
+  palette = "Blues",
+  domain = spdf$pop_2014
+)
+
+bounds &lt;- c(-125, 24 ,-75, 45)
+
+(lf &lt;- leaflet(
+  options=
+    leafletOptions(
+      worldCopyJump = FALSE,
+      crs=leafletCRS(
+        crsClass="L.Proj.CRS",
+        code='EPSG:2163',
+        proj4def=paste0(
+          '+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +a=6370997 ',
+          '+b=6370997 +units=m +no_defs'
+        ),
+        resolutions = c(65536, 32768, 16384, 8192, 4096, 2048,1024, 512, 256, 128)
+      )
+    )
+  ) %&gt;%
+  fitBounds(bounds[1], bounds[2], bounds[3], bounds[4]) %&gt;%
+  setMaxBounds(bounds[1], bounds[2], bounds[3], bounds[4]) %&gt;%
+  mapview::addFeatures(
+    data=spdf, weight = 1, color = "#000000",
+    # adding group necessary for identification
+    layerId = ~iso_3166_2,
+    fillColor=~pal(pop_2014),
+    fillOpacity=0.7,
+    label=~stringr::str_c(name,' ', format(pop_2014, big.mark=",")),
+    labelOptions= labelOptions(direction = 'auto')
+  )
+)
+
+
+# test out selectMap with albers example
+selectMap(
+  lf,
+  styleFalse = list(weight = 1),
+  styleTrue = list(weight = 4)
+)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

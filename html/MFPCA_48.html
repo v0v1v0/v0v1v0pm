@@ -1,0 +1,155 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>univExpansion</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate a univariate basis expansion</h2>
+
+<h3>Description</h3>
+
+<p>This function calculates a univariate basis expansion based on given
+scores (coefficients) and basis functions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">univExpansion(
+  type,
+  scores,
+  argvals = ifelse(!is.null(functions), functions@argvals, NULL),
+  functions,
+  params = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>A character string, specifying the basis for which the
+decomposition is to be calculated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scores</code></td>
+<td>
+<p>A matrix of scores (coefficients) for each observation
+based on the given basis functions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>argvals</code></td>
+<td>
+<p>A list, representing the domain of the basis functions.
+If <code>functions</code> is not <code>NULL</code>, the usual default is
+<code>functions@argvals</code>. See funData and the
+underlying expansion functions for details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>functions</code></td>
+<td>
+<p>A functional data object, representing the basis
+functions. Can be <code>NULL</code> if the basis functions are not
+estimated from observed data, but have a predefined form. See
+Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>params</code></td>
+<td>
+<p>A list containing the parameters for the particular basis
+to use.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function calculates functional data <code class="reqn">X_i(t), i= 1 \ldots N</code>
+that is represented as a linear combination of basis functions
+<code class="reqn">b_k(t)</code> </p>
+<p style="text-align: center;"><code class="reqn">X_i(t) = \sum_{k = 1}^K \theta_{ik} b_k(t), i = 1,
+\ldots, N.</code>
+</p>
+<p> The basis functions may be prespecified (such as spline
+basis functions or Fourier bases) or can be estimated from observed
+data (e.g. by functional principal component analysis). If <code>type =
+"default"</code> (i.e. a linear combination of arbitrary basis functions is
+to be calculated), both scores and basis functions must be supplied.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>funData</code> with <code>N</code> observations on
+<code>argvals</code>, corresponding to the linear combination of the basis
+functions.
+</p>
+
+
+<h3>Warning</h3>
+
+<p>The options <code>type = "spline2Dpen"</code>, <code>type =
+  "DCT2D"</code> and <code>type = "DCT3D"</code> have not been tested with
+ATLAS/MKL/OpenBLAS.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MFPCA</code>, <code>splineFunction1D</code>,
+<code>splineFunction2D</code>, <code>splineFunction2Dpen</code>,
+<code>dctFunction2D</code>, <code>dctFunction3D</code>,
+<code>expandBasisFunction</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">oldPar &lt;- par(no.readonly = TRUE)
+par(mfrow = c(1,1))
+
+set.seed(1234)
+
+### Spline basis ###
+# simulate coefficients (scores) for N = 10 observations and K = 8 basis functions
+N &lt;- 10
+K &lt;- 8
+scores &lt;- t(replicate(n = N, rnorm(K, sd = (K:1)/K)))
+dim(scores)
+
+# expand spline basis on [0,1]
+funs &lt;- univExpansion(type = "splines1D", scores = scores, argvals = list(seq(0,1,0.01)),
+                      functions = NULL, # spline functions are known, need not be given
+                      params = list(bs = "ps", m = 2, k = K)) # params for mgcv
+
+plot(funs, main = "Spline reconstruction")
+
+### PCA basis ###
+# simulate coefficients (scores) for N = 10 observations and K = 8 basis functions
+N &lt;- 10
+K &lt;- 8
+
+scores &lt;- t(replicate(n = N, rnorm(K, sd = (K:1)/K)))
+dim(scores)
+
+# Fourier basis functions as eigenfunctions
+eFuns &lt;- eFun(argvals = seq(0,1,0.01), M = K, type = "Fourier")
+
+# expand eigenfunction basis
+funs &lt;-  univExpansion(type = "uFPCA", scores = scores,
+                       argvals = NULL, # use argvals of eFuns (default)
+                       functions = eFuns)
+
+plot(funs, main = "PCA reconstruction")
+
+par(oldPar)
+</code></pre>
+
+
+</div>

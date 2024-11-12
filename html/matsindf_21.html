@@ -1,0 +1,159 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>rowcolval_to_mat</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Collapse a tidy data frame into a matrix with named rows and columns</h2>
+
+<h3>Description</h3>
+
+<p>Columns not specified in one of <code>rownames</code>, <code>colnames</code>, <code>rowtype</code>, <code>coltype</code>, or <code>values</code>
+are silently dropped.
+<code>rowtypes</code> and <code>coltypes</code> are added as attributes to the resulting matrix
+(via <code>matsbyname::setrowtype()</code> and <code>matsbyname::setcoltype()</code>.
+The resulting matrix is a (under the hood) a data frame.
+If both <code>rownames</code> and <code>colnames</code> columns of <code>.DF</code> contain <code>NA</code>,
+it is assumed that this is a single value, not a matrix,
+in which case the value in the <code>values</code> column is returned.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">rowcolval_to_mat(
+  .DF,
+  matvals = "matvals",
+  rownames = "rownames",
+  colnames = "colnames",
+  rowtypes = "rowtypes",
+  coltypes = "coltypes",
+  fill = 0,
+  matrix.class = lifecycle::deprecated(),
+  matrix_class = c("matrix", "Matrix"),
+  i_colname = "i",
+  j_colname = "j"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>.DF</code></td>
+<td>
+<p>A tidy data frame containing columns for row names, column names, and values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>matvals</code></td>
+<td>
+<p>The name of the column in <code>.DF</code> containing values with which to fill the matrix (a string). Default is "matvals".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rownames</code></td>
+<td>
+<p>The name of the column in <code>.DF</code> containing row names (a string). Default is "rownames".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>colnames</code></td>
+<td>
+<p>The name of the column in <code>.DF</code> containing column names (a string). Default is "colnames".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rowtypes</code></td>
+<td>
+<p>An optional string identifying the types of information found in rows of the matrix to be constructed. Default is "rowtypes".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coltypes</code></td>
+<td>
+<p>An optional string identifying the types of information found in columns of the matrix to be constructed. Default is "coltypes".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fill</code></td>
+<td>
+<p>The value for missing entries in the resulting matrix. default is <code>0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>matrix.class</code></td>
+<td>
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#deprecated"><img src="../help/figures/lifecycle-deprecated.svg" alt="[Deprecated]"></a> Use <code>matrix_class</code> instead.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>matrix_class</code></td>
+<td>
+<p>One of "matrix" or "Matrix".
+"matrix" creates a <code>base::matrix</code> object with the <code>matrix()</code> function.
+"Matrix" creates a <code>Matrix::Matrix</code> object using the <code>matsbyname::Matrix()</code> function.
+This could be a sparse matrix.
+Default is "matrix".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>i_colname, j_colname</code></td>
+<td>
+<p>Names of index columns used internally. Defaults are "i" and "j".</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Note that two types of matrices can be created, a <code>matrix</code> or a <code>Matrix</code>.
+<code>Matrix</code> has the advantage of representing sparse matrices with less memory
+(and disk space).
+<code>Matrix</code> objects are created by <code>matsbyname::Matrix()</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A matrix with named rows and columns and, optionally, row and column types.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(matsbyname)
+library(dplyr)
+data &lt;- data.frame(Country  = c("GH", "GH", "GH"),
+                   rows = c( "c 1",  "c 1", "c 2"),
+                   cols = c( "i 1",  "i 2", "i 2"),
+                   vals = c(   11  ,   12,    22 ))
+A &lt;- rowcolval_to_mat(data, rownames = "rows", colnames = "cols", matvals = "vals")
+A
+rowtype(A) # NULL, because types not set
+coltype(A) # NULL, because types not set
+B &lt;- rowcolval_to_mat(data, rownames = "rows", colnames = "cols", matvals = "vals",
+                            rowtypes  = "Commodities", coltypes  = "Industries")
+B
+C &lt;- data %&gt;% bind_cols(data.frame(rt = c("Commodities", "Commodities", "Commodities"),
+                                   ct = c("Industries", "Industries", "Industries"))) %&gt;%
+  rowcolval_to_mat(rownames = "rows", colnames = "cols", matvals = "vals",
+                   rowtypes = "rt", coltypes = "ct")
+C
+# Also works for single values if both the rownames and colnames columns contain NA
+data2 &lt;- data.frame(Country = c("GH"), rows = c(NA), cols = c(NA),
+  rowtypes = c(NA), coltypes = c(NA), vals = c(2))
+data2 %&gt;% rowcolval_to_mat(rownames = "rows", colnames = "cols", matvals = "vals",
+  rowtypes = "rowtypes", coltypes = "coltypes")
+data3 &lt;- data.frame(Country = c("GH"), rows = c(NA), cols = c(NA), vals = c(2))
+data3 %&gt;% rowcolval_to_mat(rownames = "rows", colnames = "cols", matvals = "vals")
+# Fails when rowtypes or coltypes not all same. In data3, column rt is not all same.
+data4 &lt;- data %&gt;% bind_cols(data.frame(rt = c("Commodities", "Industries", "Commodities"),
+                                       ct = c("Industries", "Industries", "Industries")))
+## Not run: rowcolval_to_mat(data4, rownames = "rows", colnames = "cols",
+                          matvals = "vals", rowtypes = "rt", coltypes = "ct")
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,126 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>gdev</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>General Deviation</h2>
+
+<h3>Description</h3>
+
+<p>Compute the deviation of each territorial unit as regards  
+to all the study area (or a reference value).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">gdev(x, var1, var2, type = "rel", ref)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a data.frame or a sf object including var1 and var2.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var1</code></td>
+<td>
+<p>name of the numerator variable in x.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var2</code></td>
+<td>
+<p>name of the denominator variable in x.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>type of deviation; "rel" for relative deviation, "abs" for 
+absolute deviation (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ref</code></td>
+<td>
+<p>ratio of reference; if missing, the ratio of reference is the one of 
+the whole study area (<code>sum(var1) / sum(var2)</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The relative global deviation is the ratio between var1/var2 and ref
+(<code>100 * (var1 / var2) / ref</code>). Values greater than 100 indicate that the 
+unit ratio is greater than the ratio of reference. Values lower than 100 
+indicate that the unit ratio is lower than the ratio of reference.<br>
+The absolute global deviation is the amount of numerator that could be moved 
+to obtain the ratio of reference on all units. (<code>(var1 - (ref * var2)</code>).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A vector is returned.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Load data
+library(sf)
+com &lt;- st_read(system.file("metroparis.gpkg", package = "MTA"), layer = "com", quiet = TRUE)
+ept &lt;- st_read(system.file("metroparis.gpkg", package = "MTA"), layer = "ept", quiet = TRUE)
+
+if(require(mapsf)){
+# compute absolute global deviation
+com$gdevabs &lt;- gdev(x = com, var1 = "INC", var2 = "TH", type = "abs")
+# compute relative global deviation
+com$gdevrel &lt;- gdev(x = com, var1 = "INC", var2 = "TH", type = "rel")
+
+# relative deviation map
+# set breaks
+bks &lt;- c(min(com$gdevrel), 50, 75, 100, 125, 150, max(com$gdevrel))
+# plot a choropleth map of the relative global deviation
+mf_map(x = com, var = "gdevrel", type = "choro", leg_pos = "topleft",
+       leg_title = "Relative Deviation\n(100 = general average)",
+       breaks = bks, border = NA,
+       pal = c("#4575B4", "#91BFDB", "#E0F3F8", "#FEE090", "#FC8D59", "#D73027"))
+
+# add EPT boundaries
+mf_map(x = ept, col = NA, add = TRUE)
+
+# layout
+mf_layout(title = "General Deviation (reference: Grand Paris Metropole)",
+          credits = paste0("Sources: GEOFLA® 2015 v2.1, Apur, impots.gouv.fr",
+                           "\nMTA", packageVersion("MTA")),
+          arrow = FALSE)
+
+# absolute deviation map
+com$sign &lt;- ifelse(test = com$gdevabs &lt; 0, yes = "Under-Income", no = "Over-Income")
+mf_map(ept)
+
+mf_map(x = com, var = c("gdevabs", "sign"), type = "prop_typo", inches = 0.2,
+       leg_title = c("Absolute Deviation\n(Income redistribution, euros)",
+                     "Redistribution direction"), 
+       leg_pos = c("topleft", "topright"), leg_val_rnd = -2,
+       val_order = c("Under-Income", "Over-Income"),
+       pal =  c("#ff0000","#0000ff"), add = TRUE)
+
+# layout
+mf_layout(title = "General Deviation (reference: Grand Paris Metropole)",
+          credits = paste0("Sources: GEOFLA® 2015 v2.1, Apur, impots.gouv.fr",
+                           "\nMTA", packageVersion("MTA")),
+          arrow = FALSE)
+}
+</code></pre>
+
+
+</div>

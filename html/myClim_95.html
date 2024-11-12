@@ -1,0 +1,197 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mc_read_data</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Reading files with locality metadata</h2>
+
+<h3>Description</h3>
+
+<p>This function has two tables as the parameters.
+</p>
+<p>(i) <code>files_table</code> with <em>paths</em> pointing to raw
+csv logger files, specification of <em>data format</em> (logger type) and <em>locality name</em>.
+</p>
+<p>(ii) <code>localities_table</code> with <em>locality id</em> and metadata e.g. longitude, latitude, elevation...
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mc_read_data(
+  files_table,
+  localities_table = NULL,
+  clean = TRUE,
+  silent = FALSE,
+  user_data_formats = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>files_table</code></td>
+<td>
+<p>path to csv file or data.frame object see example](https://github.com/ibot-geoecology/myClim/blob/main/examples/data/TOMST/files_table.csv)
+with 3 required columns and few optional:
+required columns:
+</p>
+
+<ul>
+<li>
+<p> path - path to files
+</p>
+</li>
+<li>
+<p> locality_id - unique locality id
+</p>
+</li>
+<li>
+<p> data_format see mc_data_formats, <code>names(mc_data_formats)</code>
+</p>
+</li>
+</ul>
+<p>optional columns:
+</p>
+
+<ul>
+<li>
+<p> serial_number - logger serial number. If is NA, than myClim tries to detect serial number from file name (for TOMST) or header (for HOBO)
+</p>
+</li>
+<li>
+<p> logger_type - type of logger. This defines individual sensors attributes (measurement heights and physical units) of the logger. Important when combining the data from multiple loggers on the locality.
+If not provided, myClim tries to detect loger_type from the source data file structure (applicable for HOBO, Dendro, Thermo and TMS), but automatic detection of TMS_L45 is not possible.
+Pre-defined logger types are: ("Dendro", "HOBO", "Thermo", "TMS", "TMS_L45")
+Default heights of sensor based on logger types are defined in table mc_data_heights
+</p>
+</li>
+<li>
+<p> date_format A character vector specifying the custom date format(s) for the <code>lubridate::parse_date_time()</code> function
+(e.g., "%d.%m.%Y %H:%M:%S"). Multiple formats can be defined. The first matching format will be selected for parsing.
+</p>
+</li>
+<li>
+<p> tz_offset - If source datetimes aren't in UTC, then is possible define offset from UTC in minutes.
+Value in this column have the highest priority. If NA then auto detection of timezone in files.
+If timezone can't be detected, then UTC is supposed.
+Timezone offset in HOBO format can be defined in header. In this case function try detect offset automatically.
+Ignored for Tomst TMS data format (they are always in UTC)
+</p>
+</li>
+<li>
+<p> step - Time step of microclimatic time-series in seconds. When provided, then used in mc_prep_clean
+instead of automatic step detection. See details.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>localities_table</code></td>
+<td>
+<p>path to csv file ("c:/user/localities.table.csv") or R data.frame <a href="https://github.com/ibot-geoecology/myClim/blob/main/examples/data/TOMST/localities_table.csv"> see example</a>.
+Localities table is optional (default NULL).
+The <code>locality_id</code> is the only required column. Other columns are optional. Column names corresponding
+with the myclim pre-defined locality metadata (elevation, lon_wgs84, lat_wgs84, tz_offset)
+are associted withthose pre-defined metadata slots, other columns are  written into
+<code>metadata@user_data</code> myClim-package.
+</p>
+<p>required columns:
+</p>
+
+<ul><li>
+<p> locality_id - unique locality id
+</p>
+</li></ul>
+<p>optional columns:
+</p>
+
+<ul>
+<li>
+<p> elevation - elevation (in m)
+</p>
+</li>
+<li>
+<p> lon_wgs84 - longitude (in decimal degrees)
+</p>
+</li>
+<li>
+<p> lat_wgs84 - latitude (in decimal degrees)
+</p>
+</li>
+<li>
+<p> tz_offset - locality time zone offset from UTC, applicable for converting time-series from UTC to local time.
+</p>
+</li>
+<li>
+<p> ... - any other columns are imported to <code>metadata@user_data</code>
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>clean</code></td>
+<td>
+<p>if TRUE, then mc_prep_clean is called automatically while reading (default TRUE)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>silent</code></td>
+<td>
+<p>if TRUE, then any information is not printed in console (default FALSE)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>user_data_formats</code></td>
+<td>
+<p>custom data formats; use in case you have your own logger
+files not pre-defined in myClim  - list(key=mc_DataFormat) mc_DataFormat (default NULL)
+</p>
+<p>If custom data format is defined the key can be used in data_format parameter in <code>mc_read_files()</code>
+and <code>mc_read_data()</code>. Custom data format must be defined first, and then an be used for reading.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The input tables could be R data.frames or csv files. When loading <code>files_table</code>
+and <code>localities_table</code> from external CSV they must have header, column separator must be comma ",".
+</p>
+<p>By default, data are cleaned with the function mc_prep_clean see function description.
+mc_prep_clean detects gaps in time-series data,
+duplicated records, or records in the wrong order. Importantly, mc_prep_clean
+also applies a <strong>step parameter</strong> if provided. The step parameter can be used either
+instead of automatic step detection which can sometime failed, or to prune
+microclimatic data. For example, if you have a 15-minute time series but you wish to
+keep only one record per hour (without aggregating), you can use step parameter.
+However, if a step is provided and <code>clean = FALSE</code>, then the step is only stored in the
+metadata of myClim, and the time-series data is not cleaned, and the step is not applied.
+</p>
+
+
+<h3>Value</h3>
+
+<p>myClim object in Raw-format see myClim-package
+</p>
+
+
+<h3>See Also</h3>
+
+<p>mc_DataFormat
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">files_csv &lt;- system.file("extdata", "files_table.csv", package = "myClim")
+localities_csv &lt;- system.file("extdata", "localities_table.csv", package = "myClim")
+tomst_data &lt;- mc_read_data(files_csv, localities_csv)
+</code></pre>
+
+
+</div>

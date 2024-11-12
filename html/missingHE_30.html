@@ -1,0 +1,397 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>selection_long</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Full Bayesian Models to handle missingness in Economic Evaluations (Selection Models)</h2>
+
+<h3>Description</h3>
+
+<p>Full Bayesian cost-effectiveness models to handle missing data in longitudinal outcomes under different missing data 
+mechanism assumptions, using alternative parametric distributions for the effect and cost variables and 
+using a selection model approach to identify the model. The analysis is performed using the <code>BUGS</code> language, 
+which is implemented in the software <code>JAGS</code> using the function <code>jags</code> The output is stored in an object of class 'missingHE'.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">selection_long(
+  data,
+  model.eff,
+  model.cost,
+  model.mu = mu ~ 1,
+  model.mc = mc ~ 1,
+  dist_u,
+  dist_c,
+  type,
+  prob = c(0.025, 0.975),
+  time_dep = "AR1",
+  n.chains = 2,
+  n.iter = 20000,
+  n.burnin = floor(n.iter/2),
+  inits = NULL,
+  n.thin = 1,
+  ppc = FALSE,
+  save_model = FALSE,
+  prior = "default",
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A data frame in which to find the longitudinal variables supplied in <code>model.eff</code>, <code>model.cost</code> (model formulas for effects and costs) 
+and <code>model.mu</code>, <code>model.mc</code> (model formulas for the missing effect and cost models). Among these,
+effectiveness, cost, time and treatment indicator (only two arms) variables must always be provided and named 'u', 'c' , 'time' and 't', respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.eff</code></td>
+<td>
+<p>A formula expression in conventional <code>R</code> linear modelling syntax. The response must be a health economic
+effectiveness outcome ('u') whose name must correspond to that used in <code>data</code>. Any covariates in the model must be provided on the right-hand side of the formula.
+If there are no covariates, <code>1</code> should be specified on the right hand side of the formula. By default, covariates are placed on the "location" parameter of the distribution through a linear model.
+Random effects can also be specified for each model parameter. See details for how these can be specified.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.cost</code></td>
+<td>
+<p>A formula expression in conventional <code>R</code> linear modelling syntax. The response must be a health economic
+cost outcome ('c') whose name must correspond to that used in <code>data</code>. Any covariates in the model must be provided on the right-hand side of the formula.
+If there are no covariates, <code>1</code> should be specified on the right hand side of the formula. By default, covariates are placed on the "location" parameter of the distribution through a linear model. 
+A joint bivariate distribution for effects and costs can be specified by including 'e' on the right-hand side of the formula for the costs model.
+Random effects can also be specified for each model parameter. See details for how these can be specified.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.mu</code></td>
+<td>
+<p>A formula expression in conventional <code>R</code> linear modelling syntax. The response must be indicated with the 
+term 'mu' (missing effects) and any covariates must be provided on the right-hand side of the formula. If there are no covariates, <code>1</code> should be specified on the right hand side of the formula. 
+By default, covariates are placed on the "probability" parameter for the missing effects through a logistic-linear model.
+Random effects can also be specified for each model parameter. See details for how these can be specified.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.mc</code></td>
+<td>
+<p>A formula expression in conventional <code>R</code> linear modelling syntax. The response must be indicated with the term 'mc' (missing costs) and any covariates must be provided on the right-hand side of the formula. 
+If there are no covariates, <code>1</code> should be specified on the right hand side of the formula. By default, covariates are placed on the "probability" parameter for the missing costs through a logistic-linear model.
+Random effects can also be specified for each model parameter. See details for how these can be specified.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dist_u</code></td>
+<td>
+<p>Distribution assumed for the effects. Current available chocies are: Normal ('norm'), Beta ('beta'), Gamma ('gamma'), Exponential ('exp'),
+Weibull ('weibull'), Logistic ('logis'), Poisson ('pois'), Negative Binomial ('nbinom') or Bernoulli ('bern').</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dist_c</code></td>
+<td>
+<p>Distribution assumed for the costs. Current available chocies are: Normal ('norm'), Gamma ('gamma') or LogNormal ('lnorm').</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>Type of missingness mechanism assumed. Choices are Missing At Random (MAR) and Missing Not At Random (MNAR).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prob</code></td>
+<td>
+<p>A numeric vector of probabilities within the range (0,1), representing the upper and lower
+CI sample quantiles to be calculated and returned for the imputed values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>time_dep</code></td>
+<td>
+<p>Type of dependence structure assumed between effectiveness and cost outcomes. Current choices include: autoregressive structure of order one ('AR1') - default - and independence ('none').</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.chains</code></td>
+<td>
+<p>Number of chains.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.iter</code></td>
+<td>
+<p>Number of iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.burnin</code></td>
+<td>
+<p>Number of warmup iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inits</code></td>
+<td>
+<p>A list with elements equal to the number of chains selected; each element of the list is itself a list of starting values for the
+<code>JAGS</code> model, or a function creating (possibly random) initial values. If <code>inits</code> is <code>NULL</code>, <code>JAGS</code>
+will generate initial values for all the model parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.thin</code></td>
+<td>
+<p>Thinning interval.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ppc</code></td>
+<td>
+<p>Logical. If <code>ppc</code> is <code>TRUE</code>, the estimates of the parameters that can be used to generate replications from the model are saved.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>save_model</code></td>
+<td>
+<p>Logical. If <code>save_model</code> is <code>TRUE</code>, a <code>txt</code> file containing the model code is printed
+in the current working directory.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>A list containing the hyperprior values provided by the user. Each element of this list must be a vector of length two
+containing the user-provided hyperprior values and must be named with the name of the corresponding parameter. For example, the hyperprior
+values for the standard deviation effect parameters can be provided using the list <code>prior = list('sigma.prior.u' = c(0, 100))</code>.
+For more information about how to provide prior hypervalues for different types of parameters and models see details. 
+If <code>prior</code> is set to 'default', the default values will be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments that can be provided by the user. Examples are <code>center = TRUE</code> to center all the covariates in the model 
+or the additional arguments that can be provided to the function <code>bcea</code> to summarise the health economic evaluation results. 
+Users may also provide, using the argument <code>qaly_calc</code> and <code>tcost_calc</code>, the weights to be used for computing the posterior mean QALYs (Area Under the Curve approach)
+and Total cost (sum over follow-up costs) quantities which are then used to generate any cost-effectiveness decision output (e.g. Cost-Effectiveness Plane). If these are not provided, 
+default values of '0.5' and '1' are used, respectively.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Depending on the distributions specified for the outcome variables in the arguments <code>dist_u</code> and
+<code>dist_c</code> and the type of missingness mechanism specified in the argument <code>type</code>, different selection models
+are built and run in the background by the function <code>selection</code>. These models consist in multinomial logistic regressions that are used to estimate
+the probability of a missingness dropout pattern <code>k</code> (completers, intermittent, dropout) in one or both the longitudinal outcomes. A simple example can be used 
+to show how these selection models are specified. Consider a longitudinal data set comprising a response variable <code class="reqn">y</code> measures at S occasions and a set of centered covariate <code class="reqn">X_j</code>. 
+For each subject in the trial <code class="reqn">i = 1, ..., n</code> and time <code class="reqn">s = 1, ..., S</code> we define an indicator variable <code class="reqn">m_i</code> taking value <code>k = 1</code> if the <code class="reqn">i</code>-th individual is associated with 
+no missing value (completer), a value <code>k = 2</code> for intermittent missingness over the study period, and a value <code>k = 3</code> for dropout missingness.
+This is modelled as:
+</p>
+<p style="text-align: center;"><code class="reqn">m_i ~ Multinomial(\pi^k_i)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\pi^k_i = \phi^k_i/\sum\phi_i</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">log(\phi^k_i) = \gamma^k_0 + \sum\gamma^k_j X_j + \delta^k (y)</code>
+</p>
+
+<p>where
+</p>
+
+<ul>
+<li> <p><code class="reqn">\pi_i</code> is the individual probability of a missing value in <code class="reqn">y</code> for pattern <code class="reqn">k</code> at a given time point.
+</p>
+</li>
+<li> <p><code class="reqn">\gamma^k_0</code> represents the marginal probability of a missingness dropout pattern in <code class="reqn">y</code> for pattern <code class="reqn">k</code> on the log scale at a given time point.
+</p>
+</li>
+<li> <p><code class="reqn">\gamma^k_j</code> represents the impact on the probability of a specific missingness dropout pattern in <code class="reqn">y</code> of the centered covariates <code class="reqn">X_j</code> for pattern <code class="reqn">k</code> at a given time point.
+</p>
+</li>
+<li> <p><code class="reqn">\delta^k</code> represents the impact on the probability of a specific missingness dropout pattern <code class="reqn">k</code> in <code class="reqn">y</code> of the missing pattern itself at a given time point.
+</p>
+</li>
+</ul>
+<p>When <code class="reqn">\delta = 0</code> the model assumes a 'MAR' mechanism, while when <code class="reqn">\delta != 0</code> the mechanism is 'MNAR'. For the parameters indexing the missingness model, 
+the default prior distributions assumed are the following:
+</p>
+
+<ul>
+<li> <p><code class="reqn">\gamma^k_0 ~ Logisitc(0, 1)</code>
+</p>
+</li>
+<li> <p><code class="reqn">\gamma^k_j ~ Normal(0, 0.01)</code>
+</p>
+</li>
+<li> <p><code class="reqn">\delta^k ~ Normal(0, 1)</code>
+</p>
+</li>
+</ul>
+<p>When user-defined hyperprior values are supplied via the argument <code>prior</code> in the function <code>selection_long</code>, the elements of this list (see Arguments)
+must be vectors of length two containing the user-provided hyperprior values and must take specific names according to the parameters they are associated with. 
+Specifically, the names for the parameters indexing the model which are accepted by <strong>missingHE</strong> are the following:
+</p>
+
+<ul>
+<li>
+<p> location parameters <code class="reqn">\alpha_0</code> and <code class="reqn">\beta_0</code>: "mean.prior.u"(effects) and/or "mean.prior.c"(costs)
+</p>
+</li>
+<li>
+<p> auxiliary parameters <code class="reqn">\sigma</code>: "sigma.prior.u"(effects) and/or "sigma.prior.c"(costs)
+</p>
+</li>
+<li>
+<p> covariate parameters <code class="reqn">\alpha_j</code> and <code class="reqn">\beta_j</code>: "alpha.prior"(effects) and/or "beta.prior"(costs)
+</p>
+</li>
+<li>
+<p> marginal probability of missing values for pattern <code class="reqn">k</code> <code class="reqn">\gamma^k_0</code>: "p.prior.u"(effects) and/or "p.prior.c"(costs)
+</p>
+</li>
+<li>
+<p> covariate parameters in the missingness model for pattern <code class="reqn">k</code> <code class="reqn">\gamma^k_j</code> (if covariate data provided): "gamma.prior.u"(effects) and/or "gamma.prior.c"(costs)
+</p>
+</li>
+<li>
+<p> mnar parameter for pattern <code class="reqn">k</code> <code class="reqn">\delta^k</code>: "delta.prior.u"(effects) and/or "delta.prior.c"(costs)
+</p>
+</li>
+</ul>
+<p>For simplicity, here we have assumed that the set of covariates <code class="reqn">X_j</code> used in the models for the effects/costs and in the 
+model of the missing effect/cost values is the same. However, it is possible to specify different sets of covariates for each model
+using the arguments in the function <code>selection_long</code> (see Arguments).
+</p>
+<p>For each model, random effects can also be specified for each parameter by adding the term + (x | z) to each model formula, 
+where x is the fixed regression coefficient for which also the random effects are desired and z is the clustering variable across which 
+the random effects are specified (must be the name of a factor variable in the dataset). Multiple random effects can be specified using the 
+notation + (x1 + x2 | site) for each covariate that was included in the fixed effects formula. Random intercepts are included by default in the models
+if a random effects are specified but they can be removed by adding the term 0 within the random effects formula, e.g. + (0 + x | z).
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of the class 'missingHE' containing the following elements
+</p>
+
+<dl>
+<dt>data_set</dt>
+<dd>
+<p>A list containing the original longitudinal data set provided in <code>data</code> (see Arguments), the number of observed and missing individuals 
+, the total number of individuals by treatment arm and the indicator vectors for the missing values for each time point</p>
+</dd>
+<dt>model_output</dt>
+<dd>
+<p>A list containing the output of a <code>JAGS</code> model generated from the functions <code>jags</code>, and 
+the posterior samples for the main parameters of the model and the imputed values</p>
+</dd>
+<dt>cea</dt>
+<dd>
+<p>A list containing the output of the economic evaluation performed using the function <code>bcea</code></p>
+</dd>
+<dt>type</dt>
+<dd>
+<p>A character variable that indicate which type of missingness mechanism has been used to run the model, 
+either <code>MAR</code> or <code>MNAR</code> (see details)</p>
+</dd>
+<dt>data_format</dt>
+<dd>
+<p>A character variable that indicate which type of analysis was conducted, either using a <code>wide</code> or <code>longitudinal</code> dataset</p>
+</dd>
+<dt>time_dep</dt>
+<dd>
+<p>A character variable that indicate which type of time dependence assumption was made, either <code>none</code> or <code>AR1</code></p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>Andrea Gabrio
+</p>
+
+
+<h3>References</h3>
+
+<p>Mason, AJ. Gomes, M. Carpenter, J. Grieve, R. (2021). <em>Flexible Bayesian longitudinal models for cost‐effectiveness analyses with informative missing data</em>. Health economics, 30(12), 3138-3158.
+</p>
+<p>Daniels, MJ. Hogan, JW. <em>Missing Data in Longitudinal Studies: strategies for Bayesian modelling and sensitivity analysis</em>, CRC/Chapman Hall.
+</p>
+<p>Baio, G.(2012). <em>Bayesian Methods in Health Economics</em>. CRC/Chapman Hall, London.
+</p>
+<p>Gelman, A. Carlin, JB., Stern, HS. Rubin, DB.(2003). <em>Bayesian Data Analysis, 2nd edition</em>, CRC Press.
+</p>
+<p>Plummer, M. <em>JAGS: A program for analysis of Bayesian graphical models using Gibbs sampling.</em> (2003).
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>jags</code>, <code>bcea</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Quck example to run using subset of PBS dataset
+
+# Load longitudinal dataset
+
+PBS.long &lt;- PBS
+
+
+# Run the model using the selection function assuming a MAR mechanism
+# Use only 100 iterations to run a quick check
+model.selection.long &lt;- selection_long(data = PBS.long, model.eff = u ~ 1,model.cost = c ~ 1,
+   model.mu = mu ~ 1, model.mc = mc ~ 1, dist_u = "norm", dist_c = "norm",
+   type = "MAR", n.chains = 2, n.iter = 100, ppc = TRUE, time_dep = "none")
+
+# Print the results of the JAGS model
+print(model.selection.long)
+#
+
+# Extract regression coefficient estimates
+coef(model.selection.long)
+#
+
+# Summarise the CEA information from the model
+summary(model.selection.long)
+
+# Further examples which take longer to run
+model.selection.long &lt;- selection_long(data = PBS.long, model.eff = u ~ 1,model.cost = c ~ u,
+   model.se = mu ~ 1, model.mc = mc ~ 1, dist_u = "norm", dist_c = "norm",
+   type = "MAR", n.chains = 2, n.iter = 500, ppc = FALSE, time_dep = "none")
+#
+# Print results for all imputed values
+print(model.selection.long, value.mis = TRUE)
+
+# Use looic to assess model fit
+pic.looic &lt;- pic(model.selection.long, criterion = "looic", module = "total")
+pic.looic
+
+# Show density plots for all parameters
+diag.hist &lt;- diagnostic(model.selection.long, type = "denplot", param = "all")
+
+# Plots of imputations for all data
+p1 &lt;- plot(model.selection.long, class = "scatter", outcome = "all")
+
+# Summarise the CEA results
+summary(model.selection.long)
+
+
+#
+#
+</code></pre>
+
+
+</div>

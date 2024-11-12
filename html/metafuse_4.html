@@ -1,0 +1,150 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>metafuse.l</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>fit a GLM with fusion penalty for data integraion, with a fixed lambda</h2>
+
+<h3>Description</h3>
+
+<p>Fit a GLM with fusion penalty on coefficients within each covariate at given lambda.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">metafuse.l(X = X, y = y, sid = sid, fuse.which = c(0:ncol(X)),
+  family = "gaussian", intercept = TRUE, alpha = 0, lambda = lambda)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>a matrix (or vector) of predictor(s), with dimensions of <code>N*(p-1)</code>, where <code>N</code> is the total sample size of the integrated dataset</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>a vector of response, with length <code>N</code>; when <code>family="cox"</code>, <code>y</code> is a data frame with cloumns <code>time</code> and <code>status</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sid</code></td>
+<td>
+<p>data source ID of length <code>N</code>, must contain integers numbered from 1 to <code>K</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fuse.which</code></td>
+<td>
+<p>a vector of integers from 0 to <code>p-1</code>, indicating which covariates are considered for fusion; 0 corresponds to the intercept; coefficients of covariates not in this vector are homogeneously estimated across all datasets</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>response vector type, <code>"gaussian"</code> if <code>y</code> is a continuous vector, <code>"binomial"</code> if <code>y</code> is binary vector, <code>"poisson"</code> if <code>y</code> is a count vector, <code>"cox"</code> if <code>y</code> is a data frame with cloumns <code>time</code> and <code>status</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intercept</code></td>
+<td>
+<p>if <code>TRUE</code>, intercept will be included, default is <code>TRUE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>the ratio of sparsity penalty to fusion penalty, default is 0 (i.e., no variable selection, only fusion)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>tuning parameter for fusion penalty</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Adaptive lasso penalty is used. See Zou (2006) for detail.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following items will be returned:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>the response/model type</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>the ratio of sparsity penalty to fusion penalty</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>if.fuse</code></td>
+<td>
+<p>whether covariate is assumed to be heterogeneous (1) or homogeneous (0)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>betahat</code></td>
+<td>
+<p>the estimated regression coefficients</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>betainfo</code></td>
+<td>
+<p>additional information about the fit, including degree of freedom, optimal lambda value, maximum lambda value to fuse all coefficients, and estimated friction of fusion</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Lu Tang, and Peter X.K. Song. Fused Lasso Approach in Regression Coefficients Clustering - Learning Parameter Heterogeneity in Data Integration. <em>Journal of Machine Learning Research</em>, 17(113):1-23, 2016.<br></p>
+<p>Fei Wang, Lu Wang, and Peter X.K. Song. Fused lasso with the adaptation of parameter ordering in combining multiple studies with repeated measurements.  <em>Biometrics</em>, DOI:10.1111/biom.12496, 2016. <br></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">########### generate data ###########
+n &lt;- 200    # sample size in each dataset (can also be a K-element vector)
+K &lt;- 10     # number of datasets for data integration
+p &lt;- 3      # number of covariates in X (including the intercept)
+
+# the coefficient matrix of dimension K * p, used to specify the heterogeneous pattern
+beta0 &lt;- matrix(c(0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,   # beta_0 of intercept
+                  0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0,   # beta_1 of X_1
+                  0.0,0.0,0.0,0.0,0.5,0.5,0.5,1.0,1.0,1.0),  # beta_2 of X_2
+                K, p)
+
+# generate a data set, family=c("gaussian", "binomial", "poisson", "cox")
+data &lt;- datagenerator(n=n, beta0=beta0, family="gaussian", seed=123)
+
+# prepare the input for metafuse
+y       &lt;- data$y
+sid     &lt;- data$group
+X       &lt;- data[,-c(1,ncol(data))]
+
+########### run metafuse ###########
+# fit metafuse at a given lambda
+metafuse.l(X=X, y=y, sid=sid, fuse.which=c(0,1,2), family="gaussian", intercept=TRUE,
+          alpha=1, lambda=0.5)
+</code></pre>
+
+
+</div>

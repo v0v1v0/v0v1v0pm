@@ -1,0 +1,334 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvgls</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Fit linear model using Generalized Least Squares to multivariate (high-dimensional) data sets
+
+</h2>
+
+<h3>Description</h3>
+
+<p>This function uses maximum likelihood (or restricted likelihood) and penalized likelihood approaches to fit linear models where the errors are allowed to be correlated (i.e. a GLS model for serially correlated phylogenetic and time-series data). <code>mvgls</code> uses a penalized-likelihood (PL) approach (see descriptions in Clavel et al. 2019) to fit linear models to high-dimensional data sets (where the number of variables <em>p</em> is approaching or is larger than the number of observations <em>n</em>). The PL approach generally provides improved estimates compared to ML.
+</p>
+
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mvgls(formula, data, tree, model, method=c("PL-LOOCV","LL"),
+      REML=TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+ 
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+
+<p>An object of class "<code>formula</code>" (a two-sided linear formula describing the model to be fitted. See for instance ?<code>lm</code>)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>An optional list, data.frame or environment containing the variables in the model. If not found in <em>data</em> the variables are taken from the current environment. Prefer <code>list</code> for blocks of multivariate responses unless you're specifying the response variables by their names using <code>cbind</code> with data.frame.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tree</code></td>
+<td>
+
+<p>Phylogenetic tree (an object of class "<code>phylo</code>") or a time-series object (not yet available).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+
+<p>The evolutionary model: "BM" is Brownian Motion, "OU" is Ornstein-Uhlenbeck, "EB" is Early Burst, "lambda" is Pagel's lambda transformation, and "BMM" is a multi-rates Brownian motion (needs a tree of class "simmap").
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>The method used to fit the model. "PL-LOOCV" (or equivalently just "LOOCV") is the nominal leave one out cross-validation of the penalized log-likelihood, "LL" is the log-likelihood (used in the conventional ML and REML estimation). Two approximated LOOCV methods are also available: "H&amp;L" and "Mahalanobis". The method "H&amp;L" is a fast LOOCV approach based on Hoffbeck and Landgrebe (1996) tricks, and "Mahalanobis" is an approximation of the LOOCV score proposed by Theiler (2012). Both "H&amp;L" and "Mahalanobis" work only with the "RidgeArch" penalty and for intercept only models (i.e. of the form Y~1, see also details). In such a situation, we recommend the use of "H&amp;L"" (which will coincide with "PL-LOOCV") over the "Mahalanobis" approach.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>REML</code></td>
+<td>
+
+<p>Use REML (default) or ML for estimating the parameters.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Options to be passed through. For instance the type of penalization: 
+<code>penalty="RidgeArch"</code> (default), <code>penalty="RidgeAlt"</code>, or <code>penalty="LASSO"</code>. The target matrices used by "RidgeArch" and "RidgeAlt" penalizations: <code>target="unitVariance"</code>, <code>target="Variance"</code> or <code>target="null"</code>... etc. (see details)
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>mvgls</code> allows fitting various multivariate linear models to multivariate (possibly high-dimensional, i.e. where the number of variables <em>p</em> is larger than <em>n</em>) datasets for which the residuals have a correlated structure (e.g. evolutionary models such as BM and OU). Models estimated using penalized likelihood (e.g., method="PL-LOOCV") are generally more accurate than those estimated by maximum likelihood methods (method="LL") when the number of traits approach the number of species. PL is the only solution when <em>p</em>&gt;<em>n</em>.  Models fit can be compared using the GIC or EIC criterion (see ?<code>GIC</code> and ?<code>EIC</code>) and hypothesis testing can be performed using the <code>manova.gls</code> function.
+</p>
+<p>The tree is assumed to be fully dichotomic and in "postorder", otherwise the functions <code>multi2di</code> and <code>reorder.phylo</code> are used internally. Note that for the "BMM" model, a tree of class "simmap" must be provided to scale the BM variance-covariance matrix in different parts of the tree (see also <code>mvBM</code>).
+</p>
+<p>To fit an ordinary multivariate linear model (possibly regularized), one can uses the <code>mvols</code> function instead.
+</p>
+<p>The various <em>arguments</em> that can be passed through <b>"..."</b>:
+</p>
+<p><b>"penalty"</b> - The "penalty" argument allows specifying the type of penalization used for regularization (described in Clavel et al. 2019). The various penalizations are: <code>penalty="RidgeArch"</code> (the default), <code>penalty="RidgeAlt"</code> and <code>penalty="LASSO"</code>. The "RidgeArch" penalization shrink linearly the "sample"" covariance matrix toward a given target matrix with a specific structure (see below for <code>target</code>). This penalization is generally fast and the tuning parameter is bounded between 0 and 1 (see van Wieringen &amp; Peeters 2016, Clavel et al. 2019). The "RidgeAlt" penalization scheme uses a quadratic ridge penalty to shrink the covariance matrix toward a specified target matrix (see <code>target</code> below and also see van Wieringen &amp; Peeters 2016). Finally, the "LASSO" regularize the covariance matrix by estimating a sparse estimate of its inverse - the precision matrix (Friedman et al. 2008). Solving the LASSO penalization is computationally intensive. Moreover, this penalization scheme is not invariant to arbitrary rotations of the data.
+</p>
+<p><b>"target"</b> - This argument allows specifying the target matrix toward which the covariance matrix is shrunk for "Ridge" penalties. <code>target="unitVariance"</code> (for a diagonal target matrix proportional to the identity) and <code>target="Variance"</code> (for a diagonal matrix with unequal variance) can be used with both "RidgeArch" and "RidgeAlt" penalties. <code>target="null"</code> (a null target matrix) is only available for "RidgeAlt". Penalization with the "Variance" target shrinks the eigenvectors of the covariance matrix and is therefore not rotation invariant. See details on the various target properties in Clavel et al. (2019).
+</p>
+<p><b>"error"</b> - If <code>TRUE</code> the measurement error (or intra-specific variance) is estimated from the data as a nuisance parameter (like in mixed models). It should probably be systematically used with empirical data. See also Housworth et al. 2004 and Clavel et al. 2019 for details on the proposed implementation.
+</p>
+<p><b>"scale.height"</b> - Whether the tree should be scaled to unit height or not.
+</p>
+<p><b>"echo"</b> - Whether the results must be returned or not.
+</p>
+<p><b>"grid_search"</b> - A logical indicating whether or not a preliminary grid search must be performed to find the best starting values for optimizing the log-likelihood (or penalized log-likelihood). User-specified starting values can be provided through the <b>start</b> argument. Default is <code>TRUE</code>.
+</p>
+<p><b>"upper"</b> - The upper bound for the parameter search with the "<code>L-BFGS-B</code>" method. See <code>optim</code> for details.
+</p>
+<p><b>"lower"</b> - The lower bound for the parameter search with the "<code>L-BFGS-B</code>" method. See <code>optim</code> for details.
+</p>
+<p><b>"tol"</b> - Minimum value for the regularization parameter. Singularities can occur with a zero value in high-dimensional cases. (default is <code>NULL</code>)
+</p>
+
+
+
+
+<h3>Value</h3>
+
+<p>An object of class '<code>mvgls</code>'. It contains a list including the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>coefficients  </code></td>
+<td>
+<p>a named vector of coefficients</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>residuals     </code></td>
+<td>
+<p>the residuals ("raw") of the model. That is response minus fitted values. Use the <code>residuals(x, type="normalized")</code> function to obtain the normalized residuals.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fitted        </code></td>
+<td>
+<p>the fitted values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>variables     </code></td>
+<td>
+<p>the variables used for model fit</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma         </code></td>
+<td>
+<p>the estimated covariance (Pinv) and precision (P) matrix, as well as the sample estimate (S)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model         </code></td>
+<td>
+<p>the evolutionary model. But more generally, the model used to specify the structure within the residuals</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logLik	    	</code></td>
+<td>
+<p>either the (negative) log-likelihood when <code>method="LL"</code> or the cross-validated penalized likelihood</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>param			    </code></td>
+<td>
+<p>the (evolutionary) model parameter estimates. For "BMM" this corresponds to the average rate (mean of the diagonal elements of the covariance matrix (Pinv)).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tuning		    </code></td>
+<td>
+<p>the regularization/tuning parameter estimated for the penalized likelihood</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mserr		    	</code></td>
+<td>
+<p>the estimated standard error when <code>error=TRUE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start_values  </code></td>
+<td>
+<p>the starting parameters used for the optimization of the LL or PL</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>corrSt        </code></td>
+<td>
+<p>a list including the transformed tree, the determinant obtained from its covariance matrix and the normalized variables (by the inverse square root of the covariance matrix of the phylogenetic tree or the time-series)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>penalty       </code></td>
+<td>
+<p>the penalty used for the penalized likelihood approach</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>target        </code></td>
+<td>
+<p>the target used with the "RidgeArch" or "RidgeAlt" penalized likelihood approaches</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>REML	    		</code></td>
+<td>
+<p>logical indicating if the REML (<code>TRUE</code>) or ML (<code>FALSE</code>) method has been used</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>opt	    	  	</code></td>
+<td>
+<p>optimizing function output. See <code>optim</code></p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Julien Clavel
+
+</p>
+
+
+<h3>References</h3>
+
+<p>Clavel, J., Aristide, L., Morlon, H., 2019. A Penalized Likelihood framework for high-dimensional phylogenetic comparative methods and an application to new-world monkeys brain evolution. Systematic Biology 68(1): 93-116.
+</p>
+<p>Clavel, J., Morlon, H. 2020. Reliable phylogenetic regressions for multivariate comparative data: illustration with the MANOVA and application to the effect of diet on mandible morphology in phyllostomid bats. Systematic Biology 69(5): 927-943.
+</p>
+<p>Friedman J., Hastie T., Tibshirani R. 2008. Sparse inverse covariance estimation with the graphical lasso. Biostatistics. 9:432-441.
+</p>
+<p>Hoffbeck J.P., Landgrebe D.A. 1996. Covariance matrix estimation and classification with limited training data. IEEE Trans. Pattern Anal. Mach. Intell. 18:763-767.
+</p>
+<p>Housworth E.A., Martins E.P., LynchM. 2004. The phylogenetic mixed model. Am. Nat. 163:84-96.
+</p>
+<p>Theiler J. 2012. The incredible shrinking covariance estimator. In: Automatic Target Recognition XXII. Proc. SPIE 8391, Baltimore, p. 83910P.
+</p>
+<p>van Wieringen W.N., Peeters C.F.W. 2016. Ridge estimation of inverse covariance matrices from high-dimensional data. Comput. Stat. Data Anal. 103:284-303.
+</p>
+
+
+
+<h3>See Also</h3>
+
+<p><code>mvgls</code>
+<code>manova.gls</code>
+<code>EIC</code>
+<code>GIC</code>
+<code>mvgls.pca</code>
+<code>fitted.mvgls</code>
+<code>residuals.mvgls</code>
+<code>coef.mvgls</code>
+<code>vcov.mvgls</code>
+<code>predict.mvgls</code>
+
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+# --------------------------- #
+# Model fit and comparison    #
+# --------------------------- #
+
+set.seed(1)
+n &lt;- 32 # number of species
+p &lt;- 50 # number of traits (p&gt;n)
+
+tree &lt;- pbtree(n=n, scale=1) # phylogenetic tree
+R &lt;- crossprod(matrix(runif(p*p), ncol=p)) # a random covariance matrix
+# simulate a BM dataset
+Y &lt;- mvSIM(tree, model="BM1", nsim=1, param=list(sigma=R, theta=rep(0,p))) 
+data=list(Y=Y)
+
+# Fit the 'BM', 'OU', and 'EB' models to 'Y'
+fit1 &lt;- mvgls(Y~1, data=data, tree, model="BM", penalty="RidgeArch")
+fit2 &lt;- mvgls(Y~1, data=data, tree, model="OU", penalty="RidgeArch")
+fit3 &lt;- mvgls(Y~1, data=data, tree, model="EB", penalty="RidgeArch")
+
+GIC(fit1); GIC(fit2); GIC(fit3) # BM have the lowest GIC value
+
+# Testing for phylogenetic signal with model fit
+signal &lt;- mvgls(Y~1, data=data, tree, model="lambda", penalty="RidgeArch")
+summary(signal)
+
+# --------------------------- #
+# Model fit by ML             #
+# --------------------------- #
+
+# Fit a model by Maximum Likelihood (rather than Penalized likelihood) when p&lt;&lt;n
+fit_ml &lt;- mvgls(Y[,1:2]~1, data=data, tree, model="BM", method="LL")
+summary(fit_ml)
+
+# --------------------------- #
+# Fit a regression model      #
+# --------------------------- #
+
+# simulate a 'fake' predictor for illustrative purpose
+X &lt;- rTraitCont(tree)
+
+# we can add the predictors to the previous 'data' list
+data=list(Y=Y, X=X)
+
+fit_ml &lt;- mvgls(Y~X, data=data, tree, model="lambda")
+summary(fit_ml)
+
+# --------------------------- #
+# A High-dimensional dataset  #
+# --------------------------- #
+p &lt;- 200 # number of traits (p&gt;n)
+
+R &lt;- crossprod(matrix(runif(p*p), ncol=p)) # a random symmetric matrix (covariance)
+# simulate a BM dataset
+Y &lt;- mvSIM(tree, model="BM1", nsim=1, param=list(sigma=R, theta=rep(0,p))) 
+data=list(Y=Y)
+
+# Fast LOOCV using "H&amp;L" with RidgeArch penalization
+summary(mvgls(Y~1, data=data, tree, model="BM", penalty="RidgeArch", method="H&amp;L"))
+
+
+
+
+
+</code></pre>
+
+
+</div>

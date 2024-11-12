@@ -1,0 +1,230 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ReadNetCDF</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Read NetCDF files.</h2>
+
+<h3>Description</h3>
+
+<p>Using the <code>ncdf4-package</code> package, it reads a NetCDF file. The advantage
+over using <code>ncvar_get</code> is that the output is a tidy data.table
+with proper dimensions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ReadNetCDF(
+  file,
+  vars = NULL,
+  out = c("data.frame", "vector", "array"),
+  subset = NULL,
+  key = FALSE
+)
+
+GlanceNetCDF(file, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>file</code></td>
+<td>
+<p>source to read from. Must be one of:
+</p>
+
+<ul>
+<li>
+<p> A string representing a local file with read access.
+</p>
+</li>
+<li>
+<p> A string representing a URL readable by <code>ncdf4::nc_open()</code>.
+(this includes DAP urls).
+</p>
+</li>
+<li>
+<p> A netcdf object returned by <code>ncdf4::nc_open()</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vars</code></td>
+<td>
+<p>one of:
+</p>
+
+<ul>
+<li> <p><code>NULL</code>: reads all variables.
+</p>
+</li>
+<li>
+<p> a character vector with the name of the variables to read.
+</p>
+</li>
+<li>
+<p> a function that takes a vector with all the variables and returns either
+a character vector with the name of variables to read or a numeric/logical
+vector that indicates a subset of variables.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>out</code></td>
+<td>
+<p>character indicating the type of output desired</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>a list of subsetting objects. See below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>key</code></td>
+<td>
+<p>if <code>TRUE</code>, returns a data.table keyed by the dimensions of the data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>in <code>GlanceNetCDF()</code>, ignored. Is there for convenience so that a call to <code>ReadNetCDF()</code> can
+be also valid for <code>GlanceNetCDF()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The return format is specified by <code>out</code>. It can be a data table in which each
+column is a variable and each row, an observation; an array with named
+dimensions; or a vector. Since it's possible to return multiple arrays or
+vectors (one for each variable), for consistency the return type is always a
+list. Either of these two options are much faster than the
+first since the most time consuming part is the melting of the array
+returned by ncdf4::ncvar_get. <code>out = "vector"</code> is particularly useful for
+adding new variables to an existing data frame with the same dimensions.
+</p>
+<p>When not all variables specified in <code>vars</code> have the same number of dimensions,
+the shorter variables will be recycled. E.g. if reading a 3D pressure field
+and a 2D surface temperature field, the latter will be turned into a 3D field
+with the same values in each missing dimension.
+</p>
+<p><code>GlanceNetCDF()</code> returns a list of variables and dimensions included in the
+file with a nice printing method.
+</p>
+
+
+<h3>Subsetting</h3>
+
+<p>In the most basic form, <code>subset</code> will be a named list whose names must match
+the dimensions specified in the NetCDF file and each element must be a vector
+whose range defines
+a contiguous subset of data. You don't need to provide and exact range that
+matches the actual gridpoints of the file; the closest gridpoint will be selected.
+Furthermore, you can use <code>NA</code> to refer to the existing minimum or maximum.
+</p>
+<p>So, if you want to get Southern Hemisphere data from the from a file that defines
+latitude as <code>lat</code>, then you can use:
+</p>
+<pre>
+subset = list(lat = -90:0)
+</pre>
+<p>More complex subsetting operations are supported. If you want to read non-contiguous
+chunks of data, you can specify each chunk into a list inside <code>subset</code>. For example
+this subset
+</p>
+<pre>
+subset = list(list(lat = -90:-70, lon = 0:60),
+              list(lat = 70:90, lon = 300:360))
+</pre>
+<p>will return two contiguous chunks: one on the South-West corner and one on the
+North-East corner. Alternatively, if you want to get the four corners that
+are combination of those two conditions,
+</p>
+<pre>
+subset = list(lat = list(-90:-70, 70:90),
+              lon = list(0:60, 300:360))
+</pre>
+<p>Both operations can be mixed together. So for example this
+</p>
+<pre>
+subset = list(list(lat = -90:-70,
+                   lon = 0:60),
+              time = list(c("2000-01-01", "2000-12-31"),
+                          c("2010-01-01", "2010-12-31")))
+</pre>
+<p>returns one spatial chunk for each of two temporal chunks.
+</p>
+<p>The general idea is that named elements define 'global' subsets ranges that will be
+applied to every other subset, while each unnamed element define one contiguous chunk.
+In the above example, <code>time</code> defines two temporal ranges that every subset of data will
+have.
+</p>
+<p>The above example, then, is equivalent to
+</p>
+<pre>
+subset = list(list(lat = -90:-70,
+                   lon = 0:60,
+                   time = c("2000-01-01", "2000-12-31")),
+              list(lat = -90:-70,
+                   lon = 0:60,
+                   time = c("2010-01-01", "2010-12-31")))
+</pre>
+<p>but demands much less typing.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">file &lt;- system.file("extdata", "temperature.nc", package = "metR")
+# Get a list of variables.
+variables &lt;- GlanceNetCDF(file)
+print(variables)
+
+# The object returned by GlanceNetCDF is a list with lots
+# of information
+str(variables)
+
+# Read only the first one, with name "var".
+field &lt;- ReadNetCDF(file, vars = c(var = names(variables$vars[1])))
+# Add a new variable.
+# ¡Make sure it's on the same exact grid!
+field[, var2 := ReadNetCDF(file, out = "vector")]
+
+## Not run: 
+# Using a DAP url
+url &lt;- "http://iridl.ldeo.columbia.edu/SOURCES/.Models/.SubX/.GMAO/.GEOS_V2p1/.hindcast/.ua/dods"
+field &lt;- ReadNetCDF(url, subset = list(M = 1,
+                                       P = 10,
+                                       S = "1999-01-01"))
+
+# In this case, opening the netcdf file takes a non-neglible
+# amount of time. So if you want to iterate over many dimensions,
+# then it's more efficient to open the file first and then read it.
+
+ncfile &lt;- ncdf4::nc_open(url)
+field &lt;- ReadNetCDF(ncfile, subset = list(M = 1,
+                                       P = 10,
+                                       S = "1999-01-01"))
+
+
+# Using a function in `vars` to read all variables that
+# start with "radar_".
+ReadNetCDF(radar_file, vars = \(x) startsWith(x, "radar_"))
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

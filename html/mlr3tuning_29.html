@@ -1,0 +1,143 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>extract_inner_tuning_archives</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Extract Inner Tuning Archives</h2>
+
+<h3>Description</h3>
+
+<p>Extract inner tuning archives of nested resampling.
+Implemented for mlr3::ResampleResult and mlr3::BenchmarkResult.
+The function iterates over the AutoTuner objects and binds the tuning archives to a <code>data.table::data.table()</code>.
+AutoTuner must be initialized with <code>store_tuning_instance = TRUE</code> and <code>mlr3::resample()</code> or <code>mlr3::benchmark()</code> must be called with <code>store_models = TRUE</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">extract_inner_tuning_archives(
+  x,
+  unnest = "x_domain",
+  exclude_columns = "uhash"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>(mlr3::ResampleResult | mlr3::BenchmarkResult).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>unnest</code></td>
+<td>
+<p>(<code>character()</code>)<br>
+Transforms list columns to separate columns.
+By default, <code>x_domain</code> is unnested.
+Set to <code>NULL</code> if no column should be unnested.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exclude_columns</code></td>
+<td>
+<p>(<code>character()</code>)<br>
+Exclude columns from result table.
+Set to <code>NULL</code> if no column should be excluded.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>data.table::data.table()</code>.
+</p>
+
+
+<h3>Data structure</h3>
+
+<p>The returned data table has the following columns:
+</p>
+
+<ul>
+<li> <p><code>experiment</code> (integer(1))<br>
+Index, giving the according row number in the original benchmark grid.
+</p>
+</li>
+<li> <p><code>iteration</code> (integer(1))<br>
+Iteration of the outer resampling.
+</p>
+</li>
+<li>
+<p> One column for each hyperparameter of the search spaces.
+</p>
+</li>
+<li>
+<p> One column for each performance measure.
+</p>
+</li>
+<li> <p><code>runtime_learners</code> (<code>numeric(1)</code>)<br>
+Sum of training and predict times logged in learners per mlr3::ResampleResult / evaluation.
+This does not include potential overhead time.
+</p>
+</li>
+<li> <p><code>timestamp</code> (<code>POSIXct</code>)<br>
+Time stamp when the evaluation was logged into the archive.
+</p>
+</li>
+<li> <p><code>batch_nr</code> (<code>integer(1)</code>)<br>
+Hyperparameters are evaluated in batches.
+Each batch has a unique batch number.
+</p>
+</li>
+<li> <p><code>x_domain</code> (<code>list()</code>)<br>
+List of transformed hyperparameter values.
+By default this column is unnested.
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠x_domain_*⁠</code> (<code>any</code>)<br>
+Separate column for each transformed hyperparameter.
+</p>
+</li>
+<li> <p><code>resample_result</code> (mlr3::ResampleResult)<br>
+Resample result of the inner resampling.
+</p>
+</li>
+<li> <p><code>task_id</code> (<code>character(1)</code>).
+</p>
+</li>
+<li> <p><code>learner_id</code> (<code>character(1)</code>).
+</p>
+</li>
+<li> <p><code>resampling_id</code> (<code>character(1)</code>).
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Nested Resampling on Palmer Penguins Data Set
+
+learner = lrn("classif.rpart",
+  cp = to_tune(1e-04, 1e-1, logscale = TRUE))
+
+# create auto tuner
+at = auto_tuner(
+  tuner = tnr("random_search"),
+  learner = learner,
+  resampling = rsmp ("holdout"),
+  measure = msr("classif.ce"),
+  term_evals = 4)
+
+resampling_outer = rsmp("cv", folds = 2)
+rr = resample(tsk("iris"), at, resampling_outer, store_models = TRUE)
+
+# extract inner archives
+extract_inner_tuning_archives(rr)
+</code></pre>
+
+
+</div>

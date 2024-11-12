@@ -1,0 +1,121 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modeltime_table</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Scale forecast analysis with a Modeltime Table</h2>
+
+<h3>Description</h3>
+
+<p>Designed to perform forecasts at scale using models created with
+<code>modeltime</code>, <code>parsnip</code>, <code>workflows</code>, and regression modeling extensions
+in the <code>tidymodels</code> ecosystem.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modeltime_table(...)
+
+as_modeltime_table(.l)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Fitted <code>parsnip</code> model or <code>workflow</code> objects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.l</code></td>
+<td>
+<p>A list containing fitted <code>parsnip</code> model or <code>workflow</code> objects</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>modeltime_table()</code>:
+</p>
+
+<ol>
+<li>
+<p> Creates a table of models
+</p>
+</li>
+<li>
+<p> Validates that all objects are models (parsnip or workflows objects) and
+all models have been fitted (trained)
+</p>
+</li>
+<li>
+<p> Provides an ID and Description of the models
+</p>
+</li>
+</ol>
+<p><code>as_modeltime_table()</code>:
+</p>
+<p>Converts a <code>list</code> of models to a modeltime table. Useful if programatically creating
+Modeltime Tables from models stored in a <code>list</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(dplyr)
+library(timetk)
+library(parsnip)
+library(rsample)
+
+# Data
+m750 &lt;- m4_monthly %&gt;% filter(id == "M750")
+
+# Split Data 80/20
+splits &lt;- initial_time_split(m750, prop = 0.9)
+
+# --- MODELS ---
+
+# Model 1: prophet ----
+model_fit_prophet &lt;- prophet_reg() %&gt;%
+    set_engine(engine = "prophet") %&gt;%
+    fit(value ~ date, data = training(splits))
+
+
+# ---- MODELTIME TABLE ----
+
+# Make a Modeltime Table
+models_tbl &lt;- modeltime_table(
+    model_fit_prophet
+)
+
+# Can also convert a list of models
+list(model_fit_prophet) %&gt;%
+    as_modeltime_table()
+
+# ---- CALIBRATE ----
+
+calibration_tbl &lt;- models_tbl %&gt;%
+    modeltime_calibrate(new_data = testing(splits))
+
+# ---- ACCURACY ----
+
+calibration_tbl %&gt;%
+    modeltime_accuracy()
+
+# ---- FORECAST ----
+
+calibration_tbl %&gt;%
+    modeltime_forecast(
+        new_data    = testing(splits),
+        actual_data = m750
+    )
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,294 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mastif</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Gibbs sampler for mast data</h2>
+
+<h3>Description</h3>
+
+<p>Estimates productivity and dispersion of seeds observed at seed traps, using information on locations, and covariates that could explain source strength.  Data can be simulated with <code>mastSim</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">
+  mastif( inputs, formulaFec = NULL, formulaRep = as.formula("~diam"), 
+           ng = NULL, burnin = NULL )
+  
+  ## S3 method for class 'mastif'
+print(x, ...)
+  
+  ## S3 method for class 'mastif'
+summary(object, verbose = TRUE, latex = FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>inputs</code></td>
+<td>
+<p><code>list</code> that must include two <code>character vector</code>s, (<code>specNames</code>, <code>seedNames</code>) and four <code>data.frame</code>s (<code>treeData</code>, <code>seedData</code>, <code>xytree</code>, <code>xytrap</code>).  See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formulaFec</code></td>
+<td>
+<p>R <code>formula</code> for fecundity model, e.g., <code>~ diam + x1</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formulaRep</code></td>
+<td>
+<p>R <code>formula</code> for maturation model, e.g., <code>~ diam</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ng</code></td>
+<td>
+<p><code>numeric</code> number of Gibbs steps.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p><code>numeric</code> number of burnin steps, before predictions are saved.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>currently, also an object of <code>class mastif</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>if <code>TRUE</code> summary sent to screen.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>latex</code></td>
+<td>
+<p>if <code>TRUE</code> tables written to screen in latex format.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>object of <code>class mastif</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments not used here.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>inputs</code> includes the following: 
+</p>
+<p><code>specNames</code> is a <code>character vector</code> containing names of species, <code>specNames</code>, that appear in the <code>treeData$species</code> column.
+</p>
+<p><code>seedNames</code> is a <code>character vector</code> of seed types that appear as column names in <code>seedData</code>.
+</p>
+<p><code>treeData</code> is a <code>data.frame</code> holding tree information, including predictors and tree-year identification.  Required columns are <code>plot</code>, <code>tree</code>, <code>species</code>, <code>year</code>, <code>diam</code>, and any other predictors for fecundity or maturation. 
+</p>
+<p><code>seedData</code> is a <code>data.frame</code> holding seed counts with seed trap and year identification.  Required columns are <code>plot</code>, <code>trap</code>, <code>year</code>, and <code>seedNames</code>, the latter holding seed counts.
+</p>
+<p><code>xytree</code> is a <code>data.frame</code> holding tree locations.  Required columns are <code>plot</code>, <code>tree</code>, <code>x</code>, and <code>y</code>.
+</p>
+<p><code>xytrap</code> is <code>data.frame</code> holding seed trap locations.  Required columns are <code>plot</code>, <code>trap</code>, <code>x</code>, and <code>y</code>.
+</p>
+<p><code>formulaFec</code> and <code>formulaRep</code> specify the models for plant fecundity and maturation.  Variables listed in formulas appear as column headings in <code>treeData</code>.  Note that <code>formulaFec</code> and <code>formulaRep</code> begin with <code>~</code>, not <code>y ~</code>.  The response <code>matrix</code> is constructed from seed types in <code>seedData</code>. 
+</p>
+<p>The <code>treeData$tree</code> column has values that are unique for a tree within a <code>plot</code>.  These reference the same unique identifiers in <code>xytree$tree</code>.  In addition to these identifiers, the <code>data.frame xytree</code> holds columns <code>x</code> and <code>y</code> for map locations.
+</p>
+<p>The <code>character vector seedNames</code> holds the names of columns in <code>seedData</code> for seed counts.  The elements of <code>seedNames</code> are seed types produced by one or more of the species in <code>specNames</code>.  <code>seedData</code> must also include columns for <code>trap</code>, <code>plot</code>, and <code>year</code>, which link with  columns in <code>xytrap</code>, which additionally includes columns <code>x</code> and <code>y</code>.
+</p>
+<p><code>predList</code> includes the names of <code>plots</code> and <code>years</code> to be predicted.  It can include a <code>numeric</code> value <code>mapMeters</code> for the distance between lattice points in the prediction grid.  See examples.
+</p>
+<p><code>yearEffect</code> is a <code>list</code> indicating the column names in <code>treeData</code> for random groups in year effects or AR(p) models.  See examples.
+</p>
+<p><code>randomEffect</code> is a <code>list</code> indicating the column names in <code>treeData</code> for random groups in fecundity estimates, the <code>character randGroups</code> and the <code>formulaRan</code> for random effects.  The <code>formulaRan</code> must be a subset of predictors from <code>formulaFec</code>.  See examples.
+</p>
+<p><code>modelYears</code> is a <code>numeric vector</code> of years to include in the analysis.
+</p>
+<p><code>ng</code> is the number of Gibbs steps.  <code>burnin</code> is the number of initial steps, must be less than <code>ng</code>.  
+</p>
+<p>Additional arguments to <code>inputs</code> can include prior parameters; default values are:
+</p>
+<p><code>priorDist = 10</code> is a prior mean dispersal distance in meters.
+</p>
+<p><code>priorVDist = 1</code> is the prior variance on mean dispersal distance in meters. 
+</p>
+<p><code>minDist = 2</code> and <code>maxDist = 60</code> are the minimum and maximum values for the mean dispersal kernel in meters.
+</p>
+<p><code>minDiam = 2</code> is the minimum diameter that a tree could be reproductively mature, in cm. 
+</p>
+<p><code>sigmaMu = .5</code>  and <code>sigmaWt = nrow(inputs$treeData)</code> are the prior mean and the prior weight on log fecundity variance.
+</p>
+<p><code>maxF = 1e+8</code>, maximum fecundity, helps stabilize analysis of especially noisy data.
+</p>
+<p>More detailed vignettes can be obtained with:
+</p>
+<p><code>browseVignettes('mastif')</code>
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns an object of <code>class "mast"</code>, which is a list containing the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>inputs</code></td>
+<td>
+<p><code>list</code> includes all inputs to the model, including transformations not resulting from posterior simulation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chains</code></td>
+<td>
+<p><code>list</code> of MCMC matrices, each with <code>ng</code> rows, includes:
+</p>
+<p><code>bfec</code>: fecundity coefficients 
+</p>
+<p><code>brep</code>: maturation coefficients
+</p>
+<p><code>ugibbs</code>: dispersal parameters
+</p>
+<p><code>sgibbs</code>: residual variance and, after <code>burnin</code>, rmspe (root mean square prediction error)
+</p>
+<p><code>rgibbs</code>: if multiple seed types, then rows are the <code>specNames</code> to <code>seedNames matrix R</code>.  
+</p>
+<p><code>bygibbsF, bygibbsR</code>: if <code>yearEffects</code> are included in the model, these are fixed year/lag and random year/lag effects by random group.
+</p>
+<p><code>agibbs</code>: if <code>randomEffects</code> on individuals, rows are covariance matrix.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parameters</code></td>
+<td>
+<p><code>list</code> of parameter estimates summarized from <code>chains</code>.
+</p>
+<p><code>acfMat</code>: autocorrelation on fecundity by random group.
+</p>
+<p><code>betaFec</code>: fecundity regression coefficients (log scale).
+</p>
+<p><code>betaRep</code>: maturation regression coefficients (probit scale).
+</p>
+<p><code>dpars</code>: dispersal kernel coefficient, by random group, on meter scale.
+</p>
+<p><code>omegaList</code>: fecundity covariance between trees for the same plot-year.
+</p>
+<p><code>pacfMat</code>: partial autocorrelation on fecundity.
+</p>
+<p><code>pacfSe</code>: standard errors for <code>pacfMat</code>.
+</p>
+<p><code>pacsMat</code>: partial autocorrelation on seed counts.
+</p>
+<p><code>sigma</code>: estimate of residual log fecundity variance.
+</p>
+<p><code>sigmaList</code>: fecundity covariance over years.
+</p>
+<p><code>upars</code>: dispersal kernel coefficient, by random group, on meter^2 scale.
+</p>
+<p><code>rMu, rSe</code>: if more than one <code>seedName</code>, posterior mean and standard error on <code>R</code> matrix
+</p>
+<p>If <code>yearEffects</code>, then the following will be included in <code>$parameters</code>:
+</p>
+<p><code>betaYrMu, betaYrSe</code>: posterior mean and standard errors on fixed year effects.
+</p>
+<p><code>betaYrRand, betaYrRandSE</code>: posterior mean and standard errors on random year effects.
+</p>
+<p><code>alphaMu, alphaSe</code>: posterior mean and standard errors on random tree effects.
+</p>
+<p><code>aMu, aSe</code>: posterior mean and standard errors on random effects covariance.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prediction</code></td>
+<td>
+<p><code>list</code> of latent variable estimates and prediction:
+</p>
+<p><code>fecPred</code> includes <code>matrEst, fecEstMu, fecEstSe</code> maturation and fecundity estimates and <code>matrPred, fecPred, fecEst</code> maturation and fecundity predictions.
+</p>
+<p><code>seedPred</code> includes seed predictions by species, from estimates of latent fecundity and maturation (<code>_estMean, _estSe</code>) and from the fully generative model (<code>_predMean, _predSe</code>).
+</p>
+<p>If <code>predictList</code> is passed to <code>mast</code>, then predictions are returned as seeds per m^2 (not per trap) for the regular prediction grid spaced <code>mapMeters</code> apart in the <code>data.frame seedPredGrid</code>.  Tree predictions are returned in<code> treePredGrid</code> are included. If the AR(p) model is used (<code>yearEffect$p</code> is supplied), then both <code>data.frames</code> include <code>p</code>-yr hind casts and <code>p</code>-yr forecasts.
+</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>James S Clark, <a href="mailto:jimclark@duke.edu">jimclark@duke.edu</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Clark, J.S., C. Nunes, and B. Tomasek. 2019. Foodwebs based on unreliable foundations: spatio-temporal masting merged with consumer movement, storage, and diet. Ecological Monographs, e01381.
+Qiu, T., ..., and J. S. Clark. 2023. Mutualist dispersers and the global distribution of masting: mediation by climate and fertility. Nature Plants, https://doi.org/10.1038/s41477-023-01446-5.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mastSim</code> simulates data
+</p>
+<p>A more detailed vignette is can be obtained with:
+</p>
+<p><code>browseVignettes('mastif')</code>
+</p>
+<p>website 'http://sites.nicholas.duke.edu/clarklab/code/'.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# simulate data (see \link{\code{mastSim}})
+seedNames  &lt;- specNames  &lt;- 'acerRubr'
+sim &lt;- list(nyr=10, ntree=20, nplot=5, ntrap=40,
+               specNames = specNames, seedNames = seedNames)
+               
+inputs   &lt;- mastSim(sim)        # simulate data
+inputs$predList &lt;- list( mapMeters = 3, plots = inputs$plots[1], 
+                         years = inputs$years ) 
+output   &lt;- mastif( inputs = inputs, ng = 3000, burnin = 2000 )
+# mastPlot(output)
+
+# for Liriodendron
+d &lt;- "https://github.com/jimclarkatduke/mast/blob/master/liriodendronExample.rData?raw=True"
+repmis::source_data(d)
+
+formulaFec &lt;- as.formula( ~ diam )   # fecundity model
+formulaRep &lt;- as.formula( ~ diam )   # maturation model
+
+yearEffect   &lt;- list(groups = 'species') 
+randomEffect &lt;- list(randGroups = 'treeID', 
+                     formulaRan = as.formula( ~ 1 ) )
+inputs   &lt;- list( specNames = specNames, seedNames = seedNames, 
+                  treeData = treeData, seedData = seedData, 
+                  xytree = xytree, xytrap = xytrap, 
+                  yearEffect = yearEffect, randomEffect = randomEffect )
+output &lt;- mastif(inputs = inputs, formulaFec, formulaRep, ng = 1000, 
+                 burnin = 400 )
+summary(output)
+# plot output:
+# mastPlot(output)
+
+</code></pre>
+
+
+</div>

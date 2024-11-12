@@ -1,0 +1,261 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>permutest</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Permutation Tests for 'rma.uni' Objects</h2>
+
+<h3>Description</h3>
+
+<p>Function to carry out permutation tests for objects of class <code>"rma.uni"</code> and <code>"rma.ls"</code>. <script id="MathJax-script" async src="../../mathjaxr/doc/mathjax/es5/tex-chtml-full.js"></script></p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">permutest(x, ...)
+
+## S3 method for class 'rma.uni'
+permutest(x, exact=FALSE, iter=1000, permci=FALSE,
+          progbar=TRUE, digits, control, ...)
+
+## S3 method for class 'rma.ls'
+permutest(x, exact=FALSE, iter=1000,
+          progbar=TRUE, digits, control, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>an object of class <code>"rma.uni"</code> or <code>"rma.ls"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exact</code></td>
+<td>
+<p>logical to specify whether an exact permutation test should be carried out (the default is <code>FALSE</code>). See ‘Details’.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>integer to specify the number of iterations for the permutation test when not doing an exact test (the default is <code>1000</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>permci</code></td>
+<td>
+<p>logical to specify whether permutation-based confidence intervals (CIs) should also be constructed (the default is <code>FALSE</code>). Can also be a vector of indices to specify for which coefficients a permutation-based CI should be obtained.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progbar</code></td>
+<td>
+<p>logical to specify whether a progress bar should be shown (the default is <code>TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>optional integer to specify the number of decimal places to which the printed results should be rounded. If unspecified, the default is to take the value from the object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>list of control values for numerical comparisons (<code>comptol</code>) and for <code>uniroot</code> (i.e., <code>tol</code> and <code>maxiter</code>). The latter is only relevant when <code>permci=TRUE</code>. See ‘Note’.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For models without moderators, the permutation test is carried out by permuting the signs of the observed effect sizes or outcomes. The (two-sided) p-value of the permutation test is then equal to the proportion of times that the absolute value of the test statistic under the permuted data is as extreme or more extreme than under the actually observed data. See Follmann and Proschan (1999) for more details.
+</p>
+<p>For models with moderators, the permutation test is carried out by permuting the rows of the model matrix (i.e., \(X\)). The (two-sided) p-value for a particular model coefficient is then equal to the proportion of times that the absolute value of the test statistic for the coefficient under the permuted data is as extreme or more extreme than under the actually observed data. Similarly, for the omnibus test, the p-value is the proportion of times that the test statistic for the omnibus test is as extreme or more extreme than the actually observed one. See Higgins and Thompson (2004) and Viechtbauer et al. (2015) for more details.
+</p>
+
+
+<h4>Exact versus Approximate Permutation Tests</h4>
+
+<p>If <code>exact=TRUE</code>, the function will try to carry out an exact permutation test. An exact permutation test requires fitting the model to each possible permutation. However, the number of possible permutations increases rapidly with the number of outcomes/studies (i.e., \(k\)). For models without moderators, there are \(2^k\) possible permutations of the signs. Therefore, for \(k=5\), there are 32 possible permutations, for \(k=10\), there are already 1024, and for \(k=20\), there are over one million such permutations.
+</p>
+<p>For models with moderators, the increase in the number of possible permutations may be even more severe. The total number of possible permutations of the model matrix is \(k!\). Therefore, for \(k=5\), there are 120 possible permutations, for \(k=10\), there are 3,628,800, and for \(k=20\), there are over \(10^{18}\) permutations of the model matrix.
+</p>
+<p>Therefore, going through all possible permutations may become infeasible. Instead of using an exact permutation test, one can set <code>exact=FALSE</code> (which is also the default). In that case, the function approximates the exact permutation-based p-value(s) by going through a smaller number (as specified by the <code>iter</code> argument) of <em>random</em> permutations. Therefore, running the function twice on the same data can yield (slightly) different p-values. Setting <code>iter</code> sufficiently large ensures that the results become stable. For full reproducibility, one can also set the seed of the random number generator before running the function (see ‘Examples’). Note that if <code>exact=FALSE</code> and <code>iter</code> is actually larger than the number of iterations required for an exact permutation test, then an exact test will automatically be carried out.
+</p>
+<p>For models with moderators, the exact permutation test actually only requires fitting the model to each <em>unique</em> permutation of the model matrix. The number of unique permutations will be smaller than \(k!\) when the model matrix contains recurring rows. This may be the case when only including categorical moderators (i.e., factors) in the model or when any quantitative moderators included in the model can only take on a small number of unique values. When <code>exact=TRUE</code>, the function therefore uses an algorithm to restrict the test to only the unique permutations of the model matrix, which may make the use of the exact test feasible even when \(k\) is large.
+</p>
+<p>One can also set <code>exact="i"</code> in which case the function just returns the number of iterations required for an exact permutation test.
+</p>
+<p>When using random permutations, the function ensures that the very first permutation will always correspond to the original data. This avoids p-values equal to 0.
+</p>
+
+
+
+<h4>Permutation-Based Confidence Intervals</h4>
+
+<p>When <code>permci=TRUE</code>, the function also tries to obtain permutation-based confidence intervals (CIs) of the model coefficient(s). This is done by shifting the observed effect sizes or outcomes by some amount and finding the most extreme values for this amount for which the permutation-based test would just lead to non-rejection. The calculation of such CIs is computationally expensive and may take a long time to complete. For models with moderators, one can also set <code>permci</code> to a vector of indices to specify for which coefficient(s) a permutation-based CI should be obtained. When the algorithm fails to determine a particular CI bound, it will be shown as <code>NA</code> in the output.
+</p>
+
+
+
+<h4>Permutation Tests for Location-Scale Models</h4>
+
+<p>The function also works with location-scale models (see <code>rma.uni</code> for details on such models). Permutation tests will then be carried out for both the location and scale parts of the model. However, note that permutation-based CIs are not available for location-scale models.
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>"permutest.rma.uni"</code>. The object is a list containing the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>pval</code></td>
+<td>
+<p>p-value(s) based on the permutation test.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>QMp</code></td>
+<td>
+<p>p-value for the omnibus test of moderators based on the permutation test.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>zval.perm</code></td>
+<td>
+<p>values of the test statistics of the coefficients under the various permutations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b.perm</code></td>
+<td>
+<p>the model coefficients under the various permutations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>QM.perm</code></td>
+<td>
+<p>the test statistic of the omnibus test of moderators under the various permutations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ci.lb</code></td>
+<td>
+<p>lower bound of the confidence intervals for the coefficients (permutation-based when <code>permci=TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ci.ub</code></td>
+<td>
+<p>upper bound of the confidence intervals for the coefficients (permutation-based when <code>permci=TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>some additional elements/values are passed on.</p>
+</td>
+</tr>
+</table>
+<p>The results are formatted and printed with the <code>print</code> function. One can also use <code>coef</code> to obtain the table with the model coefficients, corresponding standard errors, test statistics, p-values, and confidence interval bounds. The permutation distribution(s) can be plotted with the <code>plot</code> function.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The p-values obtained with permutation tests cannot reach conventional levels of statistical significance (i.e., \(p \le .05\)) when \(k\) is very small. In particular, for models without moderators, the smallest possible (two-sided) p-value is .0625 when \(k=5\) and .03125 when \(k=6\). Therefore, the permutation test is only able to reject the null hypothesis at \(\alpha=.05\) when \(k\) is at least equal to 6. For models with moderators, the smallest possible (two-sided) p-value for a particular model coefficient is .0833 when \(k=4\) and .0167 when \(k=5\) (assuming that each row in the model matrix is unique). Therefore, the permutation test is only able to reject the null hypothesis at \(\alpha=.05\) when \(k\) is at least equal to 5. Consequently, permutation-based CIs can also only be obtained when \(k\) is sufficiently large.
+</p>
+<p>When the number of permutations required for the exact test is so large as to be essentially indistinguishable from infinity (e.g., <code>factorial(200)</code>), the function will terminate with an error.
+</p>
+<p>Determining whether a test statistic under the permuted data is as extreme or more extreme than under the actually observed data requires making <code>&gt;=</code> or <code>&lt;=</code> comparisons. To avoid problems due to the finite precision with which computers generally represent numbers (see <a href="https://cran.r-project.org/doc/FAQ/R-FAQ.html#Why-doesn_0027t-R-think-these-numbers-are-equal_003f">this</a> FAQ for details), the function uses a numerical tolerance (<code>control</code> argument <code>comptol</code>, which is set equal to <code>.Machine$double.eps^0.5</code> by default) when making such comparisons (e.g., instead of <code>sqrt(3)^2 &gt;= 3</code>, which may evaluate to <code>FALSE</code>, we use <code>sqrt(3)^2 &gt;= 3 - .Machine$double.eps^0.5</code>, which should evaluate to <code>TRUE</code>).
+</p>
+<p>When obtaining permutation-based CIs, the function makes use of <code>uniroot</code>. By default, the desired accuracy is set equal to <code>.Machine$double.eps^0.25</code> and the maximum number of iterations to <code>100</code>. The desired accuracy and the maximum number of iterations can be adjusted with the <code>control</code> argument (i.e., <code>control=list(tol=value, maxiter=value)</code>). Also, the interval searched for the CI bounds may be too narrow, leading to <code>NA</code> for a bound. In this case, one can try setting <code>control=list(distfac=value)</code> with a value larger than 1 to extend the interval (the value indicating a multiplicative factor by which to extend the width of the interval searched) or <code>control=list(extendInt="yes")</code> to allow <code>uniroot</code> to extend the interval dynamically (in which case it can happen that a bound may try to drift towards \(\pm \infty\)).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Wolfgang Viechtbauer <a href="mailto:wvb@metafor-project.org">wvb@metafor-project.org</a> <a href="https://www.metafor-project.org">https://www.metafor-project.org</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Follmann, D. A., &amp; Proschan, M. A. (1999). Valid inference in random effects meta-analysis. <em>Biometrics</em>, <b>55</b>(3), 732–737. <code style="white-space: pre;">⁠https://doi.org/10.1111/j.0006-341x.1999.00732.x⁠</code>
+</p>
+<p>Good, P. I. (2009). <em>Permutation, parametric, and bootstrap tests of hypotheses</em> (3rd ed.). New York: Springer.
+</p>
+<p>Higgins, J. P. T., &amp; Thompson, S. G. (2004). Controlling the risk of spurious findings from meta-regression. <em>Statistics in Medicine</em>, <b>23</b>(11), 1663–1682. <code style="white-space: pre;">⁠https://doi.org/10.1002/sim.1752⁠</code>
+</p>
+<p>Viechtbauer, W. (2010). Conducting meta-analyses in R with the metafor package. <em>Journal of Statistical Software</em>, <b>36</b>(3), 1–48. <code style="white-space: pre;">⁠https://doi.org/10.18637/jss.v036.i03⁠</code>
+</p>
+<p>Viechtbauer, W., López-López, J. A., Sánchez-Meca, J., &amp; Marín-Martínez, F. (2015). A comparison of procedures to test for moderators in mixed-effects meta-regression models. <em>Psychological Methods</em>, <b>20</b>(3), 360–374. <code style="white-space: pre;">⁠https://doi.org/10.1037/met0000023⁠</code>
+</p>
+<p>Viechtbauer, W., &amp; López-López, J. A. (2022). Location-scale models for meta-analysis. <em>Research Synthesis Methods</em>. <b>13</b>(6), 697–715. <code style="white-space: pre;">⁠https://doi.org/10.1002/jrsm.1562⁠</code>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>rma.uni</code> for the function to fit models for which permutation tests can be conducted.
+</p>
+<p><code>print</code> and <code>plot</code> for the print and plot methods and <code>coef</code> for a method to extract the model results table.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">### calculate log risk ratios and corresponding sampling variances
+dat &lt;- escalc(measure="RR", ai=tpos, bi=tneg, ci=cpos, di=cneg, data=dat.bcg)
+
+### random-effects model
+res &lt;- rma(yi, vi, data=dat)
+res
+
+## Not run: 
+### permutation test (approximate and exact)
+set.seed(1234) # for reproducibility
+permutest(res)
+permutest(res, exact=TRUE)
+
+## End(Not run)
+
+### mixed-effects model with two moderators (absolute latitude and publication year)
+res &lt;- rma(yi, vi, mods = ~ ablat + year, data=dat)
+res
+
+### number of iterations required for an exact permutation test
+permutest(res, exact="i")
+
+## Not run: 
+### permutation test (approximate only; exact not feasible)
+set.seed(1234) # for reproducibility
+permres &lt;- permutest(res, iter=10000)
+permres
+
+### plot of the permutation distribution for absolute latitude
+### dashed horizontal line: the observed value of the test statistic (in both tails)
+### black curve: standard normal density (theoretical reference/null distribution)
+### blue curve: kernel density estimate of the permutation distribution
+### note: the tail area under the permutation distribution is larger
+### than under a standard normal density (hence, the larger p-value)
+plot(permres, beta=2, lwd=c(2,3,3,4), xlim=c(-5,5))
+
+## End(Not run)
+</code></pre>
+
+
+</div>

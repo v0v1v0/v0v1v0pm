@@ -1,0 +1,149 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pred.transsmap</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Prediction for new data based on Trans-SMAP.</h2>
+
+<h3>Description</h3>
+
+<p>Obtain predictions from a "trans.smap" object based on new samples.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pred.transsmap(object, newdata, bs.para, if.lm = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>the output of function <code>trans.smap</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>a list containing the new observations of predictors for prediction, the components of which is named as "data.x" for parametric variables and "data.z" for nonparametric variables. Should be in accordance with the data for training <code>object</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bs.para</code></td>
+<td>
+<p>a list containing the parameters for B-spline construction in function <code>bs</code>. Should be a vector with names "bs.df" and "bs.degree", each component of which is a vector with the same length as the number of nonparametric variables. For example, bs.para = list(bs.df=c(3,3,3), bs.degree=c(3,3,3)).
+</p>
+
+<ul>
+<li>
+<p> "bs.df": degrees of freedom for each nonparametric component; The details can be referred to the arguments in function <code>bs</code>.
+</p>
+</li>
+<li>
+<p> "bs.degree": degree of the piecewise polynomial for each nonparametric component; The default is 3 for cubic splines.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>if.lm</code></td>
+<td>
+<p>the logical variable, whether to set the target model as ordinary linear model. Default is False.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a result list containing the predicted values on new data and the estimated coefficient vector.
+</p>
+
+
+<h3>References</h3>
+
+<p>Hu, X., &amp; Zhang, X. (2023). Optimal Parameter-Transfer Learning by Semiparametric Model Averaging. Journal of Machine Learning Research, 24(358), 1-53.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>trans.smap</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## correct target model setting
+
+# generate simulation dataset
+coeff0 &lt;- cbind(
+  as.matrix(c(1.4, -1.2, 1, -0.8, 0.65, 0.3)),
+  as.matrix(c(1.4, -1.2, 1, -0.8, 0.65, 0.3) + 0.02),
+  as.matrix(c(1.4, -1.2, 1, -0.8, 0.65, 0.3) + 0.3),
+  as.matrix(c(1.4, -1.2, 1, -0.8, 0.65, 0.3))
+)
+whole.data &lt;- simdata.gen(
+  px = 6, num.source = 4, size = c(150, 200, 200, 150), coeff0 = coeff0,
+  coeff.mis = as.matrix(c(coeff0[, 2], 1.8)), err.sigma = 0.5, rho = 0.5, size.test = 500,
+  sim.set = "homo", tar.spec = "cor", if.heter = FALSE
+)
+data.train &lt;- whole.data$data.train
+data.test &lt;- whole.data$data.test
+
+# running Trans-SMAP and obtain the optimal weight vector
+data.train$data.x[[2]] &lt;- data.train$data.x[[2]][, -7]
+fit.transsmap &lt;- trans.smap(
+  train.data = data.train, nfold = 5,
+  bs.para = list(bs.df = rep(3, 3), bs.degree = rep(3, 3))
+)
+ma.weights &lt;- fit.transsmap$weight.est
+
+# predict for new data
+pred.res &lt;- pred.transsmap(
+  object = fit.transsmap, newdata = data.test,
+  bs.para = list(bs.df = rep(3, 3), bs.degree = rep(3, 3))
+)
+pred.val &lt;- pred.res$predict.val
+predict.risk &lt;- sum((pred.val - data.test$data.x %*% data.test$beta.true - data.test$gz.te)^2) / 500
+
+
+## misspecified target model setting
+
+# generate simulation dataset
+coeff.mis &lt;- matrix(c(c(coeff0[, 1], 0.1), c(coeff0[, 2], 1.8)), ncol = 2)
+whole.data &lt;- simdata.gen(
+  px = 6, num.source = 4, size = c(150, 200, 200, 150), coeff0 = coeff0,
+  coeff.mis = coeff.mis, err.sigma = 0.5, rho = 0.5, size.test = 500,
+  sim.set = "homo", tar.spec = "mis", if.heter = FALSE
+)
+data.train &lt;- whole.data$data.train
+data.test &lt;- whole.data$data.test
+
+# running Trans-SMAP and obtain the optimal weight vector
+data.train$data.x[[1]] &lt;- data.train$data.x[[1]][, -7]
+data.train$data.x[[2]] &lt;- data.train$data.x[[2]][, -7]
+fit.transsmap &lt;- trans.smap(
+  train.data = data.train, nfold = 5,
+  bs.para = list(bs.df = rep(3, 3), bs.degree = rep(3, 3))
+)
+ma.weights &lt;- fit.transsmap$weight.est
+
+# predict for new data
+data.test.mis &lt;- data.test
+data.test.mis$data.x &lt;- data.test.mis$data.x[, -7]
+pred.res &lt;- pred.transsmap(
+  object = fit.transsmap, newdata = data.test.mis,
+  bs.para = list(bs.df = rep(3, 3), bs.degree = rep(3, 3))
+)
+pred.val &lt;- pred.res$predict.val
+predict.risk &lt;- sum((pred.val - data.test$data.x %*% data.test$beta.true - data.test$gz.te)^2) / 500
+
+</code></pre>
+
+
+</div>

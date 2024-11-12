@@ -1,0 +1,732 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>AutoTuner</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Class for Automatic Tuning</h2>
+
+<h3>Description</h3>
+
+<p>The AutoTuner wraps a mlr3::Learner and augments it with an automatic tuning process for a given set of hyperparameters.
+The <code>auto_tuner()</code> function creates an AutoTuner object.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The AutoTuner is a mlr3::Learner which wraps another mlr3::Learner and performs the following steps during <code style="white-space: pre;">⁠$train()⁠</code>:
+</p>
+
+<ol>
+<li>
+<p> The hyperparameters of the wrapped (inner) learner are trained on the training data via resampling.
+The tuning can be specified by providing a Tuner, a bbotk::Terminator, a search space as paradox::ParamSet, a mlr3::Resampling and a mlr3::Measure.
+</p>
+</li>
+<li>
+<p> The best found hyperparameter configuration is set as hyperparameters for the wrapped (inner) learner stored in <code>at$learner</code>.
+Access the tuned hyperparameters via <code>at$tuning_result</code>.
+</p>
+</li>
+<li>
+<p> A final model is fit on the complete training data using the now parametrized wrapped learner.
+The respective model is available via field <code>at$learner$model</code>.
+</p>
+</li>
+</ol>
+<p>During <code style="white-space: pre;">⁠$predict()⁠</code> the <code>AutoTuner</code> just calls the predict method of the wrapped (inner) learner.
+A set timeout is disabled while fitting the final model.
+</p>
+
+
+<h3>Validation</h3>
+
+<p>The <code>AutoTuner</code> itself does <strong>not</strong> have the <code>"validation"</code> property.
+To enable validation during the tuning, set the <code style="white-space: pre;">⁠$validate⁠</code> field of the tuned learner.
+This is also possible via <code>set_validate()</code>.
+</p>
+
+
+<h3>Resources</h3>
+
+<p>There are several sections about hyperparameter optimization in the <a href="https://mlr3book.mlr-org.com">mlr3book</a>.
+</p>
+
+<ul>
+<li> <p><a href="https://mlr3book.mlr-org.com/chapters/chapter4/hyperparameter_optimization.html#sec-autotuner">Automate</a> the tuning.
+</p>
+</li>
+<li>
+<p> Estimate the model performance with <a href="https://mlr3book.mlr-org.com/chapters/chapter4/hyperparameter_optimization.html#sec-nested-resampling">nested resampling</a>.
+</p>
+</li>
+</ul>
+<p>The <a href="https://mlr-org.com/gallery-all-optimization.html">gallery</a> features a collection of case studies and demos about optimization.
+</p>
+
+
+<h3>Nested Resampling</h3>
+
+<p>Nested resampling is performed by passing an AutoTuner to <code>mlr3::resample()</code> or <code>mlr3::benchmark()</code>.
+To access the inner resampling results, set <code>store_tuning_instance = TRUE</code> and execute <code>mlr3::resample()</code> or <code>mlr3::benchmark()</code> with <code>store_models = TRUE</code> (see examples).
+The mlr3::Resampling passed to the AutoTuner is meant to be the inner resampling, operating on the training set of an arbitrary outer resampling.
+For this reason, the inner resampling should be not instantiated.
+If an instantiated resampling is passed, the AutoTuner fails when a row id of the inner resampling is not present in the training set of the outer resampling.
+</p>
+
+
+<h3>Default Measures</h3>
+
+<p>If no measure is passed, the default measure is used.
+The default measure depends on the task type.</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+   Task </td>
+<td style="text-align: left;"> Default Measure </td>
+<td style="text-align: left;"> Package </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>"classif"</code> </td>
+<td style="text-align: left;"> <code>"classif.ce"</code> </td>
+<td style="text-align: left;"> <a href="https://CRAN.R-project.org/package=mlr3"><span class="pkg">mlr3</span></a> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>"regr"</code> </td>
+<td style="text-align: left;"> <code>"regr.mse"</code> </td>
+<td style="text-align: left;"> <a href="https://CRAN.R-project.org/package=mlr3"><span class="pkg">mlr3</span></a> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>"surv"</code> </td>
+<td style="text-align: left;"> <code>"surv.cindex"</code> </td>
+<td style="text-align: left;"> <a href="https://CRAN.R-project.org/package=mlr3proba"><span class="pkg">mlr3proba</span></a> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>"dens"</code> </td>
+<td style="text-align: left;"> <code>"dens.logloss"</code> </td>
+<td style="text-align: left;"> <a href="https://CRAN.R-project.org/package=mlr3proba"><span class="pkg">mlr3proba</span></a> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>"classif_st"</code> </td>
+<td style="text-align: left;"> <code>"classif.ce"</code> </td>
+<td style="text-align: left;"> <a href="https://CRAN.R-project.org/package=mlr3spatial"><span class="pkg">mlr3spatial</span></a> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>"regr_st"</code> </td>
+<td style="text-align: left;"> <code>"regr.mse"</code> </td>
+<td style="text-align: left;"> <a href="https://CRAN.R-project.org/package=mlr3spatial"><span class="pkg">mlr3spatial</span></a> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>"clust"</code> </td>
+<td style="text-align: left;"> <code>"clust.dunn"</code> </td>
+<td style="text-align: left;"> <a href="https://CRAN.R-project.org/package=mlr3cluster"><span class="pkg">mlr3cluster</span></a> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<h3>Super class</h3>
+
+<p><code>mlr3::Learner</code> -&gt; <code>AutoTuner</code>
+</p>
+
+
+<h3>Public fields</h3>
+
+<div class="r6-fields">
+
+<dl>
+<dt><code>instance_args</code></dt>
+<dd>
+<p>(<code>list()</code>)<br>
+All arguments from construction to create the TuningInstanceBatchSingleCrit.</p>
+</dd>
+<dt><code>tuner</code></dt>
+<dd>
+<p>(Tuner)<br>
+Optimization algorithm.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Active bindings</h3>
+
+<div class="r6-active-bindings">
+
+<dl>
+<dt><code>internal_valid_scores</code></dt>
+<dd>
+<p>Retrieves the inner validation scores as a named <code>list()</code>.
+Returns <code>NULL</code> if learner is not trained yet.</p>
+</dd>
+<dt><code>archive</code></dt>
+<dd>
+<p>ArchiveBatchTuning<br>
+Archive of the TuningInstanceBatchSingleCrit.</p>
+</dd>
+<dt><code>learner</code></dt>
+<dd>
+<p>(mlr3::Learner)<br>
+Trained learner</p>
+</dd>
+<dt><code>tuning_instance</code></dt>
+<dd>
+<p>(TuningInstanceAsyncSingleCrit | TuningInstanceBatchSingleCrit)<br>
+Internally created tuning instance with all intermediate results.</p>
+</dd>
+<dt><code>tuning_result</code></dt>
+<dd>
+<p>(data.table::data.table)<br>
+Short-cut to <code>result</code> from  tuning instance.</p>
+</dd>
+<dt><code>predict_type</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Stores the currently active predict type, e.g. <code>"response"</code>.
+Must be an element of <code style="white-space: pre;">⁠$predict_types⁠</code>.</p>
+</dd>
+<dt><code>hash</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Hash (unique identifier) for this object.</p>
+</dd>
+<dt><code>phash</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Hash (unique identifier) for this partial object, excluding some components which are varied systematically during tuning (parameter values) or feature selection (feature names).</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-AutoTuner-new"><code>AutoTuner$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-AutoTuner-base_learner"><code>AutoTuner$base_learner()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-AutoTuner-importance"><code>AutoTuner$importance()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-AutoTuner-selected_features"><code>AutoTuner$selected_features()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-AutoTuner-oob_error"><code>AutoTuner$oob_error()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-AutoTuner-loglik"><code>AutoTuner$loglik()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-AutoTuner-print"><code>AutoTuner$print()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-AutoTuner-marshal"><code>AutoTuner$marshal()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-AutoTuner-unmarshal"><code>AutoTuner$unmarshal()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-AutoTuner-marshaled"><code>AutoTuner$marshaled()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-AutoTuner-clone"><code>AutoTuner$clone()</code></a>
+</p>
+</li>
+</ul>
+<details><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="encapsulate"><a href="../../mlr3/html/Learner.html#method-Learner-encapsulate"><code>mlr3::Learner$encapsulate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="format"><a href="../../mlr3/html/Learner.html#method-Learner-format"><code>mlr3::Learner$format()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="help"><a href="../../mlr3/html/Learner.html#method-Learner-help"><code>mlr3::Learner$help()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="predict"><a href="../../mlr3/html/Learner.html#method-Learner-predict"><code>mlr3::Learner$predict()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="predict_newdata"><a href="../../mlr3/html/Learner.html#method-Learner-predict_newdata"><code>mlr3::Learner$predict_newdata()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="reset"><a href="../../mlr3/html/Learner.html#method-Learner-reset"><code>mlr3::Learner$reset()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="train"><a href="../../mlr3/html/Learner.html#method-Learner-train"><code>mlr3::Learner$train()</code></a></span></li>
+</ul></details><hr>
+<a id="method-AutoTuner-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Creates a new instance of this R6 class.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>AutoTuner$new(
+  tuner,
+  learner,
+  resampling,
+  measure = NULL,
+  terminator,
+  search_space = NULL,
+  store_tuning_instance = TRUE,
+  store_benchmark_result = TRUE,
+  store_models = FALSE,
+  check_values = FALSE,
+  callbacks = NULL,
+  rush = NULL
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>tuner</code></dt>
+<dd>
+<p>(Tuner)<br>
+Optimization algorithm.</p>
+</dd>
+<dt><code>learner</code></dt>
+<dd>
+<p>(mlr3::Learner)<br>
+Learner to tune.</p>
+</dd>
+<dt><code>resampling</code></dt>
+<dd>
+<p>(mlr3::Resampling)<br>
+Resampling that is used to evaluate the performance of the hyperparameter configurations.
+Uninstantiated resamplings are instantiated during construction so that all configurations are evaluated on the same data splits.
+Already instantiated resamplings are kept unchanged.
+Specialized Tuner change the resampling e.g. to evaluate a hyperparameter configuration on different data splits.
+This field, however, always returns the resampling passed in construction.</p>
+</dd>
+<dt><code>measure</code></dt>
+<dd>
+<p>(mlr3::Measure)<br>
+Measure to optimize. If <code>NULL</code>, default measure is used.</p>
+</dd>
+<dt><code>terminator</code></dt>
+<dd>
+<p>(bbotk::Terminator)<br>
+Stop criterion of the tuning process.</p>
+</dd>
+<dt><code>search_space</code></dt>
+<dd>
+<p>(paradox::ParamSet)<br>
+Hyperparameter search space. If <code>NULL</code> (default), the search space is
+constructed from the paradox::TuneToken of the learner's parameter set
+(learner$param_set).</p>
+</dd>
+<dt><code>store_tuning_instance</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)<br>
+If <code>TRUE</code> (default), stores the internally created TuningInstanceBatchSingleCrit with all intermediate results in slot <code style="white-space: pre;">⁠$tuning_instance⁠</code>.</p>
+</dd>
+<dt><code>store_benchmark_result</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)<br>
+If <code>TRUE</code> (default), store resample result of evaluated hyperparameter
+configurations in archive as mlr3::BenchmarkResult.</p>
+</dd>
+<dt><code>store_models</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)<br>
+If <code>TRUE</code>, fitted models are stored in the benchmark result
+(<code>archive$benchmark_result</code>). If <code>store_benchmark_result = FALSE</code>, models
+are only stored temporarily and not accessible after the tuning. This
+combination is needed for measures that require a model.</p>
+</dd>
+<dt><code>check_values</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)<br>
+If <code>TRUE</code>, hyperparameter values are checked before evaluation and
+performance scores after. If <code>FALSE</code> (default), values are unchecked but
+computational overhead is reduced.</p>
+</dd>
+<dt><code>callbacks</code></dt>
+<dd>
+<p>(list of mlr3misc::Callback)<br>
+List of callbacks.</p>
+</dd>
+<dt><code>rush</code></dt>
+<dd>
+<p>(<code>Rush</code>)<br>
+If a rush instance is supplied, the tuning runs without batches.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-AutoTuner-base_learner"></a>
+
+
+
+<h4>Method <code>base_learner()</code>
+</h4>
+
+<p>Extracts the base learner from nested learner objects like <code>GraphLearner</code> in <a href="https://CRAN.R-project.org/package=mlr3pipelines"><span class="pkg">mlr3pipelines</span></a>.
+If <code>recursive = 0</code>, the (tuned) learner is returned.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>AutoTuner$base_learner(recursive = Inf)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>recursive</code></dt>
+<dd>
+<p>(<code>integer(1)</code>)<br>
+Depth of recursion for multiple nested objects.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>mlr3::Learner.
+</p>
+
+
+<hr>
+<a id="method-AutoTuner-importance"></a>
+
+
+
+<h4>Method <code>importance()</code>
+</h4>
+
+<p>The importance scores of the final model.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>AutoTuner$importance()</pre></div>
+
+
+
+<h5>Returns</h5>
+
+<p>Named <code>numeric()</code>.
+</p>
+
+
+<hr>
+<a id="method-AutoTuner-selected_features"></a>
+
+
+
+<h4>Method <code>selected_features()</code>
+</h4>
+
+<p>The selected features of the final model.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>AutoTuner$selected_features()</pre></div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>character()</code>.
+</p>
+
+
+<hr>
+<a id="method-AutoTuner-oob_error"></a>
+
+
+
+<h4>Method <code>oob_error()</code>
+</h4>
+
+<p>The out-of-bag error of the final model.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>AutoTuner$oob_error()</pre></div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>numeric(1)</code>.
+</p>
+
+
+<hr>
+<a id="method-AutoTuner-loglik"></a>
+
+
+
+<h4>Method <code>loglik()</code>
+</h4>
+
+<p>The log-likelihood of the final model.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>AutoTuner$loglik()</pre></div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>logLik</code>.
+Printer.
+</p>
+
+
+<hr>
+<a id="method-AutoTuner-print"></a>
+
+
+
+<h4>Method <code>print()</code>
+</h4>
+
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>AutoTuner$print()</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(ignored).</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-AutoTuner-marshal"></a>
+
+
+
+<h4>Method <code>marshal()</code>
+</h4>
+
+<p>Marshal the learner.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>AutoTuner$marshal(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(any)<br>
+Additional parameters.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>self
+</p>
+
+
+<hr>
+<a id="method-AutoTuner-unmarshal"></a>
+
+
+
+<h4>Method <code>unmarshal()</code>
+</h4>
+
+<p>Unmarshal the learner.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>AutoTuner$unmarshal(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(any)<br>
+Additional parameters.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>self
+</p>
+
+
+<hr>
+<a id="method-AutoTuner-marshaled"></a>
+
+
+
+<h4>Method <code>marshaled()</code>
+</h4>
+
+<p>Whether the learner is marshaled.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>AutoTuner$marshaled()</pre></div>
+
+
+<hr>
+<a id="method-AutoTuner-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>AutoTuner$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Automatic Tuning
+
+# split to train and external set
+task = tsk("penguins")
+split = partition(task, ratio = 0.8)
+
+# load learner and set search space
+learner = lrn("classif.rpart",
+  cp = to_tune(1e-04, 1e-1, logscale = TRUE)
+)
+
+# create auto tuner
+at = auto_tuner(
+  tuner = tnr("random_search"),
+  learner = learner,
+  resampling = rsmp ("holdout"),
+  measure = msr("classif.ce"),
+  term_evals = 4)
+
+# tune hyperparameters and fit final model
+at$train(task, row_ids = split$train)
+
+# predict with final model
+at$predict(task, row_ids = split$test)
+
+# show tuning result
+at$tuning_result
+
+# model slot contains trained learner and tuning instance
+at$model
+
+# shortcut trained learner
+at$learner
+
+# shortcut tuning instance
+at$tuning_instance
+
+
+# Nested Resampling
+
+at = auto_tuner(
+  tuner = tnr("random_search"),
+  learner = learner,
+  resampling = rsmp ("holdout"),
+  measure = msr("classif.ce"),
+  term_evals = 4)
+
+resampling_outer = rsmp("cv", folds = 3)
+rr = resample(task, at, resampling_outer, store_models = TRUE)
+
+# retrieve inner tuning results.
+extract_inner_tuning_results(rr)
+
+# performance scores estimated on the outer resampling
+rr$score()
+
+# unbiased performance of the final model trained on the full data set
+rr$aggregate()
+</code></pre>
+
+
+</div>

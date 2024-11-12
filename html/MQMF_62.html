@@ -1,0 +1,140 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>negLLP</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>negLLP  -ve log-likelihood for normally distributed variables</h2>
+
+<h3>Description</h3>
+
+<p>negLLP calculates the negative log-likelihood for normally
+distributed variables allowing for some parameters to remain fixed. 
+It assumes the presence of a function 'funk' that will calculate 
+predicted values of a dependent variable from a vector of 
+independent values (logobs). By having a separate vector of 
+parameters in 'initpar' and a vector of the indices of those 
+parameters that will be fitted (notfixed) it is possible to fit 
+only a subset of parameters. This is useful, for example, if 
+generating a likelihood profile, or setting up a likelihood 
+ratio test. With more complex models it is often a useful 
+strategy to estimate the full number of parameters in a 
+sequence of phases, increasing the number being estimated each 
+time while keeping the rest fixed. 'negLLP' makes such phasing 
+of the fitting of a model to data possible.
+This function can be applied directly to log-transformed data for 
+log-normally distributed data, in which case funk would need to 
+generate log-transformed values. But can also be applied to 
+normally distributed data, in which case one would not 
+log-transform the data being input to the logobs argument and funk 
+would generated the linear-space predicted values.
+</p>
+<p>The selection of which parameters to vary is simply implemented 
+through repeatedly copying the original input values from initpar
+and then changing those notfixed from the varying par values
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">negLLP(
+  pars,
+  funk,
+  indat,
+  logobs,
+  initpar = pars,
+  notfixed = c(1:length(pars)),
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>pars</code></td>
+<td>
+<p>a vector containing the log-transformed parameters being 
+used in funk, plus an extra sigma which is the standard deviation of 
+the log-normal random likelihoods in dnorm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>funk</code></td>
+<td>
+<p>the function name that calculates the predicted values from
+the independent values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>indat</code></td>
+<td>
+<p>the data.frame that contains the data used by the input funk</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logobs</code></td>
+<td>
+<p>the log-transformed observed values for comparison with the
+values that the model will predict for each of the independent values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initpar</code></td>
+<td>
+<p>this defaults to the same as pars - using all parameters</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>notfixed</code></td>
+<td>
+<p>a vector identifying the indices of the parameters to be
+fitted, which also defines those that will be fixed; defaults
+to all parameters set to vary. If some need to be kept constant 
+so as to generate a likelihood profile then omit their index from 
+'notfixed'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>required to allow funk to access its other parameters without
+having to explicitly declare them in negLL</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>the sum of the negative log-likelihoods using a normal PDF
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"> data(abdat)
+ param &lt;- log(c(r= 0.42,K=9400,Binit=3400,sigma=0.05)) 
+ optmod &lt;- nlm(f=negLLP,p=param,funk=simpspm,initpar=param,
+              notfixed=c(1,2,3,4),indat=abdat,logobs=log(abdat$cpue))
+ outfit(optmod,backtran= TRUE) #backtran=TRUE is default anyway
+  
+ rval &lt;- seq(0.325,0.45,0.0125)  # set up the test sequence
+ columns &lt;- c("r","K","Binit","sigma","-veLL")
+ result &lt;- matrix(0,nrow=11,ncol=5,dimnames=list(rval,columns))
+ profest &lt;- c(r= 0.32,K=11500,Binit=4250,sigma=0.05) # end of sequence
+ for (i in 1:11) { 
+   param &lt;- log(c(rval[i],profest[2:4])) #recycle the profest values to
+   parinit &lt;- param    # improve the stability of nlm as the r value
+   bestmodP &lt;- nlm(f=negLLP,p=param,funk=simpspm,initpar=parinit, #changes
+                   indat=abdat,logobs=log(abdat$cpue),notfixed=c(2:4))
+   bestest &lt;- exp(bestmodP$estimate)     
+   result[i,] &lt;- c(bestest,bestmodP$minimum)  # store each result
+ }
+ result   #Now you can plot -veLL againt r values for the profile
+ # parset()
+ # plot(result[,"r"],result[,"-veLL"],type="l",lwd=2,panel.first=grid())
+ # points(result[,"r"],result[,"-veLL"],pch=16,cex=1.1)
+</code></pre>
+
+
+</div>

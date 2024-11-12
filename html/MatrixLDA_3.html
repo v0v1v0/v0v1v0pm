@@ -1,0 +1,151 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MN_MLE</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Matrix-normal maximum likelihood estimator</h2>
+
+<h3>Description</h3>
+
+<p>A function for fitting the <code class="reqn">J</code>-class matrix-normal model using maximum likelihood. Uses the so-called “flip-flop” algorithm after initializing at <code class="reqn">U = I_r</code>. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MN_MLE(X, class, max.iter = 1000, tol = 1e-06, quiet = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>An <code class="reqn">r \times c \times N</code> array of training set predictors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>class</code></td>
+<td>
+<p><code class="reqn">N</code>-vector of training set class labels; should be numeric from <code class="reqn">\left\{1,...,J\right\}</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max.iter</code></td>
+<td>
+<p>Maximum number of iterations for “flip-flop” algorithm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>Convergence tolerance for the “flip flop” algorithm; based on decrease in negative log-likelihood.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quiet</code></td>
+<td>
+<p>Logical. Should the objective function value be printed at each update? Default is <code>TRUE</code>. Note that <code>quiet=FALSE</code> will increase computational time.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Returns of list of class "MN", which contains the following elements: 
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Mean</code></td>
+<td>
+<p><code class="reqn">\bar{X}</code>; An <code class="reqn">r \times c \times C</code> array of sample class means.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>U</code></td>
+<td>
+<p><code class="reqn">\hat{U}^{\rm MLE}</code>;  the <code class="reqn">r \times r</code> estimated precision matrix for the row variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>V</code></td>
+<td>
+<p><code class="reqn">\hat{V}^{\rm MLE}</code>;  the <code class="reqn">c \times c</code> estimated precision matrix for the column variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pi.list</code></td>
+<td>
+<p><code class="reqn">\hat{\pi}</code>; <code class="reqn">J</code>-vector with marginal class probabilities from training set.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+
+<ul><li>
+<p> Molstad, A. J., and Rothman, A. J. (2018). A penalized likelihood method for classification with matrix-valued predictors. <em>Journal of Computational and Graphical Statistics</em>.
+</p>
+</li></ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Generate realizations of matrix-normal random variables
+## set sample size, dimensionality, number of classes, 
+## and marginal class probabilities
+
+N = 75
+N.test = 150
+
+N.total = N + N.test
+
+r = 16
+p = 16
+C = 3
+
+pi.list = rep(1/C, C)
+
+## create class means
+M.array = array(0, dim=c(r, p, C))
+M.array[3:4, 3:4, 1] = 1
+M.array[5:6, 5:6, 2] = .5
+M.array[3:4, 3:4, 3] = -2
+M.array[5:6, 5:6, 3] = -.5
+
+
+## create covariance matrices U and V
+Uinv = matrix(0, nrow=r, ncol=r)
+for (i in 1:r) {
+	for (j in 1:r) {
+		Uinv[i,j] = .5^abs(i-j)
+	}
+}
+
+eoU = eigen(Uinv)
+Uinv.sqrt = tcrossprod(tcrossprod(eoU$vec, 
+diag(eoU$val^(1/2))),eoU$vec)
+
+Vinv = matrix(.5, nrow=p, ncol=p)
+diag(Vinv) = 1 
+eoV = eigen(Vinv)
+Vinv.sqrt = tcrossprod(tcrossprod(eoV$vec, 
+diag(eoV$val^(1/2))),eoV$vec)
+
+## generate N.total realizations of matrix-variate normal data
+set.seed(1)
+X = array(0, dim=c(r,p,N.total))
+	class = numeric(length=N.total)
+	for(jj in 1:N.total){
+		class[jj] = sample(1:C, 1, prob=pi.list)
+		X[,,jj] = tcrossprod(crossprod(Uinv.sqrt, 
+		matrix(rnorm(r*p), nrow=r)),
+		Vinv.sqrt) + M.array[,,class[jj]]
+	}
+
+## fit matrix-normal model using maximum likelihood
+out = MN_MLE(X = X, class = class)
+</code></pre>
+
+
+</div>

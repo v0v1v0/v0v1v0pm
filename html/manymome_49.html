@@ -1,0 +1,207 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>do_boot</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Bootstrap Estimates for
+'indirect_effects' and
+'cond_indirect_effects'</h2>
+
+<h3>Description</h3>
+
+<p>Generate bootstrap
+estimates to be used by
+<code>cond_indirect_effects()</code>,
+<code>indirect_effect()</code>, and
+<code>cond_indirect()</code>,
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">do_boot(
+  fit,
+  R = 100,
+  seed = NULL,
+  parallel = TRUE,
+  ncores = max(parallel::detectCores(logical = FALSE) - 1, 1),
+  make_cluster_args = list(),
+  progress = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>fit</code></td>
+<td>
+<p>It can be (a) a list of <code>lm</code>
+class objects, or the output of
+<code>lm2list()</code> (i.e., an <code>lm_list</code>-class
+object), or (b) the output of
+<code>lavaan::sem()</code>.
+If it is a single model fitted by
+<code>lm()</code>, it will be automatically converted
+to a list by <code>lm2list()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>R</code></td>
+<td>
+<p>The number of bootstrap
+samples. Default is 100.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>The seed for the
+bootstrapping. Default is <code>NULL</code> and
+seed is not set.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>Logical. Whether
+parallel processing will be used.
+Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+<p>Integer. The number of
+CPU cores to use when <code>parallel</code> is
+<code>TRUE</code>. Default is the number of
+non-logical cores minus one (one
+minimum). Will raise an error if
+greater than the number of cores
+detected by
+<code>parallel::detectCores()</code>. If
+<code>ncores</code> is set, it will override
+<code>make_cluster_args</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>make_cluster_args</code></td>
+<td>
+<p>A named list
+of additional arguments to be passed
+to <code>parallel::makeCluster()</code>. For
+advanced users. See
+<code>parallel::makeCluster()</code> for
+details. Default is <code>list()</code>, no
+additional arguments.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>Logical. Display
+progress or not. Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>It does nonparametric
+bootstrapping to generate bootstrap
+estimates of the parameter estimates
+in a model fitted either by
+<code>lavaan::sem()</code> or by a sequence of
+calls to <code>lm()</code>. The stored estimates
+can then be used by
+<code>cond_indirect_effects()</code>,
+<code>indirect_effect()</code>, and
+<code>cond_indirect()</code> to form
+bootstrapping confidence intervals.
+</p>
+<p>This approach removes the need to
+repeat bootstrapping in each call to
+<code>cond_indirect_effects()</code>,
+<code>indirect_effect()</code>, and
+<code>cond_indirect()</code>. It also ensures
+that the same set of bootstrap
+samples is used in all subsequent
+analysis.
+</p>
+<p>It determines the type of the fit
+object automatically and then calls
+<code>lm2boot_out()</code>, <code>fit2boot_out()</code>, or
+<code>fit2boot_out_do_boot()</code>.
+</p>
+
+
+<h4>Multigroup Models</h4>
+
+<p>Since Version 0.1.14.2, support for
+multigroup models has been added for models
+fitted by <code>lavaan</code>. The implementation
+of bootstrapping is identical to
+that used by <code>lavaan</code>, with resampling
+done within each group.
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>A <code>boot_out</code>-class object
+that can be used for the <code>boot_out</code>
+argument of
+<code>cond_indirect_effects()</code>,
+<code>indirect_effect()</code>, and
+<code>cond_indirect()</code> for forming
+bootstrap confidence intervals. The
+object is a list with the number of
+elements equal to the number of
+bootstrap samples. Each element is a
+list of the parameter estimates and
+sample variances and covariances of
+the variables in each bootstrap
+sample.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>lm2boot_out()</code>,
+<code>fit2boot_out()</code>, and
+<code>fit2boot_out_do_boot()</code>, which
+implements the bootstrapping.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(data_med_mod_ab1)
+dat &lt;- data_med_mod_ab1
+lm_m &lt;- lm(m ~ x*w + c1 + c2, dat)
+lm_y &lt;- lm(y ~ m*w + x + c1 + c2, dat)
+lm_out &lt;- lm2list(lm_m, lm_y)
+# In real research, R should be 2000 or even 5000
+# In real research, no need to set parallel and progress to FALSE
+# Parallel processing is enabled by default and
+# progress is displayed by default.
+lm_boot_out &lt;- do_boot(lm_out, R = 50, seed = 1234,
+                       parallel = FALSE,
+                       progress = FALSE)
+wlevels &lt;- mod_levels(w = "w", fit = lm_out)
+wlevels
+out &lt;- cond_indirect_effects(wlevels = wlevels,
+                             x = "x",
+                             y = "y",
+                             m = "m",
+                             fit = lm_out,
+                             boot_ci = TRUE,
+                             boot_out = lm_boot_out)
+out
+
+</code></pre>
+
+
+</div>

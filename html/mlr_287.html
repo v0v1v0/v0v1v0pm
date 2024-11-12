@@ -1,0 +1,270 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>makeResampleDesc</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create a description object for a resampling strategy.</h2>
+
+<h3>Description</h3>
+
+<p>A description of a resampling algorithm contains all necessary information to
+create a ResampleInstance, when given the size of the data set.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">makeResampleDesc(
+  method,
+  predict = "test",
+  ...,
+  stratify = FALSE,
+  stratify.cols = NULL,
+  fixed = FALSE,
+  blocking.cv = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>(<code>character(1)</code>)<br>
+“CV” for cross-validation, “LOO” for leave-one-out, “RepCV” for
+repeated cross-validation, “Bootstrap” for out-of-bag bootstrap, “Subsample” for
+subsampling, “Holdout” for holdout, “GrowingWindowCV” for growing window
+cross-validation, “FixedWindowCV” for fixed window cross validation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>predict</code></td>
+<td>
+<p>(<code>character(1)</code>)<br>
+What to predict during resampling: “train”, “test” or “both” sets.
+Default is “test”.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>(any)<br>
+Further parameters for strategies.<br></p>
+
+<dl>
+<dt>iters (<code>integer(1)</code>)</dt>
+<dd>
+<p>Number of iterations, for “CV”, “Subsample”
+and “Bootstrap”.</p>
+</dd>
+<dt>split (<code>numeric(1)</code>)</dt>
+<dd>
+<p>Proportion of training cases for “Holdout” and
+“Subsample” between 0 and 1. Default is 2 / 3.</p>
+</dd>
+<dt>reps (<code>integer(1)</code>)</dt>
+<dd>
+<p>Repeats for “RepCV”. Here <code>iters = folds * reps</code>.
+Default is 10.</p>
+</dd>
+<dt>folds (<code>integer(1)</code>)</dt>
+<dd>
+<p>Folds in the repeated CV for <code>RepCV</code>.
+Here <code>iters = folds * reps</code>. Default is 10.</p>
+</dd>
+<dt>horizon (<code>numeric(1)</code>)</dt>
+<dd>
+<p>Number of observations in the forecast test set for “GrowingWindowCV”
+and “FixedWindowCV”. When <code>horizon &gt; 1</code> this will be treated as the number of
+observations to forecast, else it will be a fraction of the initial window. IE,
+for 100 observations, initial window of .5, and horizon of .2, the test set will have
+10 observations. Default is 1.</p>
+</dd>
+<dt>initial.window (<code>numeric(1)</code>)</dt>
+<dd>
+<p>Fraction of observations to start with
+in the training set for “GrowingWindowCV” and “FixedWindowCV”.
+When <code>initial.window &gt; 1</code> this will be treated as the number of
+observations in the initial window, else it will be treated as the fraction
+of observations to have in the initial window. Default is 0.5.</p>
+</dd>
+<dt>skip (<code>numeric(1)</code>)</dt>
+<dd>
+<p> How many resamples to skip to thin the total amount
+for “GrowingWindowCV” and “FixedWindowCV”. This is passed through as the “by” argument
+in <code>seq()</code>. When <code>skip &gt; 1</code> this will be treated as the increment of the sequence of resampling indices,
+else it will be a fraction of the total training indices. IE for 100 training sets and a value of .2, the increment
+of the resampling indices will be 20. Default is “horizon” which gives mutually exclusive chunks
+of test indices.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stratify</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Should stratification be done for the target variable?
+For classification tasks, this means that the resampling strategy is applied to all classes
+individually and the resulting index sets are joined to make sure that the proportion of
+observations in each training set is as in the original data set. Useful for imbalanced class sizes.
+For survival tasks stratification is done on the events, resulting in training sets with comparable
+censoring rates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stratify.cols</code></td>
+<td>
+<p>(character)<br>
+Stratify on specific columns referenced by name. All columns have to be factor or integer.
+Note that you have to ensure yourself that stratification is possible, i.e.
+that each strata contains enough observations.
+This argument and <code>stratify</code> are mutually exclusive.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixed</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether indices supplied via argument 'blocking' in the task should be used as
+fully pre-defined indices. Default is <code>FALSE</code> which means
+they will be used following the 'blocking' approach.
+<code>fixed</code> only works with ResampleDesc <code>CV</code> and the supplied indices must match
+the number of observations. When <code>fixed = TRUE</code>, the <code>iters</code> argument will be ignored
+and is interally set to the number of supplied factor levels in <code>blocking</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>blocking.cv</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Should 'blocking' be used in <code>CV</code>? Default to <code>FALSE</code>.
+This is different to <code>fixed = TRUE</code> and cannot be combined. Please check the mlr online tutorial
+for more details.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Some notes on some special strategies:
+</p>
+
+<dl>
+<dt>Repeated cross-validation</dt>
+<dd>
+<p>Use “RepCV”. Then you have to set the aggregation function
+for your preferred performance measure to “testgroup.mean”
+via setAggregation.</p>
+</dd>
+<dt>B632 bootstrap</dt>
+<dd>
+<p>Use “Bootstrap” for bootstrap and set predict to “both”.
+Then you have to set the aggregation function for your preferred performance measure to
+“b632” via setAggregation.</p>
+</dd>
+<dt>B632+ bootstrap</dt>
+<dd>
+<p>Use “Bootstrap” for bootstrap and set predict to “both”.
+Then you have to set the aggregation function for your preferred performance measure to
+“b632plus” via setAggregation.</p>
+</dd>
+<dt>Fixed Holdout set</dt>
+<dd>
+<p>Use makeFixedHoldoutInstance.</p>
+</dd>
+</dl>
+<p>Object slots:
+</p>
+
+<dl>
+<dt>id (<code>character(1)</code>)</dt>
+<dd>
+<p>Name of resampling strategy.</p>
+</dd>
+<dt>iters (<code>integer(1)</code>)</dt>
+<dd>
+<p>Number of iterations. Note that this is always the complete number
+of generated train/test sets, so for a 10-times repeated 5fold cross-validation it would be 50.</p>
+</dd>
+<dt>predict (<code>character(1)</code>)</dt>
+<dd>
+<p>See argument.</p>
+</dd>
+<dt>stratify (<code>logical(1)</code>)</dt>
+<dd>
+<p>See argument.</p>
+</dd>
+<dt>All parameters passed in ... under the respective argument name</dt>
+<dd>
+<p>See arguments.</p>
+</dd>
+</dl>
+<h3>Value</h3>
+
+<p>(ResampleDesc).
+</p>
+
+
+<h3>Standard ResampleDesc objects</h3>
+
+<p>For common resampling strategies you can save some typing
+by using the following description objects:
+</p>
+
+<dl>
+<dt>hout</dt>
+<dd>
+<p>holdout a.k.a. test sample estimation
+(two-thirds training set, one-third testing set)</p>
+</dd>
+<dt>cv2</dt>
+<dd>
+<p>2-fold cross-validation</p>
+</dd>
+<dt>cv3</dt>
+<dd>
+<p>3-fold cross-validation</p>
+</dd>
+<dt>cv5</dt>
+<dd>
+<p>5-fold cross-validation</p>
+</dd>
+<dt>cv10</dt>
+<dd>
+<p>10-fold cross-validation</p>
+</dd>
+</dl>
+<h3>See Also</h3>
+
+<p>Other resample: 
+<code>ResamplePrediction</code>,
+<code>ResampleResult</code>,
+<code>addRRMeasure()</code>,
+<code>getRRPredictionList()</code>,
+<code>getRRPredictions()</code>,
+<code>getRRTaskDesc()</code>,
+<code>getRRTaskDescription()</code>,
+<code>makeResampleInstance()</code>,
+<code>resample()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Bootstraping
+makeResampleDesc("Bootstrap", iters = 10)
+makeResampleDesc("Bootstrap", iters = 10, predict = "both")
+
+# Subsampling
+makeResampleDesc("Subsample", iters = 10, split = 3 / 4)
+makeResampleDesc("Subsample", iters = 10)
+
+# Holdout a.k.a. test sample estimation
+makeResampleDesc("Holdout")
+</code></pre>
+
+
+</div>

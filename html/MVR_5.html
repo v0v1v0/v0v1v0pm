@@ -1,0 +1,482 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvrt.test</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Function for Computing Mean-Variance Regularized T-test Statistic and Its Significance</h2>
+
+<h3>Description</h3>
+
+<p>End-user function for computing MVR t-test statistic and its significance (p-value) 
+under sample group homoscedasticity or heteroscedasticity assumption. 
+</p>
+<p>Return an object of class "<code>mvrt.test</code>". Offers the option of parallel computation for 
+improved efficiency.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">    mvrt.test(data, 
+              obj=NULL,
+              block,
+              tolog = FALSE, 
+              nc.min = 1, 
+              nc.max = 30, 
+              pval = FALSE, 
+              replace = FALSE, 
+              n.resamp = 100, 
+              parallel = FALSE,
+              conf = NULL,
+              verbose = TRUE, 
+              seed = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p><code>numeric</code> <code>matrix</code> of untransformed (raw) data, 
+where samples are by rows and variables (to be clustered) are by columns, 
+or an object that can be coerced to such a <code>matrix</code> (such as a <code>numeric</code> <code>vector</code> 
+or a <code>data.frame</code> with all <code>numeric</code> columns). 
+Missing values (<code>NA</code>), NotANumber values (<code>NaN</code>) or Infinite values (<code>Inf</code>) are not allowed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>obj</code></td>
+<td>
+<p>Object of class <code>mvr</code> returned by <code>mvr</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>block</code></td>
+<td>
+<p><code>character</code> or <code>numeric</code> <code>vector</code>, or <code>factor</code> of group membership indicator variable 
+(grouping/blocking variable) of length the data sample size with as many different values or <code>levels</code> 
+as the number of data sample groups. Defaults to single group situation. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tolog</code></td>
+<td>
+<p><code>logical</code> scalar. Is the data to be log2-transformed first? Optional, defaults to <code>FALSE</code>.
+Note that negative or null values will be changed to 1 before taking log2-transformation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nc.min</code></td>
+<td>
+<p>Positive <code>integer</code> scalar of the minimum number of clusters, defaults to 1</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nc.max</code></td>
+<td>
+<p>Positive <code>integer</code> scalar of the maximum number of clusters, defaults to 30</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pval</code></td>
+<td>
+<p><code>logical</code> scalar. Shall p-values be computed? If not, <code>n.resamp</code> and <code>replace</code> will be ignored.
+If <code>FALSE</code> (default), t-statistic only will be computed,  
+If <code>TRUE</code>, exact (permutation test) or approximate (bootstrap test) p-values will be computed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>replace</code></td>
+<td>
+<p><code>logical</code> scalar. Shall permutation test (default) or bootstrap test be computed?
+If <code>FALSE</code> (default), permutation test will be computed with null permutation distribution,
+If <code>TRUE</code>, bootstrap test will be computed with null bootstrap distribution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.resamp</code></td>
+<td>
+<p>Positive <code>integer</code> scalar of the number of resamplings to compute (default=100) by permutation or 
+bootstsrap (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p><code>logical</code> scalar. Is parallel computing to be performed? Optional, defaults to <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf</code></td>
+<td>
+
+<p><code>list</code> of 5 fields containing the parameters values needed for creating the parallel backend (cluster configuration).
+See details below for usage. Optional, defaults to <code>NULL</code>, but all fields are required if used:
+</p>
+
+<ul>
+<li> <p><code>type</code> : <code>character</code> <code>vector</code> specifying the cluster type ("SOCKET", "MPI").
+</p>
+</li>
+<li> <p><code>spec</code> : A specification (<code>character</code> <code>vector</code> or <code>integer</code> scalar) appropriate to the type of cluster.
+</p>
+</li>
+<li> <p><code>homogeneous</code> : <code>logical</code> scalar to be set to <code>FALSE</code> for inhomogeneous clusters.
+</p>
+</li>
+<li> <p><code>verbose</code> : <code>logical</code> scalar to be set to <code>FALSE</code> for quiet mode.
+</p>
+</li>
+<li> <p><code>outfile</code> : <code>character</code> <code>vector</code> of an output log file name to direct the stdout and stderr
+connection output from the workernodes. "" indicates no redirection.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p><code>logical</code> scalar. Is the output to be verbose? Optional, defaults to <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>Positive <code>integer</code> scalar of the user seed to reproduce the results.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Argument <code>block</code> will be converted to a factor, whose levels will match the data groups. It defaults to a single group situation, 
+that is, under the assumption of equal variance between sample groups. All group sample sizes must be greater than 1, 
+otherwise the program will stop.
+</p>
+<p>Argument <code>nc.max</code> currently defaults to 30. Empirically, we found that this is enough for most datasets tested.
+This depends on (i) the dimensionality/sample size ratio <code class="reqn">\frac{p}{n}</code>, (ii) the signal/noise ratio, and 
+(iii) whether a pre-transformation has been applied (see <cite>Dazard, J-E. and J. S. Rao (2012)</cite> for more details).
+See the cluster diagnostic function <code>cluster.diagnostic</code> for more details, whether larger values of <code>nc.max</code> may be required.
+</p>
+<p>To save un-necessary computations, previously computed MVR clustering can be provided through option <code>obj</code> (i.e. <code>obj</code> is fully 
+specified as a <code>mvr</code> object). In this case, arguments <code>data</code>, <code>block</code>, <code>tolog</code>, <code>nc.min</code>, <code>nc.max</code> 
+are ignored. If <code>obj</code> is fully specified (i.e. an object of class "<code>mvr</code>" returned by <code>mvr</code>), the 
+the MVR clustering provided by <code>obj</code> will be used for the computation of the regularized t-test statistics. 
+If <code>obj</code>=<code>NULL</code>, a MVR clustering computation for the regularized t-test statistics and/or p-values will be performed.
+</p>
+<p>The function <code>mvrt.test</code> relies on the R package <span class="pkg">parallel</span> to create a parallel backend within an R session, enabling access to a cluster
+of compute cores and/or nodes on a local and/or remote machine(s) and scaling-up with the number of CPU cores available and efficient parallel 
+execution. To run a procedure in parallel (with parallel RNG), argument <code>parallel</code> is to be set to <code>TRUE</code> and argument <code>conf</code> 
+is to be specified (i.e. non <code>NULL</code>). Argument <code>conf</code> uses the options described in function <code>makeCluster</code> of the R packages 
+<span class="pkg">parallel</span> and <span class="pkg">snow</span>. <span class="pkg">PRIMsrc</span> supports two types of communication mechanisms between master and worker processes: 
+'Socket' or  'Message-Passing Interface' ('MPI'). In <span class="pkg">PRIMsrc</span>, parallel 'Socket' clusters use sockets communication mechanisms only 
+(no forking) and are therefore available on all platforms, including Windows, while parallel 'MPI' clusters use high-speed interconnects 
+mechanism in networks of computers (with distributed memory) and are therefore available only in these architectures. A parallel 'MPI' 
+cluster also requires R package <span class="pkg">Rmpi</span> to be installed first. Value <code>type</code> is used to setup a cluster of type 'Socket' ("SOCKET") 
+or 'MPI' ("MPI"), respectively. Depending on this type, values of <code>spec</code> are to be used alternatively:
+</p>
+
+<ul>
+<li>
+<p> For 'Socket' clusters (<code>conf$type="SOCKET"</code>), <code>spec</code> should be a <code>character</code> <code>vector</code> naming the hosts on which 
+to run the job; it can default to a unique local machine, in which case, one may use the unique host name "localhost".
+Each host name can potentially be repeated to the number of CPU cores available on the local machine.
+It can also be an <code>integer</code> scalar specifying the number of processes to spawn on the local machine; 
+or a list of machine specifications (a character value named host specifying the name or address of the host to use).
+</p>
+</li>
+<li>
+<p> For 'MPI' clusters (<code>conf$type="MPI"</code>), <code>spec</code> should be an <code>integer</code> scalar 
+specifying the total number of processes to be spawned across the network of available nodes, counting the workernodes and masternode.
+</p>
+</li>
+</ul>
+<p>The actual creation of the cluster, its initialization, and closing are all done internally. For more details, 
+see the reference manual of R package <span class="pkg">snow</span> and examples below.
+</p>
+<p>When random number generation is needed, the creation of separate streams of parallel RNG per node is done internally by 
+distributing the stream states to the nodes. For more details, see the vignette of R package <span class="pkg">parallel</span>. 
+The use of a seed allows to reproduce the results within the same type of session: the same seed will reproduce the same results within 
+a non-parallel session or within a parallel session, but it will not necessarily give the exact same results (up to sampling variability)
+between a non-parallelized and parallelized session due to the difference of management of the seed between the two (see parallel RNG and 
+value of returned seed below).
+</p>
+<p>In case p-values are desired (<code>pval</code>=<code>TRUE</code>), the use of a cluster is highly recommended. 
+It is ideal for computing embarassingly parallel tasks such as permutation or bootstrap resamplings.
+Note that in case both regularized t-test statistics and p-values are desired, in order to maximize computational efficiency and 
+avoid multiple configurations (since a cluster can only be configured and used one session at a time, which otherwise would result in a run stop), 
+the cluster configuration will only be used for the parallel computation of p-values, but not for the MVR clustering computation 
+of the regularized t-test statistics.
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>statistic</code></td>
+<td>
+<p><code>vector</code>, of size the number of variables, 
+where entries are the t-statistics values of each variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.value</code></td>
+<td>
+<p><code>vector</code>, of size the number of variables, 
+where entries are the p-values (if requested, otherwise <code>NULL</code> value) of each variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>User seed(s) used: <code>integer</code> of a single value, if parallelization is used. 
+<code>integer</code> <code>vector</code> of values, one for each replication, if parallelization is not used.</p>
+</td>
+</tr>
+</table>
+<h3>Acknowledgments</h3>
+
+<p>This work made use of the High Performance Computing Resource in the Core Facility for Advanced Research Computing at Case Western Reserve University. 
+This project was partially funded by the National Institutes of Health (P30-CA043703).
+</p>
+
+
+<h3>Note</h3>
+
+<p>End-user function.
+</p>
+
+
+<h3>Author(s)</h3>
+
+
+<ul>
+<li>
+<p> "Jean-Eudes Dazard, Ph.D." <a href="mailto:jean-eudes.dazard@case.edu">jean-eudes.dazard@case.edu</a>
+</p>
+</li>
+<li>
+<p> "Hua Xu, Ph.D." <a href="mailto:huaxu77@gmail.com">huaxu77@gmail.com</a>
+</p>
+</li>
+<li>
+<p> "Alberto Santana, MBA." <a href="mailto:ahs4@case.edu">ahs4@case.edu</a>
+</p>
+</li>
+</ul>
+<p>Maintainer: "Jean-Eudes Dazard, Ph.D." <a href="mailto:jean-eudes.dazard@case.edu">jean-eudes.dazard@case.edu</a>    
+</p>
+
+
+<h3>References</h3>
+
+
+<ul>
+<li>
+<p> Dazard J-E. and J. S. Rao (2010). "<em>Regularized Variance Estimation and Variance Stabilization of High-Dimensional Data.</em>"
+In JSM Proceedings, Section for High-Dimensional Data Analysis and Variable Selection. 
+Vancouver, BC, Canada: American Statistical Association IMS - JSM, 5295-5309.
+</p>
+</li>
+<li>
+<p> Dazard J-E., Hua Xu and J. S. Rao (2011). "<em>R package MVR for Joint Adaptive Mean-Variance Regularization and Variance Stabilization.</em>"
+In JSM Proceedings, Section for Statistical Programmers and Analysts. 
+Miami Beach, FL, USA: American Statistical Association IMS - JSM, 3849-3863.
+</p>
+</li>
+<li>
+<p> Dazard J-E. and J. S. Rao (2012). "<em>Joint Adaptive Mean-Variance Regularization and Variance Stabilization of High Dimensional Data.</em>"
+Comput. Statist. Data Anal. 56(7):2317-2333.
+</p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+
+<ul>
+<li> <p><code>makeCluster</code> (R package <span class="pkg">parallel</span>)
+</p>
+</li>
+<li> <p><code>eBayes</code> (R package <span class="pkg">limma</span>) Bayesian Regularized t-test statistic <cite>Smyth, 2004</cite>
+</p>
+</li>
+<li> <p><code>samr</code> (R package <span class="pkg">samr</span>) SAM Regularized t-test statistic <cite>Tusher et al., 2001, Storey, 2003</cite>
+</p>
+</li>
+<li> <p><code>matest</code> (R package <span class="pkg">maanova</span>) James-Stein shrinkage estimator-based Regularized t-test statistic <cite>Cui et al., 2005</cite>
+</p>
+</li>
+<li> <p><code>ebam</code> (R package <span class="pkg">siggenes</span>) Empirical Bayes Regularized z-test statistic <cite>Efron, 2001</cite>
+</p>
+</li>
+<li> <p><code>bayesT</code> Hierarchical Bayesian Regularized t-test statistic <cite>Baldi et al., 2001</cite>
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">#================================================
+# Loading the library and its dependencies
+#================================================
+library("MVR")
+
+## Not run: 
+    #===================================================
+    # MVR package news
+    #===================================================
+    MVR.news()
+
+    #================================================
+    # MVR package citation
+    #================================================
+    citation("MVR")
+
+    #===================================================
+    # Loading of the Synthetic and Real datasets
+    # Use help for descriptions
+    #===================================================
+    data("Synthetic", "Real", package="MVR")
+    ?Synthetic
+    ?Real
+
+## End(Not run)
+
+#================================================
+# Regularized t-test statistics (Synthetic dataset) 
+# Multi-Group Assumption
+# Assuming unequal variance between groups
+# With option to use prior MVR clustering results
+# Without computation of p-values
+# Without cluster usage
+#================================================
+nc.min &lt;- 1
+nc.max &lt;- 10
+probs &lt;- seq(0, 1, 0.01)
+n &lt;- 10
+GF &lt;- factor(gl(n = 2, k = n/2, length = n), 
+             ordered = FALSE, 
+             labels = c("G1", "G2"))
+mvr.obj &lt;- mvr(data = Synthetic, 
+               block = GF, 
+               tolog = FALSE, 
+               nc.min = nc.min, 
+               nc.max = nc.max, 
+               probs = probs,
+               B = 100,
+               parallel = FALSE, 
+               conf = NULL,
+               verbose = TRUE,
+               seed = 1234)
+mvrt.obj &lt;- mvrt.test(data = NULL,
+                      obj = mvr.obj,
+                      block = NULL,
+                      pval = FALSE,
+                      replace = FALSE,
+                      n.resamp = 100,
+                      parallel = FALSE,
+                      conf = NULL,
+                      verbose = TRUE,
+                      seed = 1234)       
+## Not run: 
+    #===================================================
+    # Examples of parallel backend parametrization 
+    #===================================================
+    if (require("parallel")) {
+       print("'parallel' is attached correctly \n")
+    } else {
+       stop("'parallel' must be attached first \n")
+    }
+    #===================================================
+    # Example #1 - Quad core PC 
+    # Running WINDOWS with SOCKET communication
+    #===================================================
+    cpus &lt;- parallel::detectCores(logical = TRUE)
+    conf &lt;- list("spec" = rep("localhost", cpus),
+                 "type" = "SOCKET",
+                 "homo" = TRUE,
+                 "verbose" = TRUE,
+                 "outfile" = "")
+    #===================================================
+    # Example #2 - Master node + 3 Worker nodes cluster
+    # Running LINUX with SOCKET communication
+    # All nodes equipped with identical setups of 
+    # multicores (8 core CPUs per machine for a total of 32)
+    #===================================================
+    masterhost &lt;- Sys.getenv("HOSTNAME")
+    slavehosts &lt;- c("compute-0-0", "compute-0-1", "compute-0-2")
+    nodes &lt;- length(slavehosts) + 1
+    cpus &lt;- 8
+    conf &lt;- list("spec" = c(rep(masterhost, cpus),
+                            rep(slavehosts, cpus)),
+                 "type" = "SOCKET",
+                 "homo" = TRUE,
+                 "verbose" = TRUE,
+                 "outfile" = "")
+    #===================================================
+    # Example #3 - Multinode of multicore per node cluster
+    # Running LINUX with SLURM scheduler and MPI communication
+    # Below, variable 'cpus' is the total number 
+    # of requested core CPUs, which is specified from  
+    # within a SLURM script.
+    #===================================================
+    if (require("Rmpi")) {
+        print("'Rmpi' is attached correctly \n")
+    } else {
+        stop("'Rmpi' must be attached first \n")
+    }
+    cpus &lt;- as.numeric(Sys.getenv("SLURM_NTASKS"))
+    conf &lt;- list("spec" = cpus,
+                 "type" = "MPI",
+                 "homo" = TRUE,
+                 "verbose" = TRUE,
+                 "outfile" = "")
+    #===================================================
+    # Mean-Variance Regularization (Real dataset)
+    # Multi-Group Assumption
+    # Assuming unequal variance between groups
+    #===================================================
+    nc.min &lt;- 1
+    nc.max &lt;- 30
+    probs &lt;- seq(0, 1, 0.01)
+    n &lt;- 6
+    GF &lt;- factor(gl(n = 2, k = n/2, length = n), 
+                 ordered = FALSE, 
+                 labels = c("M", "S"))
+    mvr.obj &lt;- mvr(data = Real, 
+                   block = GF, 
+                   tolog = FALSE, 
+                   nc.min = nc.min, 
+                   nc.max = nc.max, 
+                   probs = probs,
+                   B = 100, 
+                   parallel = TRUE, 
+                   conf = conf,
+                   verbose = TRUE,
+                   seed = 1234)
+    #===================================================
+    # Regularized t-test statistics (Real dataset) 
+    # Multi-Group Assumption
+    # Assuming unequal variance between groups
+    # With option to use prior MVR clustering results
+    # With computation of p-values
+    #===================================================
+    mvrt.obj &lt;- mvrt.test(data = NULL,
+                          obj = mvr.obj,
+                          block = NULL,
+                          pval = TRUE,
+                          replace = FALSE,
+                          n.resamp = 100,
+                          parallel = TRUE,
+                          conf = conf,
+                          verbose = TRUE,
+                          seed = 1234)
+    
+## End(Not run)
+</code></pre>
+
+
+</div>

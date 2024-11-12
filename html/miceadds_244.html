@@ -1,0 +1,243 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pool_mi</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Statistical Inference for Multiply Imputed Datasets
+</h2>
+
+<h3>Description</h3>
+
+<p>Statistical inference for multiply imputed datasets. See
+<code>mitools::MIcombine</code> or
+<code>mice::pool</code> for
+functions of the same functionality.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pool_mi(qhat, u=NULL, se=NULL, dfcom=1e+07, method="smallsample")
+
+## S3 method for class 'pool_mi'
+summary(object, alpha=0.05, ...)
+
+## S3 method for class 'pool_mi'
+coef(object, ...)
+
+## S3 method for class 'pool_mi'
+vcov(object, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>qhat</code></td>
+<td>
+
+<p>List of parameter vectors
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>u</code></td>
+<td>
+
+<p>List of covariance matrices
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>se</code></td>
+<td>
+
+<p>List of vector of standard errors. Either <code>u</code> or
+<code>se</code> must be provided.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dfcom</code></td>
+<td>
+
+<p>Degrees of freedom of statistical analysis
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>The default is the small sample inference (<code>"smallsample"</code>).
+Any other input provides large sample inference.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>Object of class <code>pool_mi</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>Confidence level</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments to be passed</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Object of with similar output as produced by the
+<code>mice::pool</code> function.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mitools::MIcombine</code>,
+<code>mice::pool</code>,
+<code>mitml::testEstimates</code>
+</p>
+<p>For statistical inference for nested multiply imputed datasets see
+<code>NMIcombine</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+#############################################################################
+# EXAMPLE 1: Statistical inference for models based on imputationList
+#############################################################################
+
+library(mitools)
+library(mice)
+library(Zelig)
+library(mitml)
+library(lavaan)
+library(semTools)
+data(data.ma02)
+
+# save dataset as imputation list
+imp &lt;- mitools::imputationList( data.ma02 )
+# mids object
+imp0 &lt;- miceadds::datlist2mids( imp )
+# datlist object
+imp1 &lt;- miceadds::datlist_create(data.ma02)
+
+#--- apply linear model based on imputationList
+mod &lt;- with( imp, stats::lm( read ~ hisei + female ) )
+#--- apply linear model for mids object
+mod0 &lt;- with( imp0, stats::lm( read ~ hisei + female ) )
+# extract coefficients
+cmod &lt;- mitools::MIextract( mod, fun=coef)
+# extract standard errors
+semod &lt;- lapply( mod, FUN=function(mm){
+    smm &lt;- summary(mm)
+    smm$coef[,"Std. Error"]
+} )
+# extract covariance matrix
+vmod &lt;- mitools::MIextract( mod, fun=vcov)
+
+#*** pooling based on covariance matrices
+res1 &lt;- miceadds::pool_mi( qhat=cmod, u=vmod )
+summary(res1)
+coef(res1)
+vcov(res1)
+
+#*** pooling based on standard errors
+res2 &lt;- miceadds::pool_mi( qhat=cmod, se=semod )
+
+#*** pooling with MIcombine
+res3 &lt;- mitools::MIcombine( results=cmod, variances=vmod )
+
+#*** pooling with pool function in mice
+res4 &lt;- mice::pool( mod0 )
+
+#*** analysis in Zelig
+# convert datalist into object of class amelia
+mi02 &lt;- list( "imputations"=data.ma02)
+class(mi02) &lt;- "amelia"
+res5 &lt;- Zelig::zelig( read ~ hisei + female, model="ls", data=mi02 )
+
+#*** analysis in lavaan
+lavmodel &lt;- "
+     read ~ hisei + female
+     read ~~ a*read
+     read ~ 1
+     # residual standard deviation
+     sde :=sqrt(a)
+       "
+# analysis for first imputed dataset
+mod6a &lt;- lavaan::sem( lavmodel, data=imp1[[1]] )
+summary(mod6a)
+# analysis based on all datasets using with
+mod6b &lt;- lapply( imp1, FUN=function(data){
+           res &lt;- lavaan::sem( lavmodel, data=data )
+           return(res)
+                } )
+# extract parameters and covariance matrices
+qhat0 &lt;- lapply( mod6b, FUN=function(ll){  coef(ll) } )
+u0 &lt;- lapply( mod6b, FUN=function(ll){  vcov(ll) } )
+res6b &lt;- mitools::MIcombine( results=qhat0, variances=u0 )
+
+# extract informations for all parameters
+qhat &lt;- lapply( mod6b, FUN=function(ll){
+        h1 &lt;- lavaan::parameterEstimates(ll)
+        parnames &lt;- paste0( h1$lhs, h1$op, h1$rhs )
+        v1 &lt;- h1$est
+        names(v1) &lt;- parnames
+        return(v1)
+     } )
+se &lt;- lapply( mod6b, FUN=function(ll){
+        h1 &lt;- lavaan::parameterEstimates(ll)
+        parnames &lt;- paste0( h1$lhs, h1$op, h1$rhs )
+        v1 &lt;- h1$se
+        names(v1) &lt;- parnames
+        return(v1)
+     } )
+res6c &lt;- miceadds::pool_mi( qhat=qhat, se=se )
+
+# function runMI in semTools package
+res6d &lt;- semTools::runMI(model=lavmodel, data=imp1, m=length(imp1) )
+  # semTools version 0.4-9 provided an error message
+# perform inference with mitml package
+se2 &lt;- lapply( se, FUN=function(ss){  ss^2  } )  # input variances
+res6e &lt;- mitml::testEstimates(qhat=qhat, uhat=se2)
+
+#*** complete model estimation and inference in mitml
+
+# convert into object of class mitml.list
+ml02 &lt;- mitml::as.mitml.list( data.ma02)
+# estimate regression
+mod7 &lt;- with( ml02, stats::lm( read ~ hisei + female ) )
+# inference
+res7 &lt;- mitml::testEstimates( mod7 )
+
+#*** model comparison
+summary(res1)
+summary(res2)
+summary(res3)
+summary(res4)
+summary(res5)
+summary(res6b)
+summary(res6c)
+print(res6e)
+print(res7)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,285 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>custom_mims_unit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compute both MIMS-unit and sensor orientations with custom settings</h2>
+
+<h3>Description</h3>
+
+<p><code>custom_mims_unit</code> computes the Monitor Independent Motion Summary unit
+and estimates the sensor orientations for the input multi-channel
+accelerometer signal with custom settings. The input signal can be from
+devices of any sampling rate and dynamic range. Please refer to the
+manuscript for detailed description of the algorithm. Please refer to
+functions for the intermediate steps: <code>extrapolate</code> for
+extrapolation, <code>iir</code> for filtering,
+<code>aggregate_for_mims</code> and <code>aggregate_for_orientation</code>
+for aggregation.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">custom_mims_unit(
+  df,
+  epoch = "5 sec",
+  dynamic_range,
+  noise_level = 0.03,
+  k = 0.05,
+  spar = 0.6,
+  filter_type = "butter",
+  cutoffs = c(0.2, 5),
+  axes = c(2, 3, 4),
+  use_extrapolation = TRUE,
+  use_filtering = TRUE,
+  combination = "sum",
+  allow_truncation = TRUE,
+  output_mims_per_axis = FALSE,
+  output_orientation_estimation = FALSE,
+  epoch_for_orientation_estimation = NULL,
+  before_df = NULL,
+  after_df = NULL,
+  use_gui_progress = FALSE,
+  st = NULL,
+  use_snapshot_to_check = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>dataframe. Input multi-channel accelerometer signal.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>epoch</code></td>
+<td>
+<p>string. Any format that is acceptable by argument <code>breaks</code>
+in method <code>cut.POSIXt</code>.For example, "1 sec", "1 min", "5
+sec", "10 min". Default is "5 sec".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dynamic_range</code></td>
+<td>
+<p>numerical vector. The dynamic ranges of the input
+signal. Should be a 2-element numerical vector. <code>c(low, high)</code>, where
+<code>low</code> is the negative max value the device can reach and <code>high</code>
+is the positive max value the device can reach.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>noise_level</code></td>
+<td>
+<p>number. The tolerable noise level in <code class="reqn">g</code> unit, should
+be between 0 and 1. Default is 0.03, which applies to most devices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>number. Duration of neighborhood to be used in local spline
+regression for each side, in seconds. Default is 0.05, as optimized by
+MIMS-unit algorithm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spar</code></td>
+<td>
+<p>number. Between 0 and 1, to control how smooth we want to fit
+local spline regression, 0 is linear and 1 matches all local points.
+Default is 0.6, as optimized by MIMS-unit algorithm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>filter_type</code></td>
+<td>
+<p>string. The type of filter to be applied. Could be
+'butter' for butterworth bandpass filter, 'ellip' for elliptic bandpass
+filter or 'bessel' for bessel lowpass filter + average removal highpass
+filter. Default is "butter".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cutoffs</code></td>
+<td>
+<p>numerical vector. Cut off frequencies to be used in filtering.
+If <code>filter_type</code> is "bessel", the cut off frequency for lowpass filter
+would be multiplied by 2 when being used. Default is 0.2Hz and 5Hz.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>axes</code></td>
+<td>
+<p>numerical vector. Indices of columns that specifies the axis
+values of the input signal. Default is <code>c(2,3,4)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_extrapolation</code></td>
+<td>
+<p>logical. If it is TRUE, the function will apply
+extrapolation algorithm to the input signal, otherwise it will skip
+extrapolation but only linearly interpolate the signal to 100Hz. Default is
+TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_filtering</code></td>
+<td>
+<p>logical. If it is TRUE, the function will apply bandpass
+filtering to the input signal, otherwise it will skip the filtering.
+Default is TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>combination</code></td>
+<td>
+<p>string. Method to combine MIMS-unit values for each axis.
+Could be "sum" for <code>sum_up</code> or "vm" for
+<code>vector_magnitude</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allow_truncation</code></td>
+<td>
+<p>logical. If it is TRUE, the algorithm will truncate
+very small MIMS-unit values to zero. Default is TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output_mims_per_axis</code></td>
+<td>
+<p>logical. If it is TRUE, the output MIMS-unit
+dataframe will have MIMS-unit values for each axis from the third column.
+Default is FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output_orientation_estimation</code></td>
+<td>
+<p>logical. If it is TRUE, the function
+will also estimate sensor orientations over each epoch. And the output will
+be a list, with the first element being the MIMS-unit dataframe, and the
+second element being the sensor orientation dataframe. Default is FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>epoch_for_orientation_estimation</code></td>
+<td>
+<p>string. string. Any format that is
+acceptable by argument <code>breaks</code> in method
+<code>cut.POSIXt</code>.For example, "1 sec", "1 min", "5 sec", "10
+min". Default is "5 sec". It is independent from <code>epoch</code> for
+MIMS-unit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>before_df</code></td>
+<td>
+<p>dataframe. The multi-channel accelerometer signal comes
+before the input signal to be prepended to the input signal during
+computation. This is used to eliminate the edge effect during extrapolation
+and filtering. If it is <code>NULL</code>, algorithm will run directly on the
+input signal. Default is NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>after_df</code></td>
+<td>
+<p>dataframe. The multi-channel accelerometer signal comes after
+the input signal to be append to the input signal. This is used to
+eliminate the edge effect during extrapolation and filtering. If it is
+<code>NULL</code>, algorithm will run directly on the input signal. Default is
+NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_gui_progress</code></td>
+<td>
+<p>logical. If it is TRUE, show GUI progress bar on
+windows platform. Default is FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>st</code></td>
+<td>
+<p>character or POSIXct timestamp. An optional start time you can set to
+force the epochs generated by referencing this start time. If it is NULL, the
+function will use the first timestamp in the timestamp column as start time to
+generate epochs. This is useful when you are processing a stream of data and
+want to use a common start time for segmenting data. Default is NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_snapshot_to_check</code></td>
+<td>
+<p>logical. If TRUE, the function will use the first
+100 rows or 10
+the algorithm will use all data to check timestamp duplications. Default is FALSE.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>dataframe or list. If <code>output_orientation_estimation</code> is TRUE,
+the output will be a list, otherwise the output will be the MIMS-unit
+dataframe.
+</p>
+<p>The first element will be the MIMS-unit dataframe, in which the first
+column is the start time of each epoch in POSIXct format, and the second
+column is the MIMS-unit value for the input signal, and the third column
+and on are the MIMS-unit values for each axis of the input signal if
+<code>output_mims_per_axis</code> is TRUE.
+</p>
+<p>The second element will be the orientation dataframe, in which the first
+column is the start time of each epoch in POSIXct format, and the second to
+fourth column is the estimated orientations for the input signal.
+</p>
+
+
+<h3>How is it used in MIMS-unit algorithm?</h3>
+
+<p>This is the low-level entry
+of MIMS-unit and orientation estimation algorithm. <code>mims_unit</code>
+calls this function internally.
+</p>
+
+
+<h3>Note</h3>
+
+<p>This function allows you to run customized algorithm for MIMSunit and
+sensor orientations.
+</p>
+<p><code>before_df</code> and <code>after_df</code> are often set when the accelerometer
+data are divided into files of smaller chunk.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other Top level API functions: 
+<code>mims_unit()</code>,
+<code>sensor_orientations()</code>,
+<code>shiny_app()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">  # Use sample data for testing
+  df = sample_raw_accel_data
+
+  # compute mims unit values with custom parameter
+  output = custom_mims_unit(df, epoch = '1 sec', dynamic_range=c(-8, 8), spar=0.7)
+  head(output)
+</code></pre>
+
+
+</div>

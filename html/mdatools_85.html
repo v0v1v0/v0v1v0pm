@@ -1,0 +1,394 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mcrals</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multivariate curve resolution using Alternating Least Squares</h2>
+
+<h3>Description</h3>
+
+<p><code>mcralls</code> allows to resolve spectroscopic data to linear combination of individual spectra
+and contributions using the alternating least squares (ALS) algorithm with constraints.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mcrals(
+  x,
+  ncomp,
+  cont.constraints = list(),
+  spec.constraints = list(),
+  spec.ini = matrix(runif(ncol(x) * ncomp), ncol(x), ncomp),
+  cont.forced = matrix(NA, nrow(x), ncomp),
+  spec.forced = matrix(NA, ncol(x), ncomp),
+  cont.solver = mcrals.nnls,
+  spec.solver = mcrals.nnls,
+  exclrows = NULL,
+  exclcols = NULL,
+  verbose = FALSE,
+  max.niter = 100,
+  tol = 10^-6,
+  info = ""
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>spectra of mixtures (matrix or data frame).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncomp</code></td>
+<td>
+<p>number of components to calculate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cont.constraints</code></td>
+<td>
+<p>a list with constraints to be applied to contributions  (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spec.constraints</code></td>
+<td>
+<p>a list with constraints to be applied to spectra  (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spec.ini</code></td>
+<td>
+<p>a matrix with initial estimation of the pure components spectra.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cont.forced</code></td>
+<td>
+<p>a matrix which allows to force some of the concentration values (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spec.forced</code></td>
+<td>
+<p>a matrix which allows to force some of the spectra values (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cont.solver</code></td>
+<td>
+<p>which function to use as a solver for resolving of pure components contributions (see detials).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spec.solver</code></td>
+<td>
+<p>which function to use as a solver for resolving of pure components spectra (see detials).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exclrows</code></td>
+<td>
+<p>rows to be excluded from calculations (numbers, names or vector with logical values).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exclcols</code></td>
+<td>
+<p>columns to be excluded from calculations (numbers, names or vector with logical values).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>logical, if TRUE information about every iteration will be shown.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max.niter</code></td>
+<td>
+<p>maximum number of iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>tolerance, when explained variance change is smaller than this value, iterations stop.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>info</code></td>
+<td>
+<p>a short text with description of the case (optional).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The method implements the iterative ALS algorithm, where, at each iteration, spectra and
+contributions of each chemical component are estimated and then a set of constraints is
+applied to each. The method is well described in [1, 2].
+</p>
+<p>The method assumes that the spectra (D) is a linear combination of pure components spectra (S)
+and pure component concentrations (C):
+</p>
+<p>D = CS' + E
+</p>
+<p>So the task is to get C and S by knowing D. In order to do that you need to provide:
+</p>
+<p>1. Constraints for spectra and contributions. The constraints should be provided as a list
+with name of the constraint and all necessary parameters. You can see which constraints and
+parameters are currently supported by running <code>constraintList()</code>. See the code examples
+below or a Bookdown tutorial for more details.
+</p>
+<p>2. Initial estimation of the pure components spectra, S. By default method uses a matrix with
+random numbers but you can provide a better guess (for example by running <code>mcrpure</code>)
+as a first step.
+</p>
+<p>3. Which solver to use for resolving spectra and concentrations. There are two built in solvers:
+<code>mcrals.nnls</code> (default) and <code>mcrals.ols</code>. The first implements non-negative least
+squares method which gives non-negative (thus physically meaningful) solutions. The second is
+ordinary least squares and if you want to get non-negative spectra and/or contributions in this
+case you need to provide a non-negativity constraint.
+</p>
+<p>The algorithm iteratively resolves C and S and checks how well CS' is to D. The iterations stop
+either when number exceeds value in <code>max.niter</code> or when improvements (difference between
+explained variance on current and previous steps) is smaller than <code>tol</code> value.
+</p>
+<p>Parameters <code>cont.force</code> and <code>spec.force</code> allows you to force some parts of the
+contributions or the spectra to be equal to particular pre-defined values. In this case you need
+to provide the parameters (or just one of them) in form of a matrix. For example <code>cont.force</code>
+should have as many rows as many you have in the original spectral data <code>x</code> and as many
+columns as many pure components you want to resolve. Feel all values of this matrix with
+<code>NA</code> and the values you want to force with real numbers. For example if you know that in
+the first measurement concentration of 2 and 3 components was zero, set the corresponding
+values of <code>cont.force</code> to zero. See also the last case in the examples section.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns an object of <code>mcrpure</code> class with the following fields:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>resspec</code></td>
+<td>
+<p>matrix with resolved spectra.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rescont</code></td>
+<td>
+<p>matrix with resolved contributions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cont.constraints</code></td>
+<td>
+<p>list with contribution constraints provided by user.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spec.constraints</code></td>
+<td>
+<p>list with spectra constraints provided by user.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expvar </code></td>
+<td>
+<p>vector with explained variance for each component (in percent).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cumexpvar </code></td>
+<td>
+<p>vector with cumulative explained variance for each component (in percent).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncomp</code></td>
+<td>
+<p>number of resolved components</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max.niter</code></td>
+<td>
+<p>maximum number of iterations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>info </code></td>
+<td>
+<p>information about the model, provided by user when build the model.</p>
+</td>
+</tr>
+</table>
+<p>More details and examples can be found in the Bookdown tutorial.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sergey Kucheryavskiy (svkucheryavski@gmail.com)
+</p>
+
+
+<h3>References</h3>
+
+<p>1. J. Jaumot, R. Gargallo, A. de Juan, and R. Tauler, "A graphical user-friendly interface for
+MCR-ALS: a new tool for multivariate curve resolution in MATLAB", Chemometrics and Intelligent #' Laboratory Systems 76, 101-110 (2005).
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Methods for <code>mcrals</code> objects:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+   <code>summary.mcrals</code> </td>
+<td style="text-align: left;"> shows some statistics for the case.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>predict.mcrals</code> </td>
+<td style="text-align: left;"> computes contributions by projection of new spectra to
+   the resolved ones.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<p>Plotting methods for <code>mcrals</code> objects:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+   <code>plotSpectra.mcr</code> </td>
+<td style="text-align: left;"> shows plot with resolved spectra.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotContributions.mcr</code> </td>
+<td style="text-align: left;"> shows plot with resolved contributions.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotVariance.mcr</code> </td>
+<td style="text-align: left;"> shows plot with explained variance.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>plotCumVariance.mcr</code> </td>
+<td style="text-align: left;"> shows plot with cumulative explained variance.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+
+library(mdatools)
+
+# resolve mixture of carbonhydrates Raman spectra
+
+data(carbs)
+
+# define constraints for contributions
+cc &lt;- list(
+   constraint("nonneg")
+)
+
+# define constraints for spectra
+cs &lt;- list(
+   constraint("nonneg"),
+   constraint("norm", params = list(type = "area"))
+)
+
+# because by default initial approximation is made by using random numbers
+# we need to seed the generator in order to get reproducable results
+set.seed(6)
+
+# run ALS
+m &lt;- mcrals(carbs$D, ncomp = 3, cont.constraints = cc, spec.constraints = cs)
+summary(m)
+
+# plot cumulative and individual explained variance
+par(mfrow = c(1, 2))
+plotVariance(m)
+plotCumVariance(m)
+
+# plot resolved spectra (all of them or individually)
+par(mfrow = c(2, 1))
+plotSpectra(m)
+plotSpectra(m, comp = 2:3)
+
+# plot resolved contributions (all of them or individually)
+par(mfrow = c(2, 1))
+plotContributions(m)
+plotContributions(m, comp = 2:3)
+
+# of course you can do this manually as well, e.g. show original
+# and resolved spectra
+par(mfrow = c(1, 1))
+mdaplotg(
+   list(
+      "original" = prep.norm(carbs$D, "area"),
+      "resolved" = prep.norm(mda.subset(mda.t(m$resspec), 1), "area")
+   ), col = c("gray", "red"), type = "l"
+)
+
+# in case if you have reference spectra of components you can compare them with
+# the resolved ones:
+par(mfrow = c(3, 1))
+for (i in 1:3) {
+   mdaplotg(
+      list(
+         "pure" = prep.norm(mda.subset(mda.t(carbs$S), 1), "area"),
+         "resolved" = prep.norm(mda.subset(mda.t(m$resspec), 1), "area")
+      ), col = c("gray", "red"), type = "l", lwd = c(3, 1)
+   )
+}
+
+# This example shows how to force some of the contribution values
+# First of all we combine the matrix with mixtures and the pure spectra, so the pure
+# spectra are on top of the combined matrix
+Dplus &lt;- mda.rbind(mda.t(carbs$S), carbs$D)
+
+# since we know that concentration of C2 and C3 is zero in the first row (it is a pure
+# spectrum of first component), we can force them to be zero in the optimization procedure.
+# Similarly we can do this for second and third rows.
+
+cont.forced &lt;- matrix(NA, nrow(Dplus), 3)
+cont.forced[1, ] &lt;- c(NA, 0, 0)
+cont.forced[2, ] &lt;- c(0, NA, 0)
+cont.forced[3, ] &lt;- c(0, 0, NA)
+
+m &lt;- mcrals(Dplus, 3, cont.forced = cont.forced, cont.constraints = cc, spec.constraints = cs)
+plot(m)
+
+# See bookdown tutorial for more details.
+
+
+
+</code></pre>
+
+
+</div>

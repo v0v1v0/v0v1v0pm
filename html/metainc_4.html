@@ -1,0 +1,172 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>getsamples</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Generate or extract samples of effect sizes from primary studies</h2>
+
+<h3>Description</h3>
+
+<p>Obtains a matrix containing sampled effect sizes from primary studies
+of a meta-analysis.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">getsamples(
+  obj,
+  param = NULL,
+  package = NULL,
+  n.samples = 10000,
+  sm,
+  transf = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obj</code></td>
+<td>
+<p>Meta-analysis object (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>param</code></td>
+<td>
+<p>Parameters for effect sizes (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>package</code></td>
+<td>
+<p>Character string with name of R package used to
+create the meta-analysis object <code>obj</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.samples</code></td>
+<td>
+<p>Number of samples per study if meta-analysis had been
+performed with R package <b>'meta'</b> or
+<code>rma</code> from R package <b>'metafor'</b>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sm</code></td>
+<td>
+<p>A character string indicating the summary measure used in
+primary studies.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transf</code></td>
+<td>
+<p>A logical indicating whether effect sizes are
+transformed or on the original scale. If <code>transf = TRUE</code>
+(default), effect estimates are expected to be on the log scale
+(for example, log odds ratios instead of odds ratios for <code>sm
+= "OR"</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Creates a matrix with sampled effect sizes of primary studies (number of 
+rows equal to the number of samples, number of columns equal to the number 
+of studies in the meta-analysis).
+</p>
+<p>Main input to this function is argument <code>obj</code> containing a
+meta-analysis object created with <code>bugs</code> from R package
+<b>'R2OpenBUGS'</b>, <code>jags</code> from <b>'R2jags'</b>,
+<code>jags.samples</code> from <b>'rjags'</b>, <code>brm</code> from <b>'brms'</b>,
+<code>rma</code> from <b>'metafor'</b>, or <code>metabin</code>, <code>metacont</code>
+or <code>metagen</code> from <b>'meta'</b>.
+</p>
+<p>Argument <code>param</code> corresponds to the effect size measures of
+the primary studies (for R packages <b>'R2OpenBUGS'</b>, <b>'R2jags'</b>,
+and <b>'rjags'</b>) or to the name of the column that contains the unique
+identification of each primary study in the data frame containing the
+results of primary studies used for meta-analysis (<b>'brms'</b> package).
+This argument is not required if the meta-analysis has been performed using
+R package <b>'meta'</b> or <b>'metafor'</b>.
+</p>
+<p>Information of the R package used to conduct the meta-analysis can
+be provided in argument <code>package</code>. The value of <code>package</code>
+can be 'R2OpenBUGS', 'R2jags', 'rjags', 'meta', 'metafor' or
+'brms'. This information is not required for an object created with
+<b>'meta'</b>, <b>'metafor'</b> or <b>'brms'</b>.
+</p>
+<p>Argument <code>n.samples</code> contains the number of samples per study for
+meta-analyses created with <b>'meta'</b> or <b>'metafor'</b>. Default
+is 10000 samples.
+</p>
+<p>Summary measure used in primary studies (argument <code>sm</code>) can be
+either "OR" (odds ratio), "RR" (risk ratio), "HR" (hazard ratio),
+"RD" (risk difference), "MD" (mean difference), "SMD" (standardised
+mean difference), "GEN_ratio" (generic ratio) or "GEN_diff"
+(generic difference). Does not need to be provided if the meta-analysis
+was performed with <b>'meta'</b> or <b>'metafor'</b>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A matrix containing sampled effect sizes (rows) for primary study (columns).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Bernardo Sousa-Pinto <a href="mailto:bernardo@med.up.pt">bernardo@med.up.pt</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Example with an object obtained using the 'R2OpenBUGS' package ("es",
+# whose simulations on the effect sizes of primary studies are those
+# of the "delta" parameter). If the object had been obtained using a
+# different package, all remaining arguments would be the same and only
+# the "package" argument would have a different input.
+
+# In this example, argument \code{transf = TRUE} (default), as sampled
+# effect sizes are log odds ratios.
+
+load(url("https://raw.github.com/BernardoSousaPinto/metainc_extra_files/main/es.Rdata"))
+
+sample &lt;- getsamples(es, param = "delta", package = "R2OpenBUGS", sm = "OR")
+sample
+
+
+# Example using a dataset providing effect sizes for primary studies (yi)
+# and respective variances (vi). A frequentist meta-analysis using the 'meta'
+# package is conducted.
+
+data("anticoagulation_df")
+m1 &lt;- meta::metagen(yi, sqrt(vi), sm = "OR", data = anticoagulation_df,
+  studlab = LETTERS[1:18])
+set.seed(1090) # Make sampled effect sizes reproducible
+sample1 &lt;- getsamples(m1)
+sample1
+
+if(requireNamespace("metafor")){
+# Same samples of effect sizes using R package 'metafor' (must be installed)
+
+m2 &lt;- metafor::rma(anticoagulation_df, measure = "OR", slab = LETTERS[1:18])
+set.seed(1090) # Make sampled effect sizes reproducible
+sample2 &lt;- getsamples(m2)
+sample2
+
+all.equal(sample1, sample2) # Only difference: package name
+}
+
+</code></pre>
+
+
+</div>

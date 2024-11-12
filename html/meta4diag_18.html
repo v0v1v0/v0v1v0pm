@@ -1,0 +1,695 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>meta4diag</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Function to analyse diagnostic meta-analysis with Bayesian methods using INLA.
+</h2>
+
+<h3>Description</h3>
+
+<p>Estimate a Bayesian bivariate hierarchical model fitted within INLA. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">meta4diag(data=NULL, model.type = 1, 
+          var.prior = "Invgamma", var2.prior = "Invgamma", cor.prior = "Normal",
+          var.par = c(0.25, 0.025), var2.par, cor.par = c(0,5),
+          wishart.par = c(4, 1, 1, 0),
+          init = c(0.01,0.01,0), link="logit", quantiles=c(0.025,0.5,0.975),
+          modality = NULL, covariates = NULL,
+          verbose = FALSE, nsample=FALSE,num.threads = 1, seed=0L)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>A data frame contains at least 4 columns specifying the number of True Positive(<code>TP</code>), False Negative(<code>FN</code>), True Negative(<code>TN</code>) and False Positive(<code>FP</code>). The additional columns other than <code>studynames</code> will be considered as potential covariates and the name or the column number of the potential covariates can be set in the arguments <code>modality</code> and <code>covariates</code> to use them in the model.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.type</code></td>
+<td>
+
+<p>A numerical value specifying the model type, options are 1(default), 2, 3 and 4. <code>model.type=1</code> indicates that the Sensitivity(se) and Specificity(sp) will be modelled in the bivariate model, i.e. <code class="reqn">g(se)</code> and <code class="reqn">g(sp)</code> are bivariate normal distributed. <code>model.type=2,3,4</code> indicate that the Sensitivity(se) and False Negative Rate(1-sp), False Positive Rate(1-se) and Specificity(sp), False Positive Rate(1-se) and False Negative Rate(1-sp) are modelled in the bivariate model, respectively.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var.prior</code></td>
+<td>
+
+<p>A string specifying the prior density for the first variance component, options are "PC" for penalised complexity prior, "Invgamma" for inverse gamma prior, "Tnormal" for truncated normal prior, "Unif" for uniform prior which allow the standard deviation uniformaly distributed on [0,1000], "Hcauchy" for half-cauchy prior and  "table" for user specific prior. <code>var.prior</code> can also be set to "Invwishart" for inverse wishart prior for covariance matrix. When <code>var.prior="Invwishart"</code>, no matter what <code>var2.prior</code> and <code>cor.prior</code> are given, the inverse Wishart prior covariance matrix is used for covariance matrix and the <code>wishart.par</code> must be given. The definition of the priors is as following,
+</p>
+
+<ul>
+<li> <p><code>var.prior="Invgamma"</code>: This is a prior for a variance <code class="reqn">\sigma^2</code>. The inverse gamma prior has density, 
+</p>
+<p style="text-align: center;"><code class="reqn">\pi(\sigma^2)=\frac{1}{\Gamma(a)b^a}(\sigma^2)^{-a-1}exp(-\frac{1}{b\sigma^2}),</code>
+</p>
+
+<p>for <code class="reqn">\sigma^2&gt;0</code> where: <code class="reqn">a&gt;0</code> is the shape parameter, <code class="reqn">b&gt;0</code> is the rate (1/scale) parameter.
+The parameters are here <code>c(a, b)</code>, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="Tnormal"</code>: This is a prior for a variance <code class="reqn">\sigma^2</code> and defined as follows. 
+The standard deviation <code class="reqn">\sigma=\sqrt{\sigma^2}</code> is Gaussian distributed with mean <code class="reqn">m</code> and variance <code class="reqn">v</code> but truncated to be positive.
+The parameters are here <code>c(m, v)</code>, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="PC"</code>: This is a prior for a variance <code class="reqn">\sigma^2</code> and defined as follows. 
+The left tail of the distribution of standard deviation <code class="reqn">\sigma</code> has behavior
+</p>
+<p style="text-align: center;"><code class="reqn">P(\sigma&gt;u)=\alpha,</code>
+</p>
+
+<p>which means it is unlikely that the standard deviation <code class="reqn">\sigma</code> to be larger than a value <code class="reqn">u</code> with probability <code class="reqn">\alpha</code>.
+The parameters are here <code>c(u, alpha)</code>, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="HCauchy"</code>: This is a prior for a variance <code class="reqn">\sigma^2</code> and defined as follows.  
+The standard deviation <code class="reqn">\sigma=\sqrt{\sigma^2}</code> is half-Cauchy distributed with density,
+</p>
+<p style="text-align: center;"><code class="reqn">\pi(\sigma)=\frac{2\gamma}{\pi(\sigma^2+\gamma^2)},</code>
+</p>
+
+<p>where <code class="reqn">\gamma&gt;0</code> is the rate parameter.
+The parameters are here <code>c(gamma)</code>, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="Unif"</code>: This is a prior for a variance <code class="reqn">\sigma^2</code> and defined as follows.  
+The standard deviation <code class="reqn">\sigma=\sqrt{\sigma^2}</code> is uniform distributed on <code class="reqn">(0,\infty)</code>.
+No parameters need to be given for this prior, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="Table"</code>:  This is a prior for a variance <code class="reqn">\sigma^2</code> and defined as follows.  
+Users have to specify a data.frame with 2 columns, 
+one indicates the values of <code class="reqn">\sigma^2</code> and the other one indicates the values of <code class="reqn">\pi(\sigma^2)</code>.
+The parameters are this data frame, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="Invwishart"</code>: Instead of specifying separate prior distributions for the variance and correlation parameters we could also assume that the covariance matrix <code class="reqn">\Sigma</code> 
+</p>
+<p style="text-align: center;"><code class="reqn">\Sigma \sim Wishart^{-1}_{p}(\nu,R),p=2,</code>
+</p>
+
+<p>where the Wishart distribution has density
+</p>
+<p style="text-align: center;"><code class="reqn">\pi(\Sigma)=\frac{|R|^{\frac{\nu}{2}}}{2^{\frac{p\nu}{2}}\Gamma_{p}(\frac{\nu}{2})}|\Sigma|^{-\frac{\nu+p+1}{2}}exp(-\frac{1}{2}Trace(\frac{R}{\Sigma})), \nu&gt;p+1,</code>
+</p>
+
+<p>Then,
+</p>
+<p style="text-align: center;"><code class="reqn">E(\Sigma)=\frac{R}{\nu-p-1}.</code>
+</p>
+
+<p>The parameters are <code class="reqn">\nu, R_{11},R_{22} and R_{12}</code>, where
+</p>
+<p style="text-align: center;"><code class="reqn">R=\left(\begin{array}{cc}R_{11} &amp; R_{12} \\ R_{21} &amp; R_{22}\end{array}\right)</code>
+</p>
+
+<p>The parameters are here <code>c(nu, R11, R22, R12)</code>, see arguments <code>var.par</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var2.prior</code></td>
+<td>
+<p>See <code>var.prior</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cor.prior</code></td>
+<td>
+
+<p>A string specifying the prior density for the correlation, options are "PC" for penalised complexity prior, "Invgamma" for inverse gamma prior, "beta" for beta prior and "table" for user specific prior. <code>cor.prior</code> can also be set to "Invwishart" for inverse wishart prior for covariance matrix. When <code>cor.prior="Invwishart"</code>, no matter what <code>var.prior</code> and <code>var2.prior</code> are given, the inverse Wishart prior for covariance matrix is used and the <code>wishart.par</code> must be given. The definition of the priors is as following,
+</p>
+
+<ul>
+<li> <p><code>cor.prior="Normal"</code>: This is a prior for a correlation <code class="reqn">\rho</code> and defined as follows. 
+The correlation parameter is constrained to <code class="reqn">[-1, 1]</code>. We reparameterise the correlation parameter <code class="reqn">\rho</code> using Fisher's z-transformation as 
+</p>
+<p style="text-align: center;"><code class="reqn">\rho^{\star}=logit(\frac{\rho+1}{2}),</code>
+</p>
+
+<p>which assumes values over the whole real line and assign the following prior distribution to <code class="reqn">\rho</code>,
+</p>
+<p style="text-align: center;"><code class="reqn">\rho \sim Gaussian(\mu,\sigma^2).</code>
+</p>
+
+<p>The prior variance of <code class="reqn">2.5</code> and prior mean of <code class="reqn">0</code> corresponds, roughly, to a uniform prior on <code class="reqn">[-1,1]</code> for <code class="reqn">\rho</code> .
+The parameters are here <code>c(mean, variance)</code>, see arguments <code>cor.par</code>.
+</p>
+</li>
+<li> <p><code>cor.prior="PC"</code>: This is a prior for a correlation <code class="reqn">\rho</code> and defined as follows. 
+The prior is defined around at a reference point with value <code class="reqn">\rho_{0}</code>. 
+To define the density behavior, three <code>strategy</code> can be applied. 
+The first strategy is to define the left tail behavior and the density weight on the left-hand side of the reference point <code class="reqn">\rho_{0}</code>,
+</p>
+<p style="text-align: center;"><code class="reqn">P(\rho&lt;u_{1})=a_{1},</code>
+</p>
+<p> and </p>
+<p style="text-align: center;"><code class="reqn">P(\rho&lt;\rho_{0})=\omega,</code>
+</p>
+
+<p>which means it is unlikely that the value of <code class="reqn">\rho</code> is smaller than a small value <code class="reqn">u_{1}</code> with probability <code class="reqn">a_{1}</code> and 
+the probability that <code class="reqn">\rho</code> is smaller than <code class="reqn">\rho_0</code> is <code class="reqn">\omega</code>.
+The parameters for the first strategy are here <code>c(1, rho0, omega, u1, a1, NA, NA)</code>, see arguments <code>cor.par</code>.
+The second strategy is to define the right tail behavior and the density weight on the left-hand side of the reference point <code class="reqn">\rho_{0}</code>,
+</p>
+<p style="text-align: center;"><code class="reqn">P(\rho&gt;u_{2})=a_{2},</code>
+</p>
+<p> and </p>
+<p style="text-align: center;"><code class="reqn">P(\rho&lt;\rho_{0})=\omega,</code>
+</p>
+
+<p>which means it is unlikely that the value of <code class="reqn">\rho</code> is larger than a big value <code class="reqn">u_{2}</code> with probability <code class="reqn">a_{2}</code> and 
+the probability that <code class="reqn">\rho</code> is smaller than <code class="reqn">\rho_0</code> is <code class="reqn">\omega</code>. 
+The parameters for the second strategy are here <code>c(2, rho0, omega, NA, NA, u2, a2)</code>, see arguments <code>cor.par</code>.
+The third strategy is to define both tail behaviors,
+</p>
+<p style="text-align: center;"><code class="reqn">P(\rho&lt;u_{1})=a_{1},</code>
+</p>
+<p> and </p>
+<p style="text-align: center;"><code class="reqn">P(\rho&gt;u_{2})=a_{2}.</code>
+</p>
+
+<p>The parameters for the third strategy are here <code>c(3, rho0, NA, u1, a1, u2, a2)</code>, see arguments <code>cor.par</code>.
+The parameters of the PC prior for the correlation here is <code>c(strategy, rho0, omega, u1, a1, u2, a2)</code>, see arguments <code>cor.par</code>.
+</p>
+</li>
+<li> <p><code>cor.prior="beta"</code>: This is a prior for a correlation <code class="reqn">\rho</code> and defined as follows. 
+The correlation parameter <code class="reqn">\rho</code> has a <code class="reqn">Beta(a,b)</code> distribution scaled to have domain in <code class="reqn">(-1, 1)</code>:
+</p>
+<p style="text-align: center;"><code class="reqn">\pi(\rho)=0.5\frac{\Gamma(a+b)}{\Gamma(a)\Gamma(b)}\rho^{a-1}(1-\rho)^{b-1}</code>
+</p>
+<p>,
+where <code class="reqn">a,b&gt;0</code> are the shape parameter.
+The parameters are here <code>c(a, b)</code>, see arguments <code>cor.par</code>.
+</p>
+</li>
+<li> <p><code>cor.prior="Table"</code>: This is a prior for a correlation <code class="reqn">\rho</code> and defined as follows.  
+Users have to specify the data.frame with 2 columns, one indicates the values of <code class="reqn">\rho</code> and the other one indicates the values of <code class="reqn">\pi(\rho)</code>.
+The parameters are this data frame, see arguments <code>cor.par</code>.
+</p>
+</li>
+<li> <p><code>cor.prior="Invwishart"</code>: Instead of specifying separate prior distributions for the hyperparameters we could also assume that the covariance matrix <code class="reqn">\Sigma</code> 
+</p>
+<p style="text-align: center;"><code class="reqn">\Sigma \sim Wishart^{-1}_{p}(\nu,R),p=2,</code>
+</p>
+
+<p>where the inverse Wishart distribution has density
+</p>
+<p style="text-align: center;"><code class="reqn">\pi(\Sigma)=\frac{|R|^{\frac{\nu}{2}}}{2^{\frac{p\nu}{2}}\Gamma_{p}(\frac{\nu}{2})}|\Sigma|^{-\frac{\nu+p+1}{2}}exp(-\frac{1}{2}Trace(\frac{R}{\Sigma})), \nu&gt;p+1,</code>
+</p>
+
+<p>Then,
+</p>
+<p style="text-align: center;"><code class="reqn">E(\Sigma)=\frac{R}{\nu-p-1}.</code>
+</p>
+
+<p>The parameters are <code class="reqn">\nu, R_{11},R_{22} and R_{12}</code>, where
+</p>
+<p style="text-align: center;"><code class="reqn">R=\left(\begin{array}{cc}R_{11} &amp; R_{12} \\ R_{21} &amp; R_{22}\end{array}\right)</code>
+</p>
+
+<p>The parameters are here <code>c(nu, R11, R22, R12)</code>, see arguments <code>cor.par</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var.par</code></td>
+<td>
+
+<p>A numerical vector specifying the parameter of the prior density for the first variance component. 
+</p>
+
+<ul>
+<li> <p><code>var.par=c(rate, shape)</code> when <code>var.prior="Invgamma"</code>.
+</p>
+</li>
+<li> <p><code>var.par=c(u, alpha)</code> when <code>var.prior="PC"</code>.
+</p>
+</li>
+<li> <p><code>var.par=c(m, v)</code> when <code>var.prior="Tnormal"</code>.
+</p>
+</li>
+<li> <p><code>var.par=c(gamma)</code> when <code>var.prior="Hcauchy"</code>.
+</p>
+</li>
+<li> <p><code>var.par=c()</code> when <code>var.prior="Unif"</code>.
+</p>
+</li>
+<li> <p><code>var.par</code> is a data frame with 2 columns, one indicates the values of <code class="reqn">\sigma^2</code> and the other one indicates the values of <code class="reqn">\pi(\sigma^2)</code> when <code>var.prior="Table"</code>.
+</p>
+</li>
+<li> <p><code>var.par</code> doesn't need to be given when <code>var.prior="Invwishart"</code>.
+</p>
+</li>
+</ul>
+<p>See also argument <code>var.prior</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var2.par</code></td>
+<td>
+
+<p>A numerical vector specifying the parameter of the prior density for the second variance component. If not given, function will copy the setting for the first variance component. The definition of the priors is the same as for <code>var.par</code>. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cor.par</code></td>
+<td>
+
+<p>A numerical vector specifying the parameter of the prior density for the correlation. See also <code>examples</code>.
+</p>
+
+<ul>
+<li> <p><code>cor.par=c(mean, variance)</code> when <code>cor.prior="normal"</code>.
+</p>
+</li>
+<li> <p><code>cor.par=c(strategy, rho0, omega, u1, a1, u2, a2)</code> when <code>cor.prior="PC"</code>.
+</p>
+</li>
+<li> <p><code>cor.par=c(a, b)</code> when <code>var.prior="beta"</code>.
+</p>
+</li>
+<li> <p><code>cor.par</code> is a data frame with 2 columns, one indicates the values of <code class="reqn">\rho</code> and the other one indicates the values of <code class="reqn">\pi(\rho)</code> when <code>cor.prior="Table"</code>.
+</p>
+</li>
+<li> <p><code>cor.par</code> doesn't need to be given when <code>cor.prior="Invwishart"</code>.
+</p>
+</li>
+</ul>
+<p>See also argument <code>cor.prior</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wishart.par</code></td>
+<td>
+
+<p>A numerical vector specifying the parameter of the prior density for the covariance matrix. <code>wishart.par</code> must be given and <code>wishart.par=c(nu, R11, R22, R12)</code> when any of <code>var.prior</code>, <code>var2.prior</code> or <code>cor.prior</code> is <code>"Invwishart"</code>. See also <code>examples</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+
+<p>A numerical vector specifying the initial value of the first variance, the second variance and correlation.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>link</code></td>
+<td>
+
+<p>A string specifying the link function used in the model. Options are "logit", "probit" and "cloglog".
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quantiles</code></td>
+<td>
+
+<p>A vector of quantiles, p(0), p(1),... to compute for each posterior marginal. The function returns, for each posterior marginal, the values x(0), x(1),... such that </p>
+<p style="text-align: center;"><code class="reqn">Prob(X&lt;x)=p.</code>
+</p>
+
+<p>The default value are c(0.025, 0.5, 0.975). Not matter what other values are going to be given, the estimates for these 3 quantiles are always returned.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+
+<p>Boolean (default:FALSE) indicating whether the program should run in a verbose model.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modality</code></td>
+<td>
+
+<p>A string specifying the modality variable, which is a categorical variable, such as test threshold. Default value is NULL. See also <code>examples</code>. At the moment, only one categorical covariate variable can be used in the model.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covariates</code></td>
+<td>
+
+<p>A vector, which could be either the name of columns or the number of columns, specifying the continuous covariates variables, such as disease prevalence or average individual patients status of each study. Default value is NULL. See also <code>examples</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nsample</code></td>
+<td>
+
+<p>A numerical value specifying the number of posterior samples, default is 5000. The posterior samples are used to compute the marginals and estimates values of non-linear functions, such as log radios and diagnostic odds radios. If <code>nsample</code> is given, <code>summary.summarized.statistics</code>, <code>summary.fitted.LRpos</code>, <code>summary.fitted.LRneg</code>, <code>summary.fitted.DOR</code> and samples of <code class="reqn">E(se)</code>, <code class="reqn">E(sp)</code>, <code class="reqn">E(1-se)</code> and <code class="reqn">E(1-sp)</code> will be returned.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>num.threads</code></td>
+<td>
+
+<p>Maximum number of threads the inla-program will use. xFor Windows this defaults to 1, otherwise its defaults to NULL (for which the system takes over control).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+
+<p>A numerical value specifying the random seed to control the RNG for generating posterior samples if nsample &gt; 0. If you want reproducible results, you ALSO need to control the seed for the RNG in R by controlling the variable .Random.seed or using the function set.seed.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The bivariate model has two levels, in the first level, the observed number of individuals in a specific group in a 2 by 2 table is binomial distributed, for example, the numbers of individuals in the group of true positive and true negative of a study <code class="reqn">i</code> are modelled jointly,
+</p>
+<p style="text-align: center;"><code class="reqn">TP_{i} | Se_{i} \sim Binomial(TP_{i}+ FN_{i},Se_{i})</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">TN_{i} | Sp_{i} \sim Binomial(TN_{i}+ FP_{i},Sp_{i})</code>
+</p>
+
+<p>In the second level, two transformed accuracies with some link function (see argument <code>link</code>) are bivariate Gaussian distributed, continuous with the previous example,
+</p>
+<p style="text-align: center;"><code class="reqn">g(Se_{i}) = \mu + V_{i}\alpha + \phi_{i}</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">g(Sp_{i}) = \nu + U_{i}\beta + \psi_{i}</code>
+</p>
+
+<p>where <code class="reqn">\phi_{i}</code> and <code class="reqn">\psi_{i}</code> are bivariate Gaussian distributed with mean 0 and covariance matrix <code class="reqn">\Sigma</code>. The <code class="reqn">se</code> and <code class="reqn">sp</code> in the example could be changed to <code class="reqn">se</code> and <code class="reqn">(1-sp)</code>, <code class="reqn">(1-se)</code> and <code class="reqn">sp</code> or <code class="reqn">(1-se)</code> and <code class="reqn">(1-sp)</code>, see argument <code>model.type</code>.
+</p>
+<p>The function <code>meta4diag()</code> depends on four internal functions which are also given in the <span class="pkg">meta4diag</span> package in order to flexibly implement a list of dataset with the same prior setting. The four internal functions are <code>makeData()</code>, <code>makePriors()</code>, <code>runModel()</code> and <code>makeObject()</code>. Details can be seen the corresponding documentations and examples.
+</p>
+<p>After running the function <code>meta4diag()</code>, a <code>meta4diag</code> object will be returned which contains various estimated results for later analysis, such as the posterior marginals, estimated value, standard deviations and the coresponding quaniles of the accuracies. See <code>Values</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>meta4diag</code> returns a <code>meta4diag</code> object with components: 
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>The provided input data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outdata</code></td>
+<td>
+<p>The internal data that could be used in <span class="pkg">INLA</span> from function <code>makeData()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priors.density</code></td>
+<td>
+<p>Prior distributions for the variance components and correlation from function <code>makePriors()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>names.fitted</code></td>
+<td>
+<p>Names of the jointly modelled accuracies in the model. For example, se and sp or (1-se) and sp.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpu.used</code></td>
+<td>
+<p>The cpu time used for running the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>The matched call.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.fixed</code></td>
+<td>
+<p>Matrix containing the mean and standard deviation (plus, possibly quantiles) of the fixed effects of the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>marginals.fixed</code></td>
+<td>
+<p>A list containing the posterior marginal densities of the fixed effects of the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.expected.(...).accuracy</code></td>
+<td>
+<p>Matrix containing the mean and standard deviation (plus, possibly quantiles) of the mean of accuracies transformed with the link function, i.e. E(g(Se)), E(g(Sp)), E(g(1-Se)) and E(g(1-Sp)). Dynamic name for this output. (...) indicates the name of link function used in <code>runModel()</code>, i.e. if link function is "logit", the full name of this output is "summary.expected.logit.accuracy".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>marginals.expected.(...).accuracy</code></td>
+<td>
+<p>A list containing the posterior marginal densities of the mean of accuracies transformed with the link function, i.e. E(g(Se)), E(g(Sp)), E(g(1-Se)) and E(g(1-Sp)). Dynamic name for this output. (...) indicates the name of link function used in <code>runModel()</code>, i.e. if link function is "logit", the full name of this output is "marginals.expected.logit.accuracy".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.expected.accuracy</code></td>
+<td>
+<p>Matrix containing the mean and standard deviation (plus, possibly quantiles) of the mean of the accuracies, i.e.  E(Se), E(Sp), E(1-Se) and E(1-Sp).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>marginals.expected.accuracy</code></td>
+<td>
+<p>A list containing the posterior marginal densities of of the mean of the accuracies, i.e.  E(Se), E(Sp), E(1-Se) and E(1-Sp).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.hyperpar</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of the hyperparameters of the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>marginals.hyperpar</code></td>
+<td>
+<p>A list containing the posterior marginal densities of the hyperparameters of the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>correlation.expected.(...).accuracy</code></td>
+<td>
+<p>A correlation matrix between the mean of the accuracies transformed with the link function. Dynamic name for this output. (...) indicates the name of link function used in <code>runModel()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covariance.expected.(...).accuracy</code></td>
+<td>
+<p>A covariance matrix between the mean of the accuracies transformed with the link function. Dynamic name for this output. (...) indicates the name of link function used in <code>runModel()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.predictor.(...)</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of the linear predictors one transformed accuracy in the model. The accuracy type depends on the model type. See argument <code>model.type</code>. For example, the possible accuracy type could be <code class="reqn">g(se)</code>, <code class="reqn">g(sp)</code>, <code class="reqn">(se)</code> or <code class="reqn">(sp)</code>, where <code class="reqn">g()</code> is the link function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>marginals.predictor.(...)</code></td>
+<td>
+<p>A list containing the posterior marginals of the linear predictors of one transformed accuracy in the model. The accuracy type depends on the model type. See argument <code>model.type</code>. For example, the possible accuracy type could be <code class="reqn">g(se)</code>, <code class="reqn">g(sp)</code>, <code class="reqn">(se)</code> or <code class="reqn">(sp)</code>, where <code class="reqn">g()</code> is the link function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>misc</code></td>
+<td>
+<p>Some other settings that maybe useful retruned by <span class="pkg">meta4diag</span>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dic</code></td>
+<td>
+<p>The deviance information criteria and effective number of parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpo</code></td>
+<td>
+<p>A list of three elements: <code>cpo$cpo</code> are the values of the conditional predictive ordinate (CPO), <code>cpo$pit</code> are the values of the 
+probability integral transform (PIT) and <code>cpo$failure</code> 
+indicates whether some assumptions are violated. In short, if 
+cpo$failure[i] &gt; 0 then some assumption is violated, the higher the 
+value (maximum 1) the more seriously.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>waic</code></td>
+<td>
+<p>A list of two elements: <code>waic$waic</code> is the Watanabe-Akaike information criteria,  and <code>waic$p.eff</code> is the estimated effective number of parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mlik</code></td>
+<td>
+<p>The log marginal likelihood of the model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inla.result</code></td>
+<td>
+<p>A <code>INLA</code> object that from function <code>runModel()</code> which implements INLA.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>samples.fixed</code></td>
+<td>
+<p>A matrix of the fixed effects samples if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>samples.hyperpar</code></td>
+<td>
+<p>A matrix of the hyperparameter samples if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>samples.overall.Se</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of overall sensitivity samples if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>samples.overall.Sp</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of overall specificity samples if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.overall.statistics</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of mean positive and negative likelihood ratios and mean diagnostic odds ratios if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>samples.study.specific.Se</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of study specific sensitivity samples if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>samples.study.specific.Sp</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of study specific specificity samples if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.study.specific.LRpos</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of positive likelihood ratios for each study if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.study.specific.LRneg</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of negative likelihood ratios for each study if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.study.specific.DOR</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of diagnostic odds ratios for each study if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.study.specific.RD</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of risk difference for each study if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.study.specific.LDOR</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of log diagnostic odds ratios for each study if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.study.specific.LLRpos</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of log positive likelihood ratios for each study if <code>nsample</code> is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary.study.specific.LLRneg</code></td>
+<td>
+<p>A matrix containing the mean and sd (plus, possibly quantiles) of log negative likelihood ratios for each study if <code>nsample</code> is given.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Jingyi Guo and Andrea Riebler 
+</p>
+
+
+<h3>References</h3>
+
+<p><cite>Rue H., Martino S, and Chopin N. (2009). Approximate
+Bayesian Inference for Latent Gaussian Models Using Integrated Nested
+Laplace Approximations. <em>Journal of the Royal Statistical Society B</em>
+<b>71</b>: 319–392. (www.r-inla.org)</cite>
+</p>
+<p><cite>Simpson DP, Martins TG, Riebler A, Fuglstad GA, Rue H, Sorbye SH (2014) Penalised Model Component Complexity: A principled, Practical Approach to Constructing Priors. <em>Arxiv e-prints. 1403.4630</em></cite>
+</p>
+<p><cite>Guo, J., Riebler, A. and Rue H. (2017) Bayesian bivariate meta-analysis of diagnostic test studies with interpretable priors. <em>Statistics in Medicine</em>
+<b>36(19)</b>: 3039–3058.</cite>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>makeData, makePrior, runModel, forest, SROC, crosshair.</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+if(requireNamespace("INLA", quietly = TRUE)){
+  require("INLA", quietly = TRUE)
+  data(Catheter)
+  meta4diag(data = Catheter, model.type = 1, var.prior = "invgamma", cor.prior = "normal", 
+    var.par = c(0.25, 0.025), cor.par = c(0, 5), init = c(0.01, 0.01, 0), 
+    link = "logit", quantiles = c(0.025, 0.5, 0.975), verbose = FALSE, covariates = NULL, 
+    nsample = FALSE)
+}
+
+## End(Not run)
+</code></pre>
+
+
+</div>

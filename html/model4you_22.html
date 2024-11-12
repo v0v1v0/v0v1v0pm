@@ -1,0 +1,155 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pmodel</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Personalised model</h2>
+
+<h3>Description</h3>
+
+<p>Compute personalised models from cforest object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pmodel(
+  x = NULL,
+  model = NULL,
+  newdata = NULL,
+  OOB = TRUE,
+  fun = coef,
+  return_attr = c("modelcall", "data", "similarity")
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>cforest object or matrix of weights.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>model object. If NULL the model in <code>x$info$model</code> is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>new data. If NULL cforest learning data is used. Ignored if <code>x</code> is a matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>OOB</code></td>
+<td>
+<p>In case of using the learning data, should patient similarities be
+computed out of bag?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun</code></td>
+<td>
+<p>function to apply on the personalised model before returning. The
+default <code>coef</code> returns a matrix of personalised coefficients. For returning
+the model objects use <code>identity</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>return_attr</code></td>
+<td>
+<p>which attributes to add to the object returned. If it contains
+<code>"modelcall"</code> the call of the base model is returned, if it contains 
+<code>"data"</code> the data, and if it contains <code>"similarity"</code> the matrix of 
+similarity weights is added.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>depends on fun.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library("model4you")
+
+if(require("mvtnorm") &amp; require("survival")) {
+  
+  ## function to simulate the data
+  sim_data &lt;- function(n = 500, p = 10, beta = 3, sd = 1){
+    
+    ## treatment
+    lev &lt;- c("C", "A")
+    a &lt;- rep(factor(lev, labels = lev, levels = lev), length = n)
+    
+    ## correlated z variables
+    sigma &lt;- diag(p) 
+    sigma[sigma == 0] &lt;- 0.2
+    ztemp &lt;- rmvnorm(n, sigma = sigma)
+    z &lt;- (pnorm(ztemp) * 2 * pi) - pi  
+    colnames(z) &lt;- paste0("z", 1:ncol(z))
+    z1 &lt;- z[,1]
+    
+    ## outcome
+    y &lt;- 7 + 0.2 * (a %in% "A") + beta * cos(z1) * (a %in% "A") + rnorm(n, 0, sd)
+    
+    data.frame(y = y, a = a, z)
+  }
+  
+  ## simulate data
+  set.seed(123)
+  beta &lt;- 3
+  ntrain &lt;- 500
+  ntest &lt;- 50
+  simdata &lt;- simdata_s &lt;- sim_data(p = 5, beta = beta, n = ntrain)
+  tsimdata &lt;- tsimdata_s &lt;- sim_data(p = 5, beta = beta, n = ntest)
+  simdata_s$cens &lt;- rep(1, ntrain)
+  tsimdata_s$cens &lt;- rep(1, ntest)
+  
+  ## base model
+  basemodel_lm &lt;- lm(y ~ a, data = simdata)
+  
+  ## forest
+  frst_lm &lt;- pmforest(basemodel_lm, ntree = 20, 
+                      perturb = list(replace = FALSE, fraction = 0.632),
+                      control = ctree_control(mincriterion = 0))
+  
+  ## personalised models
+  # (1) return the model objects
+  pmodels_lm &lt;- pmodel(x = frst_lm, newdata = tsimdata, fun = identity)
+  class(pmodels_lm)
+  # (2) return coefficients only (default)
+  coefs_lm &lt;- pmodel(x = frst_lm, newdata = tsimdata)
+  
+  # compare predictive objective functions of personalised models versus
+  # base model
+  sum(objfun(pmodels_lm)) # -RSS personalised models
+  sum(objfun(basemodel_lm, newdata = tsimdata)) # -RSS base model
+  
+  
+  if(require("ggplot2")) {
+    ## dependence plot
+    dp_lm &lt;- cbind(coefs_lm, tsimdata)
+    ggplot(tsimdata) +
+      stat_function(fun = function(z1) 0.2 + beta * cos(z1), 
+                    aes(color = "true treatment\neffect")) +
+      geom_point(data = dp_lm, 
+                 aes(y = aA, x = z1, color = "estimates lm"), 
+                 alpha = 0.5)  +
+      ylab("treatment effect") + 
+      xlab("patient characteristic z1")
+  }
+}
+
+</code></pre>
+
+
+</div>

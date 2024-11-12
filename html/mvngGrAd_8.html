@@ -1,0 +1,216 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>movingGrid</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Moving Grid Adjustment In Plant Breeding Field Trials
+</h2>
+
+<h3>Description</h3>
+
+<p>The function uses the phenotypic information from plants or plots (entries) in a
+designed grid to obtain an adjusted (for environmental
+variation) phenotypic value of the entry in the center of the grid.  The
+adjustment is done by calculating the mean of all the entries included
+and using it as a covariate. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">movingGrid(rows, columns, obsPhe, shapeCross, layers, excludeCenter = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>rows</code></td>
+<td>
+
+<p>An integer vector with the row subscripts of the phenotypic values to be adjusted.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>columns</code></td>
+<td>
+
+<p>An integer vector with the column subscripts of the phenotypic values to be adjusted.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>obsPhe</code></td>
+<td>
+
+<p>A numeric vector with the observed phenotypic values of the entries
+that are to be adjusted. The arguments to <code>rows</code>, <code>columns</code>
+and <code>obsPhe</code> must, of course, correspond.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>shapeCross</code></td>
+<td>
+
+<p><code>"list"</code> of length 4, each element contains the cells that are to
+be included in the grid that extends from the center
+in 0, 90, 180 and 270 degree direction.
+</p>
+<p>Elements can be NULL (no extension in this direction) and must contain
+no '0', duplicated or negative values.
+</p>
+<p><code>shapeCross[[1]]</code>DOWN (180 degree) from the center cell (same column)
+</p>
+<p><code>shapeCross[[2]]</code>UP (0 degree) from the center cell (same column)
+</p>
+<p><code>shapeCross[[3]]</code>LEFT (270 degree) from the center cell (same row)
+</p>
+<p><code>shapeCross[[4]]</code>RIGHT (90 degree) from the center cell (same row)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>layers</code></td>
+<td>
+
+<p><code>"integer"</code>, vector giving the layers to be included
+in the grid that extents from the center cell in all directions other
+than 0, 90, 180 and 270 degree. Can be NULL ( no extension) and
+must not contain '0', negative or duplicated values.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>excludeCenter</code></td>
+<td>
+
+<p>Should the center entry (the one which is adjusted) be excluded from the
+calculation of the moving mean, logical <code>TRUE</code> (default) or <code>FALSE</code>.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Please see the included vignette for a more detailed description of the
+rational underlining the adjustment procedure and usage of the function.
+</p>
+<p>The function <code>movingGrid</code> calls the functions <code>extendHorVer</code>
+and <code>extendCircular</code> to form the grid (i.e. determine the row and
+column subscripts of the cells included).  These two functions are not
+intended to be called by the user.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class "<code>movG</code>". See <code>movG-class</code> for details.
+</p>
+
+
+<h3>Rdversion</h3>
+
+<p>1.1</p>
+
+
+<h3>Note</h3>
+
+<p>The field layout is always assumed to be a rectangular matrix with
+<code>max(rows) * max(columns)</code> cells! All of the cells that were
+not mentioned in arguments <code>rows</code> and <code>columns</code> are NA. 
+</p>
+<p>If, for example, the last row was only planted with half the number of
+entries as the other rows, the other half of the row will consist of
+cells with <code>NA</code> values.
+</p>
+<p>These <code>NA</code> values are ignored by <code>movingGrid</code> and the
+various extractor functions. They do not influence the results of
+<code>movingGrid</code>.
+</p>
+<p>The general linear model, that is part of the adjustment procedure, is
+fit via the function <code>lm</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Frank Technow
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>sketchGrid</code>, <code>entryData</code>,
+<code>movG</code>, <code>mvngGrAd-package</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+### data creation ###
+#####################
+
+
+### The field plan consists of 50 rows and 50 columns
+### (= 2500 cells = 2500 entries)
+
+## row vector
+
+rows &lt;- rep(1:50,each=50)
+
+
+## column vector
+cols &lt;- rep(1:50,50)
+
+## simulation of growing conditions with a horizontal gradient between
+## the rows and some random noise within
+
+set.seed(666)
+growingCond &lt;- rep(1:50,each=50) + rnorm(2500)
+
+## simulation of the genotypic effects
+gEffects &lt;- rnorm(2500,mean=0,sd=5)
+
+## observed phenotypic values
+yield &lt;- growingCond + gEffects
+
+## adjustment with movingGrid
+
+cross &lt;- list(c(1),
+              c(1),
+              c(1:4),
+              c(1:4))
+
+exampleResults &lt;- movingGrid(rows = rows,
+                             columns = cols,
+                             obsPhe = yield,
+                             shapeCross = cross,
+                             layers = c(1,2),
+                             excludeCenter = TRUE)
+
+## a summary
+
+summary(exampleResults)
+
+## the adjusted phenotypic values of the first 25 entries
+
+fitted(exampleResults)[1:25]
+
+## all information on entry, for the first 25
+
+entryData(exampleResults)[1:25,]
+
+## moving means for the first 25
+
+movingMean(exampleResults)[1:25]
+
+</code></pre>
+
+
+</div>

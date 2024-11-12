@@ -1,0 +1,161 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>CVSITaxa</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Cross validation for sequentially increases taxa</h2>
+
+<h3>Description</h3>
+
+<p>This function does cross validation for the taxon by taxon analysis while sequentially increasing the number of taxa as specified.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">CVSITaxa(
+  Object,
+  Top = seq(5, 100, by = 5),
+  Survival,
+  Censor,
+  Prognostic = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Object</code></td>
+<td>
+<p>An object of class <code>cvmm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Top</code></td>
+<td>
+<p>The Top k number of taxa to be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Survival</code></td>
+<td>
+<p>A vector of survival time with length equals to number of subjects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Censor</code></td>
+<td>
+<p>A vector of censoring indicator.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Prognostic</code></td>
+<td>
+<p>A dataframe containing possible prognostic(s) factor and/or treatment effect to be used in the model.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function is a cross validation version of the function <code>SITaxa</code>.
+This function firstly processes the cross validation for the taxon by taxon analysis results, and then sequentially considers top k taxa.
+The function recompute first PCA or PLS on train data and estimate risk scores on both test and train data only on the microbiome matrix with top k taxa.
+Patients are then classified as having low or high risk based on the test data where the cutoff used is mean of the risk score.
+The process is repeated for each top K taxa sets.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A object of class <code>cvsit</code> is returned with the following values
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>HRpca</code></td>
+<td>
+<p>A 3-way array in which first, second, and third dimensions correspond to number of taxa, Hazard ratio infromation(Estimated HR, LowerCI and UpperCI), and number of cross validation respectively. This contains the estimated HR on test data and dimension reduction method is PCA.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>HRpls</code></td>
+<td>
+<p>A 3-way array in which first, second, and third dimensions correspond to number of taxa, Hazard ratio infromation(Estimated HR, LowerCI and UpperCI), and number of cross validation respectively. This contains the estimated HR on test data and dimension reduction method is PLS.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Ntaxa</code></td>
+<td>
+<p>The number of taxa in the reduced matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Ncv</code></td>
+<td>
+<p>The number of cross validation done.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Top</code></td>
+<td>
+<p>A sequence of top k taxa considered. Default is Top = seq(5, 100, by=5)</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Thi Huyen Nguyen, <a href="mailto:thihuyen.nguyen@uhasselt.be">thihuyen.nguyen@uhasselt.be</a>
+</p>
+<p>Olajumoke Evangelina Owokotomo, <a href="mailto:olajumoke.x.owokotomo@gsk.com">olajumoke.x.owokotomo@gsk.com</a>
+</p>
+<p>Ziv Shkedy
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MSpecificCoxPh</code>, <code>SITaxa</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Prepare data
+data(Week3_response)
+Week3_response = data.frame(Week3_response)
+surv_fam_shan_w3 = data.frame(cbind(as.numeric(Week3_response$T1Dweek),
+as.numeric(Week3_response$T1D)))
+colnames(surv_fam_shan_w3) = c("Survival", "Censor")
+prog_fam_shan_w3 = data.frame(factor(Week3_response$Treatment_new))
+colnames(prog_fam_shan_w3) = c("Treatment")
+data(fam_shan_trim_w3)
+names_fam_shan_trim_w3 =
+c("Unknown", "Lachnospiraceae", "S24.7", "Lactobacillaceae", "Enterobacteriaceae", "Rikenellaceae")
+fam_shan_trim_w3 = data.matrix(fam_shan_trim_w3[ ,2:82])
+rownames(fam_shan_trim_w3) = names_fam_shan_trim_w3
+# Getting the cvmm object
+CVCox_taxon_fam_shan_w3 = CVMSpecificCoxPh(Fold=3,
+                                           Survival = surv_fam_shan_w3$Survival,
+                                           Micro.mat = fam_shan_trim_w3,
+                                           Censor = surv_fam_shan_w3$Censor,
+                                           Reduce=TRUE,
+                                           Select=5,
+                                           Prognostic=prog_fam_shan_w3,
+                                           Mean = TRUE,
+                                           Ncv=10)
+
+# Using the function
+ CVSITaxa_fam_shan_w3 = CVSITaxa(Object = CVCox_taxon_fam_shan_w3,
+                                 Top=seq(1, 6, by=2),
+                                 Survival = surv_fam_shan_w3$Survival,
+                                 Censor = surv_fam_shan_w3$Censor,
+                                 Prognostic=prog_fam_shan_w3)
+
+# Get the class of the object
+class(CVSITaxa_fam_shan_w3)     # An "cvsit" Class
+</code></pre>
+
+
+</div>

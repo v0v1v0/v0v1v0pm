@@ -1,0 +1,171 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mixmeta.ml</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> ML and REML Estimators for mixmeta Models </h2>
+
+<h3>Description</h3>
+
+<p>These functions implement maximum likelihood (ML) and restricted maximum likelihood (REML) estimators for random-effects meta-analysis and meta-regression, including standard univariate models, and non-standard extensions such as multivariate, multilevel, longitudinal, and dose-response models. These functions are meant to be used internally and not directly run by the users.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mixmeta.ml(Xlist, Zlist, ylist, Slist, nalist, rep, k, q, nall, bscov, control, ...)
+
+mixmeta.reml(Xlist, Zlist, ylist, Slist, nalist, rep, k, q, nall, bscov, control, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<p>Assuming a meta-analysis or meta-regression based on <code class="reqn">n</code> units aggregated within <code class="reqn">m</code> (outer-level) groups, <code class="reqn">k</code> outcomes, <code class="reqn">p</code> fixed-effects predictors, and <code class="reqn">q</code> random-effects predictors:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Xlist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of group-specific design matrices for the fixed-effects part of the model. Rows corresponding to missing outcomes have been excluded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Zlist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of group-specific design matrices for the random-effects part of the model. Each element of this list represents a list of matrices correponding to the (optionally multiple) grouping levels of random effects. In each matrix, rows corresponding to missing outcomes have been excluded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ylist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of group-specific vectors of estimated outcomes. Entries corresponding to missing outcomes have been excluded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Slist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of within-group (co)variance matrices of estimated outcomes. Rows and columns corresponding to missing outcomes have been excluded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nalist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of group-specific logical vectors, identifying missing outcomes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rep </code></td>
+<td>
+<p> matrix with <code class="reqn">m</code> rows where each column identifies the number of repetitions (number of groups) for each grouping level. The first column (outer level) is by definition a vector of 1's.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k, q, nall </code></td>
+<td>
+<p> number of outcomes, number of random-effects predictors (including the intercept), total number of observations (excluding missing), respectively. While usually all are scalars, in the case of multilevel models <code>q</code> can be a numeric vector representing the number of predictors for each level.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bscov </code></td>
+<td>
+<p> a character vector defining the structure of the (co)variance matrix for each level or random effects. See <code>mixmeta</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control </code></td>
+<td>
+<p> list of parameters for controlling the fitting process, usually internally set to default values by <code>mixmeta.control</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>... </code></td>
+<td>
+<p> further arguments passed to or from other methods. Currently not used.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The estimation involves <code class="reqn">kp</code> fixed-effects coefficients and random-effects parameters, whose number depends on the number of grouping levels and, for each of them, on the chosen <code>(co)variance structure</code> for the between-study (co)variance matrices. A maximum of <code class="reqn">kq(kq+1)/2</code> parameters are needed in the case of or single-level models with unstructured form for the random-effects (co)variance matrix.
+</p>
+<p>(Restricted) maximum likelihood estimators implemented in <span class="pkg">mixmeta</span> rely on two iterative algorithms: <code>(R)IGLS</code> and <code>quasi-Newton</code> iterative methods. The former implements a (restricted) iterative generalized least squares method, while the latter is based on a Newton-type maximization routine using specific <code>likelihood functions</code>. The default estimation method is based on a hybrid procedure, with few runs of of the (R)IGLS algorithm and then quasi-Newton iterations until convergence. This approach is optimal in exploiting the properties of both algorithms, with (R)IGLS being robust to the choice of initial values and quick in getting near the maximum, while the quasi-Newton is fast to converge from that point. Full (R)IGLS or quasi-Newton methods can be alternatively selected using the <code>control</code> argument of <code>mixmeta</code> (see <code>mixmeta.control</code>). Follow the links above for details on each iterative algorithm.
+</p>
+<p>Both estimation algorithms adopt a profiled (or concentrated) approach, where the optimization is expressed only in terms of the random-effects parameters. Cholesky and and QR decompositions are used for computational stability and efficiency, and for assuring the positive-definiteness of the estimated between-study (co)variance matrix. The method is described in details in Gasparrini and collaborators (2012) (see references below).
+</p>
+
+
+<h3>Value</h3>
+
+<p>These functions return an intermediate list object, with some components then processed and some others added later within <code>mixmeta.fit</code> and <code>mixmeta</code> to finalize an object of class <code>"mixmeta"</code>. See <code>mixmetaObject</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>As stated earlier, these functions are called internally by <code>mixmeta.fit</code>, and are not meant to be used directly. In particular, their code does not contain any check on the arguments provided, which are expected in specific formats. The functions are not exported in the namespace, and only documented for completeness.
+</p>
+<p>The arguments above are prepared by <code>mixmeta.fit</code> from its arguments <code>X</code>, <code>Z</code>, <code>y</code>, <code>S</code>, <code>groups</code>, and <code>bscov</code>. The list structure, although requiring more elaborate coding, is computationally more efficient, as it avoids the specification of sparse block-diagonal matrices, especially for meta-analysis involving a large number of studies.
+</p>
+<p>Some parameters of the fitting procedures are determined by the <code>control</code> argument, with default set by <code>mixmeta.control</code>. No missing values are accepted in the fitting functions. See details on <code>missing values</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Antonio Gasparrini &lt;<a href="mailto:antonio.gasparrini@lshtm.ac.uk">antonio.gasparrini@lshtm.ac.uk</a>&gt; and Francesco Sera &lt;<a href="mailto:francesco.sera@lshtm.ac.uk">francesco.sera@lshtm.ac.uk</a>&gt;</p>
+
+
+<h3>References</h3>
+
+<p>Sera F, Armstrong B, Blangiardo M, Gasparrini A (2019). An extended mixed-effects framework for meta-analysis.<em>Statistics in Medicine</em>. 2019;38(29):5429-5444. [Freely available <a href="http://www.ag-myresearch.com/2019_sera_statmed.html"><b>here</b></a>].
+</p>
+<p>Gasparrini A, Armstrong B, Kenward MG (2012). Multivariate meta-analysis for non-linear and other multi-parameter associations. <em>Statistics in Medicine</em>. <b>31</b>(29):3821–3839. [Freely available <a href="http://www.ag-myresearch.com/2012_gasparrini_statmed.html"><b>here</b></a>].
+</p>
+<p>Pinheiro JC and Bates DM (2000). <em>Mixed-Effects Models in S and S-PLUS</em>. New York, Springer Verlag.
+</p>
+<p>Lindstrom MJ and Bates DM (1988). Newton-Raphson and EM algorithms for linear mixed-effects models for repeated-measures data. <em>Journal of the American Statistical Association</em>. <b>83</b>(404):1014–1022.
+</p>
+<p>Goldstein H (1986). Multilevel mixed linear model analysis using iterative generalized least squares. <em>Biometrika</em>. <b>73</b>(1):43.
+</p>
+<p>Goldstein H (1992). Efficient computational procedures for the estimation of parameters in multilevel models based on iterative generalized least squares. <em>Computational Statistics \&amp; Data Analysis</em>. <b>13</b>(1):63–71.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See <code>mixmeta</code> for the general usage of the functions. See <code>mixmeta.control</code> to determine specific parameters of the fitting procedures. Use the triple colon operator ('<code>:::</code>') to access the code of the internal functions, such as <code>glsfit</code>. See <code>mixmeta-package</code> for an overview of the package and modelling framework.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># REML ESTIMATOR: UNIVARIATE MODEL
+mod1 &lt;- mixmeta(yC, S=SCC, data=smoking)
+summary(mod1)
+
+# ML ESTIMATOR: MULTIVARIATE MODEL
+year &lt;- berkey98$pubyear - 1983
+mod2 &lt;- mixmeta(cbind(PD,AL) ~ year, S=berkey98[5:7], data=berkey98,method="ml")
+print(summary(mod2), digits=3)
+round(mod2$Psi,3)
+
+# STRUCTURED BETWEEN-STUDY (CO)VARIANCE
+y &lt;- as.matrix(fibrinogen[2:5])
+S &lt;- as.matrix(fibrinogen[6:15])
+mod3 &lt;- mixmeta(y, S, bscov="hcs")
+summary(mod3)
+
+# MULTILEVEL MODEL
+mod4 &lt;- mixmeta(effect, var, random= ~ 1|district/study, data=school)
+summary(mod4)
+
+# LONGITUDINAL MODEL
+mod5 &lt;- mixmeta(logOR~time, S=logORvar, random=~I(time-15)|study, bscov="diag",
+  method="ml", data=gliomas)
+summary(mod5)
+</code></pre>
+
+
+</div>

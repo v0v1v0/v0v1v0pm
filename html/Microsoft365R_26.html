@@ -1,0 +1,244 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ms_outlook_folder</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Outlook mail folder</h2>
+
+<h3>Description</h3>
+
+<p>Class representing a folder in Outlook.
+</p>
+
+
+<h3>Format</h3>
+
+<p>An R6 object of class <code>ms_outlook_folder</code>, inheriting from <code>ms_outlook_object</code>, which in turn inherits from <code>ms_object</code>.
+</p>
+
+
+<h3>Fields</h3>
+
+
+<ul>
+<li> <p><code>token</code>: The token used to authenticate with the Graph host.
+</p>
+</li>
+<li> <p><code>tenant</code>: The Azure Active Directory tenant for the email account.
+</p>
+</li>
+<li> <p><code>type</code>: always "mail folder" for an Outlook folder object.
+</p>
+</li>
+<li> <p><code>user_id</code>: the user ID of the Outlook account.
+</p>
+</li>
+<li> <p><code>properties</code>: The item properties (metadata).
+</p>
+</li>
+</ul>
+<h3>Methods</h3>
+
+
+<ul>
+<li> <p><code>new(...)</code>: Initialize a new object. Do not call this directly; see 'Initialization' below.
+</p>
+</li>
+<li> <p><code>delete(confirm=TRUE)</code>: Delete this folder. By default, ask for confirmation first. Note that special folders cannot be deleted.
+</p>
+</li>
+<li> <p><code>update(...)</code>: Update the item's properties (metadata) in Microsoft Graph.
+</p>
+</li>
+<li> <p><code>do_operation(...)</code>: Carry out an arbitrary operation on the item.
+</p>
+</li>
+<li> <p><code>sync_fields()</code>: Synchronise the R object with the item metadata in Microsoft Graph.
+</p>
+</li>
+<li> <p><code>list_emails(...)</code>: List the emails in this folder.
+</p>
+</li>
+<li> <p><code>get_email(message_id)</code>: Get the email with the specified ID.
+</p>
+</li>
+<li> <p><code>create_email(...)</code>: Creates a new draft email in this folder, optionally sending it as well. See 'Creating and sending emails'.
+</p>
+</li>
+<li> <p><code>delete_email(message_id, confim=TRUE)</code>: Deletes the specified email. By default, ask for confirmation first.
+</p>
+</li>
+<li> <p><code>list_folders(filter=NULL, n=Inf)</code>: List subfolders of this folder.
+</p>
+</li>
+<li> <p><code>get_folder(folder_name, folder_id)</code>: Get a subfolder, either by the name or ID.
+</p>
+</li>
+<li> <p><code>create_folder(folder_name)</code>: Create a new subfolder of this folder.
+</p>
+</li>
+<li> <p><code>delete_folder(folder_name, folder_id, confirm=TRUE)</code>: Delete a subfolder. By default, ask for confirmation first.
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠copy(dest),move(dest)⁠</code>: Copies or moves this folder to another folder. All the contents of the folder will also be copied/moved. The destination should be an object of class <code>ms_outlook_folder</code>.
+</p>
+</li>
+</ul>
+<h3>Initialization</h3>
+
+<p>Creating new objects of this class should be done via the <code>get_folder</code>, <code>list_folders</code> or <code>create_folder</code> methods of this class or the <code>ms_outlook</code> class. Calling the <code>new()</code> method for this class only constructs the R object; it does not call the Microsoft Graph API to retrieve or create the actual folder.
+</p>
+
+
+<h3>Creating and sending emails</h3>
+
+<p>Outlook allows creating new draft emails in any folder, not just the Drafts folder (although that is the default location for the Outlook app, and the <code>ms_outlook</code> client class). To create a new email, call the <code>create_email()</code> method, which has the following signature:
+</p>
+<div class="sourceCode"><pre>create_email(body = "", content_type = c("text", "html"), subject = "",
+             to = NULL, cc = NULL, bcc = NULL, reply_to = NULL, send_now = FALSE)
+</pre></div>
+
+<ul>
+<li> <p><code>body</code>: The body of the message. This should be a string or vector of strings, which will be pasted together with newlines as separators. You can also supply a message object as created by the blastula or emayili packages—see the examples below.
+</p>
+</li>
+<li> <p><code>content_type</code>: The format of the body, either "text" (the default) or HTML.
+</p>
+</li>
+<li> <p><code>subject</code>: The subject of the message.
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠to,cc,bcc,reply_to⁠</code>: These should be lists of email addresses, in standard "user@host" format. You can also supply objects of class <code>AzureGraph::az_user</code> representing user accounts in Azure Active Directory.
+</p>
+</li>
+<li> <p><code>send_now</code>: Whether the email should be sent immediately, or saved as a draft. You can send a draft email later with its <code>send()</code> method.
+</p>
+</li>
+</ul>
+<p>This returns an object of class <code>ms_outlook_email</code>, which has methods for making further edits and attaching files.
+</p>
+<p>You can also supply message objects as created by the blastula and emayili packages in the <code>body</code> argument. Note that blastula objects include attachments (if any), and emayili objects include attachments, recipients, and subject line; the corresponding arguments to <code>create_email()</code> will not be used in this case.
+</p>
+<p>To reply to or forward an email, first retrieve it using <code>get_email()</code> or <code>list_emails()</code>, and then call its <code>create_reply()</code>, <code>create_reply_all()</code> or <code>create_forward()</code> methods.
+</p>
+
+
+<h3>Listing emails</h3>
+
+<p>To list the emails in a folder, call the <code>list_emails()</code> method. This returns a list of objects of class <code>ms_outlook_email</code>, and has the following signature:
+</p>
+<div class="sourceCode"><pre>list_emails(by = "received desc", search = NULL, filter = NULL, n = 100, pagesize = 10)
+</pre></div>
+
+<ul>
+<li> <p><code>by</code>: The sorting order of the message list. The possible fields are "received" (received date, the default), "from" and "subject". To sort in descending order, add a " desc". You can specify multiple sorting fields, with later fields used to break ties in earlier ones. The last sorting field is always "received desc" unless it appears earlier.
+</p>
+</li>
+<li> <p><code>search</code>: An optional string to search for. Only emails that contain the search string will be returned. See the <a href="https://learn.microsoft.com/en-us/graph/query-parameters#search-parameter">description of this parameter</a> for more information.
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠filter, n⁠</code>: See below.
+</p>
+</li>
+<li> <p><code>pagesize</code>: The number of emails per page. You can change this to a larger number to increase throughput, at the risk of running into timeouts.
+</p>
+</li>
+</ul>
+<p>Currently, searching and filtering the message list is subject to some limitations. You can only specify one of <code>search</code> and <code>filter</code>; searching and filtering at the same time will not work. Ordering the results is only allowed if neither a search term nor a filtering expression is present. If searching or filtering is done, the result is always sorted by date.
+</p>
+
+
+<h3>List methods generally</h3>
+
+<p>All <code style="white-space: pre;">⁠list_*⁠</code> methods have <code>filter</code> and <code>n</code> arguments to limit the number of results. The former should be an <a href="https://learn.microsoft.com/en-us/graph/query-parameters#filter-parameter">OData expression</a> as a string to filter the result set on. The latter should be a number setting the maximum number of (filtered) results to return. The default values are <code>filter=NULL</code> and <code>n=100</code> for listing emails, and <code>n=Inf</code> for listing folders. If <code>n=NULL</code>, the <code>ms_graph_pager</code> iterator object is returned instead to allow manual iteration over the results.
+</p>
+<p>Support in the underlying Graph API for OData queries is patchy. Not all endpoints that return lists of objects support filtering, and if they do, they may not allow all of the defined operators. If your filtering expression results in an error, you can carry out the operation without filtering and then filter the results on the client side.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>ms_outlook</code>, <code>ms_outlook_email</code>
+</p>
+<p><a href="https://learn.microsoft.com/en-us/graph/overview">Microsoft Graph overview</a>,
+<a href="https://learn.microsoft.com/en-us/graph/api/resources/mail-api-overview?view=graph-rest-1.0">Outlook API reference</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+
+outl &lt;- get_personal_outlook()
+
+folder &lt;- outl$get_folder("My folder")
+
+##
+## listing emails
+##
+
+# the default: 100 most recent messages
+folder$list_emails()
+
+# sorted by subject, then by most recent received date
+folder$list_emails(by="subject")
+
+# sorted by from name in descending order, then by most recent received date
+folder$list_emails(by="from desc")
+
+# searching the list
+folder$list_emails(search="important information")
+
+# retrieve a specific email:
+# note the Outlook ID is NOT the same as the Internet message-id
+email_id &lt;- folder$list_emails()[[1]]$properties$id
+folder$get_email(email_id)
+
+##
+## creating/sending emails
+##
+
+# a simple text email with just a body:
+# you can add other properties by calling the returned object's methods
+folder$create_email("Hello from R")
+
+# HTML-formatted email with all necessary fields, sent immediately
+folder$create_email("&lt;emph&gt;Emphatic hello&lt;/emph&gt; from R",
+    content_type="html",
+    to="user@example.com",
+    subject="example email",
+    send_now=TRUE)
+
+# using blastula to create a HTML email with Markdown
+bl_msg &lt;- blastula::compose_email(md(
+"
+## Hello!
+
+This is an email message that was generated by the blastula package.
+
+We can use **Markdown** formatting with the `md()` function.
+
+Cheers,
+
+The blastula team
+"),
+    footer=md("Sent via Microsoft365R"))
+folder$create_email(bl_msg, subject="example blastula email")
+
+
+# using emayili to create an email with attachments
+ey_email &lt;- emayili::envelope(
+    text="Hello from emayili",
+    to="user@example.com",
+    subject="example emayili email") %&gt;%
+    emayili::attachment("mydocument.docx") %&gt;%
+    emayili::attachment("mydata.xlsx")
+folder$create_email(ey_email)
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

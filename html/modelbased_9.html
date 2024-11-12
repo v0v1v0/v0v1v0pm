@@ -1,0 +1,214 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>estimate_means</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate Marginal Means (Model-based average at each factor level)</h2>
+
+<h3>Description</h3>
+
+<p>Estimate average value of response variable at each factor levels. For
+plotting, check the examples in <code>visualisation_recipe()</code>. See also
+other related functions such as <code>estimate_contrasts()</code> and
+<code>estimate_slopes()</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">estimate_means(
+  model,
+  by = "auto",
+  fixed = NULL,
+  transform = "response",
+  ci = 0.95,
+  backend = "emmeans",
+  at = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>A statistical model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>The predictor variable(s) at which to evaluate the desired effect
+/ mean / contrasts. Other predictors of the model that are not included
+here will be collapsed and "averaged" over (the effect will be estimated
+across them).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixed</code></td>
+<td>
+<p>A character vector indicating the names of the predictors to be
+"fixed" (i.e., maintained), so that the estimation is made at these values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transform</code></td>
+<td>
+<p>Is passed to the <code>type</code> argument in
+<code>emmeans::emmeans()</code>. See
+<a href="https://CRAN.R-project.org/package=emmeans/vignettes/transformations.html">this vignette</a>.
+Can be <code>"none"</code> (default for contrasts), <code>"response"</code>
+(default for means), <code>"mu"</code>, <code>"unlink"</code>, <code>"log"</code>.
+<code>"none"</code> will leave the values on scale of the linear predictors.
+<code>"response"</code> will transform them on scale of the response variable.
+Thus for a logistic model, <code>"none"</code> will give estimations expressed in
+log-odds (probabilities on logit scale) and <code>"response"</code> in terms of
+probabilities.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ci</code></td>
+<td>
+<p>Confidence Interval (CI) level. Default to <code>0.95</code> (<code style="white-space: pre;">⁠95%⁠</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>backend</code></td>
+<td>
+<p>Whether to use 'emmeans' or 'marginaleffects' as a backend.
+The latter is experimental and some features might not work.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>at</code></td>
+<td>
+<p>Deprecated, use <code>by</code> instead.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Other arguments passed for instance to <code>insight::get_datagrid()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>See the <strong>Details</strong> section below, and don't forget to also check out the
+<a href="https://easystats.github.io/modelbased/articles/estimate_slopes.html">Vignettes</a>
+and <a href="https://easystats.github.io/modelbased/index.html#features">README examples</a> for
+various examples, tutorials and use cases.
+</p>
+<p>The <code>estimate_slopes()</code>, <code>estimate_means()</code> and <code>estimate_contrasts()</code>
+functions are forming a group, as they are all based on <em>marginal</em>
+estimations (estimations based on a model). All three are also built on the
+<span class="pkg">emmeans</span> package, so reading its documentation (for instance for
+<code>emmeans::emmeans()</code> and <code>emmeans::emtrends()</code>) is recommended to understand
+the idea behind these types of procedures.
+</p>
+
+<ul>
+<li>
+<p> Model-based <strong>predictions</strong> is the basis for all that follows. Indeed,
+the first thing to understand is how models can be used to make predictions
+(see <code>estimate_link()</code>). This corresponds to the predicted response (or
+"outcome variable") given specific predictor values of the predictors (i.e.,
+given a specific data configuration). This is why the concept of <code>reference grid()</code> is so important for direct predictions.
+</p>
+</li>
+<li> <p><strong>Marginal "means"</strong>, obtained via <code>estimate_means()</code>, are an extension
+of such predictions, allowing to "average" (collapse) some of the predictors,
+to obtain the average response value at a specific predictors configuration.
+This is typically used when some of the predictors of interest are factors.
+Indeed, the parameters of the model will usually give you the intercept value
+and then the "effect" of each factor level (how different it is from the
+intercept). Marginal means can be used to directly give you the mean value of
+the response variable at all the levels of a factor. Moreover, it can also be
+used to control, or average over predictors, which is useful in the case of
+multiple predictors with or without interactions.
+</p>
+</li>
+<li> <p><strong>Marginal contrasts</strong>, obtained via <code>estimate_contrasts()</code>, are
+themselves at extension of marginal means, in that they allow to investigate
+the difference (i.e., the contrast) between the marginal means. This is,
+again, often used to get all pairwise differences between all levels of a
+factor. It works also for continuous predictors, for instance one could also
+be interested in whether the difference at two extremes of a continuous
+predictor is significant.
+</p>
+</li>
+<li>
+<p> Finally, <strong>marginal effects</strong>, obtained via <code>estimate_slopes()</code>, are
+different in that their focus is not values on the response variable, but the
+model's parameters. The idea is to assess the effect of a predictor at a
+specific configuration of the other predictors. This is relevant in the case
+of interactions or non-linear relationships, when the effect of a predictor
+variable changes depending on the other predictors. Moreover, these effects
+can also be "averaged" over other predictors, to get for instance the
+"general trend" of a predictor over different factor levels.
+</p>
+</li>
+</ul>
+<p><strong>Example:</strong> Let's imagine the following model <code>lm(y ~ condition * x)</code> where
+<code>condition</code> is a factor with 3 levels A, B and C and <code>x</code> a continuous
+variable (like age for example). One idea is to see how this model performs,
+and compare the actual response y to the one predicted by the model (using
+<code>estimate_response()</code>). Another idea is evaluate the average mean at each of
+the condition's levels (using <code>estimate_means()</code>), which can be useful to
+visualize them. Another possibility is to evaluate the difference between
+these levels (using <code>estimate_contrasts()</code>). Finally, one could also estimate
+the effect of x averaged over all conditions, or instead within each
+condition (<code>using [estimate_slopes]</code>).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A data frame of estimated marginal means.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(modelbased)
+
+# Frequentist models
+# -------------------
+model &lt;- lm(Petal.Length ~ Sepal.Width * Species, data = iris)
+
+estimate_means(model)
+estimate_means(model, fixed = "Sepal.Width")
+estimate_means(model, by = c("Species", "Sepal.Width"), length = 2)
+estimate_means(model, by = "Species=c('versicolor', 'setosa')")
+estimate_means(model, by = "Sepal.Width=c(2, 4)")
+estimate_means(model, by = c("Species", "Sepal.Width=0"))
+estimate_means(model, by = "Sepal.Width", length = 5)
+estimate_means(model, by = "Sepal.Width=c(2, 4)")
+
+# Methods that can be applied to it:
+means &lt;- estimate_means(model, fixed = "Sepal.Width")
+
+
+plot(means) # which runs visualisation_recipe()
+
+standardize(means)
+
+
+
+data &lt;- iris
+data$Petal.Length_factor &lt;- ifelse(data$Petal.Length &lt; 4.2, "A", "B")
+
+model &lt;- lmer(Petal.Length ~ Sepal.Width + Species + (1 | Petal.Length_factor), data = data)
+estimate_means(model)
+estimate_means(model, by = "Sepal.Width", length = 3)
+
+
+</code></pre>
+
+
+</div>

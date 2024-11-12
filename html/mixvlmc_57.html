@@ -1,0 +1,195 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>loglikelihood</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Log-Likelihood of a VLMC</h2>
+
+<h3>Description</h3>
+
+<p>This function evaluates the log-likelihood of a VLMC fitted on a discrete time series.
+When the optional argument <code>newdata</code> is provided, the function evaluates instead the
+log-likelihood for this (new) discrete time series.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">loglikelihood(
+  vlmc,
+  newdata,
+  initial = c("truncated", "specific", "extended"),
+  ignore,
+  ...
+)
+
+## S3 method for class 'vlmc'
+loglikelihood(
+  vlmc,
+  newdata,
+  initial = c("truncated", "specific", "extended"),
+  ignore,
+  ...
+)
+
+## S3 method for class 'vlmc_cpp'
+loglikelihood(
+  vlmc,
+  newdata,
+  initial = c("truncated", "specific", "extended"),
+  ignore,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>vlmc</code></td>
+<td>
+<p>the vlmc representation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>an optional discrete time series.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial</code></td>
+<td>
+<p>specifies the likelihood function, more precisely the way the
+first few observations for which contexts cannot be calculated are integrated
+in the likelihood. Defaults to <code>"truncated"</code>. See below for details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ignore</code></td>
+<td>
+<p>specifies the number of initial values for which the loglikelihood
+will not be computed. The minimal number depends on the likelihood function as
+detailed below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional parameters for loglikelihood.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The definition of the likelihood function depends on the value of the
+<code>initial</code> parameters, see the section below as well as the dedicated
+vignette: <code>vignette("likelihood", package = "mixvlmc")</code>.
+</p>
+<p>For VLMC objects, the method <code>loglikelihood.vlmc</code> will be used. For VLMC with covariables, <code>loglikelihood.covlmc</code>
+will instead be called. For more informations on <code>loglikelihood</code> methods, use <code>methods(loglikelihood)</code> and their associated documentation.
+</p>
+
+
+<h3>Value</h3>
+
+<p>an object of class <code>logLikMixVLMC</code> and <code>logLik</code>. This is a number,
+the log-likelihood of the (CO)VLMC with the following attributes:
+</p>
+
+<ul>
+<li> <p><code>df</code>: the number of parameters used by the VLMC for this likelihood calculation
+</p>
+</li>
+<li> <p><code>nobs</code>: the number of observations included in this likelihood calculation
+</p>
+</li>
+<li> <p><code>initial</code>: the value of the <code>initial</code> parameter used to compute this likelihood
+</p>
+</li>
+</ul>
+<h3>likelihood calculation</h3>
+
+<p>In a (CO)VLMC of <code>depth()</code>=k, we need k past values in order to compute the
+context of a given observation. As a consequence, in a time series <code>x</code>, the
+contexts of <code>x[1]</code> to <code>x[k]</code> are unknown. Depending on the value of <code>initial</code>
+different likelihood functions are used to tackle this difficulty:
+</p>
+
+<ul>
+<li> <p><code>initial=="truncated"</code>: the likelihood is computed using only
+<code>x[(k+1):length(x)]</code>
+</p>
+</li>
+<li> <p><code>initial=="specific"</code>: the likelihood is computed on the full time series
+using a specific context for the initial values, <code>x[1]</code> to <code>x[k]</code>. Each of
+the specific context is unique, leading to a perfect likelihood of 1 (0 in
+log scale). Thus the numerical value of the likelihood is identical as the
+one obtained with <code>initial=="truncated"</code> but it is computed on <code>length(x)</code>
+with a model with more parameters than in this previous case.
+</p>
+</li>
+<li> <p><code>initial=="extended"</code> (default): the likelihood is computed on the full time series
+using an extended context matching for the initial values, <code>x[1]</code> to <code>x[k]</code>.
+This can be seen as a compromised between the two other possibilities:
+the relaxed context matching needs in general to turn internal nodes
+of the context tree into actual context, increasing the number of parameters,
+but not as much as with "specific". However, the likelihood of say <code>x[1]</code>
+with an empty context is generally not 1 and thus the full likelihood is
+smaller than the one computed with "specific".
+</p>
+</li>
+</ul>
+<p>In all cases, the <code>ignore</code> first values of the time series are not included
+in the computed likelihood, but still used to compute contexts. If <code>ignore</code>
+is not specified, it is set to the minimal possible value, that is k for the
+<code>truncated</code> likelihood and 0 for the other ones. If it is specified, it must
+be larger or equal to k for <code>truncated</code>.
+</p>
+<p>See the dedicated vignette for a more mathematically oriented discussion:
+<code>vignette("likelihood", package = "mixvlmc")</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>stats::logLik()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Likelihood for a fitted VLMC.
+pc &lt;- powerconsumption[powerconsumption$week == 5, ]
+breaks &lt;- c(
+  0,
+  median(powerconsumption$active_power, na.rm = TRUE),
+  max(powerconsumption$active_power, na.rm = TRUE)
+)
+labels &lt;- c(0, 1)
+dts &lt;- cut(pc$active_power, breaks = breaks, labels = labels)
+m_nocovariate &lt;- vlmc(dts)
+ll &lt;- loglikelihood(m_nocovariate)
+ll
+attr(ll, "nobs")
+attr(ll, "df")
+
+## Likelihood for a new time series with previously fitted VLMC.
+pc_new &lt;- powerconsumption[powerconsumption$week == 11, ]
+dts_new &lt;- cut(pc_new$active_power, breaks = breaks, labels = labels)
+ll_new &lt;- loglikelihood(m_nocovariate, newdata = dts_new)
+ll_new
+attributes(ll_new)
+ll_new_specific &lt;- loglikelihood(m_nocovariate, initial = "specific", newdata = dts_new)
+ll_new_specific
+attributes(ll_new_specific)
+ll_new_extended &lt;- loglikelihood(m_nocovariate, initial = "extended", newdata = dts_new)
+ll_new_extended
+attributes(ll_new_extended)
+
+</code></pre>
+
+
+</div>

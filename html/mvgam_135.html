@@ -1,0 +1,174 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>PW</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Specify piecewise linear or logistic trends</h2>
+
+<h3>Description</h3>
+
+<p>Set up piecewise linear or logistic trend models
+in <code>mvgam</code>. These functions do not evaluate their arguments –
+they exist purely to help set up a model with particular piecewise
+trend models.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">PW(
+  n_changepoints = 10,
+  changepoint_range = 0.8,
+  changepoint_scale = 0.05,
+  growth = "linear"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>n_changepoints</code></td>
+<td>
+<p>A non-negative integer specifying the number of potential
+changepoints. Potential changepoints are selected uniformly from the
+first <code>changepoint_range</code> proportion of timepoints in <code>data</code>. Default is <code>10</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>changepoint_range</code></td>
+<td>
+<p>Proportion of history in <code>data</code> in which trend changepoints
+will be estimated. Defaults to 0.8 for the first 80%.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>changepoint_scale</code></td>
+<td>
+<p>Parameter modulating the flexibility of the
+automatic changepoint selection by altering the scale parameter of a Laplace distribution.
+The resulting prior will be <code>double_exponential(0, changepoint_scale)</code>.
+Large values will allow many changepoints and a more flexible trend, while
+small values will allow few changepoints. Default is <code>0.05</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>growth</code></td>
+<td>
+<p>Character string specifying either 'linear' or 'logistic' growth of
+the trend. If 'logistic', a variable labelled <code>cap</code> MUST be in <code>data</code> to specify the
+maximum saturation point for the trend (see details and examples in <code>mvgam</code> for
+more information).
+Default is 'linear'.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><em>Offsets and intercepts</em>:
+For each of these trend models, an offset parameter is included in the trend
+estimation process. This parameter will be incredibly difficult to identify
+if you also include an intercept in the observation formula. For that reason,
+it is highly recommended that you drop the intercept from the formula
+(i.e. <code>y ~ x + 0</code> or <code>y ~ x - 1</code>, where <code>x</code> are your optional predictor terms).
+<br><br><em>Logistic growth and the cap variable</em>:
+When forecasting growth, there is often some maximum achievable point that
+a time series can reach. For example, total market size, total population size
+or carrying capacity in population dynamics. It can be advantageous for the forecast
+to saturate at or near this point so that predictions are more sensible.
+This function allows you to make forecasts using a logistic growth trend model,
+with a specified carrying capacity. Note that this capacity does not need to be static
+over time, it can vary with each series x timepoint combination if necessary. But you
+must supply a <code>cap</code> value for each observation in the data when using <code>growth = 'logistic'</code>.
+For observation families that use a non-identity link function, the <code>cap</code> value will
+be internally transformed to the link scale (i.e. your specified <code>cap</code> will be log
+transformed if you are using a <code>poisson()</code> or <code>nb()</code> family). It is therefore important
+that you specify the <code>cap</code> values on the scale of your outcome. Note also that
+no missing values are allowed in <code>cap</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>mvgam_trend</code>, which contains a list of
+arguments to be interpreted by the parsing functions in <code>mvgam</code>
+</p>
+
+
+<h3>References</h3>
+
+<p>Taylor, Sean J., and Benjamin Letham. "Forecasting at scale." The American Statistician 72.1 (2018): 37-45.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Example of logistic growth with possible changepoints
+# Simple logistic growth model
+dNt = function(r, N, k){
+   r * N * (k - N)
+}
+
+# Iterate growth through time
+Nt = function(r, N, t, k) {
+for (i in 1:(t - 1)) {
+
+ # population at next time step is current population + growth,
+ # but we introduce several 'shocks' as changepoints
+ if(i %in% c(5, 15, 25, 41, 45, 60, 80)){
+   N[i + 1] &lt;- max(1, N[i] + dNt(r + runif(1, -0.1, 0.1),
+                                 N[i], k))
+   } else {
+   N[i + 1] &lt;- max(1, N[i] + dNt(r, N[i], k))
+   }
+  }
+ N
+}
+
+# Simulate expected values
+set.seed(11)
+expected &lt;- Nt(0.004, 2, 100, 30)
+plot(expected, xlab = 'Time')
+
+# Take Poisson draws
+y &lt;- rpois(100, expected)
+plot(y, xlab = 'Time')
+
+# Assemble data into dataframe and model. We set a
+# fixed carrying capacity of 35 for this example, but note that
+# this value is not required to be fixed at each timepoint
+mod_data &lt;- data.frame(y = y,
+                       time = 1:100,
+                       cap = 35,
+                       series = as.factor('series_1'))
+plot_mvgam_series(data = mod_data)
+
+# The intercept is nonidentifiable when using piecewise
+# trends because the trend functions have their own offset
+# parameters 'm'; it is recommended to always drop intercepts
+# when using these trend models
+mod &lt;- mvgam(y ~ 0,
+             trend_model = PW(growth = 'logistic'),
+             family = poisson(),
+             data = mod_data,
+             chains = 2)
+summary(mod)
+
+# Plot the posterior hindcast
+plot(mod, type = 'forecast')
+
+# View the changepoints with ggplot2 utilities
+library(ggplot2)
+mcmc_plot(mod, variable = 'delta_trend',
+          regex = TRUE) +
+scale_y_discrete(labels = mod$trend_model$changepoints) +
+labs(y = 'Potential changepoint',
+     x = 'Rate change')
+
+</code></pre>
+
+
+</div>

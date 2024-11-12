@@ -1,0 +1,133 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>RW</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Specify autoregressive dynamic processes</h2>
+
+<h3>Description</h3>
+
+<p>Set up autoregressive or autoregressive moving average trend models
+in <code>mvgam</code>. These functions do not evaluate their arguments –
+they exist purely to help set up a model with particular autoregressive
+trend models.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">RW(ma = FALSE, cor = FALSE)
+
+AR(p = 1, ma = FALSE, cor = FALSE)
+
+CAR(p = 1)
+
+VAR(ma = FALSE, cor = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>ma</code></td>
+<td>
+<p><code>Logical</code> Include moving average terms of order <code>1</code>?
+Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cor</code></td>
+<td>
+<p><code>Logical</code> Include correlated process errors as part of a
+multivariate normal process model? If <code>TRUE</code> and if <code>n_series &gt; 1</code>
+in the supplied data, a fully structured covariance matrix will be estimated
+for the process errors. Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>A non-negative integer specifying the autoregressive (AR) order.
+Default is <code>1</code>. Cannot currently be larger than <code>3</code> for <code>AR</code> terms,
+and cannot be anything other than <code>1</code> for continuous time AR (<code>CAR</code>) terms</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object of class <code>mvgam_trend</code>, which contains a list of
+arguments to be interpreted by the parsing functions in <code>mvgam</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# A short example to illustrate CAR(1) models
+# Function to simulate CAR1 data with seasonality
+sim_corcar1 = function(n = 120,
+                      phi = 0.5,
+                      sigma = 1,
+                      sigma_obs = 0.75){
+# Sample irregularly spaced time intervals
+time_dis &lt;- c(0, runif(n - 1, -0.1, 1))
+time_dis[time_dis &lt; 0] &lt;- 0; time_dis &lt;- time_dis * 5
+
+# Set up the latent dynamic process
+x &lt;- vector(length = n); x[1] &lt;- -0.3
+for(i in 2:n){
+ # zero-distances will cause problems in sampling, so mvgam uses a
+ # minimum threshold; this simulation function emulates that process
+ if(time_dis[i] == 0){
+   x[i] &lt;- rnorm(1, mean = (phi ^ 1e-12) * x[i - 1], sd = sigma)
+  } else {
+    x[i] &lt;- rnorm(1, mean = (phi ^ time_dis[i]) * x[i - 1], sd = sigma)
+  }
+}
+
+# Add 12-month seasonality
+cov1 &lt;- sin(2 * pi * (1 : n) / 12); cov2 &lt;- cos(2 * pi * (1 : n) / 12)
+beta1 &lt;- runif(1, 0.3, 0.7); beta2 &lt;- runif(1, 0.2, 0.5)
+seasonality &lt;- beta1 * cov1 + beta2 * cov2
+
+# Take Gaussian observations with error and return
+data.frame(y = rnorm(n, mean = x + seasonality, sd = sigma_obs),
+           season = rep(1:12, 20)[1:n],
+           time = cumsum(time_dis))
+}
+
+# Sample two time series
+dat &lt;- rbind(dplyr::bind_cols(sim_corcar1(phi = 0.65,
+                                         sigma_obs = 0.55),
+                             data.frame(series = 'series1')),
+            dplyr::bind_cols(sim_corcar1(phi = 0.8,
+                             sigma_obs = 0.35),
+                             data.frame(series = 'series2'))) %&gt;%
+      dplyr::mutate(series = as.factor(series))
+
+# mvgam with CAR(1) trends and series-level seasonal smooths; the
+# State-Space representation (using trend_formula) will be more efficient
+mod &lt;- mvgam(formula = y ~ 1,
+            trend_formula = ~ s(season, bs = 'cc',
+                                k = 5, by = trend),
+            trend_model = CAR(),
+            data = dat,
+            family = gaussian(),
+            samples = 300,
+            chains = 2)
+
+# View usual summaries and plots
+summary(mod)
+conditional_effects(mod, type = 'expected')
+plot(mod, type = 'trend', series = 1)
+plot(mod, type = 'trend', series = 2)
+plot(mod, type = 'residuals', series = 1)
+plot(mod, type = 'residuals', series = 2)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

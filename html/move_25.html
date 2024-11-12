@@ -1,0 +1,165 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>brownian.bridge.dyn</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculates a dynamic Brownian Bridge</h2>
+
+<h3>Description</h3>
+
+<p>This function uses a Move or MoveStack object to calculate the utilization distribution (UD) of the given track. It uses the dynamic Brownian Bridge Movement Model (dBBMM) to do so, having the advantage over the other Brownian Bridge Movement Model that changes in behavior are accounted for. It does so by using the behavioral change point analysis in a sliding window. For details see 'References'.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">brownian.bridge.dyn(object, raster=1, dimSize=10, location.error, 
+                    margin=11, window.size=31, ext=.3, bbox=NA,...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>a <code>move</code>, <code>moveStack</code>, <code>moveBurst</code>, <code>dBMvariance</code>, <code>dBMvarianceStack</code> object. This object must be in a projection different to longitude/latitude, use <code>spTransform</code> to transform your coordinates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>raster</code></td>
+<td>
+<p>a <code>RasterLayer</code> object or a numeric value. If a <code>RasterLayer</code> is provided the <code>brownian.bridge.dyn</code> starts to calculate the UD based on that raster. If a numeric value is provided it is interpreted as the resolution of the square raster cells (in map units); the according raster will be calculated internally.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dimSize</code></td>
+<td>
+<p>numeric. dimSize is only used if <code>raster</code> is not set. <code>dimSize</code> is interpreted as the number of cells along the largest dimension of the track. The according raster will be calculated internally.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>location.error</code></td>
+<td>
+<p>single numeric value or vector of the length of coordinates that describes the error of the location (sender/receiver) system in map units. Or a character string with the name of the column containing the location error can be provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>margin</code></td>
+<td>
+<p>The margin used for the behavioral change point analysis. This number has to be odd.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>window.size</code></td>
+<td>
+<p>The size of the moving window along the track. Larger windows provide more stable/accurate estimates of the brownian motion variance but are less well able to capture more frequent changes in behavior. This number has to be odd.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ext</code></td>
+<td>
+<p>Describes the amount of extension of the bounding box around the animal track. It can be numeric (same extension into all four directions), vector of two (first x, then y directional extension) or vector of four  (xmin, xmax, ymin, ymax extension). Default is .3 (extends the bounding box by 30%). Only considered in combination with a numeric raster argument or the dimSize argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bbox</code></td>
+<td>
+<p>vector with 4 numbers defining a bounding box for the raster. Only considered in combination with a numeric raster argument or the dimSize argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments: 
+</p>
+
+<dl>
+<dt><code>time.step</code></dt>
+<dd>
+<p>It correspond to the size of the time intervals taken for every integration step (in minutes) and thus specifies the temporal resolution of the numerical integration. If left <code>NULL</code> 15 steps are taken in the shortest time interval. See 'Details'. Optional.</p>
+</dd>
+<dt><code>verbose</code></dt>
+<dd>
+<p>logical. default is TRUE; if FALSE printing messages about the computational size is suppressed. Optional.</p>
+</dd>
+<dt><code>burstType</code></dt>
+<dd>
+<p>character vector with the name(s) of burstId(s) for which the UD should be calculated. This attribute can only be used if a <code>moveBurst</code> is provided in the <code>object</code> argument. Optional.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>There are four ways to launch the <code>brownian.bridge.dyn function</code>:<br><br>
+1. Use a raster: <br>
+A RasterLayer object is set for the raster argument which is then used to calculate the UD. <br>
+(needed arguments: <em>object, raster(=<code>RasterLayer</code>), location.error, margin, window.size</em>; optional arguments: <em>time.step, verbose, burstType</em>)<br><br>
+2. Set the cell size<br>
+To set the cell size, set a numeric value for the raster argument without providing dimSize. The numeric raster argument is used as the cell sizes of the raster. <br>
+(needed arguments: <em>object, raster(=<code>numeric</code>), location.error, margin, window.size</em>; optional arguments: <em>ext, bbox, time.step, verbose, burstType</em>)<br><br>
+3. Set the number of cells (col/row) <br>
+To set the number of cells along the largest dimension a numeric dimSize argument can be set. <br>
+(needed arguments: <em>object, dimSize, location.error, margin, window.size</em>; optional arguments: <em>ext, bbox, time.step, verbose, burstType</em>)<br><br>
+4. Using default raster <br>
+When there are no values set, the default raster value is used to calculate and create a RasterLayer object, which is returned to the same function. Note: depending on the size of the area of interest, the default cell size value can result in a large number of cells which may take a very long time to calculate!<br><br></p>
+<p>The function prints an estimate of the size of the computational task ahead. This can give an indication of how long the computation is going to take. It should scale roughly linearly with the duration of the computations although changes in the setup mean the computational complexity still is calculated base on the extent but this is not informative any more on the computation time. It is only useful as a rough indication of calculation duration.
+</p>
+<p><code>time.step</code>. The default value is the shortest time interval divided by 15. This means, if there is a location recorded e.g. every 30 mins, the function divides each segment into 2 mins chunks upon which it does the calculation. If for some reason there is one time interval of 15 secs in the track, each segment of the track will be divided into 1secs chunks, increasing the calculation time immensely. Before calculating the DBBMM, use e.g. <code>min(timeLag(x=myMoveObject, units="mins"))</code> to check which is the duration of the shortest time interval of the track. If the track contains time intervals much shorter than the scheduled on the tag, set the <code>time.step</code> e.g. to the scheduled time interval at which the tag was set, divided by 15.
+</p>
+
+
+<h3>Value</h3>
+
+<p>'<code>DBBMM</code>' object, if <code>move</code> or <code>dBMvariance</code> object is provided <br>
+'<code>DBBMMStack</code>' object, if <code>moveStack</code> or <code>dBMvarianceStack</code> object is provided <br>
+'<code>DBBMMBurstStack</code>' object, if <code>moveBurst</code> object is provided
+</p>
+
+
+<h3>Note</h3>
+
+<p>Note that the first few and last few segments of the trajectory are omitted in the calculation of the UD since a lower number of estimates for the Brownian motion variance are obtained for those segments.
+</p>
+<p>Thanks to Ryan Nielson for making the BBMM package that served as an example for early versions of this code.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Bart Kranstauber, Marco Smolla &amp; Anne Scharf</p>
+
+
+<h3>References</h3>
+
+<p>Kranstauber, B., Kays, R., LaPoint, S. D., Wikelski, M. and Safi, K. (2012), A dynamic Brownian bridge movement model to estimate utilization distributions for heterogeneous animal movement. Journal of Animal Ecology. doi: 10.1111/j.1365-2656.2012.01955.x
+</p>
+
+
+<h3>See Also</h3>
+
+<p>brownian.motion.variance.dyn, getMotionVariance, getVolumeUD, contour, outerProbability, raster, raster2contour, dynBGB, dynBGBvariance
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## create a move object
+data(leroy)
+## change projection method to aeqd and center the coordinate system to the track
+data2 &lt;- spTransform(leroy[30:90,], CRSobj="+proj=aeqd +ellps=WGS84", center=TRUE)
+
+## create a DBBMM object
+dbbmm &lt;- brownian.bridge.dyn(object=data2, location.error=12, dimSize=125, ext=1.2, 
+			     time.step=2, margin=15)
+
+plot(dbbmm)
+
+
+</code></pre>
+
+
+</div>

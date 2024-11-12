@@ -1,0 +1,314 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>SelectionVar</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Variable selection using random forests, logistic regression methods or sparse partial least squares discriminant analysis (sPLS-DA).</h2>
+
+<h3>Description</h3>
+
+<p>This function performs variable selection (i.e. selection of discriminant mass-over-charge values) using either recursive feature elimination (RFE) algorithm with Random Forest, or logistic regression model, or sparse partial least squares discriminant analysis (sPLS-DA) or methods based on the distribution of variable importances of random forests.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">SelectionVar(X,
+             Y,
+             MethodSelection = c("RFERF", "RFEGlmnet", "VSURF", "sPLSDA", "mda", "cvp"), 
+             MethodValidation = c("cv", "repeatedcv", "LOOCV"),
+             PreProcessing = c("center", "scale", "nzv", "corr"), 
+             Metric = c("Kappa", "Accuracy"), Sampling = c("no", "up","down", "smote"),
+             NumberCV = NULL,
+             RepeatsCV = NULL, 
+             Sizes,
+             Ntree = 1000,
+             ncores = 2,
+             threshold = 0.01,
+             ncomp.max = 10,
+             nbf=0)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>a numeric <code>matrix</code> corresponding to a library of mass spectra. Each row of <code>X</code> is the intensities of a mass spectrum measured on mass-over-charge values. The columns are assumed to be mass-over-charge values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+<p>a <code>factor</code> with a length equal to the number of rows in <code>X</code> and containing the categories of each mass spectrum in <code>X</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MethodSelection</code></td>
+<td>
+<p>a <code>character</code> indicating the method used for variables selection. Six methods are available: (1) <code>"RFERF"</code> for recursive feature elimination (RFE) coupled with random forests (see <code>rfe</code> in the <code>caret</code> R package); (2) <code>"RFEGlmnet"</code> for RFE with coupled with logistic regression; (3) <code>"VSURF"</code> for a method using random forests (see <code>VSURF</code> in the <code>VSURF</code> R package); (4) <code>"sPLSDA"</code> for a method based on sparse partial least squares discriminant analysis (see <code>splsda</code> in the <code>mixOmics</code>); (5) <code>"mda"</code> for a method selecting variables from the distribution of the "mean decrease in accuracy" variables importances of a random forest (see <code>importance</code> function in the <code>randomForest</code> R package); (6) <code>"cvp"</code> for a method selecting variables from the distribution of the cross-validated  permutation variables importances of a random forest (see <code>CVPVI</code> function in the <code>vita</code> R package). Additional explanations are available in the Details section.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MethodValidation</code></td>
+<td>
+<p>a <code>character</code> indicating the resampling method:<code>"cv"</code> for cross-validation; <code>"repeatedcv"</code> for repeated cross-validation; and <code>"LOOCV"</code> for leave-one-out cross-validation. Only used for the <code>"RFERF"</code>, <code>"RFEGlmnet"</code> and <code>"sPLSDA"</code> methods.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>NumberCV</code></td>
+<td>
+<p>a <code>numeric</code> value indicating the number of K-folds for cross-validation. Only used for the <code>"RFERF"</code>, <code>"RFEGlmnet"</code>, <code>"sPLSDA"</code> and <code>"cvp"</code> methods.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>RepeatsCV</code></td>
+<td>
+<p>a <code>numeric</code> value indication the number of repeat(s) for K-folds for cross-validation or repeated cross-validation. Only used for the <code>"RFERF"</code>, <code>"RFEGlmnet"</code> and <code>"sPLSDA"</code> methods.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>PreProcessing</code></td>
+<td>
+<p>a <code>vector</code> indicating the method(s) used to pre-process the mass spectra in <code>X</code>: centering (<code>"center"</code>), scaling (<code>"scale"</code>), eliminating near zero variance predictors (<code>"nzv"</code>), or correlated predictors (<code>"corr"</code>). Only used for the <code>"RFERF"</code>, <code>"RFEGlmnet"</code> and <code>"sPLSDA"</code> methods.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Metric</code></td>
+<td>
+<p>a <code>character</code> indicating the metric used to select the optimal model for the RFE algorithms. Possible metrics are the <code>"Kappa"</code> coefficient or the <code>"Accuracy"</code>. This argument is not used for the <code>"VSURF"</code>, <code>"cvp"</code>, <code>"mda"</code> and the <code>"sPLSDA"</code> methods of <code>MethodSelection</code>. See details of the <code>"SelectionVar"</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Sampling</code></td>
+<td>
+<p>a <code>character</code> indicating an optional subsampling method to handle imbalanced datasets: subsampling methods are either <code>"no"</code> (no subsampling), <code>"up"</code>, <code>"down"</code> or <code>"smote"</code>. <code>"no"</code> by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Sizes</code></td>
+<td>
+<p>a numeric <code>vector</code> indicating the number of variables to select. Only used for the <code>"RFERF"</code>, <code>"RFEGlmnet"</code> and <code>"sPLSDA"</code> methods. For the <code>"RFERF"</code> and <code>"RFEGlmnet"</code> methods, the final number of selected variables is the one giving the highest average <code>"Metric"</code> (<code>"Accuracy"</code> or <code>"Kappa"</code>) on the folds used for cross-validation. It is thus bounded by <code>NumberCV*max(Sizes)</code>. For the <code>"sPLSDA"</code> method, <code>Sizes</code> corresponds to the number of variables to test from the <code>X</code> dataset when estimating the sparse PLS-DA model (see <code>test.keepX</code> argument in the <code>mixOmics</code> R package).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Ntree</code></td>
+<td>
+<p>a <code>numeric</code> value indicating the number of trees in random forests, only used if <code>MethodSelection</code> = <code>"VSURF"</code> or <code>"mda"</code> or <code>"cvp"</code>. Note we advise to select a number highly superior to the total number of variables for a robust selection (to not miss some features in the subspaces used to build trees). It is 1000 by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+<p>a <code>positive integer</code> only used for the <code>cvp</code> method. The number of cores to use, i.e. at most how many child processes will be run simultaneously. Must be at least one, and parallelization requires at least two cores. If <code>ncores=0</code>, then the half of CPU cores on the current host are used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncomp.max</code></td>
+<td>
+<p>a <code>positive integer</code> indicating the maximum number of components that can be included in the sPLS-DA model (10 by default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+<p>a <code>numeric</code> value corresponding to a threshold used for the optimal selection of the number of components included in the sPLS-DA model (0.01 by default). When the number of components increases and the balanced classification error rate (BER) does not change anymore, we keep the minimal number where the BER reaches a plateau (i.e. when <code>BER(N)-BER(N+1)&lt;threshold</code>, we keep <code>N</code>). If a plateau is not reached, <code>ncomp.max</code> components are selected.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nbf</code></td>
+<td>
+<p>a <code>numeric</code> value corresponding to a number of simulated non discriminant features. This is used to improve the robustness of the estimation of the distribution of the variable importances for non discriminant features. Only used for the <code>"mda"</code> and <code>"cvp"</code> methods. 0 by default: no additional non discriminant feature is created.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The selection of variables can be carried out with two different objectives: either to find a minimum number of variables allowing to obtain the highest possible accuracy (or Kappa coefficient), which involves the possible elimination of variables correlated between them (i.e. not bringing any additional predictive power with respect to some other variables); or to find all the variables in the dataset with a potential predictive power ("discriminant" variables).
+</p>
+<p>The <code>VSURF</code> method attempts to accomplish only the first objective. 
+The <code>mda</code> and <code>cvp</code> methods attempt to accomplish the second objective, as do the methods available in the <code>SelectionVarStat</code> function of our <code>MSclassifR</code> R package.
+The <code>RFERF</code>, <code>RFEGlmnet</code> and <code>sPLSDA</code> methods take as input a number of variables to be selected(<code>Sizes</code> argument), and can therefore be used with both objectives.
+</p>
+<p>Within the framework of the second objective, either the <code>mda</code> or <code>cvp</code> methods can be used to estimate a number of discriminant variables from the importances of variables. The <code>SelectionVarStat</code> function can also be used to estimate this number from distributions of p-values. Of note, be sure that the <code>Ntree</code> argument is high enough to get a robust estimation with the <code>mda</code> or <code>cvp</code> methods.
+</p>
+<p>The <code>"RFEGlmnet"</code> and <code>"RFERF"</code> methods are based on recursive feature elimination and can either optimize the kappa coefficient or the accuracy as metrics when selecting variables.
+</p>
+<p>The <code>"sPLSDA"</code> method selects variables from the ones kept in latent components of the sparse PLS-DA model using an automatic choice of the number of components (when the balanced classification error rate (BER) reaches a plateau - see argument <code>threshold</code>).
+</p>
+<p>The <code>"mda"</code> and <code>"cvp"</code> methods use the distribution of variable importances to estimate the number of discriminant features (mass-over-charge values). Briefly, the distribution of variable importances for useless (not discriminant) features is firstly estimated from negative importance variables by the method proposed in section 2.6 of Janitza et al.(2018). Next, the following mixture model is assumed:
+<code class="reqn">F(x)=\pi\times F_u(x)+(1-\pi)\times F_d(x)</code>
+where <code class="reqn">F</code> is the empirical cumulative distribution of variable importances of all the features, <code class="reqn">F_u</code> the one of the useless features, <code class="reqn">F_d</code> the one of the discriminative features, and <code class="reqn">\pi</code> is the proportion of useless features in the dataset. 
+From the estimated distribution of useless features, we can estimate quantile values <code class="reqn">x_q</code> and compute <code class="reqn">\epsilon_q=min(F(x_q)/q;1)</code> for each quantile <code class="reqn">q</code>. The minimum of the <code class="reqn">\epsilon_q</code> corresponds to the estimated proportion of useless features in the dataset, what allows estimating the number of discriminant features by <code class="reqn">N_d=floor(N\times (1 - \pi))</code> where N is the total number of features. Next, the <code class="reqn">N_d</code> features with the highest variable importances are selected.
+</p>
+<p>The <code>"VSURF"</code> and <code>"sPLSDA"</code> methods use the minimum mean out-of-bag (OOB) and balanced classification error rate (BER) metrics respectively. 
+</p>
+<p>For <code>Sampling</code> methods available for unbalanced data: <code>"up"</code> corresponds to the up-sampling method which consists of random sampling (with replacement) so that the minority class is the same size as the majority class; <code>"down"</code> corresponds to the down-sampling method randomly which consists of random sampling (without replacement) of the majority class so that their class frequencies match the minority class; <code>"smote"</code> corresponds to the Synthetic Minority Over sampling Technique (SMOTE) specific algorithm for data augmentation which consist of creates new data from minority class using the K Nearest Neighbor algorithm.
+</p>
+<p>See <code>rfe</code> in the <code>caret</code> R package, <code>VSURF</code> in the <code>VSURF</code> R package, <code>splsda</code> in the <code>mixOmics</code> R package, <code>importance</code> function in the <code>randomForest</code> R package, and <code>CVPVI</code> function in the <code>vita</code> R package for more details.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list composed of:
+</p>
+<table><tr style="vertical-align: top;">
+<td><code>sel_moz</code></td>
+<td>
+<p>a <code>vector</code> with discriminant mass-over-chage values.</p>
+</td>
+</tr></table>
+<p>For the <code>"RFERF"</code> and <code>"RFEGlmnet"</code> methods, it also returns the results of the <code>rfe</code> function of the <code>caret</code> R package.
+</p>
+<p>For the <code>"VSURF"</code> method, it also returns the results of the results of the <code>VSURF</code> function of the <code>VSURF</code> R package. 
+</p>
+<p>For the <code>"sPLSDA"</code> method, it also returns the following items:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Raw_data</code></td>
+<td>
+<p>a horizontal bar plot and  containing the contribution of features on each component.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>selected_variables</code></td>
+<td>
+<p><code>data frame</code> with uniques features (selected variables to keep and containing the contribution of features in order to class samples).See <code>plotLoadings</code> in the <code>mixOmics</code> R package for details.</p>
+</td>
+</tr>
+</table>
+<p>For the <code>"mda"</code> and <code>"cvp"</code> methods, it also returns the following items:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>nb_to_sel</code></td>
+<td>
+<p>a numeric value corresponding to an estimated number of mass-over-chage values where the intensities are significantly different between categories (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>imp_sel</code></td>
+<td>
+<p>a vector containing the variable importances for the selected features.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Kuhn, Max. (2012). The caret Package. Journal of Statistical Software. 28.
+</p>
+<p>Genuer, Robin, Jean-Michel Poggi and Christine Tuleau-Malot. VSURF : An R Package for Variable Selection Using Random Forests. R J. 7 (2015): 19.
+</p>
+<p>Friedman J, Hastie T, Tibshirani R (2010). Regularization Paths for Generalized Linear Models via Coordinate Descent. Journal of Statistical Software, 33(1), 1-22.
+</p>
+<p>Kim-Anh Le Cao, Florian Rohart, Ignacio Gonzalez, Sebastien Dejean with key contributors Benoit Gautier, Francois, Bartolo, contributions from Pierre Monget, Jeff Coquery, FangZou Yao and Benoit Liquet. (2016). mixOmics: Omics. Data Integration Project. R package version 6.1.1. <a href="https://CRAN.R-project.org/package=mixOmics">https://CRAN.R-project.org/package=mixOmics</a>
+</p>
+<p>Nitesh V. Chawla, Kevin W. Bowyer, Lawrence O. Hall, and W. Philip Kegelmeyer. 2002. SMOTE: synthetic minority over-sampling technique. J. Artif. Int. Res. 16, 1 (January 2002), 321–357.
+</p>
+<p>Branco P, Ribeiro R, Torgo L (2016). “UBL: an R Package for Utility-Based Learning.” CoRR, abs/1604.08079. 
+</p>
+<p>Janitza, S., Celik, E., Boulesteix, A. L. (2018). A computationally fast variable importance test for random forests for high-dimensional data. Advances in Data Analysis and Classification, 12, 885-915.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+
+library("MSclassifR")
+library("MALDIquant")
+
+###############################################################################
+## 1. Pre-processing of mass spectra
+
+# load mass spectra and their metadata
+data("CitrobacterRKIspectra","CitrobacterRKImetadata", package = "MSclassifR")
+# standard pre-processing of mass spectra
+spectra &lt;- MSclassifR::SignalProcessing(CitrobacterRKIspectra)
+# detection of peaks in pre-processed mass spectra
+peaks &lt;- MSclassifR::PeakDetection(x = spectra, averageMassSpec=FALSE)
+# matrix with intensities of peaks arranged in rows (each column is a mass-over-charge value)
+IntMat &lt;- MALDIquant::intensityMatrix(peaks)
+rownames(IntMat) &lt;- paste(CitrobacterRKImetadata$Strain_name_spot)
+# remove missing values in the matrix
+IntMat[is.na(IntMat)] &lt;- 0
+# normalize peaks according to the maximum intensity value for each mass spectrum
+IntMat &lt;- apply(IntMat,1,function(x) x/(max(x)))
+# transpose the matrix for statistical analysis
+X &lt;- t(IntMat)
+# define the known categories of mass spectra for the classification
+Y &lt;- factor(CitrobacterRKImetadata$Species)
+
+###############################################################################
+## 2. Perform variables selection using SelectionVar with RFE and random forest 
+# with 5 to 10 variables, 
+# up sampling method and trained with the Kappa coefficient metric
+a &lt;- SelectionVar(X,
+                  Y,
+                  MethodSelection = c("RFERF"),
+                  MethodValidation = c("cv"),
+                  PreProcessing = c("center","scale","nzv","corr"),
+                  NumberCV = 2,
+                  Metric = "Kappa",
+                  Sizes = c(5:10),
+                  Sampling = "up")
+
+# Plotting peaks on the first pre-processed mass spectrum and highlighting the 
+# discriminant mass-over-charge values with red lines
+PlotSpectra(SpectralData=spectra[[1]],Peaks=peaks[[1]],
+            Peaks2=a$sel_moz,col_spec="blue",col_peak="black")
+
+###############################################################################
+## 3. Perform variables selection using SelectionVar with VSURF 
+# This function can last a few minutes
+b &lt;- SelectionVar(X, Y, MethodSelection = c("VSURF"))
+summary(b$result)
+
+###############################################################################
+## 4. Perform variables selection using SelectionVar with "mda" or "cvp"
+# option 1: Using mean decrease in accuracy  
+# with no sampling method
+c &lt;- SelectionVar(X,Y,MethodSelection="mda",Ntree=10*ncol(X)) 
+
+# Estimation of the number of peaks to discriminate species
+c$nb_to_sel
+
+# Discriminant mass-over-charge values 
+c$sel_moz
+
+# Plotting peaks on the first pre-processed mass spectrum and highlighting the 
+# discriminant mass-over-charge values with red lines
+PlotSpectra(SpectralData=spectra[[1]],Peaks=peaks[[1]],
+            Peaks2=c$sel_moz,col_spec="blue",col_peak="black")
+
+# option 2: Using cross-validated permutation variable importance measures (more "time-consuming")       
+# with no sampling method
+d &lt;- SelectionVar(X,Y,MethodSelection="cvp",NumberCV=2,ncores=2,Ntree=1000)
+
+# Estimation of the number of peaks to discriminate species
+d$nb_to_sel
+
+# Discriminant mass-over-charge values 
+d$sel_moz
+
+# Plotting peaks on the first pre-processed mass spectrum and highlighting the 
+# discriminant mass-over-charge values with red lines
+PlotSpectra(SpectralData=spectra[[1]],Peaks=peaks[[1]],
+            Peaks2=d$sel_moz,col_spec="blue",col_peak="black")
+
+# Mass-over charge values found with both methods ("mda" and "cvp")
+intersect(c$sel_moz,d$sel_moz)
+
+
+
+
+</code></pre>
+
+
+</div>

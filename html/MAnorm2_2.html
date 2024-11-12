@@ -1,0 +1,270 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bioCond</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create a <code>bioCond</code> Object to Group ChIP-seq Samples</h2>
+
+<h3>Description</h3>
+
+<p><code>bioCond</code> creates an object which represents a biological condition,
+given a set of ChIP-seq samples belonging to the condition. Such objects,
+once created, can be supplied to <code>fitMeanVarCurve</code> to fit the
+mean-variance trend, and subsequently to
+<code>diffTest</code> for calling differential
+ChIP-seq signals between two conditions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bioCond(
+  norm.signal,
+  occupancy = NULL,
+  occupy.num = 1,
+  name = "NA",
+  weight = NULL,
+  strMatrix = NULL,
+  meta.info = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>norm.signal</code></td>
+<td>
+<p>A matrix or data frame of normalized signal intensities,
+where each row should represent a genomic interval and each column a
+sample.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>occupancy</code></td>
+<td>
+<p>A matrix or data frame of logical values with the same
+dimension as of <code>norm.signal</code>, marking the occupancy status of each
+interval in each sample. This argument is only used to derive the
+occupancy status of each interval in the biological condition.
+By default, each interval is
+considered to be occupied by each sample.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>occupy.num</code></td>
+<td>
+<p>For each interval, the minimum number of samples occupying
+it required for the interval to be considered as occupied by the
+biological condition (see also "Details").</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>name</code></td>
+<td>
+<p>A character scalar specifying the name of the biological
+condition. Used only for demonstration.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weight</code></td>
+<td>
+<p>A matrix or data frame specifying the relative precisions of
+signal intensities in <code>norm.signal</code>. Must have the same number of
+columns as <code>norm.signal</code>. A vector is interpreted as a matrix
+having a single row. Note that rows of <code>weight</code> are recycled if
+necessary. By default, the same weight is assigned to each measurement
+in <code>norm.signal</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strMatrix</code></td>
+<td>
+<p>An optional list of symmetric matrices specifying directly
+the structure matrix of each genomic interval. Elements of it are
+recycled if necessary.
+This argument, if set, overrides the <code>weight</code>
+argument. See "Details" and <code>setWeight</code> for information
+about structure matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meta.info</code></td>
+<td>
+<p>Optional extra information (e.g., genomic coordinates
+of intervals). If set, the supplied argument is stored in the
+<code>meta.info</code> field of returned <code>bioCond</code>, and shall never be
+used by other tools in <code>MAnorm2</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>To call this function, one typically needs to first perform an MA
+normalization on raw read counts of ChIP-seq samples by using
+<code>normalize</code>.
+</p>
+<p>The function will assign an indicator to each genomic interval (stored in
+the <code>occupancy</code> field of the returned object; see also "Value"),
+marking if the interval is occupied by this biological condition.
+The argument <code>occupy.num</code> controls the minimum number of samples that
+occupy an interval required for the interval to be determined as occupied by
+the condition. Notably, the occupancy states of genomic intervals may matter
+when fitting a mean-variance curve, as one may choose to use only the
+occupied intervals to fit the curve (see also
+<code>fitMeanVarCurve</code>).
+</p>
+<p>For signal intensities of each genomic interval, <code>weight</code> specifies
+their relative precisions corresponding to different ChIP-seq samples in
+<code>norm.signal</code>. Intrinsically, the weights will be used to construct the
+structure matrices of the created <code>bioCond</code>. Alternatively, one
+can specify <code>strMatrix</code> directly when calling the function. To be
+noted, MAnorm2 uses a structure matrix to model the relative variances of
+signal intensities of a genomic interval as well as the correlations among
+them, by considering them to be associated with a covariance matrix
+proportional to the structure matrix. See <code>setWeight</code> for
+a detailed description of structure matrix.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>bioCond</code> returns an object of <code>class</code>
+<code>"bioCond"</code>, representing the biological condition to which the
+supplied ChIP-seq samples belong.
+</p>
+<p>In detail, an object of class <code>"bioCond"</code> is a list containing at
+least the following fields:
+</p>
+
+<dl>
+<dt><code>name</code></dt>
+<dd>
+<p>Name of the biological condition.</p>
+</dd>
+<dt><code>norm.signal</code></dt>
+<dd>
+<p>A matrix of normalized signal
+intensities of ChIP-seq samples belonging to the condition.</p>
+</dd>
+<dt><code>occupancy</code></dt>
+<dd>
+<p>A logical vector marking the occupancy
+status of each genomic interval.</p>
+</dd>
+<dt><code>meta.info</code></dt>
+<dd>
+<p>The <code>meta.info</code> argument (only present
+when it is supplied).</p>
+</dd>
+<dt><code>strMatrix</code></dt>
+<dd>
+<p>Structure matrices associated with the
+genomic intervals.</p>
+</dd>
+<dt><code>sample.mean</code></dt>
+<dd>
+<p>A vector of observed mean signal
+intensities of genomic intervals.</p>
+</dd>
+<dt><code>sample.var</code></dt>
+<dd>
+<p>A vector recording the observed variance of
+signal intensities of each genomic interval.</p>
+</dd>
+</dl>
+<p>Note that the <code>sample.mean</code> and <code>sample.var</code> fields
+are calculated by applying the
+GLS (generalized least squares) estimation to the signal intensities of
+each genomic interval, considering them as having
+a common mean and a covariance matrix proportional to the corresponding
+structure matrix. Specifically, the <code>sample.var</code> field times the
+corresponding structure matrices gives an unbiased estimate of the
+covariance matrix associated with each interval (see
+<code>setWeight</code> for details).
+</p>
+<p>Besides, a <code>fit.info</code> field will be added to <code>bioCond</code> objects
+once you have fitted a mean-variance curve for them (see
+<code>fitMeanVarCurve</code> for details).
+</p>
+<p>There are also other fields used internally for fitting the
+mean-variance trend and calling differential intervals between
+conditions. These fields should never be modified directly.
+</p>
+
+
+<h3>Warning</h3>
+
+<p>Among all the fields contained in a <code>bioCond</code> object,
+only <code>name</code> and <code>meta.info</code> are subject to free modifications;
+The <code>strMatrix</code> field must be modified through
+<code>setWeight</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Tu, S., et al., <em>MAnorm2 for quantitatively comparing
+groups of ChIP-seq samples.</em> Genome Res, 2021.
+<strong>31</strong>(1): p. 131-145.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>normalize</code> for performing an MA normalization on
+ChIP-seq samples; <code>normalizeBySizeFactors</code> for normalizing
+ChIP-seq samples based on their size factors; <code>setWeight</code>
+for modifying the structure matrices of a <code>bioCond</code> object.
+</p>
+<p><code>normBioCond</code> for performing an MA normalization on
+<code>bioCond</code> objects; <code>normBioCondBySizeFactors</code> for
+normalizing <code>bioCond</code> objects based on their size factors;
+<code>cmbBioCond</code> for combining a set of <code>bioCond</code>
+objects into a single one; <code>MAplot.bioCond</code> for creating
+an MA plot on two <code>bioCond</code> objects; <code>summary.bioCond</code>
+for summarizing a <code>bioCond</code>.
+</p>
+<p><code>fitMeanVarCurve</code> for modeling
+the mean-variance dependence across intervals in <code>bioCond</code> objects;
+<code>diffTest</code> for comparing two
+<code>bioCond</code> objects; <code>aovBioCond</code> for comparing multiple
+<code>bioCond</code> objects; <code>varTestBioCond</code> for calling
+hypervariable and invariant intervals across ChIP-seq samples contained
+in a <code>bioCond</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(H3K27Ac, package = "MAnorm2")
+attr(H3K27Ac, "metaInfo")
+
+## Construct a bioCond object for the GM12891 cell line.
+
+# Apply MA normalization to the ChIP-seq samples of GM12891.
+norm &lt;- normalize(H3K27Ac, 5:6, 10:11)
+
+# Call the constructor and optionally attach some meta information to the
+# resulting bioCond, such as the coordinates of genomic intervals.
+GM12891 &lt;- bioCond(norm[5:6], norm[10:11], name = "GM12891",
+                   meta.info = norm[1:3])
+
+# Alternatively, you may assign different weights to the replicate samples
+# for estimating the mean signal intensities of genomic intervals in this
+# cell line. Here the weight of the 2nd replicate is reduced to half the
+# weight of the 1st one.
+GM12891_2 &lt;- bioCond(norm[5:6], norm[10:11], name = "GM12891",
+                     weight = c(1, 0.5))
+
+# Equivalently, you can achieve the same effect by setting the strMatrix
+# parameter.
+GM12891_3 &lt;- bioCond(norm[5:6], norm[10:11], name = "GM12891",
+                     strMatrix = list(diag(c(1, 2))))
+
+</code></pre>
+
+
+</div>

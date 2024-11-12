@@ -1,0 +1,154 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict_MRFnetworks</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Extract predicted network metrics for observations in a given dataset using
+equations from a fitted <code>MRFcov</code> object</h2>
+
+<h3>Description</h3>
+
+<p>This function uses outputs from fitted <code>MRFcov</code>
+and <code>bootstrap_MRF</code> models to
+generate linear predictions for each observation in <code>data</code> and
+calculate probabilistic network metrics from weighted adjacency matrices.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">predict_MRFnetworks(
+  data,
+  MRF_mod,
+  cutoff,
+  omit_zeros,
+  metric,
+  cached_predictions = NULL,
+  prep_covariates,
+  n_cores,
+  progress_bar = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Dataframe. The sample data where the
+left-most variables are variables that are represented by nodes in the graph.
+Colnames from this sample dataset must exactly match the colnames in the dataset that
+was used to fit the <code>MRF_mod</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MRF_mod</code></td>
+<td>
+<p>A fitted <code>MRFcov</code> or <code>bootstrap_MRF</code> object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cutoff</code></td>
+<td>
+<p>Single numeric value specifying the linear prediction threshold. Species whose
+linear prediction is below this level for a given observation in <code>data</code> will be
+considered absent, meaning they cannot participate in community networks.
+Default is <code>0.5</code> for <code>family == 'binomial'</code> or <code>0</code> for other families</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>omit_zeros</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, each species will not be considered to
+participate in community networks for observations in which that species was not observed
+in <code>data</code>. If <code>FALSE</code>, the species is still considered to have possibly occurred, based
+on the linear prediction for that observation. Default is <code>FALSE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>metric</code></td>
+<td>
+<p>The network metric to be calculated for each observation in <code>data</code>.
+Recognised values are : <code>"degree"</code>, <code>"eigencentrality"</code>, or <code>"betweenness"</code>, or
+leave blank to instead return a list of adjacency matrices</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cached_predictions</code></td>
+<td>
+<p>Use if providing stored predictions from <code>predict_MRF</code>
+to prevent unneccessary replication. Default is to calculate predictions first and then
+calculate network metrics</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prep_covariates</code></td>
+<td>
+<p>Logical flag stating whether to prep the dataset
+by cross-multiplication (<code>TRUE</code> by default; use <code>FALSE</code> for predicting
+networks from <code>MRFcov_spatial</code> objects)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_cores</code></td>
+<td>
+<p>Positive integer stating the number of processing cores to split the job across.
+Default is <code>1</code> (no parallelisation)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress_bar</code></td>
+<td>
+<p>Logical. Progress bar in pbapply is used if <code>TRUE</code>, but this slows estimation.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Interaction parameters are predicted for each observation in <code>data</code>
+and then converted into a weighted, undirected adjacency matrix
+using <code>graph.adjacency</code>. Note that the network is probabilistic,
+as node occurrences/abundances are predicted using fitted model equations from
+<code>MRF_mod</code>. If a linear prediction for a given observation falls below the
+user-specified <code>cutoff</code>, the node is considered absent from the community and cannot
+participate in the network. After correcting for the linear predictions,
+the specified network metric (degree centrality,
+eigencentrality, or betweenness) for each observation in <code>data</code>
+is then calculated and returned in a <code>matrix</code>. If <code>metric</code> is not
+supplied, the weighted, undirected adjacency matrices are returned in a <code>list</code>
+</p>
+
+
+<h3>Value</h3>
+
+<p>Either a <code>matrix</code> with <code>nrow = nrow(data)</code>,
+containing each species' predicted network metric at each observation in <code>data</code>, or
+a <code>list</code> with <code>length = nrow(data)</code> containing the weighted, undirected
+adjacency matrix predicted at each observation in <code>data</code>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MRFcov</code>, <code>bootstrap_MRF</code>, <code>degree</code>,
+<code>eigen_centrality</code>, <code>betweenness</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data("Bird.parasites")
+CRFmod &lt;- MRFcov(data = Bird.parasites, n_nodes = 4,
+                family = "binomial")
+predict_MRFnetworks(data = Bird.parasites[1:200, ],
+                   MRF_mod = CRFmod, metric = "degree",
+                   cutoff = 0.25)
+
+
+</code></pre>
+
+
+</div>

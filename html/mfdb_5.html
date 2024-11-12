@@ -1,0 +1,117 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>gadget_areafile</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Gadget area files</h2>
+
+<h3>Description</h3>
+
+<p>Structures representing a GADGET area file
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">gadget_areafile(size, temperature, area = attr(size, 'area'))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>size</code></td>
+<td>
+
+<p>data.frame as produced by <code>mfdb_area_size</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>temperature</code></td>
+<td>
+
+<p>data.frame as produced by <code>mfdb_temperature</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>area</code></td>
+<td>
+
+<p>Optional. <code>mfdb_group</code> that you used to specify area. By default
+pulls it from annotations on the <code>size</code> object.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Once formed, you can then use <code>gadget_dir_write</code> to write this out to a
+GADGET areafile.
+</p>
+
+
+<h3>Value</h3>
+
+<p>List of class 'gadget_areafile' that represents the area file contents.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Open a temporary database connection
+mdb &lt;- mfdb(tempfile(fileext = '.duckdb'))
+
+# Define 2 areacells of equal size
+mfdb_import_area(mdb, data.frame(name=c("divA", "divB"), size=1))
+
+# We want to have 3 area groups, 2 for original cells, one aggregating across the lot
+area_group &lt;- mfdb_group(
+    divA = c("divA"),
+    divB = c("divB"),
+    divAB = c("divA", "divB"))
+
+# Make up temperature data
+temps &lt;- expand.grid(year=c(1998,2000), month=c(1:12), areacell=c("divA", "divB"))
+temps$temperature &lt;- runif(nrow(temps), 5, 10)
+mfdb_import_temperature(mdb, temps)
+
+# Create an areafile from 2 mfdb queries
+areafile &lt;- gadget_areafile(
+    mfdb_area_size(mdb, list(
+        area = area_group))[[1]],
+    mfdb_temperature(mdb, list(
+        year = 1998:2000,
+        timestep = mfdb_timestep_quarterly,
+        area = area_group))[[1]])
+areafile
+
+# Write this to a gadget_directory
+gadget_dir_write(gadget_directory(tempfile()), areafile)
+
+# Check data in file matches input data
+stopifnot(identical(
+    areafile$size,
+    c(divA=1, divB=1, divAB=2)))
+stopifnot(all.equal(
+    mean(areafile$temperature[areafile$temperature$area == 1, 'mean']),
+    mean(temps[temps$areacell == 'divA', 'temperature']),
+    tolerance = 1e-2))
+stopifnot(all.equal(
+    mean(areafile$temperature[areafile$temperature$area == 2, 'mean']),
+    mean(temps[temps$areacell == 'divB', 'temperature']),
+    tolerance = 1e-2))
+stopifnot(all.equal(
+    mean(areafile$temperature[areafile$temperature$area == 3, 'mean']),
+    mean(temps[,'temperature']),
+    tolerance = 1e-2))
+
+mfdb_disconnect(mdb)
+</code></pre>
+
+
+</div>

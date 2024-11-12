@@ -1,0 +1,120 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mies_survival_plus</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Choose Survivors According to the "Mu + Lambda" ("Plus") Strategy</h2>
+
+<h3>Description</h3>
+
+<p>Choose survivors during a MIES iteration using the "Plus" survival strategy, i.e.
+combining all alive individuals from the latest and from prior generations indiscriminately and
+choosing survivors using a survival <code>Selector</code> operator.
+</p>
+<p>When <code>mu</code> is greater than the number of alive individuals, then all individuals survive.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mies_survival_plus(inst, mu, survival_selector, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>inst</code></td>
+<td>
+<p>(<code>OptimInstance</code>)<br>
+Optimization instance to evaluate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu</code></td>
+<td>
+<p>(<code>integer(1)</code>)<br>
+Population target size, non-negative integer.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>survival_selector</code></td>
+<td>
+<p>(<code>Selector</code>)<br><code>Selector</code> operator that selects surviving individuals depending on configuration values
+and objective results. When <code>survival_selector$operate()</code> is called, then objectives that
+are being minimized are multiplied with -1 (through <code>mies_get_fitnesses</code>), since <code>Selector</code>s always try to maximize fitness.<br>
+The <code>Selector</code> must be primed on <code>inst$search_space</code>; this <em>includes</em> the "budget" component
+when performing multi-fidelity optimization.<br>
+The given <code>Selector</code> may <em>not</em> return duplicates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>(any)<br>
+Ignored, for compatibility with other <code style="white-space: pre;">⁠mies_survival_*⁠</code> functions.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>invisible <code>data.table</code>: The value of <code>inst$archive$data</code>, changed
+in-place with <code>eol</code> set to the current generation for non-survivors.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other mies building blocks: 
+<code>mies_evaluate_offspring()</code>,
+<code>mies_generate_offspring()</code>,
+<code>mies_get_fitnesses()</code>,
+<code>mies_init_population()</code>,
+<code>mies_select_from_archive()</code>,
+<code>mies_step_fidelity()</code>,
+<code>mies_survival_comma()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(1)
+library("bbotk")
+lgr::threshold("warn")
+
+# Define the objective to optimize
+objective &lt;- ObjectiveRFun$new(
+  fun = function(xs) {
+    z &lt;- exp(-xs$x^2 - xs$y^2) + 2 * exp(-(2 - xs$x)^2 - (2 - xs$y)^2)
+    list(Obj = z)
+  },
+  domain = ps(x = p_dbl(-2, 4), y = p_dbl(-2, 4)),
+  codomain = ps(Obj = p_dbl(tags = "maximize"))
+)
+
+# Get a new OptimInstance
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 100)
+)
+
+mies_init_population(inst = oi, mu = 3)
+offspring = generate_design_random(oi$search_space, 2)$data
+mies_evaluate_offspring(oi, offspring = offspring)
+
+# State before: different generations of individuals. Alive individuals have
+# 'eol' set to 'NA'.
+oi$archive
+
+s = sel("best")
+s$prime(oi$search_space)
+mies_survival_plus(oi, mu = 3, survival_selector = s)
+
+# sel("best") lets only the three best individuals survive.
+# The others have 'eol = 2' (the current generation).
+oi$archive
+</code></pre>
+
+
+</div>

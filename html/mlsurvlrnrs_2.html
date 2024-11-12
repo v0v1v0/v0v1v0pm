@@ -1,0 +1,190 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>LearnerSurvCoxPHCox</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>R6 Class to construct a Cox proportional hazards survival learner</h2>
+
+<h3>Description</h3>
+
+<p>The <code>LearnerSurvCoxPHCox</code> class is the interface to perform a Cox
+regression with the <code>survival</code> R package for use with the <code>mlexperiments</code>
+package.
+</p>
+
+
+<h3>Details</h3>
+
+<p>Can be used with
+</p>
+
+<ul><li> <p>mlexperiments::MLCrossValidation
+</p>
+</li></ul>
+<h3>Super class</h3>
+
+<p><code>mlexperiments::MLLearnerBase</code> -&gt; <code>LearnerSurvCoxPHCox</code>
+</p>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-LearnerSurvCoxPHCox-new"><code>LearnerSurvCoxPHCox$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-LearnerSurvCoxPHCox-clone"><code>LearnerSurvCoxPHCox$clone()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="bayesian_scoring_function"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-bayesian_scoring_function"><code>mlexperiments::MLLearnerBase$bayesian_scoring_function()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="cross_validation"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-cross_validation"><code>mlexperiments::MLLearnerBase$cross_validation()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="fit"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-fit"><code>mlexperiments::MLLearnerBase$fit()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="predict"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-predict"><code>mlexperiments::MLLearnerBase$predict()</code></a></span></li>
+</ul></details><hr>
+<a id="method-LearnerSurvCoxPHCox-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Create a new <code>LearnerSurvCoxPHCox</code> object.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerSurvCoxPHCox$new()</pre></div>
+
+
+
+<h5>Returns</h5>
+
+<p>A new <code>LearnerSurvCoxPHCox</code> R6 object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>LearnerSurvCoxPHCox$new()
+
+</pre>
+</div>
+
+
+<hr>
+<a id="method-LearnerSurvCoxPHCox-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerSurvCoxPHCox$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>See Also</h3>
+
+<p><code>survival::coxph()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># survival analysis
+
+dataset &lt;- survival::colon |&gt;
+  data.table::as.data.table() |&gt;
+  na.omit()
+dataset &lt;- dataset[get("etype") == 2, ]
+
+seed &lt;- 123
+surv_cols &lt;- c("status", "time", "rx")
+
+feature_cols &lt;- colnames(dataset)[3:(ncol(dataset) - 1)]
+
+split_vector &lt;- splitTools::multi_strata(
+  df = dataset[, .SD, .SDcols = surv_cols],
+  strategy = "kmeans",
+  k = 4
+)
+
+train_x &lt;- model.matrix(
+  ~ -1 + .,
+  dataset[, .SD, .SDcols = setdiff(feature_cols, surv_cols[1:2])]
+)
+train_y &lt;- survival::Surv(
+  event = (dataset[, get("status")] |&gt;
+             as.character() |&gt;
+             as.integer()),
+  time = dataset[, get("time")],
+  type = "right"
+)
+
+fold_list &lt;- splitTools::create_folds(
+  y = split_vector,
+  k = 3,
+  type = "stratified",
+  seed = seed
+)
+
+
+surv_coxph_cox_optimizer &lt;- mlexperiments::MLCrossValidation$new(
+  learner = LearnerSurvCoxPHCox$new(),
+  fold_list = fold_list,
+  ncores = 1L,
+  seed = seed
+)
+surv_coxph_cox_optimizer$performance_metric &lt;- c_index
+
+# set data
+surv_coxph_cox_optimizer$set_data(
+  x = train_x,
+  y = train_y
+)
+
+surv_coxph_cox_optimizer$execute()
+
+
+## ------------------------------------------------
+## Method `LearnerSurvCoxPHCox$new`
+## ------------------------------------------------
+
+LearnerSurvCoxPHCox$new()
+
+</code></pre>
+
+
+</div>

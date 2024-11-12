@@ -1,0 +1,258 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>SSVSquantreg</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Stochastic search variable selection for quantile regression</h2>
+
+<h3>Description</h3>
+
+<p>This function uses stochastic search to select promising regression models
+at a fixed quantile <code class="reqn">\tau</code>.  Indicator variables
+<code class="reqn">\gamma</code> are used to represent whether a predictor is included in
+the model or not.  The user supplies the data and the prior distribution on
+the model size.  A list is returned containing the posterior sample of
+<code class="reqn">\gamma</code> and the associated regression parameters
+<code class="reqn">\beta</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">SSVSquantreg(
+  formula,
+  data = NULL,
+  tau = 0.5,
+  include = NULL,
+  burnin = 1000,
+  mcmc = 10000,
+  thin = 1,
+  verbose = 0,
+  seed = sample(1:1e+06, 1),
+  pi0a0 = 1,
+  pi0b0 = 1,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>Model formula.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Data frame.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tau</code></td>
+<td>
+<p>The quantile of interest. Must be between 0 and 1. The default
+value of 0.5 corresponds to median regression model selection.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>include</code></td>
+<td>
+<p>The predictor(s) that should definitely appear in the model.
+Can be specified by name, or their position in the formula (taking into
+account the intercept).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p>The number of burn-in iterations for the sampler.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mcmc</code></td>
+<td>
+<p>The number of MCMC iterations after burnin.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thin</code></td>
+<td>
+<p>The thinning interval used in the simulation.  The number of
+MCMC iterations must be divisible by this value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>A switch which determines whether or not the progress of the
+sampler is printed to the screen.  If <code>verbose</code> is greater than 0 the
+iteration number, the most recently sampled values of <code class="reqn">\gamma</code>
+and the associated values of <code class="reqn">\beta</code> are printed to the screen
+every <code>verbose</code>th iteration.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>The seed for the random number generator. If NA, the Mersenne
+Twister generator is used with default seed 12345; if an integer is passed
+it is used to seed the Mersenne twister. The default value for this argument
+is a random integer between 1 and 1,000,000.  This default value ensures
+that if the function is used again with a different value of
+<code class="reqn">\tau</code>, it is extremely unlikely that the seed will be identical.
+The user can also pass a list of length two to use the L'Ecuyer random
+number generator, which is suitable for parallel computation.  The first
+element of the list is the L'Ecuyer seed, which is a vector of length six or
+NA (if NA a default seed of <code>rep(12345,6)</code> is used).  The second
+element of list is a positive substream number. See the MCMCpack
+specification for more details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pi0a0, pi0b0</code></td>
+<td>
+<p>Hyperparameters of the beta prior on <code class="reqn">\pi_0</code>,
+the prior probability of including a predictor. Default values of (1,1) are
+equivalent to a uniform distribution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>SSVSquantreg</code> implements stochastic search variable selection
+over a set of potential predictors to obtain promising models.  The
+models considered take the following form:
+</p>
+<p style="text-align: center;"><code class="reqn">Q_{\tau}(y_i|x_{i\gamma}) = x_{i\gamma} ' \beta_{\gamma},</code>
+</p>
+
+<p>where <code class="reqn">Q_{\tau}(y_i|x_{i\gamma})</code> denotes the conditional
+<code class="reqn">\tau</code>th quantile of <code class="reqn">y_i</code> given <code class="reqn">x_{i\gamma}</code>,
+<code class="reqn">x_{i\gamma}</code> denotes <code class="reqn">x_i</code> with those predictors
+<code class="reqn">x_{ij}</code> for which <code class="reqn">\gamma_j=0</code> removed and
+<code class="reqn">\beta_{\gamma}</code> denotes the model specific regression
+parameters.
+</p>
+<p>The likelihood is formed based on the assumption of independent
+asymmetric Laplace distributions on the <code class="reqn">y_i</code> with skewness
+parameter <code class="reqn">\tau</code> and location parameters <code class="reqn"> x_{i\gamma} '
+\beta_{\gamma}</code>. This assumption ensures that the likelihood
+function is maximised by the <code class="reqn">\tau</code>th conditional quantile of
+the response variable.
+</p>
+<p>The prior on each <code class="reqn">\beta_j</code> is
+</p>
+<p style="text-align: center;"><code class="reqn">(1-\gamma_j)\delta_0+\gamma_j\mbox{Cauchy}(0,1),</code>
+</p>
+
+<p>where <code class="reqn">\delta_0</code> denotes a degenerate distribution with all
+mass at 0.  A standard Cauchy distribution is chosen conditional on
+<code class="reqn">\gamma_j=1</code>.  This allows for a wider range of nonzero
+values of <code class="reqn">\beta_j</code> than a standard Normal distribution,
+improving the robustness of the method.  Each of the indicator variables
+<code class="reqn">\gamma_j</code> is independently assigned a Bernoulli prior, with
+prior probability of inclusion <code class="reqn">\pi_0</code>.  This in turn is assigned
+a beta distribution, resulting in a beta-binomial prior on the model size.
+The user can supply the hyperparameters for the beta distribution.  Starting
+values are randomly generated from the prior distribution.
+</p>
+<p>It is recommended to standardise any non-binary predictors in order to
+compare these predictors on the same scale.  This can be achieved using the
+<code>scale</code> function.
+</p>
+<p>If it is certain that a predictor should be included, all predictors
+specified are brought to the first positions for computational convenience.
+The regression parameters associated with these predictors are given
+independent improper priors. Users may notice a small speed advantage if
+they specify the predictors that they feel certain should appear in the
+model, particularly for large models with a large number of observations.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>gamma</code></td>
+<td>
+<p>The posterior sample of <code class="reqn">\gamma</code>. This has
+associated summary and plot methods.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta</code></td>
+<td>
+<p>The posterior sample of the associated regression parameters
+<code class="reqn">\beta</code>. This can be analysed with functions from the coda
+package.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Craig Reed
+</p>
+
+
+<h3>References</h3>
+
+<p>Craig Reed, David B. Dunson and Keming Yu. 2010. "Bayesian
+Variable Selection for Quantile Regression" Technical Report.
+</p>
+<p>Daniel Pemstein, Kevin M. Quinn, and Andrew D. Martin.  2007.  <em>Scythe
+Statistical Library 1.2.</em> <a href="http://scythe.wustl.edu.s3-website-us-east-1.amazonaws.com/">http://scythe.wustl.edu.s3-website-us-east-1.amazonaws.com/</a>.
+</p>
+<p>Keming Yu and Jin Zhang. 2005. "A Three Parameter Asymmetric Laplace
+Distribution and it's extensions." <em>Communications in Statistics -
+Theory and Methods</em>, 34, 1867-1879.
+</p>
+<p>Martyn Plummer, Nicky Best, Kate Cowles, and Karen Vines. 2006.  “Output
+Analysis and Diagnostics for MCMC (CODA)”, <em>R News</em>. 6(1): 7-11.
+<a href="https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf">https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MCMCquantreg</code>,
+<code>summary.qrssvs</code>, <code>plot.qrssvs</code>,
+<code>mptable</code>, <code>topmodels</code>,
+<code>scale</code>, <code>rq</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+
+set.seed(1)
+epsilon&lt;-rnorm(100)
+set.seed(2)
+x&lt;-matrix(rnorm(1000),100,10)
+y&lt;-x[,1]+x[,10]+epsilon
+qrssvs&lt;-SSVSquantreg(y~x)
+model.50pc&lt;-SSVSquantreg(y~x)
+model.90pc&lt;-SSVSquantreg(y~x,tau=0.9)
+summary(model.50pc) ## Intercept not in median probability model
+summary(model.90pc) ## Intercept appears in median probability model
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,242 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>df_stats</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate statistics for "response" variables</h2>
+
+<h3>Description</h3>
+
+<p>Creates a data frame of statistics calculated on one or more response variables,
+possibly for each group formed by combinations of additional variables.
+The resulting data frame has one column
+for each of the statistics requested as well as columns for any grouping variables and a
+column identifying the response variable for which the statistics was calculated.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">df_stats(
+  formula,
+  data,
+  ...,
+  drop = TRUE,
+  fargs = list(),
+  sep = "_",
+  format = c("wide", "long"),
+  groups = NULL,
+  long_names = FALSE,
+  nice_names = FALSE,
+  na.action = "na.warn"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>A formula indicating which variables are to be used.
+Semantics are approximately as in <code>lm()</code> since <code>stats::model.frame()</code>
+is used to turn the formula into a data frame.  But first conditions and <code>groups</code>
+are re-expressed into a form that <code>stats::model.frame()</code> can interpret.
+Multiple response variables can be separated by <code>+</code> on the left hand side of
+the formula.  A one-sided formula <code>~ rhs | cond</code> is treated as <code>rhs ~ 1 | cond</code>.
+See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A data frame or list containing the variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Functions used to compute the statistics.  If this is empty,
+a default set of summary statistics is used.  Functions used must accept
+a vector of values and return either a (possibly named) single value,
+a (possibly named) vector of values, or a data frame with one row.
+Functions can be specified with character strings, names, or expressions
+that look like function calls with the first argument missing.  The latter
+option provides a convenient way to specify additional arguments.  See the
+examples.
+Note: If these arguments are named, those names will be used in the data
+frame returned (see details).  Such names may not be among the names of the named
+arguments of <code>df_stats</code>().
+</p>
+<p>If a function is specified using <code>::</code>, be sure to include the trailing
+parens, even if there are no additional arguments required.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>drop</code></td>
+<td>
+<p>A logical indicating whether combinations of the grouping
+variables that do not occur in <code>data</code> should be dropped from the
+result.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fargs</code></td>
+<td>
+<p>Arguments passed to the functions in <code>...</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sep</code></td>
+<td>
+<p>A character string to separate components of names.  Set to <code>""</code> if
+you don't want separation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>format</code></td>
+<td>
+<p>One of <code>"long"</code> or <code>"wide"</code> indicating the desired shape of the
+returned data frame.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>groups</code></td>
+<td>
+<p>An expression or formula to be evaluated in <code>data</code> and defining (additional) groups.
+This isn't necessary, since these can be placed into the formula, but it is provided
+for similarity to other functions from the <span class="pkg">mosaic</span> package.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>long_names</code></td>
+<td>
+<p>A logical indicating whether the default names should include the name
+of the variable being summarized as well as the summarizing function name in the default
+case when names are not derived from the names of the returned object or
+an argument name.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nice_names</code></td>
+<td>
+<p>A logical indicating whether <code>make.names()</code> should be
+used to force names of the returned data frame to by syntactically valid.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na.action</code></td>
+<td>
+<p>A function (or character string naming a function) that determines how NAs are treated.
+Options include <code>"na.warn"</code> which removes missing data and emits a warning,
+<code>"na.pass"</code> which includes all of the data,
+<code>"na.omit"</code> or <code>"na.exclude"</code> which silently discard missing data,
+and <code>"na.fail"</code> which fails if there is missing data.
+See <code>link[stats]{na.pass}()</code> and <code>na.warn()</code> for details.
+The default is <code>"na.warn"</code> unless no function are specified in <code>...</code>, in which case
+<code>"na.pass"</code> is used since the default function reports the number of missing values.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Use a one-sided formula to compute summary statistics for the right hand side
+expression over the entire data.
+Use a two-sided formula to compute summary statistics for the left hand (response)
+expression(s) for each combination of levels of the expressions occurring on the
+right hand side.
+This is most useful when the left hand side is quantitative and each expression
+on the right hand side has relatively few unique values.  A function like
+<code>mosaic::ntiles()</code> is often useful to create a few groups of roughly equal size
+determined by ranges of a quantitative variable.  See the examples.
+</p>
+<p>Note that unlike <code>dplyr::summarise()</code>, <code>df_stats()</code> ignores
+any grouping defined in <code>data</code> if <code>data</code> is a grouped <code>tibble</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A data frame. Names of columns in the resulting data frame consist of three
+parts separated by <code>sep</code>.
+The first part is the argument name, if it exists, else the function.
+The second part is the name of the variable being summarised if <code>long_names == TRUE</code> and
+the first part is the function name, else ""
+The third part is the names of the object returned by the summarizing function, if they
+exist, else a sequence of consecutive integers or "" if there is only one component
+returned by the summarizing function.
+See the examples.
+</p>
+
+
+<h3>Cautions Regarding Formulas</h3>
+
+<p>The use of <code>|</code> to define groups is tricky because (a) <code>stats::model.frame()</code>
+doesn't handle this sort of thing and (b) <code>|</code> is also used for logical or.  The
+current algorithm for handling this will turn the first  occurrence of <code>|</code> into an attempt
+to condition, so logical or cannot be used before conditioning in the formula.
+If you have need of logical or, we suggest creating a new variable that contains the
+results of evaluating the expression.
+</p>
+<p>Similarly, addition (<code>+</code>) is used to separate grouping variables, not for
+arithmetic.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">df_stats( ~ hp, data = mtcars)
+# There are several ways to specify functions
+df_stats( ~ hp, data = mtcars, mean, trimmed_mean = mean(trim = 0.1), "median",
+  range, Q = quantile(c(0.25, 0.75)))
+# When using ::, be sure to include parens, even if there are no additional arguments.
+df_stats( ~ hp, data = mtcars, mean = base::mean(), trimmed_mean = base::mean(trim = 0.1))
+
+# force names to by syntactically valid
+df_stats( ~ hp, data = mtcars, Q = quantile(c(0.25, 0.75)), nice_names = TRUE)
+# longer names
+df_stats( ~ hp, data = mtcars, mean, trimmed_mean = mean(trim = 0.1), "median", range,
+  long_names = TRUE)
+# wide vs long format
+df_stats( hp ~ cyl, data = mtcars, mean, median, range)
+df_stats( hp + wt + mpg ~ cyl, data = mtcars, mean, median, range)
+df_stats( hp ~ cyl, data = mtcars, mean, median, range, format = "long")
+# More than one grouping variable -- 4 ways.
+df_stats( hp ~ cyl + gear, data = mtcars, mean, median, range)
+df_stats( hp ~ cyl | gear, data = mtcars, mean, median, range)
+df_stats( hp ~ cyl, groups = ~gear, data = mtcars, mean, median, range)
+df_stats( hp ~ cyl, groups = gear, data = mtcars, mean, median, range)
+
+# because the result is a data frame, df_stats() is also useful for creating plots
+if(require(ggformula)) {
+  gf_violin(hp ~ cyl, data = mtcars, group = ~ cyl) |&gt;
+  gf_point(mean ~ cyl, data = df_stats(hp ~ cyl, data = mtcars, mean),
+    color = ~ "mean") |&gt;
+  gf_point(median ~ cyl, data = df_stats(hp ~ cyl, data = mtcars, median),
+    color = ~"median") |&gt;
+  gf_labs(color = "")
+}
+
+# magrittr style piping is also supported
+if (require(ggformula)) {
+  mtcars |&gt;
+    df_stats(hp ~ cyl, mean, median, range)
+  mtcars |&gt;
+    df_stats(hp ~ cyl + gear, mean, median, range) |&gt;
+    gf_point(mean ~ cyl, color = ~ factor(gear)) |&gt;
+    gf_line(mean ~ cyl, color = ~ factor(gear))
+}
+
+# can be used with a categorical response, too
+if (require(mosaic)) {
+  df_stats(sex ~ substance, data = HELPrct, table, prop_female = prop)
+}
+if (require(mosaic)) {
+  df_stats(sex ~ substance, data = HELPrct, table, props)
+}
+</code></pre>
+
+
+</div>

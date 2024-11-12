@@ -1,0 +1,233 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>BEM</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>BACON-EEM Algorithm for multivariate outlier detection in incomplete
+multivariate survey data</h2>
+
+<h3>Description</h3>
+
+<p><code>BEM</code> starts from a set of uncontaminated data with possible
+missing values, applies a version of the EM-algorithm to estimate
+the center and scatter of the good data, then adds (or deletes)
+observations to the good data which have a Mahalanobis distance
+below a threshold. This process iterates until the good data remain
+stable. Observations not among the good data are outliers.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">BEM(
+  data,
+  weights,
+  v = 2,
+  c0 = 3,
+  alpha = 0.01,
+  md.type = "m",
+  em.steps.start = 10,
+  em.steps.loop = 5,
+  better.estimation = FALSE,
+  monitor = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a matrix or data frame. As usual, rows are observations and
+columns are variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>a non-negative and non-zero vector of weights for each
+observation. Its length must equal the number of rows of the data.
+Default is <code>rep(1, nrow(data))</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>v</code></td>
+<td>
+<p>an integer indicating the distance for the definition of the
+starting good subset: <code>v = 1</code> uses the Mahalanobis distance based
+on the weighted mean and covariance, <code>v = 2</code> uses the Euclidean
+distance from the componentwise median.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>c0</code></td>
+<td>
+<p>the size of initial subset is <code>c0 * ncol(data)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>a small probability indicating the level <code>(1 - alpha)</code>
+of the cutoff quantile for good observations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>md.type</code></td>
+<td>
+<p>type of Mahalanobis distance: <code>"m"</code> marginal,
+<code>"c"</code> conditional.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>em.steps.start</code></td>
+<td>
+<p>number of iterations of EM-algorithm for starting
+good subset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>em.steps.loop</code></td>
+<td>
+<p>number of iterations of EM-algorithm for good subset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>better.estimation</code></td>
+<td>
+<p>if <code>better.estimation = TRUE</code>, then the
+EM-algorithm for the final good subset iterates <code>em.steps.start</code> more.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>monitor</code></td>
+<td>
+<p>if <code>TRUE</code>, verbose output.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The BACON algorithm with <code>v = 1</code> is not robust but affine equivariant
+while <code>v = 1</code> is robust but not affine equivariant. The threshold for
+the (squared) Mahalanobis distances, beyond which an observation is an
+outlier, is a standardised chisquare quantile at <code>(1 - alpha)</code>. For
+large data sets it may be better to choose <code>alpha / n</code> instead. The
+internal function <code>EM.normal</code> is usually called from <code>BEM</code>.
+<code>EM.normal</code> is implementing the EM-algorithm in such a way that
+part of the calculations can be saved to be reused in the <code>BEM</code>
+algorithm. <code>EM.normal</code> does not contain the computation of the
+observed sufficient statistics, they will be computed in the main
+program of <code>BEM</code> and passed as parameters as well as the statistics
+on the missingness patterns.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>BEM</code> returns a list whose first component <code>output</code> is a
+sublist with the following components:
+</p>
+
+<dl>
+<dt><code>sample.size</code></dt>
+<dd>
+<p>Number of observations</p>
+</dd>
+<dt><code>discarded.observations</code></dt>
+<dd>
+<p>Number of discarded observations</p>
+</dd>
+<dt><code>number.of.variables</code></dt>
+<dd>
+<p>Number of variables</p>
+</dd>
+<dt><code>significance.level</code></dt>
+<dd>
+<p>The probability used for the cutpoint,
+i.e. <code>alpha</code></p>
+</dd>
+<dt><code>initial.basic.subset.size</code></dt>
+<dd>
+<p>Size of initial good subset</p>
+</dd>
+<dt><code>final.basic.subset.size</code></dt>
+<dd>
+<p>Size of final good subset</p>
+</dd>
+<dt><code>number.of.iterations</code></dt>
+<dd>
+<p>Number of iterations of the BACON step</p>
+</dd>
+<dt><code>computation.time</code></dt>
+<dd>
+<p>Elapsed computation time</p>
+</dd>
+<dt><code>center</code></dt>
+<dd>
+<p>Final estimate of the center</p>
+</dd>
+<dt><code>scatter</code></dt>
+<dd>
+<p>Final estimate of the covariance matrix</p>
+</dd>
+<dt><code>cutpoint</code></dt>
+<dd>
+<p>The threshold MD-value for the cut-off of outliers</p>
+</dd>
+</dl>
+<p>The further components returned by <code>BEM</code> are:
+</p>
+
+<dl>
+<dt><code>outind</code></dt>
+<dd>
+<p>Indicator of outliers</p>
+</dd>
+<dt><code>dist</code></dt>
+<dd>
+<p>Final Mahalanobis distances</p>
+</dd>
+</dl>
+<h3>Note</h3>
+
+<p><code>BEM</code> uses an adapted version of the EM-algorithm in function
+<code>.EM-normal</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Beat Hulliger
+</p>
+
+
+<h3>References</h3>
+
+<p>Béguin, C. and Hulliger, B. (2008) The BACON-EEM Algorithm for
+Multivariate Outlier Detection in Incomplete Survey Data, Survey Methodology,
+Vol. 34, No. 1, pp. 91-103.
+</p>
+<p>Billor, N., Hadi, A.S. and Vellemann, P.F. (2000). BACON: Blocked Adaptative
+Computationally-efficient Outlier Nominators. Computational Statistics and
+Data Analysis, 34(3), 279-298.
+</p>
+<p>Schafer J.L. (2000), Analysis of Incomplete Multivariate Data, Monographs on
+Statistics and Applied Probability 72, Chapman &amp; Hall.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Bushfire data set with 20% MCAR
+data(bushfirem, bushfire.weights)
+bem.res &lt;- BEM(bushfirem, bushfire.weights,
+               alpha = (1 - 0.01 / nrow(bushfirem)))
+print(bem.res$output)
+</code></pre>
+
+
+</div>

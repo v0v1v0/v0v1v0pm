@@ -1,0 +1,347 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>spwb_spatial</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Simulations for spatially-distributed forest stands</h2>
+
+<h3>Description</h3>
+
+<p>Functions that allow calling local models <code>spwb</code>, <code>growth</code> or <code>fordyn</code>, for a set of forest stands distributed in specific locations.
+No spatial processes are simulated.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">spwb_spatial(
+  sf,
+  SpParams,
+  meteo = NULL,
+  local_control = defaultControl(),
+  dates = NULL,
+  CO2ByYear = numeric(0),
+  keep_results = TRUE,
+  summary_function = NULL,
+  summary_arguments = NULL,
+  parallelize = FALSE,
+  num_cores = detectCores() - 1,
+  chunk_size = NULL,
+  progress = TRUE,
+  local_verbose = FALSE
+)
+
+growth_spatial(
+  sf,
+  SpParams,
+  meteo = NULL,
+  local_control = defaultControl(),
+  dates = NULL,
+  CO2ByYear = numeric(0),
+  fire_regime = NULL,
+  keep_results = TRUE,
+  summary_function = NULL,
+  summary_arguments = NULL,
+  parallelize = FALSE,
+  num_cores = detectCores() - 1,
+  chunk_size = NULL,
+  progress = TRUE,
+  local_verbose = FALSE
+)
+
+fordyn_spatial(
+  sf,
+  SpParams,
+  meteo = NULL,
+  local_control = defaultControl(),
+  dates = NULL,
+  CO2ByYear = numeric(0),
+  fire_regime = NULL,
+  keep_results = TRUE,
+  management_function = NULL,
+  summary_function = NULL,
+  summary_arguments = NULL,
+  parallelize = FALSE,
+  num_cores = detectCores() - 1,
+  chunk_size = NULL,
+  progress = TRUE,
+  local_verbose = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>sf</code></td>
+<td>
+<p>An object of class <code>sf</code> with the following columns:
+</p>
+
+<ul>
+<li>
+<p><code>geometry</code>: Spatial geometry.
+</p>
+</li>
+<li>
+<p><code>id</code>: Stand identifiers.
+</p>
+</li>
+<li>
+<p><code>elevation</code>: Elevation above sea level (in m).
+</p>
+</li>
+<li>
+<p><code>slope</code>: Slope (in degrees).
+</p>
+</li>
+<li>
+<p><code>aspect</code>: Aspect (in degrees).
+</p>
+</li>
+<li>
+<p><code>land_cover_type</code>: Land cover type of each grid cell (values should be 'wildland' or 'agriculture').
+</p>
+</li>
+<li>
+<p><code>forest</code>: Objects of class <code>forest</code>.
+</p>
+</li>
+<li>
+<p><code>soil</code>: Objects of class <code>soil</code> or data frames of physical properties.
+</p>
+</li>
+<li>
+<p><code>state</code>: Objects of class <code>spwbInput</code> or <code>growthInput</code> (optional).
+</p>
+</li>
+<li>
+<p><code>meteo</code>: Data frames with weather data (required if parameter <code>meteo = NULL</code>).
+</p>
+</li>
+<li>
+<p><code>crop_factor</code>: Crop evapo-transpiration factor. Only required for 'agriculture' land cover type.
+</p>
+</li>
+<li>
+<p><code>local_control</code>: A list of control parameters (optional). Used to override function parameter <code>local_control</code> for specific locations (values can be <code>NULL</code> for the remaining ones).
+</p>
+</li>
+<li>
+<p><code>management_arguments</code>: Lists with management arguments. Optional, relevant for <code>fordyn_spatial</code> only.
+</p>
+</li>
+<li>
+<p><code>represented_area_ha</code>: Area represented by each stand in hectares. Optional, relevant for <code>fordyn_spatial</code> when
+<code>fire_regime</code> is supplied only).
+</p>
+</li>
+<li>
+<p><code>ignition_weights</code>: Relative weights to determine stands to be burned. Optional, relevant for <code>fordyn_spatial</code> when
+<code>fire_regime</code> is supplied only).
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SpParams</code></td>
+<td>
+<p>A data frame with species parameters (see <code>SpParamsMED</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meteo</code></td>
+<td>
+<p>Input meteorological data (see section details). If NULL, the function will expect a column 'meteo' in parameter <code>y</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>local_control</code></td>
+<td>
+<p>A list of control parameters (see <code>defaultControl</code>) for function <code>spwb_day</code> or <code>growth_day</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dates</code></td>
+<td>
+<p>A <code>Date</code> object describing the days of the period to be modeled.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CO2ByYear</code></td>
+<td>
+<p>A named numeric vector with years as names and atmospheric CO2 concentration (in ppm) as values. Used to specify annual changes in CO2 concentration along the simulation (as an alternative to specifying daily values in <code>meteo</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep_results</code></td>
+<td>
+<p>Boolean flag to indicate that point/cell simulation results are to be returned (set to <code>FALSE</code> and use summary functions for large data sets).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary_function</code></td>
+<td>
+<p>An appropriate function to calculate summaries (e.g., <code>summary.spwb</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary_arguments</code></td>
+<td>
+<p>List with additional arguments for the summary function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallelize</code></td>
+<td>
+<p>Boolean flag to try parallelization (will use all clusters minus one).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>num_cores</code></td>
+<td>
+<p>Integer with the number of cores to be used for parallel computation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chunk_size</code></td>
+<td>
+<p>Integer indicating the size of chuncks to be sent to different processes (by default, the number of spatial elements divided by the number of cores).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>Boolean flag to display progress information of simulations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>local_verbose</code></td>
+<td>
+<p>Boolean flag to display detailed progress information in local simulations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fire_regime</code></td>
+<td>
+<p>A list of parameters defining the fire regime (see <code>create_fire_regime</code>) or
+a matrix representing a fire regime instance (see <code>fire_regime_instance</code>),
+to be used in simulations with <code>fordyn_spatial</code>. If NULL, wildfires are not simulated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>management_function</code></td>
+<td>
+<p>A function that implements forest management actions (see <code>fordyn</code>).
+of such lists, one per spatial unit.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Simulation functions  accept different formats for meteorological input (parameter <code>meteo</code>).
+The user may supply two kinds of daily weather sources:
+</p>
+
+<ol>
+<li>
+<p>A data frame with meteorological data common for all spatial location (spatial variation of weather not considered).
+</p>
+</li>
+<li>
+<p>An object or (a list of objects) of class <code>stars</code> with reference interpolation data created by package <code>meteoland</code>.
+If a list of such <em>interpolator</em> objects is supplied, the simulation functions will interpolate on the target locations for the periods covered by each interpolator,
+but the user will be responsible for supplying interpolators in the correct temporal order.
+</p>
+</li>
+</ol>
+<p>Alternatively, the user may leave parameter <code>meteo = NULL</code> and specify a weather data frame for each element of <code>y</code>
+in a column named 'meteo'.
+</p>
+<p>Fire regimes are only allowed for function <code>fordyn_spatial</code>. If an object of class <code>fire_regime</code> is supplied, the function will call
+<code>fire_regime_instance</code> to generate a realization of the fire regime before conducting simulations. Alternatively,
+users can directly supply a fire regime instance matrix, derived from another source (e.g. a fire landscape model). Note that operating
+with fire regimes assumes all forest stands share the same period of simulation, but enforcing this is left to the user.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class 'sf' containing four elements:
+</p>
+
+<ul>
+<li>
+<p><code>geometry</code>: Spatial geometry.
+</p>
+</li>
+<li>
+<p><code>id</code>: Stand id, taken from the input.
+</p>
+</li>
+<li>
+<p><code>state</code>: A list of <code>spwbInput</code> or <code>growthInput</code> objects for each simulated stand, to be used in subsequent simulations (see <code>update_landscape</code>) or with NULL values whenever simulation errors occurred.
+</p>
+</li>
+<li>
+<p><code>forest</code>: A list of <code>forest</code> objects for each simulated stand (only in function <code>fordyn_spatial</code>), to be used in subsequent simulations (see <code>update_landscape</code>) or with NULL values whenever simulation errors occurred.
+</p>
+</li>
+<li>
+<p><code>management_arguments</code>: A list of management arguments for each simulated stand (only in function <code>fordyn_spatial</code> if management function was supplied), to be used in subsequent simulations (see <code>update_landscape</code>).
+</p>
+</li>
+<li>
+<p><code>result</code>: A list of model output for each simulated stand. Some elements can contain an error condition if the simulation resulted in an error. Values will be NULL (or errors) if <code>keep_results = FALSE</code>.
+</p>
+</li>
+<li>
+<p><code>summary</code>: A list of model output summaries for each simulated stand (if <code>summary_function</code> was not <code>NULL</code>), with NULL values whenever simulation errors occurred.
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Miquel De Cáceres Ainsa, CREAF
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>spwb</code>, <code>growth</code>, <code>fordyn</code>, <code>spwb_spatial_day</code>,
+<code>simulation_summary</code> , <code>plot_summary</code>,
+<code>initialize_landscape</code>, <code>update_landscape</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Load example landscape data
+data("example_ifn")
+  
+# Load example meteo data frame from package meteoland
+data("examplemeteo")
+  
+# Load default medfate parameters
+data("SpParamsMED")
+  
+# Subset two plots to speed-up calculations
+example_subset &lt;- example_ifn[31:32, ]
+
+# Perform simulation
+dates &lt;- seq(as.Date("2001-03-01"), as.Date("2001-03-15"), by="day")
+res &lt;- spwb_spatial(example_subset, SpParamsMED, examplemeteo, dates = dates)
+  
+# Perform fordyn simulation for one year (one stand) without management
+res_noman &lt;- fordyn_spatial(example_subset, SpParamsMED, examplemeteo)
+
+
+
+</code></pre>
+
+
+</div>

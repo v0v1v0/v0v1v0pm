@@ -1,0 +1,140 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlprof.fn</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Likelihood Functions for mvmeta Models </h2>
+
+<h3>Description</h3>
+
+<p>These functions compute the value of the log-likelihood and the related vectors of first partial derivatives for random-effects multivariate and univariate meta-analysis and meta-regression, in terms of model parameters. They are meant to be used internally and not directly run by the users.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">
+mlprof.fn(par, Xlist, ylist, Slist, nalist, k, m, p, nall, bscov, ctrl)
+mlprof.gr(par, Xlist, ylist, Slist, nalist, k, m, p, nall, bscov, ctrl)
+
+remlprof.fn(par, Xlist, ylist, Slist, nalist, k, m, p, nall, bscov, ctrl)
+remlprof.gr(par, Xlist, ylist, Slist, nalist, k, m, p, nall, bscov, ctrl)
+
+iter.igls(Psi, Xlist, ylist, Slist, nalist, k, m)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<p>Assuming a meta-analysis or meta-regression based on <code class="reqn">m</code> studies, <code class="reqn">k</code> outcomes and <code class="reqn">p</code> predictors:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>par </code></td>
+<td>
+<p> a vector representing the random-effects parameters defining the between-study (co)variance matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Psi </code></td>
+<td>
+<p> a <code class="reqn">k \times k</code> matrix representing the current estimate of the between-study (co)variance matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Xlist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of study-specific design matrices for the fixed-effects part of the model. Rows corresponding to missing outcomes have been excluded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ylist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of study-specific of vectors of estimated outcomes. Entries corresponding to missing outcomes have been excluded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Slist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of within-study (co)variance matrices of estimated outcomes. Rows and columns corresponding to missing outcomes have been excluded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nalist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of <code class="reqn">k</code>-dimensional study-specific logical vectors, identifying missing outcomes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k, m, p, nall </code></td>
+<td>
+<p> numeric scalars: number of outcomes, number of studies included in estimation (equal to the length of lists above), number of predictors (including the intercept), number of observations (excluding missing).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bscov </code></td>
+<td>
+<p> a string defining the between-study (co)variance structure in likelihood based models. See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ctrl </code></td>
+<td>
+<p>  list of parameters for controlling the fitting process, usually internally set to default values by <code>mvmeta.control</code>. The name is chosen to avoid conflicts with the argument <code>control</code> in <code>optim</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>These functions are called internally by the fitting functions <code>mvmeta.ml</code> and <code>mvmeta.reml</code> to perform iterative optimization algorithms for estimating random effects meta-analytical models.
+</p>
+<p>The maximization of the (restricted) likelihood starts with few runs of an iterative generalized least square algorithm implemented in <code>iter.igls</code>. This can be regarded as a fast and stable way to get starting values close to the maximum for the Quasi-Newton iterative algorithm, implemented in <code>optim</code>. Alternatively, starting values can be provided by the user in the control list (see <code>mvmeta.control</code>). The function  <code>optim</code> requires the algorithms to compute the value of the (restricted) likelihood and (optionally) the vector of its first partial derivatives, provided by the related likelihood functions.
+</p>
+<p>These functions actually specify the <em>profiled</em> version of the (restricted) likelihood, expressed only in terms of random-effects parameters, while the estimate of the fixed-effects coefficients is provided at each iteration by the internal function <code>glsfit</code>, based on the current value of the between-study (co)variance matrix. At convergence, the value of this profiled version is identical to the full (restricted) likelihood. This approach is computationally efficient, as it reduces the number of parameters in the optimization routine, especially for meta-regression models.
+</p>
+<p>The random-effects parameters in <code>par</code> depends on the chosen <code>structure</code> for the between-study (co)variance matrix. The parameterization ensures the positive-definiteness of the estimated matrix. A Cholesky decomposition is then performed on the marginal (co)variance matrix in order to re-express the problem as standard least square equations, an approach which speeds up the computation of matrix inverses and determinants. These equations are finally solved through a QR decomposition, which guarantees stability. More details are provided in the references below.
+</p>
+<p>Some parameters of the fitting procedures are determined through <code>mvmeta.control</code>. Specifically, the user can obtain the Hessian matrix of the estimated parameters (appropriately transformed, see <code>mvmetaCovStruct</code>) in the optimization function by setting <code>hessian=TRUE</code>, and specific control settings in the optimization process can be defined by the control list argument <code>optim</code>. These values are passed to the optimization function <code>optim</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>mlprof.fn</code> and <code>remlprof.fn</code> return the value of the (restricted) log-likelihood for a given set of parameters in <code>par</code>. <code>mlprof.gr</code> and <code>remlprof.gr</code> return instead the related vector of first partial derivatives. <code>iter.igls</code> returns an updated estimate of <code>Psi</code> given its initial value or the value at the previous iteration.
+</p>
+
+
+<h3>Note</h3>
+
+<p>As stated earlier, these functions are called internally by <code>mvmeta.ml</code> and <code>mvmeta.reml</code>, and are not meant to be used directly. In particular, their code does not contain any check on the arguments provided, which are expected in specific formats. They are however exported in the namespace and documented for completeness.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Antonio Gasparrini, <a href="mailto:antonio.gasparrini@lshtm.ac.uk">antonio.gasparrini@lshtm.ac.uk</a></p>
+
+
+<h3>References</h3>
+
+<p>Sera F, Armstrong B, Blangiardo M, Gasparrini A (2019). An extended mixed-effects framework for meta-analysis.<em>Statistics in Medicine</em>. 2019;38(29):5429-5444. [Freely available <a href="http://www.ag-myresearch.com/2019_sera_statmed.html"><b>here</b></a>].
+</p>
+<p>Gasparrini A, Armstrong B, Kenward MG (2012). Multivariate meta-analysis for non-linear and other multi-parameter associations. <em>Statistics in Medicine</em>. <b>31</b>(29):3821–3839. [Freely available <a href="http://www.ag-myresearch.com/2012_gasparrini_statmed.html"><b>here</b></a>].
+</p>
+<p>Goldstein H (1986). Multilevel mixed linear model analysis using iterative generalized least squares. <em>Biometrika</em>. <b>73</b>(1):43.
+</p>
+<p>Lindstrom MJ and Bates DM (1988). Newton-Raphson and EM algorithms for linear mixed-effects models for repeated-measures data. <em>Journal of the American Statistical Association</em>. <b>83</b>(404):1014–1022.
+</p>
+<p>Pinheiro JC and Bates DM (2000). <em>Mixed-Effects Models in S and S-PLUS</em>. New York, Springer Verlag.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See <code>mvmeta.fit</code> and <code>mvmeta.ml</code> for additional info on the fitting procedures. See <code>mvmeta.control</code> to determine specific parameters of the fitting procedures. See <code>mvmetaCovStruct</code> for (co)variance structures. See <code>chol</code> and <code>qr</code> for info on the Cholesky and QR decomposition.
+See <code>mvmeta-package</code> for an overview of the package and modelling framework.
+</p>
+
+
+</div>

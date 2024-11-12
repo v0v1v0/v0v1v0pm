@@ -1,0 +1,156 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ms_rectify_map</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Rectify one map to another</h2>
+
+<h3>Description</h3>
+
+<p>Rectify two previously scanned-in pdf or png maps with <code>RNiftyReg</code>, and
+return the modifications in <code>map_modified</code> as spatial objects in <span class="pkg">sf</span>
+format.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ms_rectify_map(
+  map_original,
+  map_modified,
+  nitems = NULL,
+  non_linear = 1,
+  type = "hulls",
+  downsample = 10,
+  concavity = 0,
+  length_threshold = 10,
+  quiet = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>map_original</code></td>
+<td>
+<p>File name of the original map without anything drawn over
+it (either a <code>.pdf</code> or <code>.png</code>; extension will be ignored).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>map_modified</code></td>
+<td>
+<p>File name of the modified version with drawings (either a
+<code>.pdf</code> or <code>.png</code>; extension will be ignored).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nitems</code></td>
+<td>
+<p>Optional parameter to explicitly specify number of distinct
+items to be extracted from map; if possible, specifying this parameter may
+improve results.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>non_linear</code></td>
+<td>
+<p>Integer value of 0, 1, or 2 representing degree of
+non-linearity in modified image - see Note.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>Currently either "points", "polygons", or "hulls", where
+"points" simply reduces each distinct object to a single, central point;
+"polygons" identifies individual groups and returns the polygon representing
+the outer boundary of each; and "hulls" constructs convex or concave polygons
+around each group.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>downsample</code></td>
+<td>
+<p>Factor by which to downsample <code>type = "polygons"</code>, noting
+that polygons initially include every outer pixel of image, so can generally
+be downsampled by at least an order or magnitude (<code>n = 10</code>). Higher values
+may be used for higher-resolution images; lower values will generally only be
+necessary for very low lower resolution images.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>concavity</code></td>
+<td>
+<p>For <code>type = "hulls"</code>, a value between 0 and 1, with 0 giving
+convex hulls and 1 giving highly concave hulls.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>length_threshold</code></td>
+<td>
+<p>For <code>type = "hulls"</code>, the minimal length of a segment
+to be made more convex. Low values will produce highly detailed hulls which
+may cause problems; if in doubt, or if odd results appear, increase this
+value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quiet</code></td>
+<td>
+<p>If <code>FALSE</code>, display progress information on screen</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An <span class="pkg">sf</span> object representing the drawn additions to map_modified.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The <code>non-linear</code> parameter should generally set according to how the
+modified maps were digitised. A value of 0 will give fastest results, and
+should be used for directly scanned or photocopied images. A value of 1 (the
+default) still presumes modified images have been linearly translated, and
+will apply affine transformations (rotations, contractions, dilations). This
+value should be used when modified images have been photographed (potentially
+from an oblique angle). A value of 2 should only be used when modified maps
+have somehow been non-linearly distorted, for example through having been
+crumpled or screwed up. Rectification with <code>non-linear = 2</code> will likely take
+considerably longer than with lower values.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">f_orig &lt;- system.file ("extdata", "omaha.png", package = "mapscanner")
+f_mod &lt;- system.file ("extdata", "omaha-polygons.png",
+    package = "mapscanner"
+)
+
+# reduce file sizes to 1/4 to speed up these examples:
+f_orig2 &lt;- file.path (tempdir (), "omaha.png")
+f_modified2 &lt;- file.path (tempdir (), "omaha-polygons.png")
+magick::image_read (f_orig) %&gt;%
+    magick::image_resize ("25%") %&gt;%
+    magick::image_write (f_orig2)
+magick::image_read (f_mod) %&gt;%
+    magick::image_resize ("25%") %&gt;%
+    magick::image_write (f_modified2)
+
+# then rectify those files:
+## Not run: 
+xy_hull &lt;- ms_rectify_map (f_orig2, f_modified2, type = "hull")
+xy_poly &lt;- ms_rectify_map (f_orig2, f_modified2, type = "polygons")
+xy_pts &lt;- ms_rectify_map (f_orig2, f_modified2, type = "points")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,227 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>all_indirect_paths</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Enumerate All Indirect Effects in a Model</h2>
+
+<h3>Description</h3>
+
+<p>Check all indirect paths in a model and
+return them as a list of arguments of <code>x</code>, <code>y</code>,
+and <code>m</code>, to be used by <code>indirect_effect()</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">all_indirect_paths(
+  fit = NULL,
+  exclude = NULL,
+  x = NULL,
+  y = NULL,
+  group = NULL
+)
+
+all_paths_to_df(all_paths)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>fit</code></td>
+<td>
+<p>A fit object. It can be the output of
+<code>lavaan::lavaan()</code> or its wrapper such as <code>lavaan::sem()</code>,
+or a list of the output of <code>lm()</code> or the output of
+<code>lm2list()</code>.
+If it is a single model fitted by
+<code>lm()</code>, it will be automatically converted
+to a list by <code>lm2list()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exclude</code></td>
+<td>
+<p>A character vector of variables to be excluded
+in the search, such as control variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A character vector of variables that will be
+included as the <code>x</code> variables. If supplied, only
+paths that start from these variables will be included
+in the search.
+If <code>NULL</code>, the default, then all variables that are
+one of the predictors in at least one regression
+equation will be
+included in the search.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>A character vector of variables that will be
+included as the <code>y</code> variables. If supplied, only
+paths that start from these variables will be included
+in the search.
+If <code>NULL</code>, the default, then all variables that are
+the outcome variables in at least one regression
+equation will be
+included in the search.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>group</code></td>
+<td>
+<p>Either the group number
+as appeared in the <code>summary()</code>
+or <code>lavaan::parameterEstimates()</code>
+output of a lavaan::lavaan object,
+or the group label as used in
+the lavaan::lavaan object.
+Used only when the number of
+groups is greater than one. Default
+is <code>NULL</code>. If not specified by the model
+has more than one group, than paths
+that appears in at least one group
+will be included in the output.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>all_paths</code></td>
+<td>
+<p>An <code>all_paths</code>-class object. For example,
+the output of <code>all_indirect_paths()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>It makes use of <code>igraph::all_simple_paths()</code>
+to identify paths in a model.
+</p>
+
+
+<h4>Multigroup Models</h4>
+
+<p>Since Version 0.1.14.2, support for
+multigroup models has been added for models
+fitted by <code>lavaan</code>. If a model has more
+than one group and <code>group</code> is not
+specified, than paths in all groups
+will be returned. If <code>group</code> is
+specified, than only paths in the
+selected group will be returned.
+</p>
+
+
+
+<h3>Value</h3>
+
+<p><code>all_indirect_paths()</code> returns
+a list of the class <code>all_paths</code>. Each argument is a
+list of three character vectors,
+<code>x</code>, the name of the predictor that starts a path, <code>y</code>,
+the name of the outcome that ends a path, and <code>m</code>, a
+character vector of one or more names of the mediators,
+from <code>x</code> to <code>y</code>. This class has a print method.
+</p>
+<p><code>all_paths_to_df()</code> returns a data frame with three
+columns, <code>x</code>, <code>y</code>, and <code>m</code>, which can be used by
+functions such as <code>indirect_effect()</code>.
+</p>
+
+
+<h3>Functions</h3>
+
+
+<ul>
+<li> <p><code>all_indirect_paths()</code>: Enumerate all indirect paths.
+</p>
+</li>
+<li> <p><code>all_paths_to_df()</code>: Convert the output of
+<code>all_indirect_paths()</code> to a data frame with
+three columns: <code>x</code>, <code>y</code>, and <code>m</code>.
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Shu Fai Cheung <a href="https://orcid.org/0000-0002-9871-9448">https://orcid.org/0000-0002-9871-9448</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>indirect_effect()</code>, <code>lm2list()</code>.
+<code>many_indirect_effects()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(lavaan)
+data(data_serial_parallel)
+mod &lt;-
+"
+m11 ~ x + c1 + c2
+m12 ~ m11 + x + c1 + c2
+m2 ~ x + c1 + c2
+y ~ m12 + m2 + m11 + x + c1 + c2
+"
+fit &lt;- sem(mod, data_serial_parallel,
+           fixed.x = FALSE)
+# All indirect paths
+out1 &lt;- all_indirect_paths(fit)
+out1
+names(out1)
+
+# Exclude c1 and c2 in the search
+out2 &lt;- all_indirect_paths(fit, exclude = c("c1", "c2"))
+out2
+names(out2)
+
+# Exclude c1 and c2, and only consider paths start
+# from x and end at y
+out3 &lt;- all_indirect_paths(fit, exclude = c("c1", "c2"),
+                           x = "x",
+                           y = "y")
+out3
+names(out3)
+
+# Multigroup models
+
+data(data_med_complicated_mg)
+mod &lt;-
+"
+m11 ~ x1 + x2 + c1 + c2
+m12 ~ m11 + c1 + c2
+m2 ~ x1 + x2 + c1 + c2
+y1 ~ m11 + m12 + x1 + x2 + c1 + c2
+y2 ~ m2 + x1 + x2 + c1 + c2
+"
+fit &lt;- sem(mod, data_med_complicated_mg, group = "group")
+summary(fit)
+
+all_indirect_paths(fit,
+                   x = "x1",
+                   y = "y1")
+all_indirect_paths(fit,
+                   x = "x1",
+                   y = "y1",
+                   group = 1)
+all_indirect_paths(fit,
+                   x = "x1",
+                   y = "y1",
+                   group = "Group B")
+
+</code></pre>
+
+
+</div>

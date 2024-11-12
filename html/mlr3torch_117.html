@@ -1,0 +1,448 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_pipeops_torch</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Base Class for Torch Module Constructor Wrappers</h2>
+
+<h3>Description</h3>
+
+<p><code>PipeOpTorch</code> is the base class for all <code>PipeOp</code>s that represent
+neural network layers in a <code>Graph</code>.
+During <strong>training</strong>, it generates a <code>PipeOpModule</code> that wraps an <code>nn_module</code> and attaches it
+to the architecture, which is also represented as a <code>Graph</code> consisting mostly of <code>PipeOpModule</code>s
+an <code>PipeOpNOP</code>s.
+</p>
+<p>While the former <code>Graph</code> operates on <code>ModelDescriptor</code>s, the latter operates on tensors.
+</p>
+<p>The relationship between a <code>PipeOpTorch</code> and a <code>PipeOpModule</code> is similar to the
+relationshop between a <code>nn_module_generator</code> (like <code>nn_linear</code>) and a
+<code>nn_module</code> (like the output of <code>nn_linear(...)</code>).
+A crucial difference is that the <code>PipeOpTorch</code> infers auxiliary parameters (like <code>in_features</code> for
+<code>nn_linear</code>) automatically from the intermediate tensor shapes that are being communicated through the
+<code>ModelDescriptor</code>.
+</p>
+<p>During <strong>prediction</strong>, <code>PipeOpTorch</code> takes in a <code>Task</code> in each channel and outputs the same new
+<code>Task</code> resulting from their feature union in each channel.
+If there is only one input and output channel, the task is simply piped through.
+</p>
+
+
+<h3>Inheriting</h3>
+
+<p>When inheriting from this class, one should overload either the <code>private$.shapes_out()</code> and the
+<code>private$.shape_dependent_params()</code> methods, or overload <code>private$.make_module()</code>.
+</p>
+
+<ul>
+<li> <p><code>.make_module(shapes_in, param_vals, task)</code><br>
+(<code>list()</code>, <code>list()</code>) -&gt; <code>nn_module</code><br>
+This private method is called to generated the <code>nn_module</code> that is passed as argument <code>module</code> to
+<code>PipeOpModule</code>. It must be overwritten, when no <code>module_generator</code> is provided.
+If left as is, it calls the provided <code>module_generator</code> with the arguments obtained by
+the private method <code>.shape_dependent_params()</code>.
+</p>
+</li>
+<li> <p><code>.shapes_out(shapes_in, param_vals, task)</code><br>
+(<code>list()</code>, <code>list()</code>, <code>Task</code> or <code>NULL</code>) -&gt; named <code>list()</code><br>
+This private method gets a list of <code>numeric</code> vectors (<code>shapes_in</code>), the parameter values (<code>param_vals</code>),
+as well as an (optional) <code>Task</code>.
+The <code>shapes_in</code> can be assumed to be in the same order as the input names of the <code>PipeOp</code>.
+The output shapes must be in the same order as the output names of the <code>PipeOp</code>.
+In case the output shapes depends on the task (as is the case for <code>PipeOpTorchHead</code>), the function should return
+valid output shapes (possibly containing <code>NA</code>s) if the <code>task</code> argument is provided or not.
+</p>
+</li>
+<li> <p><code>.shape_dependent_params(shapes_in, param_vals, task)</code><br>
+(<code>list()</code>, <code>list()</code>) -&gt; named <code>list()</code><br>
+This private method has the same inputs as <code>.shapes_out</code>.
+If <code>.make_module()</code> is not overwritten, it constructs the arguments passed to <code>module_generator</code>.
+Usually this means that it must infer the auxiliary parameters that can be inferred from the input shapes
+and add it to the user-supplied parameter values (<code>param_vals</code>).
+</p>
+</li>
+</ul>
+<h3>Input and Output Channels</h3>
+
+<p>During <em>training</em>, all inputs and outputs are of class <code>ModelDescriptor</code>.
+During <em>prediction</em>, all input and output channels are of class <code>Task</code>.
+</p>
+
+
+<h3>State</h3>
+
+<p>The state is the value calculated by the public method <code>shapes_out()</code>.
+</p>
+
+
+<h3>Parameters</h3>
+
+<p>The <code>ParamSet</code> is specified by the child class inheriting from <code>PipeOpTorch</code>.
+Usually the parameters are the arguments of the wrapped <code>nn_module</code> minus the auxiliary parameter that can
+be automatically inferred from the shapes of the input tensors.
+</p>
+
+
+<h3>Internals</h3>
+
+<p>During training, the <code>PipeOpTorch</code> creates a <code>PipeOpModule</code> for the given parameter specification and the
+input shapes from the incoming <code>ModelDescriptor</code>s using the private method <code>.make_module()</code>.
+The input shapes are provided by the slot <code>pointer_shape</code> of the incoming <code>ModelDescriptor</code>s.
+The channel names of this <code>PipeOpModule</code> are identical to the channel names of the generating <code>PipeOpTorch</code>.
+</p>
+<p>A model descriptor union of all incoming <code>ModelDescriptor</code>s is then created.
+Note that this modifies the <code>graph</code> of the first <code>ModelDescriptor</code> <strong>in place</strong> for efficiency.
+The <code>PipeOpModule</code> is added to the <code>graph</code> slot of this union and the the edges that connect the
+sending <code>PipeOpModule</code>s to the input channel of this <code>PipeOpModule</code> are addeded to the graph.
+This is possible because every incoming <code>ModelDescriptor</code> contains the information about the
+<code>id</code> and the <code>channel</code> name of the sending <code>PipeOp</code> in the slot <code>pointer</code>.
+</p>
+<p>The new graph in the <code>model_descriptor_union</code> represents the current state of the neural network
+architecture. It is structurally similar to the subgraph that consists of all pipeops of class <code>PipeOpTorch</code> and
+<code>PipeOpTorchIngress</code> that are ancestors of this <code>PipeOpTorch</code>.
+</p>
+<p>For the output, a shallow copy of the <code>ModelDescriptor</code> is created and the <code>pointer</code> and
+<code>pointer_shape</code> are updated accordingly. The shallow copy means that all <code>ModelDescriptor</code>s point to the same
+<code>Graph</code> which allows the graph to be modified by-reference in different parts of the code.
+</p>
+
+
+<h3>Super class</h3>
+
+<p><code>mlr3pipelines::PipeOp</code> -&gt; <code>PipeOpTorch</code>
+</p>
+
+
+<h3>Public fields</h3>
+
+<div class="r6-fields">
+
+<dl>
+<dt><code>module_generator</code></dt>
+<dd>
+<p>(<code>nn_module_generator</code> or <code>NULL</code>)<br>
+The module generator wrapped by this <code>PipeOpTorch</code>. If <code>NULL</code>, the private method
+<code>private$.make_module(shapes_in, param_vals)</code> must be overwritte, see section 'Inheriting'.
+Do not change this after construction.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-PipeOpTorch-new"><code>PipeOpTorch$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-PipeOpTorch-shapes_out"><code>PipeOpTorch$shapes_out()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="mlr3pipelines" data-topic="PipeOp" data-id="help"><a href="../../mlr3pipelines/html/PipeOp.html#method-PipeOp-help"><code>mlr3pipelines::PipeOp$help()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3pipelines" data-topic="PipeOp" data-id="predict"><a href="../../mlr3pipelines/html/PipeOp.html#method-PipeOp-predict"><code>mlr3pipelines::PipeOp$predict()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3pipelines" data-topic="PipeOp" data-id="print"><a href="../../mlr3pipelines/html/PipeOp.html#method-PipeOp-print"><code>mlr3pipelines::PipeOp$print()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3pipelines" data-topic="PipeOp" data-id="train"><a href="../../mlr3pipelines/html/PipeOp.html#method-PipeOp-train"><code>mlr3pipelines::PipeOp$train()</code></a></span></li>
+</ul></details><hr>
+<a id="method-PipeOpTorch-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Creates a new instance of this R6 class.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>PipeOpTorch$new(
+  id,
+  module_generator,
+  param_set = ps(),
+  param_vals = list(),
+  inname = "input",
+  outname = "output",
+  packages = "torch",
+  tags = NULL
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>id</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Identifier of the resulting  object.</p>
+</dd>
+<dt><code>module_generator</code></dt>
+<dd>
+<p>(<code>nn_module_generator</code>)<br>
+The torch module generator.</p>
+</dd>
+<dt><code>param_set</code></dt>
+<dd>
+<p>(<code>ParamSet</code>)<br>
+The parameter set.</p>
+</dd>
+<dt><code>param_vals</code></dt>
+<dd>
+<p>(<code>list()</code>)<br>
+List of hyperparameter settings, overwriting the hyperparameter settings that would
+otherwise be set during construction.</p>
+</dd>
+<dt><code>inname</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+The names of the <code>PipeOp</code>'s input channels. These will be the input channels of the generated <code>PipeOpModule</code>.
+Unless the wrapped <code>module_generator</code>'s forward method (if present) has the argument <code>...</code>, <code>inname</code> must be
+identical to those argument names in order to avoid any ambiguity.<br>
+If the forward method has the argument <code>...</code>, the order of the input channels determines how the tensors
+will be passed to the wrapped <code>nn_module</code>.<br>
+If left as <code>NULL</code> (default), the argument <code>module_generator</code> must be given and the argument names of the
+<code>modue_generator</code>'s forward function are set as <code>inname</code>.</p>
+</dd>
+<dt><code>outname</code></dt>
+<dd>
+<p>(<code>character()</code>) <br>
+The names of the output channels channels. These will be the ouput channels of the generated <code>PipeOpModule</code>
+and therefore also the names of the list returned by its <code style="white-space: pre;">⁠$train()⁠</code>.
+In case there is more than one output channel, the <code>nn_module</code> that is constructed by this
+<code>PipeOp</code> during training must return a named <code>list()</code>, where the names of the list are the
+names out the output channels. The default is <code>"output"</code>.</p>
+</dd>
+<dt><code>packages</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+The R packages this object depends on.</p>
+</dd>
+<dt><code>tags</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+The tags of the <code>PipeOp</code>. The tags <code>"torch"</code> is always added.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-PipeOpTorch-shapes_out"></a>
+
+
+
+<h4>Method <code>shapes_out()</code>
+</h4>
+
+<p>Calculates the output shapes for the given input shapes, parameters and task.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>PipeOpTorch$shapes_out(shapes_in, task = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>shapes_in</code></dt>
+<dd>
+<p>(<code>list()</code> of <code>integer()</code>)<br>
+The input input shapes, which must be in the same order as the input channel names of the <code>PipeOp</code>.</p>
+</dd>
+<dt><code>task</code></dt>
+<dd>
+<p>(<code>Task</code> or <code>NULL</code>)<br>
+The task, which is very rarely used (default is <code>NULL</code>). An exception is <code>PipeOpTorchHead</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>A named <code>list()</code> containing the output shapes. The names are the names of the output channels of
+the <code>PipeOp</code>.
+</p>
+
+
+
+
+<h3>See Also</h3>
+
+<p>Other Graph Network: 
+<code>ModelDescriptor()</code>,
+<code>TorchIngressToken()</code>,
+<code>mlr_learners_torch_model</code>,
+<code>mlr_pipeops_module</code>,
+<code>mlr_pipeops_torch_ingress</code>,
+<code>mlr_pipeops_torch_ingress_categ</code>,
+<code>mlr_pipeops_torch_ingress_ltnsr</code>,
+<code>mlr_pipeops_torch_ingress_num</code>,
+<code>model_descriptor_to_learner()</code>,
+<code>model_descriptor_to_module()</code>,
+<code>model_descriptor_union()</code>,
+<code>nn_graph()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Creating a neural network
+# In torch
+
+task = tsk("iris")
+
+network_generator = torch::nn_module(
+  initialize = function(task, d_hidden) {
+    d_in = length(task$feature_names)
+    self$linear = torch::nn_linear(d_in, d_hidden)
+    self$output = if (task$task_type == "regr") {
+      torch::nn_linear(d_hidden, 1)
+    } else if (task$task_type == "classif") {
+      torch::nn_linear(d_hidden, length(task$class_names))
+    }
+  },
+  forward = function(x) {
+    x = self$linear(x)
+    x = torch::nnf_relu(x)
+    self$output(x)
+  }
+)
+
+network = network_generator(task, d_hidden = 50)
+x = torch::torch_tensor(as.matrix(task$data(1, task$feature_names)))
+y = torch::with_no_grad(network(x))
+
+
+# In mlr3torch
+network_generator = po("torch_ingress_num") %&gt;&gt;%
+  po("nn_linear", out_features = 50) %&gt;&gt;%
+  po("nn_head")
+md = network_generator$train(task)[[1L]]
+network = model_descriptor_to_module(md)
+y = torch::with_no_grad(network(torch_ingress_num.input = x))
+
+
+
+## Implementing a custom PipeOpTorch
+
+# defining a custom module
+nn_custom = nn_module("nn_custom",
+  initialize = function(d_in1, d_in2, d_out1, d_out2, bias = TRUE) {
+    self$linear1 = nn_linear(d_in1, d_out1, bias)
+    self$linear2 = nn_linear(d_in2, d_out2, bias)
+  },
+  forward = function(input1, input2) {
+    output1 = self$linear1(input1)
+    output2 = self$linear1(input2)
+
+    list(output1 = output1, output2 = output2)
+  }
+)
+
+# wrapping the module into a custom PipeOpTorch
+
+library(paradox)
+
+PipeOpTorchCustom = R6::R6Class("PipeOpTorchCustom",
+  inherit = PipeOpTorch,
+  public = list(
+    initialize = function(id = "nn_custom", param_vals = list()) {
+      param_set = ps(
+        d_out1 = p_int(lower = 1, tags = c("required", "train")),
+        d_out2 = p_int(lower = 1, tags = c("required", "train")),
+        bias = p_lgl(default = TRUE, tags = "train")
+      )
+      super$initialize(
+        id = id,
+        param_vals = param_vals,
+        param_set = param_set,
+        inname = c("input1", "input2"),
+        outname = c("output1", "output2"),
+        module_generator = nn_custom
+      )
+    }
+  ),
+  private = list(
+    .shape_dependent_params = function(shapes_in, param_vals, task) {
+      c(param_vals,
+        list(d_in1 = tail(shapes_in[["input1"]], 1)), d_in2 = tail(shapes_in[["input2"]], 1)
+      )
+    },
+    .shapes_out = function(shapes_in, param_vals, task) {
+      list(
+        input1 = c(head(shapes_in[["input1"]], -1), param_vals$d_out1),
+        input2 = c(head(shapes_in[["input2"]], -1), param_vals$d_out2)
+      )
+    }
+  )
+)
+
+## Training
+
+# generate input
+task = tsk("iris")
+task1 = task$clone()$select(paste0("Sepal.", c("Length", "Width")))
+task2 = task$clone()$select(paste0("Petal.", c("Length", "Width")))
+graph = gunion(list(po("torch_ingress_num_1"), po("torch_ingress_num_2")))
+mds_in = graph$train(list(task1, task2), single_input = FALSE)
+
+mds_in[[1L]][c("graph", "task", "ingress", "pointer", "pointer_shape")]
+mds_in[[2L]][c("graph", "task", "ingress", "pointer", "pointer_shape")]
+
+# creating the PipeOpTorch and training it
+po_torch = PipeOpTorchCustom$new()
+po_torch$param_set$values = list(d_out1 = 10, d_out2 = 20)
+train_input = list(input1 = mds_in[[1L]], input2 = mds_in[[2L]])
+mds_out = do.call(po_torch$train, args = list(input = train_input))
+po_torch$state
+
+# the new model descriptors
+
+# the resulting graphs are identical
+identical(mds_out[[1L]]$graph, mds_out[[2L]]$graph)
+# not that as a side-effect, also one of the input graphs is modified in-place for efficiency
+mds_in[[1L]]$graph$edges
+
+# The new task has both Sepal and Petal features
+identical(mds_out[[1L]]$task, mds_out[[2L]]$task)
+mds_out[[2L]]$task
+
+# The new ingress slot contains all ingressors
+identical(mds_out[[1L]]$ingress, mds_out[[2L]]$ingress)
+mds_out[[1L]]$ingress
+
+# The pointer and pointer_shape slots are different
+mds_out[[1L]]$pointer
+mds_out[[2L]]$pointer
+
+mds_out[[1L]]$pointer_shape
+mds_out[[2L]]$pointer_shape
+
+## Prediction
+predict_input = list(input1 = task1, input2 = task2)
+tasks_out = do.call(po_torch$predict, args = list(input = predict_input))
+identical(tasks_out[[1L]], tasks_out[[2L]])
+
+</code></pre>
+
+
+</div>

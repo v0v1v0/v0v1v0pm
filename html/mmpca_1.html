@@ -1,0 +1,198 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mmpca</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multiview principal component analysis</h2>
+
+<h3>Description</h3>
+
+<p>Analyzes several related matrices of data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mmpca(
+  x,
+  inds,
+  k,
+  lambda = NULL,
+  trace = 0,
+  max_iter = 20000,
+  init_theta = NULL,
+  cachepath = NULL,
+  enable_rank_selection = TRUE,
+  enable_sparsity = TRUE,
+  enable_variable_selection = FALSE,
+  parallel = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>List of matrices to analyze</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inds</code></td>
+<td>
+<p>Matrix containing view indices. The matrix should have two
+columns and the same number of rows as the length of <code>x</code>. The first
+(second) column contains the view index of the rows (columns) of the
+corresponding matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>Integer giving the maximum rank of the analysis, i.e. the maximum
+number of principal components for each view.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>Vector or matrix of lambda values. The length (or width if it
+is a matrix) depends on the number of active penalties (2, 3 or 4). If it
+is a matrix, try different lambda values (one try for each row). Default: a
+matrix where each column is the sequence <code>exp(seq(-6, 0)))</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trace</code></td>
+<td>
+<p>Integer selecting the amount of log messages. 0 (default): no
+output, 3: all output.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_iter</code></td>
+<td>
+<p>Maximum number of iterations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init_theta</code></td>
+<td>
+<p>NULL, functions or numeric. NULL (default) use initial
+values based on ordinary SVD. If init_theta is a list of three functions
+(<code>CMF</code>, <code>matrix_to_triplets</code> and <code>getCMFopts</code> from package
+<code>CMF</code>) use the supplied functions to find initial values with
+collaborative matrix factorization (CMF). If init_theta is a numeric vector
+it is used as initial value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cachepath</code></td>
+<td>
+<p>Character vector with path to directory to store
+intermediate results. If NULL (default) intermediate results are not
+stored. For caching to work it is required that the random number
+generation seed is constant between calls to mmpca, so <code>set.seed</code>
+needs to be called before mmpca.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>enable_rank_selection</code></td>
+<td>
+<p>Boolean deciding if the second penalty that
+imposes a low rank model should be enabled.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>enable_sparsity</code></td>
+<td>
+<p>Boolean deciding if the third penalty that imposes
+sparsity in V should be enabled.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>enable_variable_selection</code></td>
+<td>
+<p>Boolean deciding if the fourth penalty that
+increases the tendency for sparsity structure of different V columns to be
+similar. Defaults to FALSE meaning this penalty is not used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>Boolean deciding if computations should be run on multiple
+cores simultaneously.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list with components
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>initial</code></td>
+<td>
+<p>initial values used in optimization</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cmf</code></td>
+<td>
+<p>solution found with CMF (if init_theta == c(CMF,
+matrix_to_triplets, getCMFopts))</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>training</code></td>
+<td>
+<p>solutions for different values of lambda</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>solution</code></td>
+<td>
+<p>solution for optimal lambda value</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Jonatan Kallus, <a href="mailto:kallus@chalmers.se">kallus@chalmers.se</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Create model with three views, two data matrices of low-rank 3
+max_rank &lt;- 3
+v &lt;- list(
+  qr.Q(qr(matrix(rnorm(10 * max_rank), 10, max_rank))),
+  qr.Q(qr(matrix(rnorm(11 * max_rank), 11, max_rank))),
+  qr.Q(qr(matrix(rnorm(12 * max_rank), 12, max_rank)))
+)
+d &lt;- matrix(
+  c(1, 1, 1, 1, 1, 0, 1, 0, 1),
+  nrow = max_rank, ncol = 3
+)
+x &lt;- list(
+  v[[1]] %*% diag(d[, 1] * d[, 2]) %*% t(v[[2]]),
+  v[[1]] %*% diag(d[, 1] * d[, 3]) %*% t(v[[3]])
+)
+inds &lt;- matrix(c(1, 1, 2, 3), 2, 2)
+result &lt;- mmpca::mmpca(
+  x, inds, max_rank, parallel = FALSE,
+  lambda = c(1e-3, 1e-5), enable_sparsity = FALSE,
+  trace = 3
+)
+# Investigate the solution
+result$solution$D
+
+</code></pre>
+
+
+</div>

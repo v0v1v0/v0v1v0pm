@@ -1,0 +1,360 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_pipeops_textvectorizer</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Bag-of-word Representation of Character Features</h2>
+
+<h3>Description</h3>
+
+<p>Computes a bag-of-word representation from a (set of) columns.
+Columns of type <code>character</code> are split up into words.
+Uses the <code>quanteda::dfm()</code>,
+<code>quanteda::dfm_trim()</code> from the 'quanteda' package.
+TF-IDF computation works similarly to <code>quanteda::dfm_tfidf()</code>
+but has been adjusted for train/test data split using <code>quanteda::docfreq()</code>
+and <code>quanteda::dfm_weight()</code>
+</p>
+<p>In short:
+</p>
+
+<ul>
+<li>
+<p> Per default, produces a bag-of-words representation
+</p>
+</li>
+<li>
+<p> If <code>n</code> is set to values &gt; 1, ngrams are computed
+</p>
+</li>
+<li>
+<p> If <code>df_trim</code> parameters are set, the bag-of-words is trimmed.
+</p>
+</li>
+<li>
+<p> The <code>scheme_tf</code> parameter controls term-frequency (per-document, i.e. per-row) weighting
+</p>
+</li>
+<li>
+<p> The <code>scheme_df</code> parameter controls the document-frequency (per token, i.e. per-column) weighting.
+</p>
+</li>
+</ul>
+<p>Parameters specify arguments to quanteda's <code>dfm</code>, <code>dfm_trim</code>, <code>docfreq</code> and <code>dfm_weight</code>.
+What belongs to what can be obtained from each params <code>tags</code> where <code>tokenizer</code> are
+arguments passed on to <code>quanteda::dfm()</code>.
+Defaults to a bag-of-words representation with token counts as matrix entries.
+</p>
+<p>In order to perform the <em>default</em> <code>dfm_tfidf</code> weighting, set the <code>scheme_df</code> parameter to <code>"inverse"</code>.
+The <code>scheme_df</code> parameter is initialized to <code>"unary"</code>, which disables document frequency weighting.
+</p>
+<p>The pipeop works as follows:
+</p>
+
+<ol>
+<li>
+<p> Words are tokenized using <code>quanteda::tokens</code>.
+</p>
+</li>
+<li>
+<p> Ngrams are computed using <code>quanteda::tokens_ngrams</code>
+</p>
+</li>
+<li>
+<p> A document-frequency matrix is computed using <code>quanteda::dfm</code>
+</p>
+</li>
+<li>
+<p> The document-frequency matrix is trimmed using <code>quanteda::dfm_trim</code> during train-time.
+</p>
+</li>
+<li>
+<p> The document-frequency matrix is re-weighted (similar to <code>quanteda::dfm_tfidf</code>) if <code>scheme_df</code> is not set to <code>"unary"</code>.
+</p>
+</li>
+</ol>
+<h3>Format</h3>
+
+<p><code>R6Class</code> object inheriting from <code>PipeOpTaskPreproc</code>/<code>PipeOp</code>.
+</p>
+
+
+<h3>Construction</h3>
+
+<div class="sourceCode"><pre>PipeOpTextVectorizer$new(id = "textvectorizer", param_vals = list())
+</pre></div>
+
+<ul>
+<li> <p><code>id</code> :: <code>character(1)</code><br>
+Identifier of resulting object, default <code>"textvectorizer"</code>.
+</p>
+</li>
+<li> <p><code>param_vals</code> :: named <code>list</code><br>
+List of hyperparameter settings, overwriting the hyperparameter settings that would otherwise be set during construction. Default <code>list()</code>.
+</p>
+</li>
+</ul>
+<h3>Input and Output Channels</h3>
+
+<p>Input and output channels are inherited from <code>PipeOpTaskPreproc</code>.
+</p>
+<p>The output is the input <code>Task</code> with all affected features converted to a bag-of-words
+representation.
+</p>
+
+
+<h3>State</h3>
+
+<p>The <code style="white-space: pre;">⁠$state⁠</code> is a list with element 'cols': A vector of extracted columns.
+</p>
+
+
+<h3>Parameters</h3>
+
+<p>The parameters are the parameters inherited from <code>PipeOpTaskPreproc</code>, as well as:
+</p>
+
+<ul>
+<li> <p><code>return_type</code> :: <code>character(1)</code><br>
+Whether to return an integer representation ("integer-sequence") or a Bag-of-words ("bow").
+If set to "integer_sequence", tokens are replaced by an integer and padded/truncated to <code>sequence_length</code>.
+If set to "factor_sequence", tokens are replaced by a factor and padded/truncated to <code>sequence_length</code>.
+If set to 'bow', a possibly weighted bag-of-words matrix is returned.
+Defaults to <code>bow</code>.
+</p>
+</li>
+<li> <p><code>stopwords_language</code> :: <code>character(1)</code><br>
+Language to use for stopword filtering. Needs to be either <code>"none"</code>, a language identifier listed in
+<code>stopwords::stopwords_getlanguages("snowball")</code> (<code>"de"</code>, <code>"en"</code>, ...) or <code>"smart"</code>.
+<code>"none"</code> disables language-specific stopwords.
+<code>"smart"</code> coresponds to <code>stopwords::stopwords(source = "smart")</code>, which
+contains <em>English</em> stopwords and also removes one-character strings. Initialized to <code>"smart"</code>.<br></p>
+</li>
+<li> <p><code>extra_stopwords</code> :: <code>character</code><br>
+Extra stopwords to remove. Must be a <code>character</code> vector containing individual tokens to remove. Initialized to <code>character(0)</code>.
+When <code>n</code> is set to values greater than 1, this can also contain stop-ngrams.
+</p>
+</li>
+<li> <p><code>tolower</code> :: <code>logical(1)</code><br>
+Convert to lower case? See <code>quanteda::dfm</code>. Default: <code>TRUE</code>.
+</p>
+</li>
+<li> <p><code>stem</code> :: <code>logical(1)</code><br>
+Perform stemming? See <code>quanteda::dfm</code>. Default: <code>FALSE</code>.
+</p>
+</li>
+<li> <p><code>what</code> :: <code>character(1)</code><br>
+Tokenization splitter. See <code>quanteda::tokens</code>. Default: <code>word</code>.
+</p>
+</li>
+<li> <p><code>remove_punct</code> :: <code>logical(1)</code><br>
+See <code>quanteda::tokens</code>. Default: <code>FALSE</code>.
+</p>
+</li>
+<li> <p><code>remove_url</code> :: <code>logical(1)</code><br>
+See <code>quanteda::tokens</code>. Default: <code>FALSE</code>.
+</p>
+</li>
+<li> <p><code>remove_symbols</code> :: <code>logical(1)</code><br>
+See <code>quanteda::tokens</code>. Default: <code>FALSE</code>.
+</p>
+</li>
+<li> <p><code>remove_numbers</code> :: <code>logical(1)</code><br>
+See <code>quanteda::tokens</code>. Default: <code>FALSE</code>.
+</p>
+</li>
+<li> <p><code>remove_separators</code> :: <code>logical(1)</code><br>
+See <code>quanteda::tokens</code>. Default: <code>TRUE</code>.
+</p>
+</li>
+<li> <p><code>split_hypens</code> :: <code>logical(1)</code><br>
+See <code>quanteda::tokens</code>. Default: <code>FALSE</code>.
+</p>
+</li>
+<li> <p><code>n</code> :: <code>integer</code><br>
+Vector of ngram lengths. See <code>quanteda::tokens_ngrams</code>. Initialized to 1, deviating from the base function's default.
+Note that this can be a <em>vector</em> of multiple values, to construct ngrams of multiple orders.
+</p>
+</li>
+<li> <p><code>skip</code> :: <code>integer</code><br>
+Vector of skips. See <code>quanteda::tokens_ngrams</code>. Default: 0. Note that this can be a <em>vector</em> of multiple values.
+</p>
+</li>
+<li> <p><code>sparsity</code> :: <code>numeric(1)</code><br>
+Desired sparsity of the 'tfm' matrix. See <code>quanteda::dfm_trim</code>. Default: <code>NULL</code>.
+</p>
+</li>
+<li> <p><code>max_termfreq</code> :: <code>numeric(1)</code><br>
+Maximum term frequency in the 'tfm' matrix. See <code>quanteda::dfm_trim</code>. Default: <code>NULL</code>.
+</p>
+</li>
+<li> <p><code>min_termfreq</code> :: <code>numeric(1)</code><br>
+Minimum term frequency in the 'tfm' matrix. See <code>quanteda::dfm_trim</code>. Default: <code>NULL</code>.
+</p>
+</li>
+<li> <p><code>termfreq_type</code> :: <code>character(1)</code><br>
+How to asess term frequency. See <code>quanteda::dfm_trim</code>. Default: <code>"count"</code>.
+</p>
+</li>
+<li> <p><code>scheme_df</code> :: <code>character(1)</code> <br>
+Weighting scheme for document frequency: See <code>quanteda::docfreq</code>. Initialized to <code>"unary"</code> (1 for each document, deviating from base function default).
+</p>
+</li>
+<li> <p><code>smoothing_df</code> :: <code>numeric(1)</code><br>
+See <code>quanteda::docfreq</code>. Default: 0.
+</p>
+</li>
+<li> <p><code>k_df</code> :: <code>numeric(1)</code><br><code>k</code> parameter given to <code>quanteda::docfreq</code> (see there).
+Default is 0.
+</p>
+</li>
+<li> <p><code>threshold_df</code> :: <code>numeric(1)</code><br>
+See <code>quanteda::docfreq</code>. Default: 0. Only considered for <code>scheme_df</code> = <code>"count"</code>.
+</p>
+</li>
+<li> <p><code>base_df</code> :: <code>numeric(1)</code><br>
+The base for logarithms in <code>quanteda::docfreq</code> (see there). Default: 10.
+</p>
+</li>
+<li> <p><code>scheme_tf</code> :: <code>character(1)</code> <br>
+Weighting scheme for term frequency: See <code>quanteda::dfm_weight</code>. Default: <code>"count"</code>.
+</p>
+</li>
+<li> <p><code>k_tf</code> :: <code>numeric(1)</code><br><code>k</code> parameter given to <code>quanteda::dfm_weight</code> (see there).
+Default behaviour is 0.5.
+</p>
+</li>
+<li> <p><code>base_df</code> :: <code>numeric(1)</code><br>
+The base for logarithms in <code>quanteda::dfm_weight</code> (see there). Default: 10.
+</p>
+</li>
+</ul>
+<p>#' * <code>sequence_length</code> :: <code>integer(1)</code><br>
+The length of the integer sequence. Defaults to <code>Inf</code>, i.e. all texts are padded to the length
+of the longest text. Only relevant for "return_type" : "integer_sequence"
+</p>
+
+
+<h3>Internals</h3>
+
+<p>See Description. Internally uses the <code>quanteda</code> package. Calls <code>quanteda::tokens</code>, <code>quanteda::tokens_ngrams</code> and <code>quanteda::dfm</code>. During training,
+<code>quanteda::dfm_trim</code> is also called. Tokens not seen during training are dropped during prediction.
+</p>
+
+
+<h3>Methods</h3>
+
+<p>Only methods inherited from <code>PipeOpTaskPreproc</code>/<code>PipeOp</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>https://mlr-org.com/pipeops.html
+</p>
+<p>Other PipeOps: 
+<code>PipeOp</code>,
+<code>PipeOpEnsemble</code>,
+<code>PipeOpImpute</code>,
+<code>PipeOpTargetTrafo</code>,
+<code>PipeOpTaskPreproc</code>,
+<code>PipeOpTaskPreprocSimple</code>,
+<code>mlr_pipeops</code>,
+<code>mlr_pipeops_adas</code>,
+<code>mlr_pipeops_blsmote</code>,
+<code>mlr_pipeops_boxcox</code>,
+<code>mlr_pipeops_branch</code>,
+<code>mlr_pipeops_chunk</code>,
+<code>mlr_pipeops_classbalancing</code>,
+<code>mlr_pipeops_classifavg</code>,
+<code>mlr_pipeops_classweights</code>,
+<code>mlr_pipeops_colapply</code>,
+<code>mlr_pipeops_collapsefactors</code>,
+<code>mlr_pipeops_colroles</code>,
+<code>mlr_pipeops_copy</code>,
+<code>mlr_pipeops_datefeatures</code>,
+<code>mlr_pipeops_encode</code>,
+<code>mlr_pipeops_encodeimpact</code>,
+<code>mlr_pipeops_encodelmer</code>,
+<code>mlr_pipeops_featureunion</code>,
+<code>mlr_pipeops_filter</code>,
+<code>mlr_pipeops_fixfactors</code>,
+<code>mlr_pipeops_histbin</code>,
+<code>mlr_pipeops_ica</code>,
+<code>mlr_pipeops_imputeconstant</code>,
+<code>mlr_pipeops_imputehist</code>,
+<code>mlr_pipeops_imputelearner</code>,
+<code>mlr_pipeops_imputemean</code>,
+<code>mlr_pipeops_imputemedian</code>,
+<code>mlr_pipeops_imputemode</code>,
+<code>mlr_pipeops_imputeoor</code>,
+<code>mlr_pipeops_imputesample</code>,
+<code>mlr_pipeops_kernelpca</code>,
+<code>mlr_pipeops_learner</code>,
+<code>mlr_pipeops_missind</code>,
+<code>mlr_pipeops_modelmatrix</code>,
+<code>mlr_pipeops_multiplicityexply</code>,
+<code>mlr_pipeops_multiplicityimply</code>,
+<code>mlr_pipeops_mutate</code>,
+<code>mlr_pipeops_nmf</code>,
+<code>mlr_pipeops_nop</code>,
+<code>mlr_pipeops_ovrsplit</code>,
+<code>mlr_pipeops_ovrunite</code>,
+<code>mlr_pipeops_pca</code>,
+<code>mlr_pipeops_proxy</code>,
+<code>mlr_pipeops_quantilebin</code>,
+<code>mlr_pipeops_randomprojection</code>,
+<code>mlr_pipeops_randomresponse</code>,
+<code>mlr_pipeops_regravg</code>,
+<code>mlr_pipeops_removeconstants</code>,
+<code>mlr_pipeops_renamecolumns</code>,
+<code>mlr_pipeops_replicate</code>,
+<code>mlr_pipeops_rowapply</code>,
+<code>mlr_pipeops_scale</code>,
+<code>mlr_pipeops_scalemaxabs</code>,
+<code>mlr_pipeops_scalerange</code>,
+<code>mlr_pipeops_select</code>,
+<code>mlr_pipeops_smote</code>,
+<code>mlr_pipeops_smotenc</code>,
+<code>mlr_pipeops_spatialsign</code>,
+<code>mlr_pipeops_subsample</code>,
+<code>mlr_pipeops_targetinvert</code>,
+<code>mlr_pipeops_targetmutate</code>,
+<code>mlr_pipeops_targettrafoscalerange</code>,
+<code>mlr_pipeops_threshold</code>,
+<code>mlr_pipeops_tunethreshold</code>,
+<code>mlr_pipeops_unbranch</code>,
+<code>mlr_pipeops_updatetarget</code>,
+<code>mlr_pipeops_vtreat</code>,
+<code>mlr_pipeops_yeojohnson</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+library("mlr3")
+library("data.table")
+# create some text data
+dt = data.table(
+  txt = replicate(150, paste0(sample(letters, 3), collapse = " "))
+)
+task = tsk("iris")$cbind(dt)
+
+pos = po("textvectorizer", param_vals = list(stopwords_language = "en"))
+
+pos$train(list(task))[[1]]$data()
+
+one_line_of_iris = task$filter(13)
+
+one_line_of_iris$data()
+
+pos$predict(list(one_line_of_iris))[[1]]$data()
+
+
+</code></pre>
+
+
+</div>

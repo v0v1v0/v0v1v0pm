@@ -1,0 +1,190 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>plot.sos.smooth</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Plotting smooths on the sphere</h2>
+
+<h3>Description</h3>
+
+<p>This is the plotting method for smooth effects on the sphere.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'sos.smooth'
+plot(
+  x,
+  n = 40,
+  xlim = NULL,
+  ylim = NULL,
+  maxpo = 10000,
+  too.far = 0.1,
+  phi = 30,
+  theta = 30,
+  trans = identity,
+  scheme = 0,
+  seWithMean = FALSE,
+  unconditional = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a smooth effect object, extracted using sm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>sqrt of the number of grid points used to compute the effect plot.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xlim</code></td>
+<td>
+<p>if supplied then this pair of numbers are used as the x limits for the plot.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ylim</code></td>
+<td>
+<p>if supplied then this pair of numbers are used as the y limits for the plot.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxpo</code></td>
+<td>
+<p>maximum number of residuals points that will be used by layers such as
+<code>resRug()</code> and <code>resPoints()</code>. If number of datapoints &gt; <code>maxpo</code>,
+then a subsample of <code>maxpo</code> points will be taken.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>too.far</code></td>
+<td>
+<p>if greater than 0 then this is used to determine when a location is too far
+from data to be plotted. This is useful since smooths tend to go wild
+away from data. The data are scaled into the unit square before deciding
+what to exclude, and too.far is a distance within the unit square.
+Setting to zero can make plotting faster for large datasets, but care
+then needed with interpretation of plots.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>phi</code></td>
+<td>
+<p>one of the plotting angles, relevant only if <code>scheme = 0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>theta</code></td>
+<td>
+<p>the other plotting angle, relevant only if <code>scheme = 0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trans</code></td>
+<td>
+<p>monotonic function to apply to the smooth and residuals, before plotting.
+Monotonicity is not checked.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scheme</code></td>
+<td>
+<p>if 0 the smooth effect is plotted on the sphere. If 1 the smooth effect is plotted
+on the two hemispheres.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seWithMean</code></td>
+<td>
+<p>if TRUE the component smooths are shown with confidence intervals that
+include the uncertainty about the overall mean. If FALSE then the uncertainty
+relates purely to the centred smooth itself. Marra and Wood (2012) suggests
+that TRUE results in better coverage performance, and this is also suggested
+by simulation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>unconditional</code></td>
+<td>
+<p>if <code>TRUE</code> then the smoothing parameter uncertainty corrected covariance
+matrix is used to compute uncertainty bands, if available.
+Otherwise the bands treat the smoothing parameters as fixed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>currently unused.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An objects of class <code>plotSmooth</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Marra, G and S.N. Wood (2012) Coverage Properties of Confidence Intervals for
+Generalized Additive Model Components. Scandinavian Journal of Statistics.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(mgcViz)
+set.seed(0)
+n &lt;- 400
+
+f &lt;- function(la,lo) { ## a test function...
+  sin(lo)*cos(la-.3)
+}
+
+## generate with uniform density on sphere...  
+lo &lt;- runif(n)*2*pi-pi ## longitude
+la &lt;- runif(3*n)*pi-pi/2
+ind &lt;- runif(3*n)&lt;=cos(la)
+la &lt;- la[ind];
+la &lt;- la[1:n]
+
+ff &lt;- f(la,lo)
+y &lt;- ff + rnorm(n)*.2 ## test data
+
+## generate data for plotting truth...
+lam &lt;- seq(-pi/2,pi/2,length=30)
+lom &lt;- seq(-pi,pi,length=60)
+gr &lt;- expand.grid(la=lam,lo=lom)
+fz &lt;- f(gr$la,gr$lo)
+zm &lt;- matrix(fz,30,60)
+
+require(mgcv)
+dat &lt;- data.frame(la = la *180/pi,lo = lo *180/pi,y=y)
+
+## fit spline on sphere model...
+bp &lt;- gam(y~s(la,lo,bs="sos",k=60),data=dat)
+bp &lt;- getViz(bp)
+
+# Plot on sphere
+plot(sm(bp, 1), scheme=0) + l_fitRaster() + l_fitContour() + 
+   l_points(shape = 19) + l_rug() + l_coordContour() + l_bound() 
+ 
+# Plotting as in standard 2D plots
+plot(sm(bp, 1), scheme=1) + l_fitRaster() + l_fitContour() + 
+           l_points(shape = 19) + l_rug()
+</code></pre>
+
+
+</div>

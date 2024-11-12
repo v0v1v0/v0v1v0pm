@@ -1,0 +1,140 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mmcif_fit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fits a Mixed Competing Risk Model</h2>
+
+<h3>Description</h3>
+
+<p>Fits mixed cumulative incidence functions model by maximizing the log
+composite likelihood function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mmcif_fit(
+  par,
+  object,
+  n_threads = 1L,
+  control.outer = list(itmax = 100L, method = "nlminb", kkt2.check = FALSE, trace =
+    FALSE),
+  control.optim = list(eval.max = 10000L, iter.max = 10000L),
+  ghq_data = object$ghq_data,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>par</code></td>
+<td>
+<p>numeric vector with parameters. This is using a log
+Cholesky decomposition for the covariance matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>an object from <code>mmcif_data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_threads</code></td>
+<td>
+<p>the number of threads to use.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control.outer, control.optim, ...</code></td>
+<td>
+<p>arguments passed to
+<code>auglag</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ghq_data</code></td>
+<td>
+<p>the Gauss-Hermite quadrature nodes and weights to use.
+It should be a list with two elements called <code>"node"</code> and <code>"weight"</code>.
+The argument can also be a list with lists with different sets of quadrature
+nodes. In this case, fits are successively made using the previous fit as the
+starting value. This may
+reduce the computation time by starting with fewer quadrature nodes.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The output from <code>auglag</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Cederkvist, L., Holst, K. K., Andersen, K. K., &amp;
+Scheike, T. H. (2019).
+<em>Modeling the cumulative incidence function of multivariate competing
+risks data allowing for within-cluster dependence of risk and timing</em>.
+Biostatistics, Apr 1, 20(2), 199-217.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mmcif_data</code>, <code>mmcif_start_values</code> and
+<code>mmcif_sandwich</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">if(require(mets)){
+  # prepare the data
+  data(prt)
+
+  # truncate the time
+  max_time &lt;- 90
+  prt &lt;- within(prt, {
+    status[time &gt;= max_time] &lt;- 0
+    time &lt;- pmin(time, max_time)
+  })
+
+  # select the DZ twins and re-code the status
+  prt_use &lt;- subset(prt, zyg == "DZ") |&gt;
+    transform(status = ifelse(status == 0, 3L, status))
+
+  # randomly sub-sample
+  set.seed(1)
+  prt_use &lt;- subset(
+    prt_use, id %in% sample(unique(id), length(unique(id)) %/% 10L))
+
+  n_threads &lt;- 2L
+  mmcif_obj &lt;- mmcif_data(
+    ~ country - 1, prt_use, status, time, id, max_time,
+    2L, strata = country)
+
+  # get the staring values
+  start_vals &lt;- mmcif_start_values(mmcif_obj, n_threads = n_threads)
+
+  # estimate the parameters
+  ests &lt;- mmcif_fit(start_vals$upper, mmcif_obj, n_threads = n_threads)
+
+  # show the estimated covariance matrix of the random effects
+  tail(ests$par, 10L) |&gt; log_chol_inv() |&gt; print()
+
+  # gradient is ~ zero
+  mmcif_logLik_grad(
+    mmcif_obj, ests$par, is_log_chol = TRUE, n_threads = n_threads) |&gt;
+    print()
+}
+
+</code></pre>
+
+
+</div>

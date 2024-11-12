@@ -1,0 +1,201 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>getjagsdata</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Prepares data for JAGS</h2>
+
+<h3>Description</h3>
+
+<p>Converts MBNMA data frame to a list for use in JAGS model
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">getjagsdata(
+  data.ab,
+  fun = NULL,
+  class = FALSE,
+  rho = NULL,
+  covstruct = "CS",
+  link = "identity",
+  sdscale = FALSE,
+  cfb = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data.ab</code></td>
+<td>
+<p>A data frame of arm-level data in "long" format containing the columns:
+</p>
+
+<ul>
+<li> <p><code>studyID</code> Study identifiers
+</p>
+</li>
+<li> <p><code>time</code> Numeric data indicating follow-up times
+</p>
+</li>
+<li> <p><code>y</code> Numeric data indicating the aggregate response for a given observation (e.g. mean)
+</p>
+</li>
+<li> <p><code>se</code> Numeric data indicating the standard error for a given observation
+</p>
+</li>
+<li> <p><code>treatment</code> Treatment identifiers (can be numeric, factor or character)
+</p>
+</li>
+<li> <p><code>class</code> An optional column indicating a particular class identifier. Observations with the same treatment
+identifier must also have the same class identifier.
+</p>
+</li>
+<li> <p><code>n</code> An optional column indicating the number of participants used to calculate the
+response at a given observation (required if modelling using Standardised Mean Differences)
+</p>
+</li>
+<li> <p><code>standsd</code> An optional column of numeric data indicating reference SDs used to standardise
+treatment effects when modelling using Standardised Mean Differences (SMD).
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun</code></td>
+<td>
+<p>An object of class <code>"timefun"</code> generated (see Details) using any of
+<code>tloglin()</code>, <code>tpoly()</code>, <code>titp()</code>, <code>temax()</code>, <code>tfpoly()</code>, <code>tspline()</code> or <code>tuser()</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>class</code></td>
+<td>
+<p>A boolean object indicating whether or not <code>data.ab</code> contains
+information on different classes of treatments</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho</code></td>
+<td>
+<p>The correlation coefficient when modelling within-study correlation between time points. The default is a string representing a
+prior distribution in JAGS, indicating that it be estimated from the data (e.g. <code>rho="dunif(0,1)"</code>). <code>rho</code> also be assigned a
+numeric value (e.g. <code>rho=0.7</code>), which fixes <code>rho</code> in the model to this value (e.g. for use in a deterministic sensitivity analysis).
+If set to <code>rho=0</code> (the default) then this implies modelling no correlation between time points.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covstruct</code></td>
+<td>
+<p>A character to indicate the covariance structure required for modelling correlation between
+time points (if any), since
+this determines some of the data. Can be either <code>"CS"</code> (compound symmetry), <code>"AR1"</code> (autoregressive AR1) or
+<code>"varadj"</code> (variance-adjustment).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>link</code></td>
+<td>
+<p>Can take either <code>"identity"</code> (the default),
+<code>"log"</code> (for modelling Ratios of Means (Friedrich et al. 2011)) or
+<code>"smd"</code> (for modelling Standardised Mean Differences - although this also corresponds to an identity link function).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sdscale</code></td>
+<td>
+<p>Logical object to indicate whether to write a model that specifies a reference SD
+for standardising when modelling using Standardised Mean Differences. Specifying <code>sdscale=TRUE</code>
+will therefore only modify the model if link function is set to SMD (<code>link="smd"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cfb</code></td>
+<td>
+<p>A logical vector whose length is equal to the unique number of studies in <code>data.ab</code>, where each
+element is <code>TRUE</code> if the study data reported is change-from-baseline and <code>FALSE</code> otherwise. If left as <code>NULL</code>
+(the default) then this will be identified from the data by assuming any study for which there is no data
+at <code>time=0</code> reports change-from-baseline.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A named list of numbers, vector, matrices and arrays to be sent to
+JAGS. List elements are:
+</p>
+
+<ul>
+<li> <p><code>y</code> An array of mean responses for each observation in each arm within each study
+</p>
+</li>
+<li> <p><code>se</code> An array of standard errors for each observation in each arm within each study
+</p>
+</li>
+<li> <p><code>time</code> A matrix of follow-up times within each study
+</p>
+</li>
+<li> <p><code>fups</code> A numeric vector with the number of follow-up measurements per study
+</p>
+</li>
+<li> <p><code>narm</code> A numeric vector with the number of arms per study
+</p>
+</li>
+<li> <p><code>NS</code> The total number of studies in the dataset
+</p>
+</li>
+<li> <p><code>NT</code> The total number of treatments in the dataset
+</p>
+</li>
+<li> <p><code>treat</code> A matrix of treatment codes within each study
+</p>
+</li>
+<li> <p><code>Nclass</code> Optional. The total number of classes in the dataset
+</p>
+</li>
+<li> <p><code>class</code> Optional. A matrix of class codes within each study
+</p>
+</li>
+<li> <p><code>classkey</code> Optional. A vector of class codes that correspond to treatment codes.
+Same length as the number of treatment codes.
+</p>
+</li>
+<li> <p><code>mat.triangle</code> Optional. A matrix with number indicating how to fill covariance
+matrices within the JAGS code.
+</p>
+</li>
+<li> <p><code>mat.order</code> Optional. A matrix with number indicating what order to fill
+covariance matrices within the JAGS code.
+</p>
+</li>
+<li> <p><code>timedif.0</code> Optional. A vector of the difference in times between the first and second
+follow-up time in each study.
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Using the alogliptin dataset
+network &lt;- mb.network(alog_pcfb)
+jagsdat &lt;- getjagsdata(network$data.ab)
+
+
+# Get JAGS data with class
+netclass &lt;- mb.network(goutSUA_CFBcomb)
+jagsdat &lt;- getjagsdata(netclass$data.ab, class=TRUE)
+
+
+# Get JAGS data that allows for modelling correlation between time points
+painnet &lt;- mb.network(osteopain)
+jagsdat &lt;- getjagsdata(painnet$data.ab, rho="dunif(0,1)", covstruct="AR1")
+
+</code></pre>
+
+
+</div>

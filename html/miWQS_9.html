@@ -1,0 +1,282 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>impute.multivariate.bayesian</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multivariate Bayesian Imputation</h2>
+
+<h3>Description</h3>
+
+<p>Given lognormal interval-censored chemical concentrations between zero and different detection limits <em>DL</em>, the chemical concentrations are modelled using Bayesian multivariate regression. Drawing from the posterior predictive density of the BDL chemical concentrations given the observed ones yields multiple (or K) imputed datasets. These datasets are then used in WQS regression.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">impute.multivariate.bayesian(
+  X,
+  DL,
+  Z = NULL,
+  K = 5L,
+  prior.coeff.mean = NULL,
+  prior.cov.mean = NULL,
+  T = 250L,
+  n.burn = 50L,
+  initial = list(NA, NA),
+  verbose = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>A numeric vector, matrix, or data-frame of chemical concentration levels with n subjects and C chemicals to be imputed. Missing values are indicated by NA's.  Ideally, a numeric matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>DL</code></td>
+<td>
+<p>The detection limit for each chemical as a numeric vector with length equal to C chemicals. Vector must be complete (no NA's); any chemical that has a missing detection limit is not imputed. If DL is a data-frame or matrix with 1 row or 1 column, it is forced as a numeric vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Z</code></td>
+<td>
+<p>Any covariates used in imputing the chemical concentrations.  Ideally, a numeric matrix; however, Z can be a factor, vector, or data-frame. Assumed to be complete; observations with missing covariate variables are ignored in the imputation, with a warning printed. If none, enter NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>K</code></td>
+<td>
+<p>A natural number of imputed datasets to generate. Default: 5L.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior.coeff.mean</code></td>
+<td>
+<p>The prior mean of number of covariates (p) x C coefficient matrix. The default, entered as NULL, will be a matrix of 1's, given by <code>special.matrix</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior.cov.mean</code></td>
+<td>
+<p>The prior mean of covariance matrix. The default, entered as NULL, is an identity matrix with size equal to the number of chemicals, given by <code>special.matrix</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>T</code></td>
+<td>
+<p>Number of total iterations for the Gibbs Sampler. Default: 1000L.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.burn</code></td>
+<td>
+<p>The burn-in, which is the number of initial iterations to be discarded. Generally, the burn-in can be quite large as the imputed chemical matrices, X.imputed, are formed from the end of the chain – the lowest state used is <code class="reqn">T - 10*K</code>. Default: 1L (no burn-in).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial</code></td>
+<td>
+<p>An optional two-item list that consists of initial values for the log imputed BDL values vectorized by subject in the Gibbs Sampler. The list contains two elements, one for each chain in the Gibbs Sampler. Each element is a vector of length n0C containing the log imputed BDL values vectorized by subject, (n0 is total # of missing values). If unknown for each chain, enter NA, and the initial values are automatically generated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Logical; if TRUE, prints more information. Useful to check for any errors in the code. Default: FALSE.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list that consists of the following elements:
+</p>
+<dl>
+<dt>call</dt>
+<dd>
+<p>A list of arguments used in this function.</p>
+</dd>
+</dl>
+<p>Section - Imputed Dataset (from accessory draw.multi.imputed.samples())   </p>
+
+<dl>
+<dt>X.imputed</dt>
+<dd>
+<p>An array of n subjects x C chemicals x K imputed sets on the normal scale. The main result and purpose of the function.</p>
+</dd>
+</dl>
+<p>Section - Convergence </p>
+
+<dl>
+<dt>convgd.table</dt>
+<dd>
+<p>A data-frame summarizing convergence with C rows and columns of the Gelman-Rubin statistic and whether the point estimate is less than 1.2. Also printed to the screen.</p>
+</dd>
+<dt>auto.corr</dt>
+<dd>
+<p>Summary of autocorrelations of missing data, which are used to justify states taken as imputed datasets. Also printed to screen.</p>
+</dd>
+<dt>last.states</dt>
+<dd>
+<p>A list of the last (Tth) states of the imputed values saved to be used for initial values with the first element being from chain1 and second element from chain2.</p>
+</dd>
+</dl>
+<p>Section - convgd.surrogates. Surrogates used to check for convergence saved as mcmc.list objects. Returning in case trace plots, autocorrelation plots, etc. wants to be calculated. </p>
+
+<dl>
+<dt>eigen.Gamma</dt>
+<dd>
+<p>An mcmc.list object of the eigenvalues from the p x p Gamma *Gamma^T matrix from the two BURNED chains.  The eigenvalues were used as surrogates for the convergence of the coefficient matrix, Gamma.</p>
+</dd>
+<dt>eigen.Sigma</dt>
+<dd>
+<p>An mcmc.list object of the eigenvalues for covariance matrix Sigma from two BURNED chains. The eigenvalues were used as surrogates for the convergence of Sigma.</p>
+</dd>
+<dt>vec.log.X.imputed</dt>
+<dd>
+<p>An mcmc.list object of the vectorized log imputed chemical values from the two BURNED chains.</p>
+</dd>
+</dl>
+<p>Section - Checking Imputation Procedure </p>
+
+<dl>
+<dt>indicator.miss</dt>
+<dd>
+<p>A check; a sum of indicator variables where the number of imputed missing values &gt; detection limit. Should be 0. Printed to screen.</p>
+</dd>
+</dl>
+<h3>Introduction</h3>
+
+<p>We wish to assess the association of the mixture *X* and an outcome *y* while accounting for other covariates *Z*. However, the components in *X* are interval-censored between zero and different detection limits *DL*. The multivariate Bayesian imputation method in the MI-WQS framework (MBMI) jointly imputes the chemical mixture *K* times by taking full advantage of the chemical mixture data.
+</p>
+<p>The logarithmic chemical concentrations *X* are assumed to follow a matrix normal distribution, which is an extension of the multivariate normal:
+</p>
+<p style="text-align: center;"><code class="reqn">  \log(X)|Z \sim MatNorm( \mu_{i} = z'_{i} \Gamma , \Sigma) , i = 1, ... n </code>
+</p>
+
+<p>(Iranmanesh et al., 2010).  Like other imputation methods in miWQS, we wish to find the posterior predictive density of log(X_miss)|log(X_obs). In <code>impute.multivariate.bayesian()</code>, the missing chemical concentrations are imputed using estimates from a Bayesian Multivariate regression.
+</p>
+
+
+<h3>Step 1 - Generate a posterior sample</h3>
+
+<p>The accessory <code>sample.mregress.impute()</code> function generate a posterior samples using the data augmentation technique. The conjugate priors for a multivariate regression are multivariate extensions of those in the univariate linear regression case. Given complete data, the conjugate priors for the coefficient matrix is another matrix normal with mean <code>prior.coeff.mean</code>, individual variance matrix <code class="reqn">Z'Z</code>, and chemical variance matrix <code class="reqn">\Sigma</code>.  The prior distribution for the covariance matrix is the inverse-Wishart distribution. In this function, we used a matrix of 1's as the default prior coefficient mean of the matrix normal.  The prior parameters chosen for the covariance matrix are vague with the degree of freedoms equal to the number of components, and the mean matrix, by default, is an identity of ones. Instead of attempting to impute a n x C matrix X, we vectorized the logarithmic concentrations by individual, such as:
+&gt; vec(t(X))             <br>
+...           ...      <br>
+dieldrin.18  NA        <br>
+pcb_180.18  -0.2514225 <br>
+pcb_180.19  -0.2929334 <br>
+dieldrin.20 -4.4849838 <br>
+pcb_180.20  -1.0441849 <br>
+... <br></p>
+<p>The initial missing values were a sample taken from log(uniform(0,DL_j )). If the initial values are set by the user, the initial log imputed values, which is vectorized by subject, has to be n0C x T.
+</p>
+<p>For each step in the data augmentation, </p>
+
+<ol>
+<li>
+<p> Calculate the MLE, the sample covariance matrix, and the posterior matrix of inverse-Wishart.
+</p>
+</li>
+<li>
+<p> Simulate the covariance matrix using inverse Wishart (MCMCpack::riwish()). See <code>InvWishart</code>.
+</p>
+</li>
+<li>
+<p> Simulate the coefficient matrix using the matrix normal. See <code>matrixNormal_Distribution</code>.
+</p>
+</li>
+<li>
+<p> Impute the vectorized missing log concentrations BDL for each individual from a multivariate normal using current parameter estimates truncated between zero and the detection limits using
+</p>
+</li>
+</ol>
+<p>Note: The exact MCMC chains are not returned to save computer space.
+</p>
+
+
+<h3>Step 2 - Assess convergence</h3>
+
+<p>To save space, the eigenvalues of the c x c matrix Gamma^T*Gamma and c x c covariance matrix Sigma are saved as surrogates to check for convergence in a Markov Chain. </p>
+
+<dl>
+<dt>eigen.Gamma.post</dt>
+<dd>
+<p>A coda object of eigenvalues taken from a p X C posterior coefficient matrix converted into a square matrix C x C matrix (Gamma^T*Gamma). The  eigenvalues as surrogates to check for convergence.</p>
+</dd>
+<dt>eigen.Sigma.post</dt>
+<dd>
+<p>A coda object of eigenvalues for covariance matrix (C X C) used as surrogates to check for convergence. The covariance matrix is already square so no conversion is needed.</p>
+</dd>
+<dt>vec.log.X.imputed</dt>
+<dd>
+<p>A coda object of the n0 missing values. <br>
+Example: The following chemicals shown are those that are missing. <br>
+[,1]        [,2]  <br>
+dieldrin.18 -0.7573897 -0.60540942   ...    <br>
+pcb_180.18  -0.2514225 -1.18717066 <br>
+pcb_180.19  -0.2929334 -0.01894021 <br>
+dieldrin.20 -4.4849838 -0.78641994  <br>
+pcb_180.20  -1.0441849 -0.1349498 <br>
+... <br></p>
+</dd>
+</dl>
+<p>The accessory <code>converge.multi.chain()</code> function assesses convergence on matrices using the Brook-Gelman’s multivariate potential scale reduction factor (MPSRF). The <code>gelman.diag</code> function calculates the MPSRF on eigenvalues and the vectorized imputed values chain. If the MPSRF is less than 1.24, the stationary distribution of the Markov chains was assumed to occur. The results in <code>convgd.table</code> element are printed to the screen. If at least one chain fails to converge, a warning is printed to occur; in this case, it is suggested to increase <code>T</code>.
+</p>
+
+
+<h3>Step 3 - Processing MCMC chains</h3>
+
+<p>The MCMC chains have already been burned using argument <code>n.burn</code> when generated.
+</p>
+
+
+<h3>Step 4 - Making imputed value array</h3>
+
+<p>The accessory <code>draw.multi.imputed.samples()</code> function forms X.imputed using the posterior predictive distribution of log.miss|log.obs. Using the first MCMC chain of the vectorized log imputed chemical values (<code>vec.log.X.imputed</code>) with length (<code>T</code>), the following states are selected:
+</p>
+<p style="text-align: center;"><code class="reqn"> t_k=T-(k-1)*10   for k=1,2,…K imputations </code>
+</p>
+
+<p>The "10" may be justified using autocorrelation summaries, which are printed &amp; returned.
+</p>
+
+
+<h3>Note</h3>
+
+<p>No seed is set in this function. Because bootstraps and data augmentation are random, a seed should be set before every use.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other imputation: 
+<code>impute.Lubin()</code>,
+<code>impute.boot()</code>,
+<code>impute.sub()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+#Example takes too long.
+system.time({
+  set.seed(2345)
+  l  &lt;- impute.multivariate.bayesian(
+    X =  simdata87$X.bdl[, c(1, 14)], DL = simdata87$DL[c(1, 14)],
+    Z =  NULL, T = 200, n.burn = 10, K = 2
+  )
+})
+
+## End(Not run)
+</code></pre>
+
+
+</div>

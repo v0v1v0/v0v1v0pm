@@ -1,0 +1,142 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict.MRFA</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Prediction of Multi-Resolution Functional ANOVA (MRFA) Model</h2>
+
+<h3>Description</h3>
+
+<p>The function computes the predicted responses.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'MRFA'
+predict(object, xnew, lambda = object$lambda, parallel = FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>a class MRFA object estimated by <code>MRFA_fit</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xnew</code></td>
+<td>
+<p>a testing matrix with dimension <code>n_new</code> by <code>d</code> in which each row corresponds to a predictive location.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>a value, or vector of values, indexing the path. The default is <code>object$lambda</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>logical. If <code>TRUE</code>, apply function in parallel in <code>ldply</code> using parallel backend provided by foreach.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>for compatibility with generic method <code>predict</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>as above.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coefficients</code></td>
+<td>
+<p>coefficients with respect to the basis function value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y_hat</code></td>
+<td>
+<p>a matrix with dimension <code>n_new</code> by <code>length(lambda)</code> displaying predicted responses at locations <code>xnew</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Chih-Li Sung &lt;iamdfchile@gmail.com&gt;
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MRFA_fit</code> for fitting a multiresolution functional ANOVA model.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+
+#####             Testing function: OTL circuit function                     #####
+#####  Thanks to Sonja Surjanovic and Derek Bingham, Simon Fraser University #####
+otlcircuit &lt;- function(xx)
+{
+  Rb1  &lt;- 50   + xx[1] * 100
+  Rb2  &lt;- 25   + xx[2] * 45
+  Rf   &lt;- 0.5  + xx[3] * 2.5
+  Rc1  &lt;- 1.2  + xx[4] * 1.3
+  Rc2  &lt;- 0.25 + xx[5] * 0.95
+  beta &lt;- 50   + xx[6] * 250
+
+  Vb1 &lt;- 12*Rb2 / (Rb1+Rb2)
+  term1a &lt;- (Vb1+0.74) * beta * (Rc2+9)
+  term1b &lt;- beta*(Rc2+9) + Rf
+  term1 &lt;- term1a / term1b
+
+  term2a &lt;- 11.35 * Rf
+  term2b &lt;- beta*(Rc2+9) + Rf
+  term2 &lt;- term2a / term2b
+
+  term3a &lt;- 0.74 * Rf * beta * (Rc2+9)
+  term3b &lt;- (beta*(Rc2+9)+Rf) * Rc1
+  term3 &lt;- term3a / term3b
+
+  Vm &lt;- term1 + term2 + term3
+  return(Vm)
+}
+
+library(MRFA)
+#####   Training data and testing data   #####
+set.seed(2)
+n &lt;- 1000; n_new &lt;- 100; d &lt;- 6
+X.train &lt;- matrix(runif(d*n), ncol = d)
+Y.train &lt;- apply(X.train, 1, otlcircuit)
+X.test &lt;- matrix(runif(d*n_new), ncol = d)
+Y.test &lt;- apply(X.test, 1, otlcircuit)
+
+#####   Fitting    #####
+MRFA_model &lt;- MRFA_fit(X.train, Y.train, verbose = TRUE)
+
+#####   Prediction   ######
+Y.pred &lt;- predict(MRFA_model, X.test, lambda = min(MRFA_model$lambda))$y_hat
+print(sqrt(mean((Y.test - Y.pred)^2)))
+
+## End(Not run)
+</code></pre>
+
+
+</div>

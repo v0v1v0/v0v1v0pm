@@ -1,0 +1,291 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>match.data</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Construct a matched dataset from a <code>matchit</code> object</h2>
+
+<h3>Description</h3>
+
+<p><code>match.data()</code> and <code>get_matches()</code> create a data frame with
+additional variables for the distance measure, matching weights, and
+subclasses after matching. This dataset can be used to estimate treatment
+effects after matching or subclassification. <code>get_matches()</code> is most
+useful after matching with replacement; otherwise, <code>match.data()</code> is
+more flexible. See Details below for the difference between them.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">match.data(
+  object,
+  group = "all",
+  distance = "distance",
+  weights = "weights",
+  subclass = "subclass",
+  data = NULL,
+  include.s.weights = TRUE,
+  drop.unmatched = TRUE
+)
+
+get_matches(
+  object,
+  distance = "distance",
+  weights = "weights",
+  subclass = "subclass",
+  id = "id",
+  data = NULL,
+  include.s.weights = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>a <code>matchit</code> object; the output of a call to <code>matchit()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>group</code></td>
+<td>
+<p>which group should comprise the matched dataset: <code>"all"</code>
+for all units, <code>"treated"</code> for just treated units, or <code>"control"</code>
+for just control units. Default is <code>"all"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distance</code></td>
+<td>
+<p>a string containing the name that should be given to the
+variable containing the distance measure in the data frame output. Default
+is <code>"distance"</code>, but <code>"prop.score"</code> or similar might be a good
+alternative if propensity scores were used in matching. Ignored if a
+distance measure was not supplied or estimated in the call to
+<code>matchit()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>a string containing the name that should be given to the
+variable containing the matching weights in the data frame output. Default
+is <code>"weights"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subclass</code></td>
+<td>
+<p>a string containing the name that should be given to the
+variable containing the subclasses or matched pair membership in the data
+frame output. Default is <code>"subclass"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a data frame containing the original dataset to which the
+computed output variables (<code>distance</code>, <code>weights</code>, and/or
+<code>subclass</code>) should be appended. If empty, <code>match.data()</code> and
+<code>get_matches()</code> will attempt to find the dataset using the environment
+of the <code>matchit</code> object, which can be unreliable; see Notes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>include.s.weights</code></td>
+<td>
+<p><code>logical</code>; whether to multiply the estimated
+weights by the sampling weights supplied to <code>matchit()</code>, if any.
+Default is <code>TRUE</code>. If <code>FALSE</code>, the weights in the
+<code>match.data()</code> or <code>get_matches()</code> output should be multiplied by
+the sampling weights before being supplied to the function estimating the
+treatment effect in the matched data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>drop.unmatched</code></td>
+<td>
+<p><code>logical</code>; whether the returned data frame should
+contain all units (<code>FALSE</code>) or only units that were matched (i.e., have
+a matching weight greater than zero) (<code>TRUE</code>). Default is <code>TRUE</code>
+to drop unmatched units.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>a string containing the name that should be given to the variable
+containing the unit IDs in the data frame output. Default is <code>"id"</code>.
+Only used with <code>get_matches()</code>; for <code>match.data()</code>, the units IDs
+are stored in the row names of the returned data frame.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>match.data()</code> creates a dataset with one row per unit. It will be
+identical to the dataset supplied except that several new columns will be
+added containing information related to the matching. When
+<code>drop.unmatched = TRUE</code>, the default, units with weights of zero, which
+are those units that were discarded by common support or the caliper or were
+simply not matched, will be dropped from the dataset, leaving only the
+subset of matched units. The idea is for the output of <code>match.data()</code>
+to be used as the dataset input in calls to <code>glm()</code> or similar to
+estimate treatment effects in the matched sample. It is important to include
+the weights in the estimation of the effect and its standard error. The
+subclass column, when created, contains pair or subclass membership and
+should be used to estimate the effect and its standard error. Subclasses
+will only be included if there is a <code>subclass</code> component in the
+<code>matchit</code> object, which does not occur with matching with replacement,
+in which case <code>get_matches()</code> should be used. See
+<code>vignette("estimating-effects")</code> for information on how to use
+<code>match.data()</code> output to estimate effects.
+</p>
+<p><code>get_matches()</code> is similar to <code>match.data()</code>; the primary
+difference occurs when matching is performed with replacement, i.e., when
+units do not belong to a single matched pair. In this case, the output of
+<code>get_matches()</code> will be a dataset that contains one row per unit for
+each pair they are a part of. For example, if matching was performed with
+replacement and a control unit was matched to two treated units, that
+control unit will have two rows in the output dataset, one for each pair it
+is a part of. Weights are computed for each row, and, for control units, are equal to the
+inverse of the number of control units in each control unit's subclass; treated units get a weight of 1.
+Unmatched units are dropped. An additional column with unit IDs will be
+created (named using the <code>id</code> argument) to identify when the same unit
+is present in multiple rows. This dataset structure allows for the inclusion
+of both subclass membership and repeated use of units, unlike the output of
+<code>match.data()</code>, which lacks subclass membership when matching is done
+with replacement. A <code>match.matrix</code> component of the <code>matchit</code>
+object must be present to use <code>get_matches()</code>; in some forms of
+matching, it is absent, in which case <code>match.data()</code> should be used
+instead. See <code>vignette("estimating-effects")</code> for information on how to
+use <code>get_matches()</code> output to estimate effects after matching with
+replacement.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A data frame containing the data supplied in the <code>data</code> argument or in the
+original call to <code>matchit()</code> with the computed
+output variables appended as additional columns, named according the
+arguments above. For <code>match.data()</code>, the <code>group</code> and
+<code>drop.unmatched</code> arguments control whether only subsets of the data are
+returned. See Details above for how <code>match.data()</code> and
+<code>get_matches()</code> differ. Note that <code>get_matches</code> sorts the data by
+subclass and treatment status, unlike <code>match.data()</code>, which uses the
+order of the data.
+</p>
+<p>The returned data frame will contain the variables in the original data set
+or dataset supplied to <code>data</code> and the following columns:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>distance</code></td>
+<td>
+<p>The propensity score, if estimated or supplied to the
+<code>distance</code> argument in <code>matchit()</code> as a vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>The computed matching weights. These must be used in effect
+estimation to correctly incorporate the matching.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subclass</code></td>
+<td>
+<p>Matching
+strata membership. Units with the same value are in the same stratum.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>The ID of each unit, corresponding to the row names in the
+original data or dataset supplied to <code>data</code>. Only included in
+<code>get_matches</code> output. This column can be used to identify which rows
+belong to the same unit since the same unit may appear multiple times if
+reused in matching with replacement.</p>
+</td>
+</tr>
+</table>
+<p>These columns will take on the name supplied to the corresponding arguments
+in the call to <code>match.data()</code> or <code>get_matches()</code>. See Examples for
+an example of rename the <code>distance</code> column to <code>"prop.score"</code>.
+</p>
+<p>If <code>data</code> or the original dataset supplied to <code>matchit()</code> was a
+<code>data.table</code> or <code>tbl</code>, the <code>match.data()</code> output will have
+the same class, but the <code>get_matches()</code> output will always be a base R
+<code>data.frame</code>.
+</p>
+<p>In addition to their base class (e.g., <code>data.frame</code> or <code>tbl</code>),
+returned objects have the class <code>matchdata</code> or <code>getmatches</code>. This
+class is important when using <code>rbind()</code> to
+append matched datasets.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The most common way to use <code>match.data()</code> and
+<code>get_matches()</code> is by supplying just the <code>matchit</code> object, e.g.,
+as <code>match.data(m.out)</code>. A data set will first be searched in the
+environment of the <code>matchit</code> formula, then in the calling environment
+of <code>match.data()</code> or <code>get_matches()</code>, and finally in the
+<code>model</code> component of the <code>matchit</code> object if a propensity score
+was estimated.
+</p>
+<p>When called from an environment different from the one in which
+<code>matchit()</code> was originally called and a propensity score was not
+estimated (or was but with <code>discard</code> not <code>"none"</code> and
+<code>reestimate = TRUE</code>), this syntax may not work because the original
+dataset used to construct the matched dataset will not be found. This can
+occur when <code>matchit()</code> was run within an <code>lapply()</code> or
+<code>purrr::map()</code> call. The solution, which is recommended in all cases,
+is simply to supply the original dataset to the <code>data</code> argument of
+<code>match.data()</code>, e.g., as <code>match.data(m.out, data = original_data)</code>, as demonstrated in the Examples.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>matchit()</code>; <code>rbind.matchdata()</code>
+</p>
+<p><code>vignette("estimating-effects")</code> for uses of <code>match.data()</code> and
+<code>get_matches()</code> in estimating treatment effects.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data("lalonde")
+
+# 4:1 matching w/replacement
+m.out1 &lt;- matchit(treat ~ age + educ + married +
+                    race + nodegree + re74 + re75,
+                  data = lalonde, replace = TRUE,
+                  caliper = .05, ratio = 4)
+
+m.data1 &lt;- match.data(m.out1, data = lalonde,
+                      distance = "prop.score")
+dim(m.data1) #one row per matched unit
+head(m.data1, 10)
+
+g.matches1 &lt;- get_matches(m.out1, data = lalonde,
+                          distance = "prop.score")
+dim(g.matches1) #multiple rows per matched unit
+head(g.matches1, 10)
+
+</code></pre>
+
+
+</div>

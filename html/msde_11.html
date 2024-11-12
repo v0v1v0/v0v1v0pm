@@ -1,0 +1,237 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sde.post</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MCMC sampler for the SDE posterior.</h2>
+
+<h3>Description</h3>
+
+<p>A Metropolis-within-Gibbs sampler for the Euler-Maruyama approximation to the true posterior density.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">sde.post(
+  model,
+  init,
+  hyper,
+  nsamples,
+  burn,
+  mwg.sd = NULL,
+  adapt = TRUE,
+  loglik.out = FALSE,
+  last.miss.out = FALSE,
+  update.data = TRUE,
+  data.out,
+  update.params = TRUE,
+  fixed.params,
+  ncores = 1,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>An <code>sde.model</code> object constructed with <code>sde.make.model()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+<p>An <code>sde.init</code> object constructed with <code>sde.init()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hyper</code></td>
+<td>
+<p>The hyperparameters of the SDE prior.  See <code>sde.prior()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nsamples</code></td>
+<td>
+<p>Number of MCMC iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burn</code></td>
+<td>
+<p>Integer number of burn-in samples, or fraction of <code>nsamples</code> to prepend as burn-in.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mwg.sd</code></td>
+<td>
+<p>Standard deviation jump size for Metropolis-within-Gibbs on parameters and missing components of first SDE observation (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>adapt</code></td>
+<td>
+<p>Logical or list to specify adaptive Metropolis-within-Gibbs sampling (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loglik.out</code></td>
+<td>
+<p>Logical, whether to return the loglikelihood at each step.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>last.miss.out</code></td>
+<td>
+<p>Logical, whether to return the missing sde components of the last observation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>update.data</code></td>
+<td>
+<p>Logical, whether to update the missing data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data.out</code></td>
+<td>
+<p>A scalar, integer vector, or list of three integer vectors determining the subset of data to be returned (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>update.params</code></td>
+<td>
+<p>Logical, whether to update the model parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixed.params</code></td>
+<td>
+<p>Logical vector of length <code>nparams</code> indicating which parameters are to be held fixed in the MCMC sampler.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+<p>If <code>model</code> is compiled with <code>OpenMP</code>, the number of cores to use for parallel processing.  Otherwise, uses <code>ncores = 1</code> and gives a warning.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Logical, whether to periodically output MCMC status.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The Metropolis-within-Gibbs (MWG) jump sizes can be specified as a scalar, a vector or length <code>nparams + ndims</code>, or a named vector containing the elements defined by <code>sde.init$nvar.obs.m[1]</code> (the missing variables in the first SDE observation) and <code>fixed.params</code> (the SDE parameters which are not held fixed).  The default jump sizes for each MWG random variable are <code style="white-space: pre;">⁠.25 * |initial_value|⁠</code> when <code style="white-space: pre;">⁠|initial_value| &gt; 0⁠</code>, and 1 otherwise.
+</p>
+<p><code>adapt == TRUE</code> implements an adaptive MCMC proposal by Roberts and Rosenthal (2009).  At step <code class="reqn">n</code> of the MCMC, the jump size of each MWG random variable is increased or decreased by <code class="reqn">\delta(n)</code>, depending on whether the cumulative acceptance rate is above or below the optimal value of 0.44.  If <code class="reqn">\sigma_n</code> is the size of the jump at step <code class="reqn">n</code>, then the next jump size is determined by
+</p>
+<p style="text-align: center;"><code class="reqn">
+\log(\sigma_{n+1}) = \log(\sigma_n) \pm \delta(n), \qquad \delta(n) = \min(.01, 1/n^{1/2}).
+</code>
+</p>
+
+<p>When <code>adapt</code> is not logical, it is a list with elements <code>max</code> and <code>rate</code>, such that <code>delta(n) = min(max, 1/n^rate)</code>.  These elements can be scalars or vectors in the same manner as <code>mwg.sd</code>.
+</p>
+<p>For SDE models with thousands of latent variables, <code>data.out</code> can be used to thin the MCMC missing data output.  An integer vector or scalar returns specific or evenly-spaced posterior samples from the <code style="white-space: pre;">⁠ncomp x ndims⁠</code> complete data matrix.  A list with elements <code>isamples</code>, <code>icomp</code>, and <code>idims</code> determines which samples, time points, and SDE variables to return.  The first of these can be a scalar or vector with the same meaning as before.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with elements:
+</p>
+
+<dl>
+<dt><code>params</code></dt>
+<dd>
+<p>An <code style="white-space: pre;">⁠nsamples x nparams⁠</code> matrix of posterior parameter draws.</p>
+</dd>
+<dt><code>data</code></dt>
+<dd>
+<p>A 3-d array of posterior missing data draws, for which the output dimensions are specified by <code>data.out</code>.</p>
+</dd>
+<dt><code>init</code></dt>
+<dd>
+<p>The <code>sde.init</code> object which initialized the sampler.</p>
+</dd>
+<dt><code>data.out</code></dt>
+<dd>
+<p>A list of three integer vectors specifying which timepoints, variables, and MCMC iterations correspond to the values in the <code>data</code> output.</p>
+</dd>
+<dt><code>mwg.sd</code></dt>
+<dd>
+<p>A named vector of Metropolis-within-Gibbs standard devations used at the last posterior iteration.</p>
+</dd>
+<dt><code>hyper</code></dt>
+<dd>
+<p>The hyperparameter specification.</p>
+</dd>
+<dt><code>loglik</code></dt>
+<dd>
+<p>If <code>loglik.out == TRUE</code>, the vector of <code>nsamples</code> complete data loglikelihoods calculated at each posterior sample.</p>
+</dd>
+<dt><code>last.iter</code></dt>
+<dd>
+<p>A list with elements <code>data</code> and <code>params</code> giving the last MCMC sample.  Useful for resuming the MCMC from that point.</p>
+</dd>
+<dt><code>last.miss</code></dt>
+<dd>
+<p>If <code>last.miss.out == TRUE</code>, an <code style="white-space: pre;">⁠nsamples x nmissN⁠</code> matrix of all posterior draws for the missing data in the final observation.  Useful for SDE forecasting at future timepoints.</p>
+</dd>
+<dt><code>accept</code></dt>
+<dd>
+<p>A named list of acceptance rates for the various components of the MCMC sampler.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Roberts, G.O. and Rosenthal, J.S. "Examples of adaptive MCMC." <em>Journal of Computational and Graphical Statistics</em> 18.2 (2009): 349-367. <a href="http://www.probability.ca/jeff/ftpdir/adaptex.pdf">http://www.probability.ca/jeff/ftpdir/adaptex.pdf</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Posterior inference for Heston's model
+hmod &lt;- sde.examples("hest") # load pre-compiled model
+
+# Simulate data
+X0 &lt;- c(X = log(1000), Z = 0.1)
+theta &lt;- c(alpha = 0.1, gamma = 1, beta = 0.8, sigma = 0.6, rho = -0.8)
+dT &lt;- 1/252
+nobs &lt;- 1000
+hest.sim &lt;- sde.sim(model = hmod, x0 = X0, theta = theta,
+                    dt = dT, dt.sim = dT/10, nobs = nobs)
+
+# initialize MCMC sampler
+# both components observed, no missing data between observations
+init &lt;- sde.init(model = hmod, x = hest.sim$data,
+                 dt = hest.sim$dt, theta = theta)
+
+# Initialize posterior sampling argument
+nsamples &lt;- 1e4
+burn &lt;- 1e3
+hyper &lt;- NULL # flat prior
+hest.post &lt;- sde.post(model = hmod, init = init, hyper = hyper,
+                      nsamples = nsamples, burn = burn)
+
+# plot the histogram for the sampled parameters
+par(mfrow = c(2,3))
+for(ii in 1:length(hmod$param.names)) {
+  hist(hest.post$params[,ii],breaks=100, freq = FALSE,
+       main = parse(text = hmod$param.names[ii]), xlab = "")
+}
+
+</code></pre>
+
+
+</div>

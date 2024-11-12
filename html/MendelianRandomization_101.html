@@ -1,0 +1,219 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mr_median</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Median-based method</h2>
+
+<h3>Description</h3>
+
+<p>The <code>mr_median</code> function implements the weighted median (default) or simple median method introduced by Bowden et al (2016) to calculate
+the median of the ratio instrumental variable estimates evaluated using each genetic variant individually.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mr_median(
+  object,
+  weighting = "weighted",
+  distribution = "normal",
+  alpha = 0.05,
+  iterations = 10000,
+  seed = 314159265
+)
+
+## S4 method for signature 'MRInput'
+mr_median(
+  object,
+  weighting = "weighted",
+  distribution = "normal",
+  alpha = 0.05,
+  iterations = 10000,
+  seed = 314159265
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>An <code>MRInput</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weighting</code></td>
+<td>
+<p>The type of weighting applied. The default option is to calculate the weighted median (<code>"weighted"</code>); other options are <code>"simple"</code> and <code>"penalized"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distribution</code></td>
+<td>
+<p>The type of distribution to use to calculate the 95% confidence intervals, can be <code>"normal"</code> or <code>"t-dist"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>The significance level used to calculate the confidence intervals. The default value is 0.05.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iterations</code></td>
+<td>
+<p>The number of bootstrap samples to generate when calculating the estimated standard error. The default value is 10000.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>The random seed to use when generating the bootstrap samples (for reproducibility). The default value is 314159265. If set to <code>NA</code>, the random seed will not be set (for example, if the function is used as part of a larger simulation).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The median-based methods have greater robustness to individual genetic variants with strongly outlying causal estimates
+compared with the inverse-variance weighted and MR-Egger methods. Formally, the simple median method gives a
+consistent estimate of the causal effect when at least 50% of the genetic variants are valid instrumental variables
+(for the weighted median method, when 50% of the weight comes from valid instrumental variables).
+</p>
+<p>When the weighting is <code>"simple"</code>, the estimate is obtained by calculating the ratio causal estimates
+from each genetic variants theta = betaY/betaX, and finding the median estimate.
+</p>
+<p>When the weighting is <code>"weighted"</code>, the estimate is obtained by:
+</p>
+
+<ol>
+<li>
+<p> Calculating the ratio causal estimates and ordering the genetic variants according to the magnitude of their estimates, i.e. </p>
+<p style="text-align: center;"><code class="reqn">\theta_1 &lt; \theta_2 &lt; ... &lt; \theta_J</code>
+</p>
+
+</li>
+<li>
+<p> Calculate normalized inverse-variance weights for each genetic variant <code class="reqn">w_1, w_2, ..., w_J</code>, as:
+</p>
+<p style="text-align: center;"><code class="reqn">w_j = \frac{\beta_{Xj}^2}{se(\beta_{Yj})^2} / \sum_{i=1}^{J} \frac{\beta_{Xi}^2}{se(\beta_{Yi})^2}</code>
+</p>
+
+</li>
+<li>
+<p> Find k such that
+</p>
+<p style="text-align: center;"><code class="reqn">s_k = \sum_{i = 1}^k w_i &lt; 0.5</code>
+</p>
+
+<p>and
+</p>
+<p style="text-align: center;"><code class="reqn">s_{k+1}  = \sum_{i = 1}^{k+1} w_i &gt; 0.5</code>
+</p>
+
+</li>
+<li>
+<p> Calculate the weighted median estimate by extrapolation as:
+</p>
+<p style="text-align: center;"><code class="reqn">\theta_{WM} = \theta_k + (\theta_{k+1} - \theta_k) \times \frac{0.5 - s_k}{s_{k+1} - s_k}</code>
+</p>
+ </li>
+</ol>
+<p>The simple median estimate is the same as the weighted median estimate when all the weights are equal. Standard errors
+for both the simple and weighted median methods are calculated through bootstrapping.
+</p>
+<p>When the weighting is <code>"penalized"</code>, the weighted method is used, but the contribution of genetic variants with outlying (heterogeneous) ratio estimates to the analysis is downweighted.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The output from the function is a <code>WeightedMedian</code> object containing:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Type</code></td>
+<td>
+<p>The type of weights used: <code>"weighted"</code>, <code>"simple"</code>, or <code>"penalized"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Exposure</code></td>
+<td>
+<p>A character string giving the name given to the exposure.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Outcome</code></td>
+<td>
+<p>A character string giving the name given to the outcome.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Estimate</code></td>
+<td>
+<p>The value of the causal estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>StdError</code></td>
+<td>
+<p>Standard error of the causal estimate calculated using bootstrapping.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CILower</code></td>
+<td>
+<p>The lower bound for the causal estimate based on the estimated bootstrapped standard error and the significance level provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CIUpper</code></td>
+<td>
+<p>The upper bound for the causal estimate based on the estimated bootstrapped standard error and the significance level provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Alpha</code></td>
+<td>
+<p>The significance level used when calculating the confidence intervals.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Pvalue</code></td>
+<td>
+<p>The p-value associated with the estimate (calculated using <code>Estimate/StdError</code> as per a Wald test) using a normal or t-distribution (as specified in <code>distribution</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SNPs</code></td>
+<td>
+<p>The number of genetic variants (SNPs) included in the analysis.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Jack Bowden, George Davey Smith, Philip C Haycock, Stephen Burgess. Consistent estimation in Mendelian randomization with
+some invalid instruments using a weighted median estimator. Genetic Epidemiology 2016; 40(4):304-314. doi: 10.1002/gepi.21965.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">mr_median(mr_input(bx = ldlc, bxse = ldlcse, by = chdlodds, byse = chdloddsse),
+  weighting = "weighted", iterations = 100)
+  # iterations is set to 100 to reduce runtime for the mr_median method,
+  # 10000 iterations are recommended in practice
+mr_median(mr_input(bx = ldlc, bxse = ldlcse, by = chdlodds, byse = chdloddsse),
+  weighting = "simple", iterations = 100)
+mr_median(mr_input(bx = ldlc, bxse = ldlcse, by = chdlodds, byse = chdloddsse),
+  weighting = "penalized", iterations = 100)
+
+</code></pre>
+
+
+</div>

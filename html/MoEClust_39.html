@@ -1,0 +1,431 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MoE_clust</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MoEClust: Gaussian Parsimonious Clustering Models with Covariates and a Noise Component</h2>
+
+<h3>Description</h3>
+
+<p>Fits MoEClust models: Gaussian Mixture of Experts models with GPCM/<span class="pkg">mclust</span>-family covariance structures. In other words, performs model-based clustering via the EM/CEM algorithm where covariates are allowed to enter neither, either, or both the mixing proportions (gating network) and/or component densities (expert network) of a Gaussian Parsimonious Clustering Model, with or without an additional noise component. Additional arguments are available via the function <code>MoE_control</code>, including the specification of a noise component, controls on the initialisation of the algorithm, and more.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MoE_clust(data,
+          G = 1:9,
+          modelNames = NULL,
+          gating = ~1,
+          expert = ~1,
+          control = MoE_control(...),
+          network.data = NULL,
+          ...)
+
+## S3 method for class 'MoEClust'
+print(x,
+      digits = 3L,
+      ...)
+
+## S3 method for class 'MoEClust'
+summary(object,
+        classification = TRUE,
+        parameters = FALSE,
+        networks = FALSE,
+        ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A numeric vector, matrix, or data frame of observations. Categorical variables are not allowed. If a matrix or data frame, rows correspond to observations and columns correspond to variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>G</code></td>
+<td>
+<p>An integer vector specifying the number(s) of mixture components (clusters) to fit. Defaults to <code>G=1:9</code>. Must be a strictly positive integer, unless a noise component is included in the estimation, in which case <code>G=0</code> is allowed and <em>also</em> included by default. (see <code>MoE_control</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modelNames</code></td>
+<td>
+<p>A vector of character strings indicating the models to be fitted in the EM/CEM phase of clustering. With <code>n</code> observations and <code>d</code> variables, the defaults are:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+for univariate data </td>
+<td style="text-align: left;"> <code>c("E", "V")</code>
+</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+for multivariate data <code class="reqn">n &gt; d</code> </td>
+<td style="text-align: left;"> <code>mclust.options("emModelNames")</code>
+</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+for high-dimensional multivariate data <code class="reqn">n \leq d</code> </td>
+<td style="text-align: left;"> <code>c("EII", "VII", "EEI", "EVI", "VEI", "VVI")</code>
+</td>
+</tr>
+</table>
+<p>For single-component models these options reduce to:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+for univariate data </td>
+<td style="text-align: left;"> <code>"E"</code>
+</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+for multivariate data <code class="reqn">n &gt; d</code> </td>
+<td style="text-align: left;"> <code>c("EII", "EEI", "EEE")</code>
+</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+for high-dimensional multivariate data <code class="reqn">n \leq d</code>  </td>
+<td style="text-align: left;"> <code>c("EII", "EEI")</code>
+</td>
+</tr>
+</table>
+<p>For zero-component models with a noise component only the <code>"E"</code> and <code>"EII"</code> models will be fitted for univariate and multivariate data, respectively, although this is clearly for naming consistency only. The help file for <code>mclustModelNames</code> further describes the available models (though the <code>"X"</code> in the single-component models will be coerced to <code>"E"</code> if supplied that way). For single-component models, other model names equivalent to those above can be supplied, but will be coerced to those above.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gating</code></td>
+<td>
+<p>A <code>formula</code> for determining the model matrix for the multinomial logistic regression in the gating network when fixed covariates enter the mixing proportions. Defaults to <code>~1</code>, i.e. no covariates. This will be ignored where <code>G=1</code>. Continuous, categorical, and/or ordinal covariates are allowed. Logical covariates will be coerced to factors. Interactions, transformations, and higher order terms are permitted: the latter <strong>must</strong> be specified explicitly using the <code>AsIs</code> operator (<code>I</code>). The specification of the LHS of the formula is ignored. Intercept terms are included by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expert</code></td>
+<td>
+<p>A <code>formula</code> for determining the model matrix for the (multivariate) WLS in the expert network when fixed covariates are included in the component densities. Defaults to <code>~1</code>, i.e. no covariates. Continuous, categorical, and/or ordinal covariates are allowed. Logical covariates will be coerced to factors. Interactions, transformations, and higher order terms are permitted: the latter <strong>must</strong> be specified explicitly using the <code>AsIs</code> operator (<code>I</code>). The specification of the LHS of the formula is ignored. Intercept terms are included by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>A list of control parameters for the EM/CEM and other aspects of the algorithm. The defaults are set by a call to <code>MoE_control</code>. In particular, arguments pertaining to the inclusion of an additional noise component are documented here.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>network.data</code></td>
+<td>
+<p>An optional data frame (or a matrix with named columns) in which to look for the covariates in the <code>gating</code> &amp;/or <code>expert</code> network formulas, if any. If not found in <code>network.data</code>, any supplied <code>gating</code> &amp;/or <code>expert</code> covariates are taken from the environment from which <code>MoE_clust</code> is called. Try to ensure the names of variables in <code>network.data</code> do not match any of those in <code>data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>An alternative means of passing control parameters directly via the named arguments of <code>MoE_control</code>. Do not pass the output from a call to <code>MoE_control</code> here! This argument is only relevant for the <code>MoE_clust</code> function and will be ignored for the associated <code>print</code> and <code>summary</code> functions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x, object, digits, classification, parameters, networks</code></td>
+<td>
+<p>Arguments required for the <code>print</code> and <code>summary</code> functions: <code>x</code> and <code>object</code> are objects of class <code>"MoEClust"</code> resulting from a call to <code>MoE_clust</code>, while <code>digits</code> gives the number of decimal places to round to for printing purposes (defaults to 3). <code>classification</code>, <code>parameters</code>, and <code>networks</code> are logicals which govern whether a table of the MAP classification of observations, the mixture component parameters, and the gating/expert network coefficients are printed, respectively.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function effectively allows 6 different types of Gaussian Mixture of Experts model (as well as the different models in the GPCM/<span class="pkg">mclust</span> family, for each): i) the standard finite Gaussian mixture with no covariates, ii) fixed covariates only in the gating network, iii) fixed covariates only in the expert network, iv) the full Mixture of Experts model with fixed covariates entering both the mixing proportions and component densities. By constraining the mixing proportions to be equal (see <code>equalPro</code> in <code>MoE_control</code>) two extra special cases are facilitated when gating covariates are excluded. 
+</p>
+<p>Note that having the same covariates in both networks is allowed. So too are interactions, transformations, and higher order terms (see <code>formula</code>): the latter <strong>must</strong> be specified explicitly using the <code>AsIs</code> operator (<code>I</code>). Covariates can be continuous, categorical, logical, or ordinal, but the response must always be continuous.
+</p>
+<p>While model selection in terms of choosing the optimal number of components and the GPCM/<span class="pkg">mclust</span> model type is performed within <code>MoE_clust</code>, using one of the <code>criterion</code> options within <code>MoE_control</code>, choosing between multiple fits with different combinations of covariates or different initialisation settings can be done by supplying objects of class <code>"MoEClust"</code> to <code>MoE_compare</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list (of class <code>"MoEClust"</code>) with the following named entries, mostly corresponding to the chosen optimal model (as determined by the <code>criterion</code> within <code>MoE_control</code>):
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>The matched call.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>The input data, as a <code>data.frame</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modelName</code></td>
+<td>
+<p>A character string denoting the GPCM/<span class="pkg">mclust</span> model type at which the optimal <code>criterion</code> occurs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>The number of observations in the <code>data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>d</code></td>
+<td>
+<p>The dimension of the <code>data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>G</code></td>
+<td>
+<p>The optimal number of mixture components according to <code>criterion</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>BIC</code></td>
+<td>
+<p>A matrix of <em>all</em> BIC values with <code>length{G}</code> rows and <code>length(modelNames)</code> columns. May include missing entries: <code>NA</code> represents models which were not visited, <code>-Inf</code> represents models which were terminated due to error, for which a log-likelihood could not be estimated. Inherits the classes <code>"MoECriterion"</code> and <code>"mclustBIC"</code>, for which dedicated <code>print</code>, <code>summary</code>, and <code>plot</code> methods exist, respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ICL</code></td>
+<td>
+<p>A matrix of <em>all</em> ICL values with <code>length{G}</code> rows and <code>length(modelNames)</code> columns. May include missing entries: <code>NA</code> represents models which were not visited, <code>-Inf</code> represents models which were terminated due to error, for which a log-likelihood could not be estimated. Inherits the classes <code>"MoECriterion"</code> and <code>"mclustICL"</code>, for which dedicated <code>print</code>, <code>summary</code>, and <code>plot</code> methods exist, respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>AIC</code></td>
+<td>
+<p>A matrix of <em>all</em> AIC values with <code>length{G}</code> rows and <code>length(modelNames)</code> columns. May include missing entries: <code>NA</code> represents models which were not visited, <code>-Inf</code> represents models which were terminated due to error, for which a log-likelihood could not be estimated. Inherits the classes <code>"MoECriterion"</code> and <code>"mclustAIC"</code>, for which dedicated <code>print</code>, <code>summary</code>, and <code>plot</code> methods exist, respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bic</code></td>
+<td>
+<p>The BIC value corresponding to the optimal model. May not necessarily be the optimal BIC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>icl</code></td>
+<td>
+<p>The ICL value corresponding to the optimal model. May not necessarily be the optimal ICL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>aic</code></td>
+<td>
+<p>The AIC value corresponding to the optimal model. May not necessarily be the optimal AIC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gating</code></td>
+<td>
+<p>An object of class <code>"MoE_gating"</code> (for which dedicated <code>print</code>, <code>summary</code>, and <code>predict</code> methods exist) and either <code>"multinom"</code> or <code>"glm"</code> (only for single-component models or noise-only models) giving the <code>multinom</code> regression coefficients of the <code>gating</code> network. If <code>gating</code> covariates were <em>NOT</em> supplied (or the best model has just one component), this corresponds to a RHS of <code>~1</code>, otherwise the supplied <code>gating</code> formula. As such, a fitted <code>gating</code> network is always returned even in the absence of supplied covariates or clusters. The number of parameters to penalise by for <code>MoE_crit</code> is given by <code>length(coef(gating))</code>, and the <code>gating</code> formula used is stored here as an attribute. If there is a noise component (and the option <code>noise.gate=TRUE</code> is invoked), its coefficients are those for the <em>last</em> component. <strong>Users are cautioned against making inferences about statistical significance from summaries of the coefficients in the gating network</strong>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expert</code></td>
+<td>
+<p>An object of class <code>"MoE_expert"</code> (for which dedicated <code>print</code>, <code>summary</code>, and <code>predict</code> methods exist) and <code>"lm"</code> giving the (multivariate) WLS regression coefficients of the <code>expert</code> network. If <code>expert</code> covariates were NOT supplied, this corresponds to a RHS of <code>~1</code>, otherwise the supplied <code>expert</code> formula. As such, a fitted <code>expert</code> network is always returned even in the absence of supplied covariates. The number of parameters to penalise by for <code>MoE_crit</code> is given by <code>G * length(coef(expert[[1]]))</code>, and the <code>expert</code> formula used is stored here is an attribute. <strong>Users are cautioned against making inferences about statistical significance from summaries of the coefficients in the expert network</strong>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>LOGLIK</code></td>
+<td>
+<p>A matrix of <em>all</em> maximal log-likelihood values with <code>length{G}</code> rows and <code>length(modelNames)</code> columns. May include missing entries: <code>NA</code> represents models which were not visited, <code>-Inf</code> represents models which were terminated due to error, for which a log-likelihood could not be estimated. Inherits the classes <code>"MoECriterion"</code> and <code>"mclustLoglik"</code>, for which dedicated <code>print</code>, <code>summary</code>, and <code>plot</code> methods exist, respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loglik</code></td>
+<td>
+<p>The vector of increasing log-likelihood values for every EM/CEM iteration under the optimal model. The last element of this vector is the maximum log-likelihood achieved by the parameters returned at convergence.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>linf</code></td>
+<td>
+<p>An asymptotic estimate of the final converged maximised log-likelihood. Returned when <code>stopping="aitken"</code> and <code>G &gt; 1</code> (see <code>MoE_control</code> and <code>aitken</code>), otherwise the last element of <code>loglik</code> is returned instead.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>The number of estimated parameters in the optimal model (i.e. the number of 'used' degrees of freedom). Subtract this number from <code>n</code> to get the degrees of freedom. The number of parameters due to the gating network, expert network, and covariance matrices are also stored here as attributes of <code>df</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iters</code></td>
+<td>
+<p>The total number of EM/CEM iterations for the optimal model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hypvol</code></td>
+<td>
+<p>The hypervolume parameter for the noise component if required, otherwise set to <code>NA</code> (see <code>MoE_control</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parameters</code></td>
+<td>
+<p>A list with the following named components:
+</p>
+
+<dl>
+<dt><code>pro</code></dt>
+<dd>
+<p>The mixing proportions: either a vector of length <code>G</code> or, if <code>gating</code> covariates were supplied, a matrix with an entry for each observation (rows) and component (columns).</p>
+</dd>
+<dt><code>mean</code></dt>
+<dd>
+<p>The means of each component. If there is more than one component, this is a matrix whose <em>k</em>-th column is the mean of the <em>k</em>-th component of the mixture model.
+</p>
+<p>For models with expert network covariates, this is given by the posterior mean of the fitted values, otherwise the posterior mean of the response is reported. For models with expert network covariates, the <em>observation-specific</em> component means can be accessed by calling <code>predict</code> on the <code>expert</code> object above.</p>
+</dd>
+<dt><code>variance</code></dt>
+<dd>
+<p>A list of variance parameters of each component of the model. The components of this list depend on the model type specification. See the help file for <code>mclustVariance</code> for details. Also see <code>expert_covar</code> for an alternative approach to summarising the variance parameters in the presence of expert network covariates.</p>
+</dd>
+<dt><code>Vinv</code></dt>
+<dd>
+<p>The inverse of the hypervolume parameter for the noise component if required, otherwise set to <code>NULL</code> (see <code>MoE_control</code>).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>z</code></td>
+<td>
+<p>The final responsibility matrix whose <code>[i,k]</code>-th entry is the probability that observation <em>i</em> belonds to the <em>k</em>-th component. If there is a noise component, its values are found in the <em>last</em> column.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>classification</code></td>
+<td>
+<p>The vector of cluster labels for the chosen model corresponding to <code>z</code>, i.e. <code>max.col(z)</code>. Observations belonging to the noise component, if any, will belong to component <code>0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>uncertainty</code></td>
+<td>
+<p>The uncertainty associated with the <code>classification</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>net.covs</code></td>
+<td>
+<p>A data frame gathering the unique set of covariates used in the <code>gating</code> and <code>expert</code> networks, if any. Will contain zero columns in the absence of gating or expert network covariates. Supplied gating covariates will be excluded if the optimal model has only one component. May have fewer columns than covariates supplied via the <code>network.data</code> argument also, as only the included covariates are gathered here.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resid.data</code></td>
+<td>
+<p>In the presence of expert network covariates, this is the augmented data actually used in the clustering at convergence, as a list of <code>G</code> matrices of WLS residuals of dimension <code>n * d</code>. Will contain zero columns in the absence of expert network covariates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>DF</code></td>
+<td>
+<p>A matrix giving the numbers of estimated parameters (i.e. the number of 'used' degrees of freedom) for <em>all</em> visited models, with <code>length{G}</code> rows and <code>length(modelNames)</code> columns. Subtract these numbers from <code>n</code> to get the degrees of freedom. May include missing entries: <code>NA</code> represents models which were not visited, <code>-Inf</code> represents models which were terminated due to error, for which parameters could not be estimated. Inherits the classes <code>"MoECriterion"</code> and <code>"mclustDF"</code>, for which dedicated <code>print</code>, <code>summary</code>, and <code>plot</code> methods exist, respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ITERS</code></td>
+<td>
+<p>A matrix giving the total number of EM/CEM iterations for <em>all</em> visited models, with <code>length{G}</code> rows and <code>length(modelNames)</code> columns. May include missing entries: <code>NA</code> represents models which were not visited, <code>Inf</code> represents models which were terminated due to singularity/error and thus would never have converged. Inherits the classes <code>"MoECriterion"</code> and <code>"mclustITERS"</code>, for which dedicated <code>print</code>, <code>summary</code>, and <code>plot</code> methods exist, respectively.</p>
+</td>
+</tr>
+</table>
+<p>Dedicated <code>plot</code>, <code>predict</code>, <code>print</code>, and <code>summary</code> functions exist for objects of class <code>"MoEClust"</code>. The results can be coerced to the <code>"Mclust"</code> class to access other functions from the <span class="pkg">mclust</span> package via <code>as.Mclust</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Where <code>BIC</code>, <code>ICL</code>, <code>AIC</code>, <code>LOGLIK</code>, <code>DF</code> and <code>ITERS</code> contain <code>NA</code> entries, this corresponds to a model which was not run; for instance a VVV model is never run for single-component models as it is equivalent to EEE. As such, one can consider the value as not really missing, but equivalent to the EEE value. <code>BIC</code>, <code>ICL</code>, <code>AIC</code>, <code>LOGLIK</code>, <code>DF</code> and <code>ITERS</code> all inherit the classes <code>"MoECriterion"</code> and <code>"mclustBIC", "mclustICL", etc.</code>, for which dedicated <code>print</code>, <code>summary</code>, and <code>plot</code> methods exist, respectively.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Keefe Murphy - &lt;<a href="mailto:keefe.murphy@mu.ie">keefe.murphy@mu.ie</a>&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Murphy, K. and Murphy, T. B. (2020). Gaussian parsimonious clustering models with covariates and a noise component. <em>Advances in Data Analysis and Classification</em>, 14(2): 293-325. &lt;<a href="https://doi.org/10.1007/s11634-019-00373-8">doi:10.1007/s11634-019-00373-8</a>&gt;.
+</p>
+<p>Fraley, C. and Raftery, A. E. (2002). Model-based clustering, discriminant analysis, and density estimation. <em>Journal of the American Statistical Association</em>, 97(458): 611-631.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See <code>MoE_stepwise</code> for identifying the optimal model and its covariates via greedy forward stepwise selection.<br></p>
+<p><code>MoE_control</code>, <code>MoE_compare</code>, <code>plot.MoEClust</code>, <code>predict.MoEClust</code>, <code>predict.MoE_gating</code>, <code>predict.MoE_expert</code>, <code>as.Mclust</code>, <code>MoE_crit</code>, <code>MoE_estep</code>, <code>MoE_cstep</code>, <code>MoE_dens</code>, <code>mclustModelNames</code>, <code>mclustVariance</code>, <code>expert_covar</code>, <code>aitken</code>, <code>I</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(ais)
+hema  &lt;- ais[,3:7]
+sex   &lt;- ais$sex
+BMI   &lt;- ais$BMI
+
+# Fit a standard finite mixture model
+m1    &lt;- MoE_clust(hema, G=2:3)
+
+# Allow covariates to enter the mixing proportions
+m2    &lt;- MoE_clust(hema, G=2:3, gating= ~ sex + BMI)
+
+# Allow covariates to enter the component densities
+m3    &lt;- MoE_clust(hema, G=2:3, expert= ~ sex)
+
+# Allow covariates to enter both the gating &amp; expert network
+m4    &lt;- MoE_clust(hema, G=2:3, gating= ~ BMI, expert= ~ sex)
+
+# Fit an equal mixing proportion model with an expert network covariate
+m5    &lt;- MoE_clust(hema, G=2:3, expert= ~ sex + BMI, equalPro=TRUE)
+
+# Fit models with gating covariates &amp; an additional noise component
+m6    &lt;- MoE_clust(hema, G=2:3, tau0=0.1, gating= ~ BMI, network.data=ais)
+
+# Extract the model with highest BIC
+(comp &lt;- MoE_compare(m1, m2, m3, m4, m5, m6, criterion="bic"))
+ 
+# See if a better model can be found using greedy forward stepwise selection
+(step &lt;- MoE_stepwise(ais[,3:7], ais))
+(comp &lt;- MoE_compare(comp, step, optimal.only=TRUE))
+(best &lt;- comp$optimal)
+(summ &lt;- summary(best, classification=TRUE, parameters=TRUE, networks=TRUE))
+
+# Examine the expert network in greater detail
+# (but refrain from inferring statistical significance!)
+summary(best$expert)
+
+# Visualise the results, incl. the gating network and log-likelihood
+plot(best, what="gpairs")
+plot(best, what="gating") # equal mixing proportions!
+plot(best, what="loglik")
+
+# Visualise the results using the 'lattice' library
+z   &lt;- factor(best$classification, labels=paste0("Cluster", seq_len(best$G)))
+lattice::splom(~ hema | sex, groups=z)
+lattice::splom(~ hema | z, groups=sex)
+</code></pre>
+
+
+</div>

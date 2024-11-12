@@ -1,0 +1,234 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>determineWarpingFunctions</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Determine warping functions of MassPeaks objects.
+</h2>
+
+<h3>Description</h3>
+
+<p>This function determines a warping function for a list of
+<code>AbstractMassObject</code> objects
+(warping is also known as <em>phase correction/spectra alignment</em>).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">determineWarpingFunctions(l, reference, tolerance=0.002,
+                          method=c("lowess", "linear", "quadratic", "cubic"),
+                          allowNoMatches=FALSE,
+                          plot=FALSE, plotInteractive=FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>l</code></td>
+<td>
+
+<p><code>list</code>, list of <code>MassPeaks</code> objects.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reference</code></td>
+<td>
+
+<p><code>MassPeaks</code>, reference object to which the samples
+(<code>l</code>) should be aligned. If missing
+<code>referencePeaks</code> is used.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tolerance</code></td>
+<td>
+
+<p><code>double</code>, maximal relative deviation of a peak position (mass) to be
+considered as identical. Must be multiplied by <code>10^-6</code> for ppm,
+e.g. use <code>tolerance=5e-6</code> for 5 ppm.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>used basic warping function.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allowNoMatches</code></td>
+<td>
+
+<p><code>logical</code>, don't throw an error if an <code>MassPeaks</code>
+object could not match to the <code>reference</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot</code></td>
+<td>
+
+<p><code>logical</code>, if <code>TRUE</code> a warping plot is drawn for each sample.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plotInteractive</code></td>
+<td>
+
+<p><code>logical</code>, if <code>FALSE</code> a non-interactive device (e.g.
+<code>pdf</code>) is used for warping plots.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>arguments to be passed to <code>warpingFunction</code>
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>warpingFunction</code>: <code>determineWarpingFunctions</code> estimates a warping
+function to overcome the difference between mass in <code>reference</code> and in
+the current sample. To calculate the differences each reference peak would
+match with the highest sample peak in the nearer neighborhood
+(defined by <code>mass of reference peak*tolerance</code>). <br><code>allowNoMatches</code>: If <code>allowNoMatches</code> is <code>TRUE</code> a warning instead
+of an error is thrown if an <code>MassPeaks</code>
+object could not match to the <code>reference</code>. The returned list of warping
+functions will contain <code>NA</code> for this object (same index in the list).
+<code>plotInteractive</code>: If <code>plot</code> is <code>TRUE</code> a lot of output is
+created (each sample in <code>l</code> gets its own plot).
+That's why an non-interactive devices is recommended:
+</p>
+<pre>
+## create a device
+pdf()
+## calculate warping functions
+w &lt;- determineWarpingFunctions(p, plot=TRUE)
+## close device
+dev.off()
+  </pre>
+
+
+<h3>Value</h3>
+
+<p>Returns a <code>list</code> of individual warping functions. The attribute
+<code>nmatch</code> contains the number of matches of each
+<code>MassPeaks</code> element in <code>l</code> against <code>reference</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sebastian Gibb <a href="mailto:mail@sebastiangibb.de">mail@sebastiangibb.de</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>referencePeaks</code>,
+<code>warpMassPeaks</code>,
+<code>warpMassSpectra</code>,
+<code>MassPeaks</code>
+</p>
+<p><code>demo("warping")</code>
+</p>
+<p>Website: <a href="https://strimmerlab.github.io/software/maldiquant/">https://strimmerlab.github.io/software/maldiquant/</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## load package
+library("MALDIquant")
+
+## create a reference MassPeaks object
+r &lt;- createMassPeaks(mass=1:5, intensity=1:5)
+
+## create test samples
+p &lt;- list(createMassPeaks(mass=((1:5)*1.01), intensity=1:5),
+          createMassPeaks(mass=((1:5)*0.99), intensity=1:5))
+
+## create an interactive device with 2 rows
+par(mfrow=c(2, 1))
+## calculate warping function
+## (using a linear function as basic warping function)
+## and show warping plot
+w &lt;- determineWarpingFunctions(p, tolerance=0.02, method="linear",
+                               plot=TRUE, plotInteractive=TRUE)
+par(mfrow=c(1, 1))
+
+## access number of matches
+attr(w, "nmatch")
+
+## w contains the individual warping functions
+warpedPeaks &lt;- warpMassPeaks(p, w)
+
+## compare results
+all(mass(r) == mass(warpedPeaks[[1]])) # TRUE
+all(mass(r) == mass(warpedPeaks[[2]])) # TRUE
+
+
+
+## realistic example
+
+## load example data
+data("fiedler2009subset", package="MALDIquant")
+
+## running typical workflow
+
+## use only four spectra of the subset
+spectra &lt;- fiedler2009subset[1:4]
+
+## transform intensities
+spectra &lt;- transformIntensity(spectra, method="sqrt")
+
+## smooth spectra
+spectra &lt;- smoothIntensity(spectra, method="MovingAverage")
+
+## baseline correction
+spectra &lt;- removeBaseline(spectra)
+
+## detect peaks
+peaks &lt;- detectPeaks(spectra)
+
+## create an interactive device with 2 rows
+par(mfrow=c(4, 1))
+## calculate warping functions (using LOWESS based basic function [default])
+w &lt;- determineWarpingFunctions(peaks, plot=TRUE, plotInteractive=TRUE)
+par(mfrow=c(1, 1))
+
+
+
+## realistic example with user defined reference/calibration peaks
+
+## use the workflow above for fiedler2009subset
+
+## create reference peaks
+refPeaks &lt;- createMassPeaks(mass=c(1207, 1264, 1351, 1466, 1616, 2769, 2932,
+                                   3191, 3262, 4091, 4209, 5904, 7762, 9285),
+                            intensity=rep(1, 14))
+
+## create an interactive device with 2 rows
+par(mfrow=c(4, 1))
+## calculate warping functions (using a quadratic function as basic function)
+w &lt;- determineWarpingFunctions(peaks, reference=refPeaks, method="quadratic",
+                               plot=TRUE, plotInteractive=TRUE)
+par(mfrow=c(1, 1))
+</code></pre>
+
+
+</div>

@@ -1,0 +1,126 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pSS</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Turn the argument list into a <code>ParamSet</code>
+</h2>
+
+<h3>Description</h3>
+
+<p><code>pSS</code>, short for “ParamSet Sugar”, is a shorthand API for <code>makeParamSet</code>
+which enables entry of <code>ParamSet</code>s in short form. It behaves similarly to
+<code>makeParamSet</code>, but instead of having to construct each parameter individually,
+the parameters can be given in shorthand form with a convenient syntax, making use of R's
+nonstandard evaluation.
+</p>
+<p>This makes definition of <code>ParamSet</code>s shorter and more readable.
+</p>
+<p>The difference between <code>pSS</code> and <code>pSSLrn</code> is only in the default value of <code>.pss.learner.params</code>
+being <code>FALSE</code> for the former and <code>TRUE</code> for the latter.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pSS(..., .pss.learner.params = FALSE, .pss.env = parent.frame())
+
+pSSLrn(..., .pss.learner.params = TRUE, .pss.env = parent.frame())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Parameters, see Details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.pss.learner.params</code></td>
+<td>
+<p>[<code>logical</code>]<br>
+Whether to create <code>LearnerParam</code> instead of <code>Param</code> objects.
+Default is <code>TRUE</code> for <code>pSSLrn</code> and <code>FALSE</code> for <code>pSS</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.pss.env</code></td>
+<td>
+<p>[<code>environment</code>]<br>
+Which environment to use when evaluating expressions. Defaults to the calling
+function's frame.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The arguments are of the form
+</p>
+<p><code>name = default: type range [^ dimension] [settings]</code>.
+</p>
+<p><b><code>name</code></b> is any valid R identifier name.
+</p>
+<p><b><code>= default</code></b> Determines the 'default' setting
+in <code>makeXXXParam</code>. Note that this is different from an R function parameter
+default value, in that it serves only as information to the user and does not set the
+parameter to this value if it is not given. To define ‘no default’, use <code>NA</code> or
+leave the “= default” part out. Leaving it out can cause problems when R's static
+type checker verifies a package, so this is <em>only</em> recommended for interactive sessions
+and top-level applications. (To actually set a parameter default to NA, use <code>(NA)</code> in parentheses)
+</p>
+<p><b><code>type</code></b> is one of
+“integer”, “numeric”, “logical”, “discrete”, “funct”, “character”, “untyped”.
+Each of these types leads to a <code>Param</code> or <code>LearnerParam</code> of the given type to be created.
+Note that “character” is not available if ‘Learner’-parameters are created.
+</p>
+<p><b><code>range</code></b> is optional and only used for <em>integer</em>, <em>numeric</em>, and <em>discrete</em> parameters.
+For “discrete”, it is either <code>[valuelist]</code> with <code>valuelist</code> evaluating to a list,
+or of the form <code>[value1, value2, ...]</code>, creating a discrete parameter of character
+or numeric values according to <code>value1</code>,
+<code>value2</code> etc. If <code>type</code> is one of “integer” or “numeric”,
+<code>range</code> is of the form <code>[lowBound, upBound]</code>, where <code>lowBound</code>
+and <code>upBound</code> must either be numerical (or integer) values indicating the
+lower and upper bound, or may be missing (indicating the absence of a bound). To indicate
+an exclusive bound, prefix the values with a tilde (“~”). For a “numeric” variable, to
+indicate an unbounded value which may not be infinite, you can use <code>~Inf</code> or <code>~-Inf</code>,
+or use tilde-dot (“~.”).
+</p>
+<p><b><code>^ dimension</code></b> is optionally determining the dimension of a ‘vector’ parameter.
+If it is absent, the result is a normal <code>Param</code> or <code>LearnerParam</code>, if it is present,
+the result is a <code>Vector(Learner)Param</code>. Note that a one-dimensional <code>Vector(Learner)Param</code>
+is distinct from a normal <code>(Learner)Param</code>.
+</p>
+<p><b><code>settings</code></b> may be a collection of further settings to supply to <code>makeXXXParam</code>
+and is optional. To specify one or more settings, put in double square brackets (<code>[[</code>, <code>]]</code>),
+and comma-separate settings if more than one is present.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">pSSLrn(a = NA: integer [~0, ]^2 [[requires = expression(b != 0)]],
+       b = -10: numeric [~., 0],
+       c: discrete [x, y, 1],
+       d: logical,
+       e: integer)
+
+# is equivalent to
+
+makeParamSet(
+    makeIntegerVectorLearnerParam("a", len = 2, lower = 1,  # note exclusive bound
+         upper = Inf, requires = expression(b != 0)),
+    makeNumericLearnerParam("b", lower = -Inf, upper = 0,
+         allow.inf = FALSE, default = -10),  # note infinite value is prohibited.
+    makeDiscreteLearnerParam("c", values = list(x = "x", y = "y", `1` = 1)),
+    makeLogicalLearnerParam("d"),
+    makeIntegerLearnerParam("e"))
+
+
+</code></pre>
+
+
+</div>

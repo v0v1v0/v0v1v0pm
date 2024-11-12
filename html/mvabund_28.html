@@ -1,0 +1,259 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>glm1path</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Fits a path of Generalised Linear Models with LASSO (or L1) penalties, and finds the model that minimises BIC.
+</h2>
+
+<h3>Description</h3>
+
+<p>Fits a sequence (path) of generalised linear models with LASSO penalties, using an iteratively reweighted local linearisation approach. The whole path of models is returned, as well as the one that minimises BIC. Can handle negative binomial family, even with overdispersion parameter unknown, as well as other GLM families. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">glm1path(y, X, family = "negative.binomial", lambdas = NULL,
+  penalty = c(0, rep(1, dim(X)[2]-1)), df.max = sum(y &gt; 0), n.lambda = 25, lam.max = NULL,
+  lam.min = NULL, k = log(length(y)), b.init = NA, phi.init = NA, phi.iter = 1, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+
+<p>A vector of values for the response variable.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+
+<p>A design matrix of p explanatory variables.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+
+<p>The family of the response variable, see <code>family</code>. Negative binomial with unknown overdispersion can be specified as "negative.binomial", and is the default.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambdas</code></td>
+<td>
+
+<p>An optional vector of LASSO penalty parameters, specifying the path along which models will be fitted. This penalty is applied to parameters as specified in <code>penalty</code>. By default, a geometric sequence of values will be constructed with <code>n.lambda</code> values, starting from the intercept model and reducing lambda to 1.e-6 of its original value. Any vector that is provided will be sorted in decreasing order, so that the smallest model (biggest penalty) is fitted first.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>penalty</code></td>
+<td>
+
+<p>A vector to be multiplied by each lambda to make the penalty for each fitted model. The main purpose here is to allow penalties to be applied to some parameters but not others, but it could also be used to change the size of the penalty for some terms as compared to others (e.g. to fit an adaptive LASSO). Must have the same length as the dimension of the model, <code>dim(X)[2]</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df.max</code></td>
+<td>
+
+<p>The maximum number of terms that is permitted in the fitted model. Once this threshhold is reached no further fits are attempted. The default break-point is the number of non-zero values in the response vector.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.lambda</code></td>
+<td>
+
+<p>The number of models to fit along the path (if not previously specified via <code>lambdas</code>).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lam.max</code></td>
+<td>
+
+<p>The maximum value of the LASSO penalty to use along the path of fitted values (if not previously specified via <code>lambdas</code>).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lam.min</code></td>
+<td>
+
+<p>The minimum value of the LASSO penalty to use along the path of fitted values (if not previously specified via <code>lambdas</code>).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+
+<p>In BIC calculation, this is the value of the penalty per parameter in the fitted model. The default value, <code>log(length(y))</code>, gives BIC (known to be consistent, for adaptive LASSO), changing it to <code>2</code> would give AIC (which is not so great in terms of properties).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b.init</code></td>
+<td>
+
+<p>An initial value for beta for the first model along the fitted path. Default is to fit an intercept model.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>phi.init</code></td>
+<td>
+
+<p>For negative binomial models: An initial value for the overdispersion parameter for the first model along the fitted path. Default is zero (Poisson fit).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>phi.iter</code></td>
+<td>
+
+<p>Number of iterations estimating the negative binomial overdispersion parameter (if applicable) before returning to slope estimation. Default is one step, i.e. iterating between one-step estimates of beta and phi.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Arguments passed to <code>glm1</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function fits a series of LASSO-penalised generalised linear models, with different values for the LASSO penalty. Largely inspired by the glmnet package. This results in  a path of fitted models, from small ones (with big LASSO penalties) to larger ones (with smaller penalties). Each individual model is fitted using the  <code>glm1</code> function, which uses a local linearisation approach as in Osborne et al (2000), nested inside iteratively reweighted (penalised) least squares, and using results from the previous fit as initial estimates. Look it's not the fastest thing going around, try glmnet if you want something faster (and possibly rougher as an approximation). The main advantage of the <code>glm1path</code> function is that it has been written to accept any glm family argument (although not yet tested beyond discrete data!), and also the negative binomial distribution, which is especially useful for modelling overdispersed counts.
+</p>
+<p>For negative binomial with unknown overdispersion use <code>"negative.binomial"</code>, or if overdispersion is to be specified, use <code>negative.binomial(theta)</code> as in the <code>MASS</code> package. Note that the output refers to phi=1/theta, i.e. the overdispersion is parameterised in output such that the variance is mu+phi*mu^2. Hence values of phi close to zero suggest little overdispersion, values over one suggest a lot.
+</p>
+<p>You can use the <code>residuals</code> and <code>plot</code> functions on <code>glm1path</code> objects in order to compute Dunn-Smyth residuals and a plots of these residuals against linear predictors, as for <code>manyglm</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>glm1path</code> with the following components:
+</p>
+
+<dl>
+<dt>coefficients</dt>
+<dd>
+<p>Vector of model coefficients for the best-fitting model (as judged by BIC)</p>
+</dd>
+<dt>lambda</dt>
+<dd>
+<p>The value of the LASOS penalty parameter, lambda, for the best-fitting model (as judged by BIC)</p>
+</dd>
+<dt>glm1.best</dt>
+<dd>
+<p>The glm1 fit for the best-fitting model (as judged by BIC). For what this contains see <code>glm1</code>.</p>
+</dd>
+<dt>all.coefficients</dt>
+<dd>
+<p>A matrix where each column represents the model coefficients for a fit along the path specified by <code>lambdas</code>.</p>
+</dd>
+<dt>lambdas</dt>
+<dd>
+<p>A vector specifying the path of values for the LASSO penalty, arranged from largest (strongest penalty, smallest fitted model) to smallest (giving the largest fitted model).</p>
+</dd>
+<dt>logL</dt>
+<dd>
+<p>A vector of log-likelihood values for each model along the path.</p>
+</dd>
+<dt>df</dt>
+<dd>
+<p>A vector giving the number of non-zero parameter estimates (a crude measure of degrees of freedom) for each model along the path.</p>
+</dd>
+<dt>bics</dt>
+<dd>
+<p>A vector of BIC values for each model along the path. Calculated using a penalty on model complexity as specified by input argument <code>k</code>.</p>
+</dd>
+<dt>counter</dt>
+<dd>
+<p>A vector counting how many iterations until convergence, for each model along the path.</p>
+</dd>
+<dt>check</dt>
+<dd>
+<p>A vector of logical values specifying whether or not Karush-Kuhn-Tucker conditions are satisfied at the solution.</p>
+</dd>
+<dt>phis</dt>
+<dd>
+<p>For negative binomial regression - a vector of overdispersion parameters, for each model along the path.</p>
+</dd>
+<dt>y</dt>
+<dd>
+<p>The vector of values for the response variable specified as an input argument.</p>
+</dd>
+<dt>X</dt>
+<dd>
+<p>The design matrix of p explanatory variables specified as an input argument.</p>
+</dd>
+<dt>penalty</dt>
+<dd>
+<p>The vector to be multiplied by each lambda to make the penalty for each fitted model.</p>
+</dd>
+<dt>family</dt>
+<dd>
+<p>The family argument specified as input.</p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>David I. Warton &lt;David.Warton@unsw.edu.au&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Osborne, M.R., Presnell, B. and Turlach, B.A. (2000) On the LASSO and its dual. Journal of Computational and Graphical Statistics, 9, 319-337.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>glm1</code>, <code>glm</code>, <code>family</code>, <code>residuals.manyglm</code>, <code>plot.manyany</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(spider)
+Alopacce &lt;- spider$abund[,1]
+X &lt;- model.matrix(~.,data=spider$x) # to get design matrix with intercept term
+
+# fit a LASSO-penalised negative binomial regression:
+ft = glm1path(Alopacce,X)
+# have a look at the BICS for all models:
+plot(ft$bics~ft$lambdas, log="x")
+
+#the action seems to be at lambda above 0.1, re-do with a minimum lambda at 0.1 and more lambdas:
+ft2 = glm1path(Alopacce,X,lam.min=0.1,n.lambda=100)
+plot(ft2$bics~ft2$lambdas, log="x")
+
+# return the slope estimates for the best-fitting model:
+coef(ft2)
+
+# look at a residual plot:
+plot(ft2)
+
+</code></pre>
+
+
+</div>

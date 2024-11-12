@@ -1,0 +1,310 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>rdata.frame</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Generate a random data.frame with tunable characteristics</h2>
+
+<h3>Description</h3>
+
+<p>This function generates a random <code>data.frame</code> with a
+missingness mechanism that is used to impose a missingness pattern. The primary
+purpose of this function is for use in simulations
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">rdata.frame(N = 1000, 
+            restrictions = c("none", "MARish", "triangular", "stratified", "MCAR"),
+            last_CPC = NA_real_, strong = FALSE, pr_miss = .25, Sigma = NULL, 
+            alpha = NULL, experiment = FALSE, 
+            treatment_cor = c(rep(0, n_full - 1), rep(NA, 2 * n_partial)),
+            n_full = 1, n_partial = 1, n_cat = NULL,
+            eta = 1, df = Inf, types = "continuous", estimate_CPCs = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>N</code></td>
+<td>
+<p>integer indicating the number of observations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>restrictions</code></td>
+<td>
+<p>character string indicating what restrictions to impose on
+the the missing data mechansim, see the Details section</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>last_CPC</code></td>
+<td>
+<p>a numeric scalar between <code class="reqn">-1</code> and <code class="reqn">1</code> exclusive or 
+<code>NA_real_</code> (the default). If not <code>NA_real_</code>, then this value will
+be used to construct the correlation matrix from which the data are drawn.
+This option is useful if restrictions is <code>"triangular"</code> or <code>"stratified"</code>,
+in which case the degree to which <code>last_CPC</code> is not zero causes a violation of 
+the Missing-At-Random assumption that is confined to the last of the partially 
+observed variables</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strong</code></td>
+<td>
+<p>Integer among 0, 1, and 2 indicating how strong to
+make the instruments with multiple partially observed variables,
+in which case the missingness indicators for each partially observed variable
+can be used as instruments when predicting missingness on other partially
+observed variables. Only applies when <code>restrictions = "triangular"</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pr_miss</code></td>
+<td>
+<p>numeric scalar on the (0,1) interval or vector
+of length <code>n_partial</code> indicating the proportion of observations
+that are missing on partially observed variables</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Sigma</code></td>
+<td>
+<p>Either <code>NULL</code> (the default) or a correlation matrix
+of appropriate order for the variables (including the missingness
+indicators). By default, such a matrix is generated at random.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>Either <code>NULL</code>, <code>NA</code>, or a numeric
+vector of appropriate length that governs the skew of a multivariate
+skewed normal distribution; see <code>rmsn</code>. The appropriate
+length is <code>n_full - 1 + 2 * n_partial</code> iff none of the variable types
+is nominal. If some of the variable types are nominal, then the appropriate
+length is <code>n_full - 1 + 2 * n_partial + sum(n_cat) - length(n_cat)</code>.
+If <code>NULL</code>, <code>alpha</code> is taken to be zero, in which case the
+data-generating process has no skew. If <code>NA</code>, <code>alpha</code>
+is drawn from <code>rt</code> with <code>df</code> degrees of freedom</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>experiment</code></td>
+<td>
+<p>logical indicating whether to simulate a randomized
+experiment</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>treatment_cor</code></td>
+<td>
+<p>Numeric vector of appropriate length indicating the
+correlations between the treatment variable and the other variables, which
+is only relevant if <code>experiment = TRUE</code>. The appropriate length is
+<code>n_full - 1 + 2 * n_partial</code> iff none of the variable types is nominal.
+If some of the variable types are nominal, then the appropriate length is
+<code>n_full - 1 + 2 * n_partial + sum(n_cat) - length(n_cat)</code>. If
+treatment_cor is of length one and is zero, then it will be recylced to
+the appropriate length. The treatment variable should be uncorrelated with
+intended covariates and uncorrelated with missingness on intended
+covariates. If any elements of treatment_cor are <code>NA</code>, then
+those elements will be replaced with random draws. Note that the order of
+the random variables is: all fully observed variables,all partially observed
+but not nominal variables, all partially observed nominal variables, all
+missingness indicators for partially observed variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_full</code></td>
+<td>
+<p>integer indicating the number of fully observed variables</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_partial</code></td>
+<td>
+<p>integer indicating the number of partially observed
+variables</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_cat</code></td>
+<td>
+<p>Either <code>NULL</code> or an integer vector (possibly of
+length one) indicating the number of categories in each partially observed
+nominal or ordinal variable; see the Details section</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eta</code></td>
+<td>
+<p>Positive numeric scalar which serves as a hyperparameter in the
+data-generating process. The default value of 1 implies that the correlation
+matrix among the variables is jointly uniformally distributed, using
+essentially the same logic as in the <span class="pkg">clusterGeneration</span> package</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>positive numeric scalar indicating the degress of freedom for the
+(possibly skewed) multivariate t distribution, which defaults to
+<code>Inf</code> implying a (possibly skewed) multivariate normal 
+distribution</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>types</code></td>
+<td>
+<p>a character vector (possibly of length one, in which case it
+is recycled) indicating the type for each fully observed and partially
+observed variable, which currently can be among <code>"continuous"</code>,
+<code>"count"</code>, <code>"binary"</code>, <code>"treatment"</code> (which is binary),
+<code>"ordinal"</code>, <code>"nominal"</code>, <code>"proportion"</code>, <code>"positive"</code>.
+See the Details section. Unique abbreviations are acceptable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimate_CPCs</code></td>
+<td>
+<p>A logical indicating whether the canonical partial correlations
+between the partially observed variables and the latent missingnesses should
+be estimated. The default is <code>TRUE</code> but considerable wall time can be saved
+by switching it to <code>FALSE</code> when there are many partially observed variables.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>By default, the correlation matrix among the variables and missingness indicators
+is intended to be close to uniform, although it is often not possible to achieve
+exactly. If <code>restrictions = "none"</code>, the data will be Not Missing At Random
+(NMAR). If <code>restrictions = "MARish"</code>, the departure from Missing At Random
+(MAR) will be minimized via a call to <code>optim</code>, but generally will
+not fully achieve MAR. If <code>restrictions = "triangular"</code>, the MAR assumption
+will hold but the missingness of each partially observed variable will only 
+depend on the fully observed variables and the other latent missingness indicators.
+If <code>restrictions = "stratified"</code>, the MAR assumption will hold but the
+missingness of each partially observed variable will only depend on the fully
+observed variables. If <code>restrictions = "MCAR"</code>, the Missing Completely At
+Random (MCAR) assumption holds, which is much more restrictive than MAR.
+</p>
+<p>There are some rules to follow, particularly when specifying <code>types</code>.
+First, if <code>experiment = TRUE</code>, there must be exactly one treatment
+variable (taken to be binary) and it must come first to ensure that the
+elements of <code>treatment_cor</code> are handled properly. Second, if there are any
+partially observed nominal variables, they must come last; this is to ensure
+that they are conditionally uncorrelated with each other. Third, fully observed
+nominal variables are not supported, but they can be made into ordinal variables
+and then converted to nominal after the fact. Fourth, including both ordinal and
+nominal partially observed variables is not supported yet, Finally, if any
+variable is specified as a count, it will not be exactly consistent with the
+data-generating process. Essentially, a count variable is constructed from a
+continuous variable by evaluating <code>pt</code> on it and passing that to
+<code>qpois</code> with an intensity parameter of 5. The other non-continuous
+variables are constructed via some transformation or discretization of a continuous
+variable.
+</p>
+<p>If some partially observed variables are either ordinal or nominal (but not both), 
+then the <code>n_cat</code> argument governs how many categories there are. If <code>n_cat</code>
+is <code>NULL</code>, then the number of categories defaults to three. If
+<code>n_cat</code> has length one, then that number of categories will be used for all
+categorical variables but must be greater than two. Otherwise, the length of 
+<code>n_cat</code> must match the number of partially observed categorical variables and
+the number of categories for the <code class="reqn">i</code>th such variable will be the <code class="reqn">i</code>th element
+of <code>n_cat</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with the following elements:
+</p>
+
+<ol>
+<li>
+<p>true a <code>data.frame</code> containing no <code>NA</code> values
+</p>
+</li>
+<li>
+<p>obs a <code>data.frame</code> derived from the previous with some
+<code>NA</code> values that represents a dataset that could be observed
+</p>
+</li>
+<li>
+<p>empirical_CPCs a numeric vector of empirical Canonical Partial
+Correlations, which should differ only randomly from zero iff
+<code>MAR = TRUE</code> and the data-generating process is multivariate normal
+</p>
+</li>
+<li>
+<p>L a Cholesky factor of the correlation matrix used to generate the
+true data
+</p>
+</li>
+</ol>
+<p>In addition, if <code>alpha</code> is not <code>NULL</code>, then the following
+elements are also included:
+</p>
+
+<ol>
+<li>
+<p>alpha the <code>alpha</code> vector utilized
+</p>
+</li>
+<li>
+<p>sn_skewness the skewness of the multivariate skewed normal distribution
+in the population; note that this value is only an approximation of the
+skewness when <code>df &lt; Inf</code>
+</p>
+</li>
+<li>
+<p>sn_kurtosis the kurtosis of the multivariate skewed normal distribution
+in the population; note that this value is only an approximation of the
+kurtosis when <code>df &lt; Inf</code>
+</p>
+</li>
+</ol>
+<h3>Author(s)</h3>
+
+<p>Ben Goodrich and Jonathan Kropko, for this version, based on earlier versions written by Yu-Sung
+Su, Masanao Yajima, Maria Grazia Pittau, Jennifer Hill, and Andrew Gelman.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>data.frame</code>, <code>missing_data.frame</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">rdf &lt;- rdata.frame(n_partial = 2, df = 5, alpha = rnorm(5))
+print(rdf$empirical_CPCs) # not zero
+rdf &lt;- rdata.frame(n_partial = 2, restrictions = "triangular", alpha = NA)
+print(rdf$empirical_CPCs) # only randomly different from zero
+print(rdf$L == 0) # some are exactly zero by construction
+mdf &lt;- missing_data.frame(rdf$obs)
+show(mdf)
+hist(mdf)
+image(mdf)
+# a randomized experiment
+rdf &lt;- rdata.frame(n_full = 2, n_partial = 2, 
+                   restrictions = "triangular", experiment = TRUE,
+                   types = c("t", "ord", "con", "pos"),
+                   treatment_cor = c(0, 0, NA, 0, NA))
+Sigma &lt;- tcrossprod(rdf$L)
+rownames(Sigma) &lt;- colnames(Sigma) &lt;- c("treatment", "X_2", "y_1", "Y_2",
+                                        "missing_y_1", "missing_Y_2")
+print(round(Sigma, 3))
+</code></pre>
+
+
+</div>

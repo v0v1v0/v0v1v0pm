@@ -1,0 +1,242 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>setFishing</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Set fishing parameters</h2>
+
+<h3>Description</h3>
+
+<p>Set fishing parameters
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">setFishing(
+  params,
+  selectivity = NULL,
+  catchability = NULL,
+  reset = FALSE,
+  initial_effort = NULL,
+  ...
+)
+
+getCatchability(params)
+
+catchability(params)
+
+catchability(params) &lt;- value
+
+getSelectivity(params)
+
+selectivity(params)
+
+selectivity(params) &lt;- value
+
+getInitialEffort(params)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>params</code></td>
+<td>
+<p>A MizerParams object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>selectivity</code></td>
+<td>
+<p>Optional. An array (gear x species x size) that holds the
+selectivity of each gear for species and size, <code class="reqn">S_{g,i,w}</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>catchability</code></td>
+<td>
+<p>Optional. An array (gear x species) that holds the catchability of
+each species by each gear, <code class="reqn">Q_{g,i}</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reset</code></td>
+<td>
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="../help/figures/lifecycle-experimental.svg" alt="[Experimental]"></a>
+If set to TRUE, then both <code>catchability</code> and <code>selectivity</code> will
+be reset to the values calculated from the gear parameters, even if it was
+previously overwritten with a custom value. If set to FALSE (default) then
+a recalculation from the gear parameters will take place only if no custom
+value has been set.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial_effort</code></td>
+<td>
+<p>Optional. A number or a named numeric vector specifying
+the fishing effort. If a number, the same effort is used for all gears. If
+a vector, must be named by gear.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Unused</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>value</code></td>
+<td>
+<p>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>setFishing()</code>: A MizerParams object with updated fishing
+parameters.
+</p>
+<p><code>getCatchability()</code> or equivalently <code>catchability()</code>: An array (gear
+x species) that holds the catchability of each species by each gear,
+<code class="reqn">Q_{g,i}</code>. The names of the dimensions are "gear, "sp".
+</p>
+<p><code>getSelectivity()</code> or equivalently <code>selectivity()</code>: An array (gear x
+species x size) that holds the selectivity of each gear for species and
+size, <code class="reqn">S_{g,i,w}</code>. The names of the dimensions are "gear, "sp", "w".
+</p>
+<p><code>getInitialEffort()</code> or equivalently <code>initial_effort()</code>: A named
+vector with the initial fishing effort for each gear.
+</p>
+
+
+<h3>Setting fishing</h3>
+
+<p><strong>Gears</strong>
+</p>
+<p>In <code>mizer</code>, fishing mortality is imposed on species by fishing gears. The
+total per-capita fishing mortality (1/year) is obtained by summing over the
+mortality from all gears,
+</p>
+<p style="text-align: center;"><code class="reqn">\mu_{f.i}(w) = \sum_g F_{g,i}(w),</code>
+</p>
+
+<p>where the fishing mortality <code class="reqn">F_{g,i}(w)</code> imposed by gear <code class="reqn">g</code> on
+species <code class="reqn">i</code> at size <code class="reqn">w</code> is calculated as:
+</p>
+<p style="text-align: center;"><code class="reqn">F_{g,i}(w) = S_{g,i}(w) Q_{g,i} E_{g},</code>
+</p>
+
+<p>where <code class="reqn">S</code> is the selectivity by species, gear and size, <code class="reqn">Q</code> is the
+catchability by species and gear and <code class="reqn">E</code> is the fishing effort by gear.
+</p>
+<p><strong>Selectivity</strong>
+</p>
+<p>The selectivity at size of each gear for each species is saved as a three
+dimensional array (gear x species x size). Each entry has a range between 0
+(that gear is not selecting that species at that size) to 1 (that gear is
+selecting all individuals of that species of that size). This three
+dimensional array can be specified explicitly via the <code>selectivity</code>
+argument, but usually mizer calculates it from the <code>gear_params</code> slot of
+the MizerParams object.
+</p>
+<p>To allow the calculation of the <code>selectivity</code> array, the <code>gear_params</code> slot
+must be a data frame with one row for each gear-species combination. So if
+for example a gear can select three species, then that gear contributes three
+rows to the <code>gear_params</code> data frame, one for each species it can select. The
+data frame must have columns <code>gear</code>, holding the name of the gear, <code>species</code>,
+holding the name of the species, and <code>sel_func</code>, holding the name of the
+function that calculates the selectivity curve. Some selectivity functions
+are included in the package: <code>knife_edge()</code>, <code>sigmoid_length()</code>,
+<code>double_sigmoid_length()</code>, and <code>sigmoid_weight()</code>.
+Users are able to write their own size-based selectivity function. The first
+argument to the function must be <code>w</code> and the function must return a vector of
+the selectivity (between 0 and 1) at size.
+</p>
+<p>Each selectivity function may have parameters. Values for these
+parameters must be included as columns in the gear parameters data.frame.
+The names of the columns must exactly match the names of the corresponding
+arguments of the selectivity function. For example, the default selectivity
+function is <code>knife_edge()</code> that a has sudden change of selectivity from 0 to 1
+at a certain size. In its help page you can see that the <code>knife_edge()</code>
+function has arguments <code>w</code> and <code>knife_edge_size</code>. The first argument, <code>w</code>, is
+size (the function calculates selectivity at size). All selectivity functions
+must have <code>w</code> as the first argument. The values for the other arguments must
+be found in the gear parameters data.frame. So for the <code>knife_edge()</code>
+function there should be a <code>knife_edge_size</code> column. Because <code>knife_edge()</code>
+is the default selectivity function, the <code>knife_edge_size</code> argument has a
+default value = <code>w_mat</code>.
+</p>
+<p>The most commonly-used selectivity function is <code>sigmoid_length()</code>. It has a
+smooth transition from 0 to 1 at a certain size. The <code>sigmoid_length()</code>
+function has the two parameters <code>l50</code> and <code>l25</code> that are the lengths in cm at
+which 50% or 25% of the fish are selected by the gear. If you choose this
+selectivity function then the <code>l50</code> and <code>l25</code> columns must be included in the
+gear parameters data.frame.
+</p>
+<p>In case each species is only selected by one gear, the columns of the
+<code>gear_params</code> data frame can alternatively be provided as columns of the
+<code>species_params</code> data frame, if this is more convenient for the user to set
+up. Mizer will then copy these columns over to create the <code>gear_params</code> data
+frame when it creates the MizerParams object. However changing these columns
+in the species parameter data frame later will not update the <code>gear_params</code>
+data frame.
+</p>
+<p><strong>Catchability</strong>
+</p>
+<p>Catchability is used as an additional factor to make the link between gear
+selectivity, fishing effort and fishing mortality. For example, it can be set
+so that an effort of 1 gives a desired fishing mortality. In this way effort
+can then be specified relative to a 'base effort', e.g. the effort in a
+particular year.
+</p>
+<p>Catchability is stored as a two dimensional array (gear x species). This can
+either be provided explicitly via the <code>catchability</code> argument, or the
+information can be provided via a <code>catchability</code> column in the <code>gear_params</code>
+data frame.
+</p>
+<p>In the case where each species is selected by only a single gear, the
+<code>catchability</code> column can also be provided in the <code>species_params</code> data
+frame. Mizer will then copy this over to the <code>gear_params</code> data frame when
+the MizerParams object is created.
+</p>
+<p><strong>Effort</strong>
+</p>
+<p>The initial fishing effort is stored in the <code>MizerParams</code> object. If it is
+not supplied, it is set to zero. The initial effort can be overruled when
+the simulation is run with <code>project()</code>, where it is also possible to specify
+an effort that varies through time.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>gear_params()</code>
+</p>
+<p>Other functions for setting parameters: 
+<code>gear_params()</code>,
+<code>setExtEncounter()</code>,
+<code>setExtMort()</code>,
+<code>setInitialValues()</code>,
+<code>setInteraction()</code>,
+<code>setMaxIntakeRate()</code>,
+<code>setMetabolicRate()</code>,
+<code>setParams()</code>,
+<code>setPredKernel()</code>,
+<code>setReproduction()</code>,
+<code>setSearchVolume()</code>,
+<code>species_params()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">str(getCatchability(NS_params))
+str(getSelectivity(NS_params))
+str(getInitialEffort(NS_params))
+</code></pre>
+
+
+</div>

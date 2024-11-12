@@ -1,0 +1,434 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>indscal</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Individual Differences Scaling
+</h2>
+
+<h3>Description</h3>
+
+<p>Fits Carroll and Chang's Individual Differences Scaling (INDSCAL) model to 3-way dissimilarity or similarity data. Parameters are estimated via alternating least squares with optional constraints.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">indscal(X, nfac, nstart = 10, const = NULL, control = NULL,
+        type = c("dissimilarity", "similarity"),
+        Bfixed = NULL, Bstart = NULL, Bstruc = NULL, Bmodes = NULL,
+        Cfixed = NULL, Cstart = NULL, Cstruc = NULL, Cmodes = NULL,
+        maxit = 500, ctol = 1e-4, parallel = FALSE, cl = NULL,
+        output = c("best", "all"), verbose = TRUE, backfit = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+
+<p>Three-way data array with <code>dim=c(J,J,K)</code> where <code>X[,,k]</code> is dissimilarity matrix. Can also input a list of (dis)similarity matrices or objects output by <code>dist</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nfac</code></td>
+<td>
+
+<p>Number of factors.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nstart</code></td>
+<td>
+
+<p>Number of random starts.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>const</code></td>
+<td>
+
+<p>Character vector of length 2 giving the constraints for modes B and C (defaults to unconstrained for B and non-negative for C). See <code>const</code> for the 24 available options. Constraints for Mode C weights are limited to one of the 8 possible non-negative options.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+
+<p>List of parameters controlling options for smoothness constraints. This is passed to <code>const.control</code>, which describes the available options.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+
+<p>Character indicating if <code>X</code> contains dissimilarity data (default) or similarity data.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Bfixed</code></td>
+<td>
+
+<p>Used to fit model with fixed Mode B weights.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Bstart</code></td>
+<td>
+
+<p>Starting Mode B weights. Default uses random weights.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Bstruc</code></td>
+<td>
+
+<p>Structure constraints for Mode B weights. See Note.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Bmodes</code></td>
+<td>
+
+<p>Mode ranges for Mode B weights (for unimodality constraints). See Note.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Cfixed</code></td>
+<td>
+
+<p>Used to fit model with fixed Mode C weights.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Cstart</code></td>
+<td>
+
+<p>Starting Mode C weights. Default uses random weights.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Cstruc</code></td>
+<td>
+
+<p>Structure constraints for Mode C weights. See Note.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Cmodes</code></td>
+<td>
+
+<p>Mode ranges for Mode C weights (for unimodality constraints). See Note.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit</code></td>
+<td>
+
+<p>Maximum number of iterations.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ctol</code></td>
+<td>
+
+<p>Convergence tolerance.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+
+<p>Logical indicating if <code>parLapply</code> should be used. See Examples.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+
+<p>Cluster created by <code>makeCluster</code>. Only used when <code>parallel=TRUE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output</code></td>
+<td>
+
+<p>Output the best solution (default) or output all <code>nstart</code> solutions.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+
+<p>If <code>TRUE</code>, fitting progress is printed via <code>txtProgressBar</code>. Ignored if <code>parallel=TRUE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>backfit</code></td>
+<td>
+
+<p>Should backfitting algorithm be used for <code>cmls</code>? 
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Given a 3-way array <code>X = array(x,dim=c(J,J,K))</code> with <code>X[,,k]</code> denoting the <code>k</code>-th subject's dissimilarity matrix rating <code>J</code> objects, the INDSCAL model can be written as 
+</p>
+
+<table><tr>
+<td style="text-align: center;">
+<code> Z[i,j,k] = sum B[i,r]*B[j,r]*C[k,r] + E[i,j,k] </code>
+</td>
+</tr></table>
+<p>where <code>Z</code> is the array of scalar products obtained from <code>X</code>, <code>B = matrix(b,J,R)</code> are the object weights, <code>C = matrix(c,K,R)</code> are the non-negative subject weights, and <code>E = array(e,dim=c(J,J,K))</code> is the 3-way residual array. The summation is for <code>r = seq(1,R)</code>.
+</p>
+<p>Weight matrices are estimated using an alternating least squares algorithm with optional constraints.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>output="best"</code>, returns an object of class <code>"indscal"</code> with the following elements:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>B</code></td>
+<td>
+<p>Mode B weight matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C</code></td>
+<td>
+<p>Mode C weight matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SSE</code></td>
+<td>
+<p>Sum of Squared Errors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Rsq</code></td>
+<td>
+<p>R-squared value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>GCV</code></td>
+<td>
+<p>Generalized Cross-Validation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>edf</code></td>
+<td>
+<p>Effective degrees of freedom.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>Number of iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cflag</code></td>
+<td>
+<p>Convergence flag. See Note.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>const</code></td>
+<td>
+<p>See argument <code>const</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>See argument <code>control</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixed</code></td>
+<td>
+<p>Logical vector indicating whether 'fixed' weights were used for each mode.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>struc</code></td>
+<td>
+<p>Logical vector indicating whether 'struc' constraints were used for each mode.</p>
+</td>
+</tr>
+</table>
+<p>Otherwise returns a list of length <code>nstart</code> where each element is an object of class <code>"indscal"</code>.
+</p>
+
+
+<h3>Warnings </h3>
+
+<p>The algorithm can perform poorly if the number of factors <code>nfac</code> is set too large.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Structure constraints should be specified with a matrix of logicals (TRUE/FALSE), such that FALSE elements indicate a weight should be constrained to be zero. Default uses unstructured weights, i.e., a matrix of all TRUE values.
+</p>
+<p>When using unimodal constraints, the <code>*modes</code> inputs can be used to specify the mode search range for each factor. These inputs should be matrices with dimension <code>c(2,nfac)</code> where the first row gives the minimum mode value and the second row gives the maximum mode value (with respect to the indicies of the given corresponding matrix).
+</p>
+<p>Output <code>cflag</code> gives convergence information: <code>cflag = 0</code> if algorithm converged normally, <code>cflag = 1</code> if maximum iteration limit was reached before convergence, and <code>cflag = 2</code> if algorithm terminated abnormally due to a problem with the constraints.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nathaniel E. Helwig &lt;helwig@umn.edu&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Carroll, J. D., &amp; Chang, J-J. (1970). Analysis of individual differences in multidimensional scaling via an n-way generalization of "Eckart-Young" decomposition. <em>Psychometrika, 35</em>, 283-319.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>The <code>fitted.indscal</code> function creates the model-implied fitted values from a fit <code>"indscal"</code> object.
+</p>
+<p>The <code>resign.indscal</code> function can be used to resign factors from a fit <code>"indscal"</code> object.
+</p>
+<p>The <code>rescale.indscal</code> function can be used to rescale factors from a fit <code>"indscal"</code> object.
+</p>
+<p>The <code>reorder.indscal</code> function can be used to reorder factors from a fit <code>"indscal"</code> object.
+</p>
+<p>The <code>cmls</code> function (from <b>CMLS</b> package) is called as a part of the alternating least squares algorithm.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">##########   array example   ##########
+
+# create random data array with INDSCAL structure
+set.seed(3)
+mydim &lt;- c(50,5,10)
+nf &lt;- 2
+X &lt;- array(0, dim = c(rep(mydim[2],2), mydim[3]))
+for(k in 1:mydim[3]) {
+  X[,,k] &lt;- as.matrix(dist(t(matrix(rnorm(prod(mydim[1:2])), mydim[1], mydim[2]))))
+}
+
+# fit INDSCAL model
+imod &lt;- indscal(X, nfac = nf, nstart = 1)
+imod
+
+# check solution
+Xhat &lt;- fitted(imod)
+sum((array(apply(X,3,ed2sp), dim = dim(X)) - Xhat)^2)
+imod$SSE
+
+# reorder and resign factors
+imod$B[1:4,]
+imod &lt;- reorder(imod, 2:1)
+imod$B[1:4,]
+imod &lt;- resign(imod, newsign = c(1,-1))
+imod$B[1:4,]
+sum((array(apply(X,3,ed2sp), dim = dim(X)) - Xhat)^2)
+imod$SSE
+
+# rescale factors
+colSums(imod$B^2)
+colSums(imod$C^2)
+imod &lt;- rescale(imod, mode = "C")
+colSums(imod$B^2)
+colSums(imod$C^2)
+sum((array(apply(X,3,ed2sp), dim = dim(X)) - Xhat)^2)
+imod$SSE
+
+
+##########   list example   ##########
+
+# create random data array with INDSCAL structure
+set.seed(4)
+mydim &lt;- c(100, 8, 20)
+nf &lt;- 3
+X &lt;- vector("list", mydim[3])
+for(k in 1:mydim[3]) {
+  X[[k]] &lt;- dist(t(matrix(rnorm(prod(mydim[1:2])), mydim[1], mydim[2])))
+}
+
+# fit INDSCAL model (orthogonal B, non-negative C)
+imod &lt;- indscal(X, nfac = nf, nstart = 1, const = c("orthog", "nonneg"))
+imod
+
+# check solution
+Xhat &lt;- fitted(imod)
+sum((array(unlist(lapply(X,ed2sp)), dim = mydim[c(2,2,3)]) - Xhat)^2)
+imod$SSE
+crossprod(imod$B)
+
+
+## Not run: 
+
+##########   parallel computation   ##########
+
+# create random data array with INDSCAL structure
+set.seed(3)
+mydim &lt;- c(50,5,10)
+nf &lt;- 2
+X &lt;- array(0,dim=c(rep(mydim[2],2), mydim[3]))
+for(k in 1:mydim[3]) {
+  X[,,k] &lt;- as.matrix(dist(t(matrix(rnorm(prod(mydim[1:2])), mydim[1], mydim[2]))))
+}
+
+# fit INDSCAL model (10 random starts -- sequential computation)
+set.seed(1)
+system.time({imod &lt;- indscal(X, nfac = nf)})
+imod
+
+# fit INDSCAL model (10 random starts -- parallel computation)
+cl &lt;- makeCluster(detectCores())
+ce &lt;- clusterEvalQ(cl,library(multiway))
+clusterSetRNGStream(cl, 1)
+system.time({imod &lt;- indscal(X, nfac = nf, parallel = TRUE, cl = cl)})
+imod
+stopCluster(cl)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

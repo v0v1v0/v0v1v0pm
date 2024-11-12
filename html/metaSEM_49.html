@@ -1,0 +1,192 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sem</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit a structural equation model using OpenMx
+</h2>
+
+<h3>Description</h3>
+
+<p>It fits a structural equation model by creating a mxModel from a RAM object.  
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## Depreciated in the future
+create.mxModel(model.name="sem", RAM=NULL, data=NULL,
+               Cov=NULL, means=NULL, numObs,
+               intervals.type=c("z", "LB"), startvalues=NULL,
+               replace.constraints=FALSE, mxModel.Args=NULL,
+               run=TRUE, silent=TRUE, ...)
+sem(model.name="sem", RAM=NULL, data=NULL,
+    Cov=NULL, means=NULL, numObs,
+    intervals.type=c("z", "LB"), startvalues=NULL,
+    lbound=NULL, ubound=NULL, replace.constraints=FALSE,
+    mxModel.Args=NULL, run=TRUE, silent=TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model.name</code></td>
+<td>
+<p>A string for the model name in <code>mxModel</code>. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>RAM</code></td>
+<td>
+<p>A RAM object including a list of matrices of the model
+returned from <code>lavaan2RAM</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A data frame or matrix of data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Cov</code></td>
+<td>
+<p>A covariance matrix may also be used if <code>data</code>==NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>means</code></td>
+<td>
+<p>A named vector of means (options) if <code>Cov</code> is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>numObs</code></td>
+<td>
+<p>If <code>Cov</code> is used, a sample size must be provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intervals.type</code></td>
+<td>
+<p>Either <code>z</code> (default if missing) or
+<code>LB</code>. If it is <code>z</code>, it calculates the 95% confidence
+intervals (CIs) based on the estimated standard error. If it
+is <code>LB</code>, it calculates the 95% likelihood-based CIs on the
+parameter estimates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>startvalues</code></td>
+<td>
+<p>A list of named starting values of the free parameters, e.g., list(a=1, b=2)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lbound</code></td>
+<td>
+<p>A list of lower bound of the free parameters. If it is
+not provided, all free parameters are assumed <code>NA</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ubound</code></td>
+<td>
+<p>A list of upper bound of the free parameters. If it is
+not provided, all free parameters are assumed <code>NA</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>replace.constraints</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, the parameters on the left hand side will be replaced by the constraints on the right hand side. That is, the parameters on the left hand side are no longer parameters in the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mxModel.Args</code></td>
+<td>
+<p>A list of arguments passed to <code>mxModel</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>run</code></td>
+<td>
+<p>Logical. If <code>FALSE</code>, only return the mx model without
+running the analysis.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>silent</code></td>
+<td>
+<p>Logical. An argument is passed to either
+<code>mxRun</code> or <code>mxTryHard</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments will be passed to either
+<code>mxRun</code> or <code>mxTryHard</code></p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object of class <code>mxsem</code></p>
+
+
+<h3>Note</h3>
+
+<p>when there are constraints with <code>replace.constraints=TRUE</code> and <code>intervals.type="LB"</code>, it returns an error because some parameters in the model are replaced with the new parameters in the constraints. However, the names of these new parameters are not captured in the CI object. Users are advised to use <code>intervals.type="z"</code> before it is fixed.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Mike W.-L. Cheung &lt;mikewlcheung@nus.edu.sg&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Generate data
+set.seed(100)
+n &lt;- 100
+x &lt;- rnorm(n)
+y &lt;- 0.5*x + rnorm(n, mean=0, sd=sqrt(1-0.5^2))
+my.df &lt;- data.frame(y=y, x=x)
+
+## A regression model
+model &lt;- "y ~ x   # Regress y on x
+          y ~ 1   # Intercept of y
+          x ~ 1   # Mean of x"
+plot(model)
+
+RAM &lt;- lavaan2RAM(model, obs.variables=c("y", "x"))
+
+my.fit &lt;- sem(RAM=RAM, data=my.df)
+summary(my.fit)
+
+## A meta-analysis
+model &lt;- "f =~ 1*yi
+          f ~ mu*1          ## Average effect
+          f ~~ tau2*f       ## Heterogeneity variance
+          yi ~~ data.vi*yi  ## Known sampling variance"
+plot(model)
+
+## Do not standardize the latent variable (f): std.lv=FALSE 
+RAM &lt;- lavaan2RAM(model, obs.variables="yi", std.lv=FALSE)
+
+## Use likelihood-based CI 
+my.fit &lt;- sem(RAM=RAM, data=Hox02, intervals="LB")
+summary(my.fit)
+
+</code></pre>
+
+
+</div>

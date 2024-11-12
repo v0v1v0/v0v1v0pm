@@ -1,0 +1,303 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>member_community_non</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Non-hierarchical community partitioning algorithms</h2>
+
+<h3>Description</h3>
+
+<p>These functions offer algorithms for partitioning
+networks into sets of communities:
+</p>
+
+<ul>
+<li> <p><code>node_in_optimal()</code> is a problem-solving algorithm that seeks to maximise
+modularity over all possible partitions.
+</p>
+</li>
+<li> <p><code>node_in_partition()</code> is a greedy, iterative, deterministic
+partitioning algorithm that results in two equally-sized communities.
+</p>
+</li>
+<li> <p><code>node_in_infomap()</code> is an algorithm based on the information in random walks.
+</p>
+</li>
+<li> <p><code>node_in_spinglass()</code> is a greedy, iterative, probabilistic algorithm,
+based on analogy to model from statistical physics.
+</p>
+</li>
+<li> <p><code>node_in_fluid()</code> is a propogation-based partitioning algorithm,
+based on analogy to model from fluid dynamics.
+</p>
+</li>
+<li> <p><code>node_in_louvain()</code> is an agglomerative multilevel algorithm that seeks to maximise
+modularity over all possible partitions.
+</p>
+</li>
+<li> <p><code>node_in_leiden()</code> is an agglomerative multilevel algorithm that seeks to maximise
+the Constant Potts Model over all possible partitions.
+</p>
+</li>
+</ul>
+<p>The different algorithms offer various advantages in terms of computation time,
+availability on different types of networks, ability to maximise modularity,
+and their logic or domain of inspiration.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">node_in_optimal(.data)
+
+node_in_partition(.data)
+
+node_in_infomap(.data, times = 50)
+
+node_in_spinglass(.data, max_k = 200, resolution = 1)
+
+node_in_fluid(.data)
+
+node_in_louvain(.data, resolution = 1)
+
+node_in_leiden(.data, resolution = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>.data</code></td>
+<td>
+<p>An object of a manynet-consistent class:
+</p>
+
+<ul>
+<li>
+<p> matrix (adjacency or incidence) from <code>{base}</code> R
+</p>
+</li>
+<li>
+<p> edgelist, a data frame from <code>{base}</code> R or tibble from <code>{tibble}</code>
+</p>
+</li>
+<li>
+<p> igraph, from the <code>{igraph}</code> package
+</p>
+</li>
+<li>
+<p> network, from the <code>{network}</code> package
+</p>
+</li>
+<li>
+<p> tbl_graph, from the <code>{tidygraph}</code> package
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>times</code></td>
+<td>
+<p>Integer indicating number of simulations/walks used.
+By default, <code>times=50</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_k</code></td>
+<td>
+<p>Integer constant, the number of spins to use as an upper limit
+of communities to be found. Some sets can be empty at the end.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resolution</code></td>
+<td>
+<p>The Reichardt-Bornholdt “gamma” resolution parameter for modularity.
+By default 1, making existing and non-existing ties equally important.
+Smaller values make existing ties more important,
+and larger values make missing ties more important.</p>
+</td>
+</tr>
+</table>
+<h3>Optimal</h3>
+
+<p>The general idea is to calculate the modularity of all possible partitions,
+and choose the community structure that maximises this modularity measure.
+Note that this is an NP-complete problem with exponential time complexity.
+The guidance in the igraph package is networks of &lt;50-200 nodes is probably fine.
+</p>
+
+
+<h3>Infomap</h3>
+
+<p>Motivated by information theoretic principles, this algorithm tries to build
+a grouping that provides the shortest description length for a random walk,
+where the description length is measured by the expected number of bits per node required to encode the path.
+</p>
+
+
+<h3>Spin-glass</h3>
+
+<p>This is motivated by analogy to the Potts model in statistical physics.
+Each node can be in one of <em>k</em> "spin states",
+and ties (particle interactions) provide information about which pairs of nodes
+want similar or different spin states.
+The final community definitions are represented by the nodes' spin states
+after a number of updates.
+A different implementation than the default is used in the case of signed networks,
+such that nodes connected by negative ties will be more likely found in separate communities.
+</p>
+
+
+<h3>Fluid</h3>
+
+<p>The general idea is to observe how a discrete number of fluids interact, expand and contract,
+in a non-homogenous environment, i.e. the network structure.
+Unlike the <code>{igraph}</code> implementation that this function wraps,
+this function iterates over all possible numbers of communities and returns the membership
+associated with the highest modularity.
+</p>
+
+
+<h3>Louvain</h3>
+
+<p>The general idea is to take a hierarchical approach to optimising the modularity criterion.
+Nodes begin in their own communities and are re-assigned in a local, greedy way:
+each node is moved to the community where it achieves the highest contribution to modularity.
+When no further modularity-increasing reassignments are possible,
+the resulting communities are considered nodes (like a reduced graph),
+and the process continues.
+</p>
+
+
+<h3>Leiden</h3>
+
+<p>The general idea is to optimise the Constant Potts Model,
+which does not suffer from the resolution limit, instead of modularity.
+As outlined in the <code>{igraph}</code> package,
+the Constant Potts Model object function is:
+</p>
+<p style="text-align: center;"><code class="reqn">\frac{1}{2m} \sum_{ij}(A_{ij}-\gamma n_i n_j)\delta(\sigma_i, \sigma_j)</code>
+</p>
+
+<p>where <em>m</em> is the total tie weight,
+<code class="reqn">A_{ij}</code> is the tie weight between <em>i</em> and <em>j</em>,
+<code class="reqn">\gamma</code> is the so-called resolution parameter,
+<code class="reqn">n_i</code> is the node weight of node <em>i</em>,
+and <code class="reqn">\delta(\sigma_i, \sigma_j) = 1</code> if and only if
+<em>i</em> and <em>j</em> are in the same communities and 0 otherwise.
+</p>
+
+
+<h3>References</h3>
+
+
+
+<h4>On optimal community detection</h4>
+
+<p>Brandes, Ulrik, Daniel Delling, Marco Gaertler, Robert Gorke, Martin Hoefer, Zoran Nikoloski, Dorothea Wagner. 2008.
+"On Modularity Clustering",
+<em>IEEE Transactions on Knowledge and Data Engineering</em> 20(2):172-188.
+</p>
+
+
+
+<h4>On partitioning community detection</h4>
+
+<p>Kernighan, Brian W., and Shen Lin. 1970.
+"An efficient heuristic procedure for partitioning graphs."
+<em>The Bell System Technical Journal</em> 49(2): 291-307.
+<a href="https://doi.org/10.1002/j.1538-7305.1970.tb01770.x">doi:10.1002/j.1538-7305.1970.tb01770.x</a>
+</p>
+
+
+
+<h4>On infomap community detection</h4>
+
+<p>Rosvall, M, and C. T. Bergstrom. 2008.
+"Maps of information flow reveal community structure in complex networks",
+<em>PNAS</em> 105:1118.
+<a href="https://doi.org/10.1073/pnas.0706851105">doi:10.1073/pnas.0706851105</a>
+</p>
+<p>Rosvall, M., D. Axelsson, and C. T. Bergstrom. 2009.
+"The map equation",
+<em>Eur. Phys. J. Special Topics</em> 178: 13.
+<a href="https://doi.org/10.1140/epjst/e2010-01179-1">doi:10.1140/epjst/e2010-01179-1</a>
+</p>
+
+
+
+<h4>On spinglass community detection</h4>
+
+<p>Reichardt, Jorg, and Stefan Bornholdt. 2006.
+"Statistical Mechanics of Community Detection"
+<em>Physical Review E</em>, 74(1): 016110–14.
+<a href="https://doi.org/10.1073/pnas.0605965104">doi:10.1073/pnas.0605965104</a>
+</p>
+<p>Traag, Vincent A., and Jeroen Bruggeman. 2009.
+"Community detection in networks with positive and negative links".
+<em>Physical Review E</em>, 80(3): 036115.
+<a href="https://doi.org/10.1103/PhysRevE.80.036115">doi:10.1103/PhysRevE.80.036115</a>
+</p>
+
+
+
+<h4>On fluid community detection</h4>
+
+<p>Parés Ferran, Dario Garcia Gasulla, Armand Vilalta, Jonatan Moreno, Eduard Ayguade, Jesus Labarta, Ulises Cortes, and Toyotaro Suzumura. 2018.
+"Fluid Communities: A Competitive, Scalable and Diverse Community Detection Algorithm".
+In: <em>Complex Networks &amp; Their Applications VI</em>
+Springer, 689: 229.
+<a href="https://doi.org/10.1007/978-3-319-72150-7_19">doi:10.1007/978-3-319-72150-7_19</a>
+</p>
+
+
+
+<h4>On Louvain community detection</h4>
+
+<p>Blondel, Vincent, Jean-Loup Guillaume, Renaud Lambiotte, Etienne Lefebvre. 2008.
+"Fast unfolding of communities in large networks",
+<em>J. Stat. Mech.</em> P10008.
+</p>
+
+
+
+<h4>On Leiden community detection</h4>
+
+<p>Traag, Vincent A., Ludo Waltman, and Nees Jan van Eck. 2019.
+"From Louvain to Leiden: guaranteeing well-connected communities",
+<em>Scientific Reports</em>, 9(1):5233.
+<a href="https://doi.org/10.1038/s41598-019-41695-z">doi:10.1038/s41598-019-41695-z</a>
+</p>
+
+
+
+<h3>See Also</h3>
+
+<p>Other memberships: 
+<code>mark_core</code>,
+<code>member_brokerage</code>,
+<code>member_cliques</code>,
+<code>member_community_hier</code>,
+<code>member_components</code>,
+<code>member_equivalence</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">node_in_optimal(ison_adolescents)
+node_in_partition(ison_adolescents)
+node_in_partition(ison_southern_women)
+node_in_infomap(ison_adolescents)
+node_in_spinglass(ison_adolescents)
+node_in_fluid(ison_adolescents)
+node_in_louvain(ison_adolescents)
+node_in_leiden(ison_adolescents)
+</code></pre>
+
+
+</div>

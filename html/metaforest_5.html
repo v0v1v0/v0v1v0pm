@@ -1,0 +1,199 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MetaForest</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Conduct a MetaForest analysis to explore heterogeneity in meta-analytic data.</h2>
+
+<h3>Description</h3>
+
+<p>MetaForest uses a weighted random forest to explore heterogeneity in
+meta-analytic data. MetaForest is a wrapper for ranger
+(Wright &amp; Ziegler, 2015). As input, MetaForest takes the study effect sizes
+and their variances (these can be computed, for example, using the
+<code>metafor</code> package), as well as the moderators
+that are to be included in the model. By default, MetaForest uses
+random-effects weights, and estimates the between-studies variance using a
+restricted maximum-likelihood estimator. However, it may be beneficial to
+first conduct an unweighted MetaForest, and then use the estimated residual
+heterogeneity from this model as the estimate of <code>tau2</code> for a
+random-effects weighted MetaForest.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MetaForest(
+  formula,
+  data,
+  vi = "vi",
+  study = NULL,
+  whichweights = "random",
+  num.trees = 500,
+  mtry = NULL,
+  method = "REML",
+  tau2 = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>Formula. Specify a formula for the MetaForest model, for
+example, <code>yi ~ .</code> to predict the outcome <code>yi</code> from all moderators
+in the data. Only additive formulas are allowed (i.e., <code>x1+x2+x3</code>).
+Interaction terms and non-linear terms are not required, as the random
+forests algorithm inherently captures these associations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A data.frame containing the effect size, moderators, and the
+variance of the effect size.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vi</code></td>
+<td>
+<p>Character. Specify the name of the column in the <code>data</code> that
+contains the variances of the effect sizes. This column will be removed from
+the data prior to analysis. Defaults to <code>"vi"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>study</code></td>
+<td>
+<p>Character. Optionally, specify the name of the column in the
+<code>data</code> that contains the study id. Use this when the data includes
+multiple effect sizes per study. This column can be a vector of integers, or
+a factor. This column will be removed from the data prior to analysis.
+See <code>Details</code> for more information about analyzing dependent data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>whichweights</code></td>
+<td>
+<p>Character. Indicate what time of weights are required.
+A random-effects MetaForest is grown by specifying <code>whichweights =
+"random"</code>. A fixed-effects MetaForest is grown by specifying
+<code>whichweights = "fixed"</code>. An unweighted MetaForest is grown by
+specifying <code>whichweights = "unif"</code>. Defaults to <code>"random"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>num.trees</code></td>
+<td>
+<p>Atomic integer. Specify the number of trees in the forest.
+Defaults to 500.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mtry</code></td>
+<td>
+<p>Atomic integer. Number of candidate moderators available for each
+split. Defaults to the square root of the number moderators (rounded down).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>Character. Specify the method by which to estimate the residual
+variance. Can be set to one of the following: "DL", "HE", "SJ", "ML", "REML",
+"EB", "HS", or "GENQ". Default is "REML". See the
+<code>metafor</code> package for more information about
+these estimators.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tau2</code></td>
+<td>
+<p>Numeric. Specify a predetermined value for the residual
+heterogeneity. Entering a value here supersedes the estimated tau2 value.
+Defaults to NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments are passed directly to ranger.
+It is recommended not to use additional arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For dependent data, a clustered MetaForest analysis is more
+appropriate. This is because the predictive performance of a MetaForest
+analysis is evaluated on out-of-bootstrap cases, and when cases out of the
+bootstrap sample originate from the same study, the model will be overly
+confident in its ability to predict their value. When the MetaForest is
+clustered by the <code>study</code> variable, the dataset is first split into two
+cross-validation samples by study. All dependent effect sizes from each study
+are thus included in the same cross-validation sample. Then, two random
+forests are grown on these cross-validation samples, and for each random
+forest, the other sample is used to calculate prediction error and variable
+importance, see <a href="https://doi.org/10.1007/s11634-016-0276-4">doi:10.1007/s11634-016-0276-4</a>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>List of length 3. The "forest" element of this list is an object of
+class "ranger", containing the results of the random forests analysis. The
+"rma_before" element is an object of class "rma.uni", containing the results
+of a random-effects meta-analysis on the raw data, without moderators. The
+"rma_after" element is an object of class "rma.uni", containing the results
+of a random-effects meta-analysis on the residual heterogeneity, or the
+difference between the effect sizes predicted by MetaForest and the observed
+effect sizes.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#Example 1:
+#Simulate data with a univariate linear model
+set.seed(42)
+data &lt;- SimulateSMD()
+#Conduct unweighted MetaForest analysis
+mf.unif &lt;- MetaForest(formula = yi ~ ., data = data$training,
+                      whichweights = "unif", method = "DL")
+#Print model
+mf.unif
+#Conduct random-effects weighted MetaForest analysis
+mf.random &lt;- MetaForest(formula = yi ~ ., data = data$training,
+                        whichweights = "random", method = "DL",
+                        tau2 = 0.0116)
+#Print summary
+summary(mf.random)
+
+#Example 2: Real data from metafor
+#Load and clean data
+data &lt;- dat.bangertdrowns2004
+data[, c(4:12)] &lt;- apply(data[ , c(4:12)], 2, function(x){
+  x[is.na(x)] &lt;- median(x, na.rm = TRUE)
+  x})
+data$subject &lt;- factor(data$subject)
+data$yi &lt;- as.numeric(data$yi)
+#Conduct MetaForest analysis
+mf.bd2004 &lt;- MetaForest(formula = yi~ grade + length + minutes + wic+
+                               meta, data, whichweights = "unif")
+#Print MetaForest object
+mf.bd2004
+#Check convergence plot
+plot(mf.bd2004)
+#Check summary
+summary(mf.bd2004, digits = 4)
+#Examine variable importance plot
+VarImpPlot(mf.bd2004)
+</code></pre>
+
+
+</div>

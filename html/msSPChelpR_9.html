@@ -1,0 +1,150 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ir_crosstab_byfutime</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate crude incidence rates and cross-tabulate results by break variables; cumulative FU-times as are used as xbreak_var</h2>
+
+<h3>Description</h3>
+
+<p>Calculate crude incidence rates and cross-tabulate results by break variables; cumulative FU-times as are used as xbreak_var
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ir_crosstab_byfutime(
+  df,
+  dattype = NULL,
+  count_var,
+  futime_breaks = c(0, 0.5, 1, 5, 10, Inf),
+  ybreak_vars,
+  collapse_ci = FALSE,
+  add_total = "no",
+  futime_var = NULL,
+  alpha = 0.05
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>dataframe in wide format</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dattype</code></td>
+<td>
+<p>can be "zfkd" or "seer" or NULL. Will set default variable names if dattype is "seer" or "zfkd". Default is NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>count_var</code></td>
+<td>
+<p>variable to be counted as observed case. Should be 1 for case to be counted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>futime_breaks</code></td>
+<td>
+<p>vector that indicates split points for follow-up time groups (in years) that will be used as xbreak_var.
+Default is c(0, .5, 1, 5, 10, Inf) that will result in 5 groups (up to 6 months, 6-12 months, 1-5 years, 5-10 years, 10+ years).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ybreak_vars</code></td>
+<td>
+<p>variables from df by which rates should be stratified in rows of result df. Multiple variables will result in
+appended rows in result df. y_break_vars is required.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>collapse_ci</code></td>
+<td>
+<p>If TRUE upper and lower confidence interval will be collapsed into one column separated by "-". Default is FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>add_total</code></td>
+<td>
+<p>option to add a row of totals. Can be either "no" for not adding such a row or "top" or "bottom" for adding it at the first or last row. Default is "no".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>futime_var</code></td>
+<td>
+<p>variable in df that contains follow-up time per person (in years). Default is set if dattype is given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>significance level for confidence interval calculations. Default is alpha = 0.05 which will give 95 percent confidence intervals.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>df
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#load sample data
+data("us_second_cancer")
+
+#prep step - make wide data as this is the required format
+usdata_wide &lt;- us_second_cancer %&gt;%
+                    #only use sample
+                    dplyr::filter(as.numeric(fake_id) &lt; 200000) %&gt;%
+                    msSPChelpR::reshape_wide_tidyr(case_id_var = "fake_id", 
+                    time_id_var = "SEQ_NUM", timevar_max = 2)
+                    
+#prep step - calculate p_spc variable
+usdata_wide &lt;- usdata_wide %&gt;%
+                 dplyr::mutate(p_spc = dplyr::case_when(is.na(t_site_icd.2)   ~ "No SPC",
+                                                       !is.na(t_site_icd.2)   ~ "SPC developed",
+                                                       TRUE ~ NA_character_)) %&gt;%
+                 dplyr::mutate(count_spc = dplyr::case_when(is.na(t_site_icd.2)   ~ 1,
+                                                              TRUE ~ 0))
+                                                              
+#prep step - create patient status variable
+usdata_wide &lt;- usdata_wide %&gt;%
+                  msSPChelpR::pat_status(., fu_end = "2017-12-31", dattype = "seer",
+                                         status_var = "p_status", life_var = "p_alive.1",
+                                         birthdat_var = "datebirth.1", lifedat_var = "datedeath.1")
+ 
+#now we can run the function
+usdata_wide &lt;- usdata_wide %&gt;%
+                 msSPChelpR::calc_futime(., 
+                        futime_var_new = "p_futimeyrs", 
+                        fu_end = "2017-12-31",
+                        dattype = "seer", 
+                        time_unit = "years",
+                        status_var = "p_status",
+                        lifedat_var = "datedeath.1", 
+                        fcdat_var = "t_datediag.1", 
+                        spcdat_var = "t_datediag.2")
+                    
+#for example, you can calculate incidence and summarize by sex and registry
+msSPChelpR::ir_crosstab_byfutime(usdata_wide,
+      dattype = "seer",
+      count_var = "count_spc",
+      futime_breaks = c(0, .5, 1, 5, 10, Inf),
+      ybreak_vars = c("sex.1", "registry.1"),
+      collapse_ci = FALSE,
+      add_total = "no",
+      futime_var = "p_futimeyrs",
+      alpha = 0.05)
+
+
+</code></pre>
+
+
+</div>

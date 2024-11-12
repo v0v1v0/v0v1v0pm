@@ -1,0 +1,260 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>getjagsdata</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Prepares data for JAGS</h2>
+
+<h3>Description</h3>
+
+<p>Converts MBNMA data frame to a list for use in JAGS model
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">getjagsdata(
+  data.ab,
+  class = FALSE,
+  sdscale = FALSE,
+  regress = NULL,
+  regress.effect = "common",
+  likelihood = check.likelink(data.ab)$likelihood,
+  link = check.likelink(data.ab)$link,
+  level = "agent",
+  fun = NULL,
+  nodesplit = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data.ab</code></td>
+<td>
+<p>A data frame of arm-level data in "long" format containing the columns:
+</p>
+
+<ul>
+<li> <p><code>studyID</code> Study identifiers
+</p>
+</li>
+<li> <p><code>dose</code> Numeric data indicating the dose (must take positive values)
+</p>
+</li>
+<li> <p><code>agent</code> Agent identifiers (can be numeric, factor or character)
+</p>
+</li>
+<li> <p><code>y</code> Numeric data indicating the aggregate response for a continuous outcome. Required for
+continuous data.
+</p>
+</li>
+<li> <p><code>se</code> Numeric data indicating the standard error for a given observation. Required for
+continuous data.
+</p>
+</li>
+<li> <p><code>r</code> Numeric data indicating the number of responders within a study arm. Required for
+binomial or poisson data.
+</p>
+</li>
+<li> <p><code>n</code> Numeric data indicating the total number of participants within a study arm. Required for
+binomial data or when modelling Standardised Mean Differences
+</p>
+</li>
+<li> <p><code>E</code> Numeric data indicating the total exposure time for participants within a study arm. Required
+for poisson data.
+</p>
+</li>
+<li> <p><code>class</code> An optional column indicating a particular class code. Agents with the same identifier
+must also have the same class code.
+</p>
+</li>
+<li> <p><code>standsd</code> An optional column of numeric data indicating reference SDs used to standardise
+treatment effects when modelling using Standardised Mean Differences (SMD).
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>class</code></td>
+<td>
+<p>A boolean object indicating whether or not <code>data.ab</code> contains
+information on different classes of treatments</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sdscale</code></td>
+<td>
+<p>Logical object to indicate whether to write a model that specifies a reference SD
+for standardising when modelling using Standardised Mean Differences. Specifying <code>sdscale=TRUE</code>
+will therefore only modify the model if link function is set to SMD (<code>link="smd"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regress</code></td>
+<td>
+<p>A formula of effect modifiers (variables that
+interact with the treatment effect) to incorporate using Network Meta-Regression
+(E.g. <code>~ Population + Age</code>). All variables in the formula are modelled as interacting
+with the treatment effect (i.e. prognostic variables cannot be included in this way).
+Effects modifiers must be named variables in <code>network$data.ab</code> and must be identical
+within a study. Factor and character effect modifiers will be converted to a series of
+named dummy variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regress.effect</code></td>
+<td>
+<p>Indicates whether effect modification should be assumed to be
+<code>"common"</code> (assumed to be equal versus Placebo throughout the network),
+<code>"random"</code> (assumed to be exchangeable versus Placebo throughout the network),
+<code>"agent"</code> (assumed to be equal versus Placebo within each agent), or
+<code>"class"</code> (assumed to be equal versus Placebo within each class).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>likelihood</code></td>
+<td>
+<p>A string indicating the likelihood to use in the model. Can take either <code>"binomial"</code>,
+<code>"normal"</code> or <code>"poisson"</code>. If left as <code>NULL</code> the likelihood will be inferred from the data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>link</code></td>
+<td>
+<p>A string indicating the link function to use in the model. Can take any link function
+defined within JAGS (e.g. <code>"logit"</code>, <code>"log"</code>, <code>"probit"</code>, <code>"cloglog"</code>), be assigned the value <code>"identity"</code> for
+an identity link function, or be assigned the value <code>"smd"</code> for modelling Standardised Mean Differences using an
+identity link function. If left as <code>NULL</code> the link function will be automatically assigned based
+on the likelihood.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>level</code></td>
+<td>
+<p>Can take either <code>"agent"</code> to indicate that data should be at the agent-
+level (for MBNMA) or <code>"treatment"</code> to indicate that data should be at the treatment-
+level (for NMA)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun</code></td>
+<td>
+<p>An object of <code>class("dosefun")</code> that specifies a functional form to be assigned to the
+dose-response. See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nodesplit</code></td>
+<td>
+<p>A numeric vector of length 2 containing treatment codes on which to perform
+an MBNMA nodesplit (see <code>mbnma.nodesplit</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A named list of numbers, vector, matrices and arrays to be sent to
+JAGS. List elements are:
+</p>
+
+<ul>
+<li>
+<p> If <code>likelihood="normal"</code>:
+</p>
+
+<ul>
+<li> <p><code>y</code> An array of mean responses for each arm within each study
+</p>
+</li>
+<li> <p><code>se</code> An array of standard errors for each arm within each study
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p> If <code>likelihood="binomial"</code>:
+</p>
+
+<ul>
+<li> <p><code>r</code> An array of the number of responses/count for each each arm within each study
+</p>
+</li>
+<li> <p><code>n</code> An array of the number of participants for each arm within each study
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p> If <code>likelihood="poisson"</code>:
+</p>
+
+<ul>
+<li> <p><code>r</code> An array of the number of responses/count for each each arm within each study
+</p>
+</li>
+<li> <p><code>E</code> An array of the total exposure time for each arm within each study
+</p>
+</li>
+</ul>
+</li>
+<li> <p><code>dose</code> A matrix of doses for each arm within each study (if <code>level="agent"</code>)
+</p>
+</li>
+<li> <p><code>narm</code> A numeric vector with the number of arms per study
+</p>
+</li>
+<li> <p><code>NS</code> The total number of studies in the dataset
+</p>
+</li>
+<li> <p><code>Nagent</code> The total number of agents in the dataset (if <code>level="agent"</code>)
+</p>
+</li>
+<li> <p><code>agent</code> A matrix of agent codes within each study (if <code>level="agent"</code>)
+</p>
+</li>
+<li> <p><code>NT</code> The total number of treatment in the dataset (if <code>level="treatment"</code>)
+</p>
+</li>
+<li> <p><code>treatment</code> A matrix of treatment codes within each study (if <code>level="treatment"</code>)
+</p>
+</li>
+<li> <p><code>Nclass</code> Optional. The total number of classes in the dataset
+</p>
+</li>
+<li> <p><code>class</code> Optional. A matrix of class codes within each study
+</p>
+</li>
+<li> <p><code>classkey</code> Optional. A vector of class codes that correspond to agent codes.
+Same length as the number of agent codes.
+</p>
+</li>
+<li> <p><code>split.ind</code> Optional. A matrix indicating whether a specific arm contributes evidence
+to a nodesplit comparison.
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Using the triptans headache dataset
+network &lt;- mbnma.network(triptans)
+jagsdat &lt;- getjagsdata(network$data.ab, likelihood="binomial", link="logit")
+
+
+# Get JAGS data with class
+netclass &lt;- mbnma.network(osteopain)
+jagsdat &lt;- getjagsdata(netclass$data.ab, class=TRUE)
+
+
+# Get JAGS data at the treatment level for split Network Meta-Analysis
+network &lt;- mbnma.network(triptans)
+jagsdat &lt;- getjagsdata(network$data.ab, level="treatment")
+
+</code></pre>
+
+
+</div>

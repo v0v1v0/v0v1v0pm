@@ -1,0 +1,189 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>multinomialLogitMix</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Main function
+</h2>
+
+<h3>Description</h3>
+
+<p>The main function of the package. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">multinomialLogitMix(response, design_matrix, method, 
+	Kmax = 10, mcmc_parameters = NULL, em_parameters = NULL, 
+	nCores, splitSmallEM = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>response</code></td>
+<td>
+
+<p>matrix of counts.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>design_matrix</code></td>
+<td>
+
+<p>design matrix (including constant term). 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>character with two possible values: "EM" or "MCMC" indicating the desired method in order to estimate the model. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Kmax</code></td>
+<td>
+
+<p>number of components of the (overfitting) mixture model.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nCores</code></td>
+<td>
+
+<p>Total number of CPU cores for parallel processing.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mcmc_parameters</code></td>
+<td>
+<p>List with the parameter set-up of the MCMC sampler. See details for changing the defaults.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>em_parameters</code></td>
+<td>
+<p>List with the parameter set-up of the EM algorithm. See details  for changing the defaults.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>splitSmallEM</code></td>
+<td>
+<p>Boolean value, indicating whether the split-small EM scheme should be used to initialize the <code>method</code>. Default: true (suggested).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The details of the parameter setup of the EM algorithm and MCMC sampler. The following specification correspond to the minimal default settings. Larger values of <code>tsplit</code> will result to better performance. 
+</p>
+<p>em_parameters &lt;- list(maxIter = 100, emthreshold = 1e-08, 
+maxNR = 10, tsplit = 16, msplit = 10, split = TRUE, 
+R0 = 0.1, plotting = TRUE)
+</p>
+<p>mcmc_parameters &lt;- list(tau = 0.00035, nu2 = 100, mcmc_cycles = 2600, 
+iter_per_cycle = 20, nChains = 8, dirPriorAlphas = c(1, 
+1 + 5 * exp((seq(2, 14, length = nChains - 1)))/100)/(200), 
+warm_up = 48000, checkAR = 500, probsSave = FALSE, 
+showGraph = 100, ar_low = 0.15, ar_up = 0.25, burn = 100, 
+thin = 1, withRandom = TRUE)
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>EM</code></td>
+<td>
+<p>List with the results of the EM algorithm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MCMC_raw</code></td>
+<td>
+<p>List with the raw output of the MCMC sampler - not identifiable MCMC output.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MCMC_post_processed</code></td>
+<td>
+<p>Post-processed MCMC, used for the inference.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Panagiotis Papastamoulis
+</p>
+
+
+<h3>References</h3>
+
+<p>Papastamoulis, P. Model based clustering of multinomial count data. Advances in Data Analysis and Classification (2023). https://doi.org/10.1007/s11634-023-00547-5
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#	Generate synthetic data
+
+	K &lt;- 2	#number of clusters
+	p &lt;- 2	#number of covariates (constant incl)
+	D &lt;- 5	#number of categories
+	n &lt;- 20 #generated number of observations
+	set.seed(1)
+	simData &lt;- simulate_multinomial_data(K = K, p = p, D = D, n = n, size = 20, prob = 0.025)   
+
+
+	# EM parameters
+em_parameters &lt;- list(maxIter = 100, emthreshold = 1e-08, 
+    maxNR = 10, tsplit = 16, msplit = 10, split = TRUE, 
+    R0 = 0.1, plotting = TRUE)
+
+	#  MCMC parameters - just for illustration
+	#	typically, set `mcmc_cycles` and `warm_up`to a larger values
+	#	such as` mcmc_cycles = 2500` or more 
+	#	and `warm_up = 40000` or more.
+	nChains &lt;- 2 #(set this to a larger value, such as 8 or more)
+	mcmc_parameters &lt;- list(tau = 0.00035, nu2 = 100, mcmc_cycles = 260, 
+	    iter_per_cycle = 20, nChains = nChains, dirPriorAlphas = c(1, 
+		1 + 5 * exp((seq(2, 14, length = nChains - 1)))/100)/(200), 
+	    warm_up = 4800, checkAR = 500, probsSave = FALSE, 
+	    showGraph = 100, ar_low = 0.15, ar_up = 0.25, burn = 100, 
+	    thin = 1, withRandom = TRUE)
+
+	# run EM with split-small-EM initialization, and then use the output to 
+	#	initialize MCMC algorithm for an overfitting mixture with 
+	#	Kmax = 5 components (max number of clusters - usually this is 
+	#	set to a larger value, e.g. 10 or 20).
+	#	Note: 
+	#		1. the MCMC output is based on the non-empty components
+	#		2. the EM algorithm clustering corresponds to the selected 
+	#			number of clusters according to ICL.
+	#		3. `nCores` should by adjusted according to your available cores.
+	
+	mlm &lt;- multinomialLogitMix(response = simData$count_data, 
+		design_matrix = simData$design_matrix, method = "MCMC", 
+             Kmax = 5, nCores = 2, splitSmallEM = TRUE, 
+             mcmc_parameters = mcmc_parameters, em_parameters = em_parameters)
+	# retrieve clustering according to EM
+	mlm$EM$estimated_clustering
+	# retrieve clustering according to MCMC
+	mlm$MCMC_post_processed$cluster	
+	
+</code></pre>
+
+
+</div>

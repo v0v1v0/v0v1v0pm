@@ -1,0 +1,182 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>join</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Add meta info from another <code>matrixset</code> or a <code>data.frame</code>
+</h2>
+
+<h3>Description</h3>
+
+<p>The operation is done through a join operation between the row meta info
+data.frame (<code>join_row_info()</code>) of <code>.ms</code> and <code>y</code> (or its row meta info
+data.frame if it is a <code>matrixset</code> object). The function <code>join_column_info()</code>
+does the equivalent operation for column meta info.
+</p>
+<p>The default join operation is a left join
+(type == 'left'), but most of dplyr's
+joins are available ('left', 'inner', 'right', 'full', 'semi' or 'anti').
+</p>
+<p>The <code>matrixset</code> paradigm of unique row/column names is enforced so if a
+<code>.ms</code> data.frame row matches multiple ones in <code>y</code>, this results in an
+error.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">join_row_info(
+  .ms,
+  y,
+  type = "left",
+  by = NULL,
+  adjust = FALSE,
+  suffix = c(".x", ".y"),
+  na_matches = c("na", "never")
+)
+
+join_column_info(
+  .ms,
+  y,
+  type = "left",
+  by = NULL,
+  adjust = FALSE,
+  suffix = c(".x", ".y"),
+  na_matches = c("na", "never")
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>.ms</code></td>
+<td>
+<p>A <code>matrixset</code> object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>A <code>matrixset</code> object or a <code>data.frame</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>Joining type, one of 'left',
+'inner', 'right', 'full', 'semi' or 'anti'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>The names of the variable to join by.
+The default, <code>NULL</code>, results in slightly different
+behavior depending if <code>y</code> is a <code>matrixset</code> or a
+<code>data.frame</code>.
+If a <code>matrixset</code>, the meta info tag of each object (the
+tag is the column that holds the row names/column names
+in the meta info data frame - typically ".rowname" or
+".colname" unless specified otherwise at <code>matrixset</code>
+creation) is used for <code>by</code>.
+If a <code>data.frame</code>, a natural join is used. For more
+details, see <code>dplyr</code>'s <code>dplyr::join()</code>.
+Note that the cross-join is not available.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>adjust</code></td>
+<td>
+<p>A logical. By default (<code>FALSE</code>), the join operation is
+not permitted to filter or augment the number of rows of
+the meta info data frame.
+If <code>TRUE</code>, this will be allowed. In the case where the
+data frame is augmented, the matrices of <code>.ms</code>
+will be augmented accordingly by padding with <code>NA</code>s (
+except for the <code>NULL</code> matrices).
+</p>
+<p>Alternatively, <code>adjust</code> can be a single string, one of
+'pad_x' or 'from_y'. Choosing "pad_x"
+is equivalent to <code>TRUE</code>. When choosing "from_y",
+padding is done using values from <code>y</code>, but only
+</p>
+
+<ol>
+<li>
+<p> if <code>y</code> is a <code>matrixset</code>
+</p>
+</li>
+<li>
+<p> for <code>y</code> matrices that are named the same in <code>x</code>
+</p>
+</li>
+<li>
+<p> If padding rows, only columns common between <code>x</code> and <code>y</code> will use <code>y</code>
+values. The same logic is applied when padding columns.
+</p>
+</li>
+</ol>
+<p>Other values are padded with <code>NA</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>suffix</code></td>
+<td>
+<p>Suffixes added to disambiguate trait variables. See
+<code>dplyr</code>'s <code>dplyr::join()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na_matches</code></td>
+<td>
+<p>How to handle missing values when matching. See
+<code>dplyr</code>'s <code>dplyr::join()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A <code>matrixset</code> with updated row or column meta info, with all <code>.ms</code> traits and
+<code>y</code> traits. If some traits share the same names - and were not included in
+<code>by</code> - <code>suffix</code>es will be appended to these names.
+</p>
+<p>If adjustment was allowed, the dimensions of the new <code>matrixset</code> may differ
+from the original one.
+</p>
+
+
+<h3>Groups</h3>
+
+<p>When <code>y</code> is a <code>matrixset</code>, only groups from <code>.ms</code> are used, if any. Group
+update is the same as in <code>dplyr</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">ms1 &lt;- remove_row_annotation(student_results, class, teacher)
+ms &lt;- join_row_info(ms1, student_results)
+
+ms &lt;- join_row_info(ms1, student_results, by = c(".rowname", "previous_year_score"))
+
+# This will throw an error
+ms2 &lt;- remove_row_annotation(filter_row(student_results, class %in% c("classA", "classC")),
+                             class, teacher, previous_year_score)
+ms &lt;- ms &lt;- tryCatch(join_row_info(ms2, student_results, type = "full"),
+                     error = function(e) e)
+is(ms, "error") # TRUE
+ms$message
+
+# Now it works.
+ms &lt;- join_row_info(ms2, student_results, type = "full", adjust = TRUE)
+dim(ms2)
+dim(ms)
+matrix_elm(ms, 1)
+
+</code></pre>
+
+
+</div>

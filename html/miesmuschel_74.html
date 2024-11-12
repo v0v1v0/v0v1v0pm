@@ -1,0 +1,148 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mies_prime_operators</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Prime MIES Operators</h2>
+
+<h3>Description</h3>
+
+<p>Prime the given <code>MiesOperator</code>s for an optimization run with the given search space.
+</p>
+<p>In its simplest form, MIES optimization only optimizes the search space of the <code>Objective</code> to be optimized. However,
+more advanced optimization may handle a "budget" parameter for multi-fidelity optimization differently: It is still selected by <code>Selector</code>s,
+but not mutated or recombined and instead handled separately. It is also possible to add additional components to the search space that are
+not evaluated by the objective function, but that are used for self-adaption by other operators.
+</p>
+<p>The <code>mies_prime_operators()</code> function uses the information that the user usually has readily at hand – the <code>Objective</code><code style="white-space: pre;">⁠s search space, the budget parameter, and additional components -- and primes [⁠</code>Mutator<code style="white-space: pre;">⁠], [⁠</code>Recombinator<code style="white-space: pre;">⁠], and [⁠</code>Selector'] objects in the right way:
+</p>
+
+<ul>
+<li> <p><code>Selector</code>s are primed on a union of <code>search_space</code> and <code>additional_components</code>
+</p>
+</li>
+<li> <p><code>Mutator</code>s and <code>Recombinator</code>s are primed on the <code>Selector</code>'s space with the <code>budget_id</code> <code>Domain</code> removed.
+</p>
+</li>
+</ul>
+<p><code>mies_prime_operators()</code> is called with an arbitrary number of <code>MiesOperator</code> arguments; typically one <code>Mutator</code>, one <code>Recombinator</code> and
+at least two <code>Selector</code>: one for survival selection, and one parent selection. Supplied <code>MiesOperator</code>s are primed by-reference, but
+they are also returned as invisible <code>list</code>.
+</p>
+<p>If neither additional components nor multi-fidelity optimization is used, it is also possible to use the <code style="white-space: pre;">⁠$prime()⁠</code> function of hte <code>MiesOperator</code>s
+directly, although using <code>mies_prime_operators()</code> gives flexibility for future extension.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mies_prime_operators(
+  search_space,
+  mutators = list(),
+  recombinators = list(),
+  selectors = list(),
+  filtors = list(),
+  ...,
+  additional_components = NULL,
+  budget_id = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>search_space</code></td>
+<td>
+<p>(<code>ParamSet</code>)<br>
+Search space of the <code>Objective</code> or <code>OptimInstance</code> to be optimized.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mutators</code></td>
+<td>
+<p>(<code>list</code> of <code>Mutator</code>)<br><code>Mutator</code> objects to prime. May be empty (default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recombinators</code></td>
+<td>
+<p>(<code>list</code> of <code>Recombinator</code>)<br><code>Recombinator</code> objects to prime. May be empty (default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>selectors</code></td>
+<td>
+<p>(<code>list</code> of <code>Selector</code>)<br><code>Selector</code> objects to prime. May be empty (default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>filtors</code></td>
+<td>
+<p>(<code>list</code> of <code>Filtor</code>)<br><code>Filtor</code> objects to prime. May be empty (default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>(any)<br>
+Must not be given. Other operators may be added in the future, so the following arguments should be passed by name.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>additional_components</code></td>
+<td>
+<p>(<code>ParamSet</code> | <code>NULL</code>)<br>
+Additional components to optimize over, not included in <code>search_space</code>, but possibly used for self-adaption. This must be the <code>ParamSet</code>
+of <code>mies_init_population()</code>'s <code>additional_component_sampler</code> argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>budget_id</code></td>
+<td>
+<p>(<code>character(1)</code> | <code>NULL</code>)<br>
+Budget component used for multi-fidelity optimization.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>invisible</code> named <code>list</code> with entries <code style="white-space: pre;">⁠$mutators⁠</code> (<code>list</code> of <code>Mutator</code>, primed <code>mutators</code>), <code style="white-space: pre;">⁠$recombinators⁠</code> (<code>list</code> of <code>Recombinator</code>, primed <code>recombinators</code>),
+and <code style="white-space: pre;">⁠$selectors⁠</code> (<code>list</code> of <code>Selector</code>, primed <code>selectors</code>).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Search space of a potential TuningInstance for optimization:
+search_space = ps(x = p_dbl(), y = p_dbl())
+# Additoinal search space components that are not part of the TuningInstance
+additional_components = ps(z = p_dbl())
+# Budget parameter not subject to mutation or recombination
+budget_id = "y"
+
+m = mut("gauss")
+r = rec("xounif")
+s1 = sel("best")
+s2 = sel("random")
+f = ftr("null")
+
+mies_prime_operators(search_space, mutators = list(m),
+  recombinators = list(r), selectors = list(s1, s2), filtors = list(f),
+  additional_components = additional_components, budget_id = budget_id
+)
+
+# contain search_space without budget parameter, with additional_components
+m$primed_ps
+r$primed_ps
+
+# contain also the budget parameter
+s1$primed_ps
+s2$primed_ps
+f$primed_ps
+</code></pre>
+
+
+</div>

@@ -1,0 +1,118 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>shopping3</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Market area data for the point-of-sale survey in Karlsruhe
+</h2>
+
+<h3>Description</h3>
+
+<p>The dataset contains information about
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">data("shopping3")</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 70 observations on the following 5 variables.
+</p>
+
+<dl>
+<dt><code>resid_name</code></dt>
+<dd>
+<p>a factor containing the customer origin (place of residence) as name of the corresponding city or city district</p>
+</dd>
+<dt><code>resid_name_offical</code></dt>
+<dd>
+<p>a factor containing the customer origin (place of residence) as official names of the corresponding city or city district</p>
+</dd>
+<dt><code>resid_pop2015</code></dt>
+<dd>
+<p>a numeric vector containing the population size of the area</p>
+</dd>
+<dt><code>KA_east</code></dt>
+<dd>
+<p>a numeric vector containing a dummy variable indicating whether the area belongs to the east of Karlsruhe or not</p>
+</dd>
+<dt><code>resid_code</code></dt>
+<dd>
+<p>a factor containing the customer origin (place of residence) as internal code</p>
+</dd>
+</dl>
+<h3>Source</h3>
+
+<p>Primary empirical sources:
+POS (point of sale) survey in the authors' course (“Praktikum Empirische Sozialforschung: Stadtteilzentren als Einzelhandelsstandorte - Das Fallbeispiel Karlsruhe-Durlach”, Karlsruhe Institute of Technology, Institute for Geography and Geoecology, May 2016), own calculations
+</p>
+<p>Stadt Karlsruhe, Amt fuer Stadtentwicklung (2016): “Die Karlsruher Bevoelkerung im Dezember 2015”. Stadt Karlsruhe.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>shopping1</code>, <code>shopping2</code>, <code>shopping4</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Market area analysis based on the POS survey in shopping1 #
+
+data(shopping1)
+# The survey dataset
+data(shopping2)
+# Dataset with distances and travel times
+
+shopping1_adj &lt;- shopping1[(shopping1$weekday != 3) &amp; (shopping1$holiday != 1) 
+&amp; (shopping1$survey != "pretest"),]
+# Removing every case from tuesday, holidays and the ones belonging to the pretest
+
+ijmatrix_POS &lt;- ijmatrix.create(shopping1_adj, "resid_code", "POS", "POS_expen")
+# Creates an interaction matrix based on the observed frequencies (automatically)
+# and the POS expenditures (Variable "POS_expen" separately stated)
+
+ijmatrix_POS_data &lt;- merge(ijmatrix_POS, shopping2, by.x="interaction", by.y="route", 
+all.x = TRUE)
+# Adding the distances and travel times
+
+ijmatrix_POS_data$freq_ij_abs_cor &lt;- var.correct(ijmatrix_POS_data$freq_ij_abs, 
+corr.mode = "inc", incby = 0.1)
+# Correcting the absolute values (frequencies) by increasing by 0.1
+
+data(shopping3)
+ijmatrix_POS_data_residdata &lt;- merge(ijmatrix_POS_data, shopping3)
+# Adding the information about the origins (places of residence) stored in shopping3
+
+ijmatrix_POS_data_residdata$visitper1000 &lt;- (ijmatrix_POS_data_residdata$
+freq_ij_abs_cor/ijmatrix_POS_data_residdata$resid_pop2015)*1000
+# Calculating the dependent variable
+# visitper1000: surveyed customers per 1.000 inhabitants of the origin
+
+ijmatrix_POS_data_residdata &lt;- 
+ijmatrix_POS_data_residdata[(!is.na(ijmatrix_POS_data_residdata$
+visitper1000)) &amp; (!is.na(ijmatrix_POS_data_residdata$d_time)),]
+# Removing NAs (data for some outlier origins and routes not available)
+
+ijmatrix_POS_data_residdata_POS1 &lt;- 
+ijmatrix_POS_data_residdata[ijmatrix_POS_data_residdata$POS=="POS1",]
+# Dataset for POS1 (town centre)
+
+ijmatrix_POS_data_residdata_POS2 &lt;- 
+ijmatrix_POS_data_residdata[ijmatrix_POS_data_residdata$POS=="POS2",]
+# Dataset for POS2 (out-of-town shopping centre)
+
+huff.decay(ijmatrix_POS_data_residdata_POS1, "d_km", "visitper1000")
+huff.decay(ijmatrix_POS_data_residdata_POS1, "d_time", "visitper1000")
+huff.decay(ijmatrix_POS_data_residdata_POS2, "d_km", "visitper1000")
+huff.decay(ijmatrix_POS_data_residdata_POS2, "d_time", "visitper1000")
+</code></pre>
+
+
+</div>

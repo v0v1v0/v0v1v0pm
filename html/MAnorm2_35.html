@@ -1,0 +1,190 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>normBioCond</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Perform MA Normalization on a Set of <code>bioCond</code> Objects</h2>
+
+<h3>Description</h3>
+
+<p>Given a list of <code>bioCond</code> objects, <code>normBioCond</code> performs
+an MA normalization on the signal intensities stored in them so that these
+objects are comparable to each other.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">normBioCond(conds, baseline = NULL, subset = NULL, common.peak.regions = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>conds</code></td>
+<td>
+<p>A list of <code>bioCond</code> objects to be normalized.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>baseline</code></td>
+<td>
+<p>A positive integer or character name indexing the baseline
+<code>bioCond</code> in <code>conds</code>.
+By default, the baseline is automatically selected by estimating the
+size factor of each <code>bioCond</code> (see <code>normalize</code> and
+<code>estimateSizeFactors</code> for details). Note that
+<code>normBioCond</code> treats the signal intensities contained in the
+supplied <code>bioCond</code>s as in the scale of <code class="reqn">log2</code> read counts,
+which is consistent with the default behavior of
+<code>normalize</code>. Note also that <code>baseline</code> can be set to
+<code>"pseudo-reference"</code> as in <code>normalize</code>. And we
+recommend using this setting when the number of <code>bioCond</code>s to be
+normalized is large (e.g., &gt;5).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>An optional vector specifying the subset of intervals to be
+used for estimating size factors and selecting the baseline.
+Defaults to the intervals occupied by all the <code>bioCond</code> objects.
+Ignored if <code>baseline</code> is specified.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>common.peak.regions</code></td>
+<td>
+<p>An optional logical vector specifying the
+intervals that could possibly be considered as common peak regions for
+each pair of <code>bioCond</code>
+objects. See also <code>normalize</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Technically, <code>normBioCond</code> treats each <code>bioCond</code> object as
+a ChIP-seq sample. It extracts the <code>sample.mean</code> and <code>occupancy</code>
+variables stored in each <code>bioCond</code> to represent its signal intensities
+and occupancy indicators, respectively. See <code>bioCond</code> for a
+description of the structure of a <code>bioCond</code> object.
+</p>
+<p>Next, MA normalization on these <code>bioCond</code> objects is performed exactly
+as described in <code>normalize</code>. Specifically, we get a linear
+transformation for each <code>bioCond</code> object, which is subsequently applied
+to each of the ChIP-seq samples contained in it.
+</p>
+<p><code>normBioCond</code> is an effort to reduce potential biases introduced by the
+MA normalization process. The idea comes from the principle that the more
+similar two samples are to each other, the fewer biases are expected to
+introduce when normalizing them. With this function, instead of performing
+an overall normalization on all the ChIP-seq samples involved, you may
+choose to first perform a normalization within each biological condition,
+and then normalize between the resulting <code>bioCond</code> objects (see
+"Examples" below).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of <code>bioCond</code> objects with normalized signal
+intensities, corresponding to the argument <code>conds</code>. To be noted,
+information about the mean-variance dependence stored in the original
+<code>bioCond</code> objects, if any, will be removed from the returned
+<code>bioCond</code>s. You can re-fit a mean-variance curve for them by, for
+example, calling <code>fitMeanVarCurve</code>. Note also that the
+original structure matrices are retained for each <code>bioCond</code> in the
+returned list (see <code>setWeight</code> for a detailed description
+of structure matrix).
+</p>
+<p>Besides, the following attributes are added to the list describing the
+MA normalization performed:
+</p>
+
+<dl>
+<dt><code>size.factor</code></dt>
+<dd>
+<p>Size factors of provided <code>bioCond</code>
+objects. Only present when <code>baseline</code> is not explicitly
+specified by the user.</p>
+</dd>
+<dt><code>baseline</code></dt>
+<dd>
+<p>Condition name of the <code>bioCond</code> object
+used as baseline or <code>"pseudo-reference"</code> if the <code>baseline</code>
+argument is specified so.</p>
+</dd>
+<dt><code>norm.coef</code></dt>
+<dd>
+<p>A data frame recording the MA normalization
+coefficients for each <code>bioCond</code>.</p>
+</dd>
+<dt><code>MA.cor</code></dt>
+<dd>
+<p>A real matrix recording the Pearson correlation
+coefficient between M &amp; A values calculated from common peak regions
+of each pair of <code>bioCond</code> objects. The upper and lower triangle
+of the matrix are deduced from raw and normalized signal
+intensities, respectively. Note that M values are always calculated
+as the column <code>bioCond</code> minus the row one.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Tu, S., et al., <em>MAnorm2 for quantitatively comparing
+groups of ChIP-seq samples.</em> Genome Res, 2021.
+<strong>31</strong>(1): p. 131-145.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>normalize</code> for performing an MA normalization on
+ChIP-seq samples; <code>bioCond</code> for creating a <code>bioCond</code>
+object; <code>normBioCondBySizeFactors</code> for normalizing
+<code>bioCond</code> objects based on their size factors;
+<code>cmbBioCond</code> for combining a set of <code>bioCond</code>
+objects into a single one; <code>MAplot.bioCond</code> for
+creating an MA plot on two normalized <code>bioCond</code> objects;
+<code>fitMeanVarCurve</code> for modeling the mean-variance dependence
+across intervals in <code>bioCond</code> objects.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(H3K27Ac, package = "MAnorm2")
+attr(H3K27Ac, "metaInfo")
+
+## Apply MA normalization first within each cell line, and then normalize
+## across cell lines.
+
+# Normalize samples separately for each cell line.
+norm &lt;- normalize(H3K27Ac, 4, 9)
+norm &lt;- normalize(norm, 5:6, 10:11)
+norm &lt;- normalize(norm, 7:8, 12:13)
+
+# Construct separately a bioCond object for each cell line, and perform MA
+# normalization on the resulting bioConds. Genomic intervals in sex
+# chromosomes are not allowed to be common ones, since the cell lines are
+# from different genders.
+conds &lt;- list(GM12890 = bioCond(norm[4], norm[9], name = "GM12890"),
+              GM12891 = bioCond(norm[5:6], norm[10:11], name = "GM12891"),
+              GM12892 = bioCond(norm[7:8], norm[12:13], name = "GM12892"))
+autosome &lt;- !(H3K27Ac$chrom %in% c("chrX", "chrY"))
+conds &lt;- normBioCond(conds, common.peak.regions = autosome)
+
+# Inspect the normalization effects.
+attributes(conds)
+plot(attr(conds, "MA.cor"), symbreaks = TRUE, margins = c(8, 8))
+MAplot(conds[[1]], conds[[2]], main = "GM12890 vs. GM12891")
+abline(h = 0, lwd = 2, lty = 5)
+
+</code></pre>
+
+
+</div>

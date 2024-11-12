@@ -1,0 +1,96 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>msde-package</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>msde: Bayesian Inference for Multivariate Stochastic Differential Equations</h2>
+
+<h3>Description</h3>
+
+<p>Implements an MCMC sampler for the posterior distribution of arbitrary time-homogeneous multivariate stochastic differential equation (SDE) models with possibly latent components. The package provides a simple entry point to integrate user-defined models directly with the sampler's C++ code, and parallelizes large portions of the calculations when compiled with 'OpenMP'.
+</p>
+
+
+<h3>Details</h3>
+
+<p>See package vignettes; <code>vignette("msde-quicktut")</code> for a tutorial and <code>vignette("msde-exmodels")</code> for several example models.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Martin Lysy <a href="mailto:mlysy@uwaterloo.ca">mlysy@uwaterloo.ca</a>
+</p>
+<p>Authors:
+</p>
+
+<ul>
+<li>
+<p> Feiyu Zhu
+</p>
+</li>
+<li>
+<p> JunYong Tong
+</p>
+</li>
+</ul>
+<p>Other contributors:
+</p>
+
+<ul>
+<li>
+<p> Trevor Kitt [contributor]
+</p>
+</li>
+<li>
+<p> Nigel Delaney [contributor]
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Posterior inference for Heston's model
+
+# compile model
+hfile &lt;- sde.examples("hest", file.only = TRUE)
+param.names &lt;- c("alpha", "gamma", "beta", "sigma", "rho")
+data.names &lt;- c("X", "Z")
+hmod &lt;- sde.make.model(ModelFile = hfile,
+                       param.names = param.names,
+                       data.names = data.names)
+# or simply load pre-compiled version
+hmod &lt;- sde.examples("hest")
+
+# Simulate data
+X0 &lt;- c(X = log(1000), Z = 0.1)
+theta &lt;- c(alpha = 0.1, gamma = 1, beta = 0.8, sigma = 0.6, rho = -0.8)
+dT &lt;- 1/252
+nobs &lt;- 1000
+hest.sim &lt;- sde.sim(model = hmod, x0 = X0, theta = theta,
+                    dt = dT, dt.sim = dT/10, nobs = nobs)
+
+# initialize MCMC sampler
+# both components observed, no missing data between observations
+init &lt;- sde.init(model = hmod, x = hest.sim$data,
+                 dt = hest.sim$dt, theta = theta)
+
+# Initialize posterior sampling argument
+nsamples &lt;- 1e4
+burn &lt;- 1e3
+hyper &lt;- NULL # flat prior
+hest.post &lt;- sde.post(model = hmod, init = init, hyper = hyper,
+                      nsamples = nsamples, burn = burn)
+
+# plot the histogram for the sampled parameters
+par(mfrow = c(2,3))
+for(ii in 1:length(hmod$param.names)) {
+  hist(hest.post$params[,ii],breaks=100, freq = FALSE,
+       main = parse(text = hmod$param.names[ii]), xlab = "")
+}
+
+</code></pre>
+
+
+</div>

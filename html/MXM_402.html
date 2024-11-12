@@ -1,0 +1,295 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Feature selection using SES and MMPC for classifiication with longitudinal data</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Feature selection using SES and MMPC for classifiication with longitudinal data
+</h2>
+
+<h3>Description</h3>
+
+<p>SES algorithm follows a forward-backward filter approach for feature selection in order to provide minimal, highly-predictive, statistically-equivalent, multiple feature subsets of a high dimensional dataset. See also Details. MMPC algorithm follows the same approach without generating multiple feature subsets.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">SES.timeclass(target, reps, id, dataset, max_k = 3, threshold = 0.05, 
+ini = NULL, wei = NULL, hash = FALSE, hashObject = NULL, ncores = 1) 
+
+MMPC.timeclass(target, reps, id, dataset, max_k = 3, threshold = 0.05, 
+ini = NULL, wei = NULL, hash = FALSE, hashObject = NULL, ncores = 1) 
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>target</code></td>
+<td>
+
+<p>The class variable. Provide a vector or a factor with discrete numbers indicating the class. Its length is equal to the number of rows of the dataset. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reps</code></td>
+<td>
+
+<p>A numeric vector containing the time points of the subjects. Its length is equal to the number of rows of the dataset.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+
+<p>A numeric vector containing the subjects or groups. Its length is equal to the number of rows of the dataset.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dataset</code></td>
+<td>
+
+<p>The dataset; provide a matrix. Currently, only continuous datasets are supported. The dataset
+contains longitudinal data, where each column is a variable. The repeated measurements are the samples. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_k</code></td>
+<td>
+
+<p>The maximum conditioning set to use in the conditional indepedence test (see Details). Integer, default value is 3.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+
+<p>Threshold (suitable values in (0, 1)) for assessing p-values significance. Default value is 0.05.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ini</code></td>
+<td>
+
+<p>This is a supposed to be a list. After running SES or MMPC with some hyper-parameters you might want to run SES again with different hyper-parameters. To avoid calculating the univariate associations (first step of SES and of MPPC) again, you can extract them from the first run of SES and plug them here. This can speed up the second run (and subequent runs of course) by 50%. See the details and the argument "univ" in the output values. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wei</code></td>
+<td>
+
+<p>A vector of weights to be used for weighted regression. The default value is NULL. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hash</code></td>
+<td>
+
+<p>A boolean variable which indicates whether (TRUE) or not (FALSE) to store the statistics calculated during SES execution in a hash-type object. Default value is FALSE. If TRUE a hashObject is produced.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hashObject</code></td>
+<td>
+
+<p>A List with the hash objects generated in a previous run of SES.glmm. 
+Each time SES runs with "hash=TRUE" it produces a list of hashObjects that can be re-used in order to speed up next runs of SES.
+</p>
+<p>Important: the generated hashObjects should be used only when the same dataset is re-analyzed, possibly with different values of max_k and threshold.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+
+<p>How many cores to use. This plays an important role if you have tens of thousands of variables or really large sample sizes and tens of thousands of variables and a regression based test which requires numerical optimisation. In other cases it will not make a difference in the overall time (in fact it can be slower). The parallel computation is used in the first step of the algorithm, where univariate associations are examined, those take place in parallel. We have seen a reduction in time of 50% with 4 cores in comparison to 1 core. Note also, that the amount of reduction is definetely not linear in the number of cores.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This is SES and MMPC used in the static-longitudinal scenario of Tsagris, Lagani and Tsamardinos (2018). The idea is that you have many features of longitudinal data for many subjects. For each subject you have calculated the coefficients of a simple linear regression over time and this is repeated for each feature. In the end, assuming p features, you have p constants and p slopes for each subject, each constant and slope refers to a feature for a subject. Hence, each new feature consists of two vectors, the constants and the slopes and the feature selection takes place there.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The output of the algorithm is an object of the class 'SESoutput' for SES or 'MMPCoutput' for MMPC including:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>selectedVars</code></td>
+<td>
+
+<p>The selected variables, i.e., the signature of the target variable.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>selectedVarsOrder</code></td>
+<td>
+
+<p>The order of the selected variables according to increasing pvalues.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>queues</code></td>
+<td>
+
+<p>A list containing a list (queue) of equivalent features for each variable included in selectedVars. An equivalent signature can be built by selecting a single feature from each queue. 
+Featured only in SES.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>signatures</code></td>
+<td>
+
+<p>A matrix reporting all equivalent signatures (one signature for each row). Featured only in SES.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hashObject</code></td>
+<td>
+
+<p>The hashObject caching the statistic calculated in the current run.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pvalues</code></td>
+<td>
+
+<p>For each feature included in the dataset, this vector reports the strength of its association with the target in the context of all other variables. 
+Particularly, this vector reports the max p-values found when the association of each variable with the target is tested against different conditional sets. 
+Lower values indicate higher association. <b>Note that these are the logged p-values, natural logarithm of the pvalues, and not the p-values</b>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stats</code></td>
+<td>
+
+<p>The statistics corresponding to "pvalues" (higher values indicates higher association).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>univ</code></td>
+<td>
+
+<p>This is a list with the univariate associations. The test statistics and their corresponding <b>logged p-values</b>, along with their flag (1 if the test was perfromed and 0 otherwise). 
+This list is very important for subsequent runs of SES with different hyper-parameters. After running SES with some hyper-parameters you might want to run SES again with different 
+hyper-parameters. To avoid calculating the univariate associations (first step of SES or MMPC) again, you can take this list from the first run of SES and plug it in the argument "ini" 
+in the next run(s) of SES or MMPC. This can speed up the second run (and subequent runs of course) by 50%. See the argument "univ" in the output values. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_k</code></td>
+<td>
+
+<p>The max_k option used in the current run.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+
+<p>The threshold option used in the current run.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.tests</code></td>
+<td>
+
+<p>If you have set hash = TRUE, then the number of tests performed by SES or MMPC will be returned. If you have not set this to TRUE, the number of univariate associations will be returned. 
+So be careful with this number.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>runtime</code></td>
+<td>
+
+<p>The run time of the algorithm. A numeric vector. The first element is the user time, the second element is the system time and the third element is the elapsed time.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>test</code></td>
+<td>
+
+<p>The character name of the statistic test used.
+</p>
+</td>
+</tr>
+</table>
+<p>Generic Functions implemented for SESoutput Object:
+</p>
+<table><tr style="vertical-align: top;">
+<td><code>plot(object=SESoutput, mode="all")</code></td>
+<td>
+
+<p>Plots the generated pvalues (using barplot) of the current SESoutput object in comparison to the threshold.
+</p>
+<p>Argument mode can be either "all" or "partial" for the first 500 pvalues of the object.
+</p>
+</td>
+</tr></table>
+<h3>Author(s)</h3>
+
+<p>Ioannis Tsamardinos, Vincenzo Lagani
+</p>
+<p>R implementation and documentation: Giorgos Athineou &lt;athineou@csd.uoc.gr&gt; Vincenzo Lagani &lt;vlagani@csd.uoc.gr&gt;  
+</p>
+
+
+<h3>References</h3>
+
+<p>Tsagris M., Lagani V., &amp; Tsamardinos I. (2018). Feature selection for high-dimensional glmm data. BMC bioinformatics, 19(1), 17.
+</p>
+<p>Vincenzo Lagani, George Kortas and Ioannis Tsamardinos (2013), Biomarker signature identification in "omics" with multiclass outcome. Computational and Structural Biotechnology Journal, 6(7):1-7.
+</p>
+<p>McCullagh, Peter, and John A. Nelder. Generalized linear models.  CRC press, USA, 2nd edition, 1989.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mmpc.timeclass.model </code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## assume these are longitudinal data, each column is a variable (or feature)
+dataset &lt;- matrix( rnorm(400 * 30), ncol = 30 ) 
+id &lt;- rep(1:80, each = 5)  ## 80 subjects
+reps &lt;- rep( seq(4, 12, by = 2), 80)  ## 5 time points for each subject
+## dataset contains are the regression coefficients of each subject's values on the 
+## reps (which is assumed to be time in this example)
+target &lt;- rep(0:1, each = 200)
+a &lt;- MMPC.timeclass(target, reps, id, dataset)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,728 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pmnorm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Probabilities of (conditional) multivariate normal distribution</h2>
+
+<h3>Description</h3>
+
+<p>This function calculates and differentiates probabilities of
+(conditional) multivariate normal distribution.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pmnorm(
+  lower,
+  upper,
+  given_x = numeric(),
+  mean = numeric(),
+  sigma = matrix(),
+  given_ind = numeric(),
+  n_sim = 1000L,
+  method = "default",
+  ordering = "mean",
+  log = FALSE,
+  grad_lower = FALSE,
+  grad_upper = FALSE,
+  grad_sigma = FALSE,
+  grad_given = FALSE,
+  is_validation = TRUE,
+  control = NULL,
+  n_cores = 1L,
+  marginal = NULL,
+  grad_marginal = FALSE,
+  grad_marginal_prob = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>lower</code></td>
+<td>
+<p>numeric vector representing lower integration limits.
+If <code>lower</code> is a matrix then each row determines new limits. Negative
+infinite values are allowed while positive infinite values are prohibited.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper</code></td>
+<td>
+<p>numeric vector representing upper integration limits.
+If <code>upper</code> is a matrix then each row determines new limits. Positive
+infinite values are allowed while negative infinite values are prohibited.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>given_x</code></td>
+<td>
+<p>numeric vector which <code>i</code>-th element corresponds to
+the given value of the <code>given_ind[i]</code>-th element (component) of 
+multivariate normal vector. If <code>given_x</code> is numeric matrix then it's 
+rows are such vectors of given values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mean</code></td>
+<td>
+<p>numeric vector representing expectation of multivariate
+normal vector (distribution).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma</code></td>
+<td>
+<p>positively defined numeric matrix representing covariance
+matrix of multivariate normal vector (distribution).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>given_ind</code></td>
+<td>
+<p>numeric vector representing indexes of multivariate
+normal vector which are conditioned at values given by 
+<code>given_x</code> argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_sim</code></td>
+<td>
+<p>positive integer representing the number of draws from Richtmyer 
+sequence in GHK algorithm. More draws provide more accurate results by the 
+cost of additional computational burden. Alternative types of sequences
+could be provided via <code>random_sequence</code> argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>string representing the method to be used to calculate
+multivariate normal probabilities. Possible options are <code>"GHK"</code> and 
+<code>"Gassmann"</code> recommended for high dimensional (more than 5) and 
+low dimensional probabilities correspondingly.
+Additional option <code>"default"</code> selects optimal method depending on
+the number of dimensions. See 'Details' for additional information.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ordering</code></td>
+<td>
+<p>string representing the method to be used to 
+order the integrals. See Details section below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>log</code></td>
+<td>
+<p>logical; if <code>TRUE</code> then probabilities (or densities) p are 
+given as log(p) and derivatives will be given respect to log(p).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grad_lower</code></td>
+<td>
+<p>logical; if <code>TRUE</code> then the vector of partial 
+derivatives of the probability will be calculated respect to each
+element of <code>lower</code>. If <code>lower</code> is a matrix then gradients will be
+estimated for each row of <code>lower</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grad_upper</code></td>
+<td>
+<p>logical; if <code>TRUE</code> then the vector of partial 
+derivatives of the probability will be calculated respect to each
+element of <code>upper</code>. If <code>upper</code> is a matrix then gradients will be
+estimated for each row of <code>upper</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grad_sigma</code></td>
+<td>
+<p>logical; if <code>TRUE</code> then the vector of partial
+derivatives (gradient) of the probability will be calculated respect 
+to each element of <code>sigma</code>. If <code>lower</code> and <code>upper</code> are
+matrices then gradients will be estimated for each row of these matrices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grad_given</code></td>
+<td>
+<p>logical; if <code>TRUE</code> then the vector of partial 
+derivatives of the density function will be calculated respect to each
+element of <code>given_x</code>. If <code>given_x</code> is a matrix then gradients 
+will be estimated for each row of <code>given_x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>is_validation</code></td>
+<td>
+<p>logical value indicating whether input 
+arguments should be validated.  Set it to <code>FALSE</code> to get
+performance boost (default value is <code>TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>a list of control parameters. See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_cores</code></td>
+<td>
+<p>positive integer representing the number of CPU cores
+used for parallel computing. Currently it is not recommended to set
+<code>n_cores &gt; 1</code> if vectorized arguments include less then 100000 elements.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>marginal</code></td>
+<td>
+<p>list such that <code>marginal[[i]]</code>
+represents parameters of marginal distribution of the <code>i</code>-th component
+of the random vector and <code>names(marginal)[i]</code> is a name of
+this distribution. 
+If <code>names(marginal)[i] = "logistic"</code> 
+or <code>names(marginal)[i] = "normal"</code> 
+then <code>marginal[[i]]</code> should be an empty vector or <code>NULL</code>. 
+If <code>names(marginal)[i] = "student"</code> then
+<code>marginal[[i]]</code> should contain a single element representing
+degrees of freedom.
+If <code>names(marginal)[i] = "PGN"</code>
+or <code>names(marginal)[i] = "hpa"</code> then 
+<code>marginal[[i]]</code> should be a numeric vector which elements
+correspond to <code>pc</code> argument of <code>phpa0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grad_marginal</code></td>
+<td>
+<p>logical; if <code>TRUE</code> then the vector of partial
+derivatives (gradient) of probability will be calculated respect to 
+each parameter of marginal distributions i.e. respect to
+each element of <code>marginal</code>. The gradient respect to the parameters
+of the <code>i</code>-th marginal distribution will be stored in the
+<code>grad_marginal[[i]]</code> output matrix which <code>j</code>-th column
+stores derivatives respect to <code>marginal[[i]][j]</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grad_marginal_prob</code></td>
+<td>
+<p>logical; if <code>TRUE</code> then the vector of partial
+derivatives (gradient) of probability will be calculated respect to 
+each cumulative marginal probability of marginal distributions.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Consider notations from the Details sections of 
+<code>cmnorm</code> and <code>dmnorm</code>. 
+The function calculates probabilities of the form:
+</p>
+<p style="text-align: center;"><code class="reqn">P\left(x^{(l)}\leq X_{I_{d}}\leq 
+x^{(u)}|X_{I_{g}}=x^{(g)}\right)</code>
+</p>
+
+<p>where <code class="reqn">x^{(l)}</code> and <code class="reqn">x^{(u)}</code> are lower and upper integration
+limits respectively i.e. <code>lower</code> and 
+<code>upper</code> correspondingly. Also <code class="reqn">x^{(g)}</code> represents <code>given_x</code>.
+Note that <code>lower</code> and <code>upper</code> should be matrices of the same size.
+Also <code>given_x</code> should have the same number of rows as <code>lower</code>
+and <code>upper</code>.
+</p>
+<p>To calculate bivariate probabilities the function applies the method 
+of Drezner and Wesolowsky
+described in A. Genz (2004). In contrast to the classical implementation of 
+this method the function applies Gauss-Legendre quadrature with 30 
+sample points to approximate integral (1) of A. Genz (2004). Classical
+implementations of this method use up to 20 points but requires some 
+additional transformations of (1). During preliminary testing it has been 
+found that approach with 30 points provides similar accuracy being 
+slightly faster because of better vectorization capabilities.
+</p>
+<p>To calculate trivariate probabilities the function uses Drezner method
+following formula (14) of A. Genz (2004). Similarly to bivariate
+case 30 points are used in Gauss-Legendre quadrature.
+</p>
+<p>The function may apply the method of Gassmann (2003) for estimation of
+<code class="reqn">m&gt;3</code> dimensional normal probabilities. It uses
+matrix <code class="reqn">5</code> representation of Gassmann (2003) and 30 points of 
+Gauss-Legendre quadrature.
+</p>
+<p>For <code class="reqn">m</code>-variate probabilities, where <code class="reqn">m &gt; 1</code>, the function may apply
+GHK algorithm described in section 4.2 of A. Genz and F. Bretz (2009).
+The implementation of GHK is based on deterministic Halton sequence 
+with <code>n_sim</code> draws and uses variable reordering suggested in 
+section 4.1.3 of A. Genz and F. Bretz (2009). The ordering algorithm may
+be determined via <code>ordering</code> argument. Available options 
+are <code>"NO"</code>, <code>"mean"</code> (default), and <code>"variance"</code>.
+</p>
+<p>Univariate probabilities are always calculated via standard approach so in
+this case <code>method</code> will not affect the output.
+If <code>method = "Gassmann"</code> then the function uses fast (aforementioned) 
+algorithms for bivariate and trivariate probabilities or the method of 
+Gassmann for <code class="reqn">m&gt;3</code> dimensional probabilities.
+If <code>method = "GHK"</code> then GHK algorithm is used.
+If <code>method = "default"</code> then <code>"Gassmann"</code> is used for bivariate
+and trivariate probabilities while <code>"GHK"</code> is used for <code class="reqn">m&gt;3</code>
+dimensional probabilities. During future updates <code>"Gassmann"</code> may become
+a default method for calculation of the <code class="reqn">4-5</code> dimensional probabilities.
+</p>
+<p>We are going to provide alternative estimation algorithms during
+future updates. These methods will be available via <code>method</code> argument.
+</p>
+<p>The function is optimized to perform much faster when all upper integration 
+limits <code>upper</code> are finite while all lower integration limits 
+<code>lower</code> are negative infinite. The derivatives could be also calculated
+much faster when some integration limits are infinite.
+</p>
+<p>For simplicity of notations further let's consider 
+unconditioned probabilities. Derivatives respect to conditioned components 
+are similar to those mentioned in Details section 
+of <code>dmnorm</code>. We also provide formulas for <code class="reqn">m \geq 3</code>.
+But the function may calculate derivatives for <code class="reqn">m \leq 2</code> using some
+simplifications of the formulas mentioned below.
+</p>
+<p>If <code>grad_upper</code> is <code>TRUE</code> then function additionally estimates the
+gradient respect to <code>upper</code>:
+</p>
+<p style="text-align: center;"><code class="reqn">
+\frac{\partial P\left(x^{(l)}\leq X\leq 
+x^{(u)}\right)}{\partial x^{(u)}_{i}}=
+P\left(x^{(l)}_{(-i)}\leq X_{(-i)}\leq x^{(u)}_{(-i)}|
+X_{i}=x^{(u)}_{i}\right)
+f_{X_{i}}\left(x^{(u)}_{i};\mu_{i},\Sigma_{i,i}\right)
+</code>
+</p>
+
+<p>If <code>grad_lower</code> is <code>TRUE</code> then function additionally estimates the
+gradient respect to <code>lower</code>:
+</p>
+<p style="text-align: center;"><code class="reqn">
+\frac{\partial P\left(x^{(l)}\leq X\leq 
+x^{(u)}\right)}{\partial x^{(l)}_{i}}=
+-P\left(x^{(l)}_{(-i)}\leq X_{(-i)}\leq x^{(u)}_{(-i)}|
+X_{i}=x^{(l)}_{i}\right)
+f_{X_{i}}\left(x^{(l)}_{i};\mu_{i},\Sigma_{i,i}\right)
+</code>
+</p>
+
+<p>If <code>grad_sigma</code> is <code>TRUE</code> then function additionally estimates the
+gradient respect to <code>sigma</code>. For <code class="reqn">i\ne j</code> the function 
+calculates derivatives respect to the covariances:
+</p>
+<p style="text-align: center;"><code class="reqn">
+\frac{\partial P\left(x^{(l)}\leq X\leq 
+x^{(u)}\right)}{\partial \Sigma_{i, j}}=</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">
+=P\left(x^{(l)}_{(-(i, j))}\leq X_{-(i, j)}\leq x^{(u)}_{(-(i, j))}|
+X_{i}=x^{(u)}_{i}, X_{j}=x^{(u)}_{j}\right)
+f_{X_{i}, X_{j}}\left(x^{(u)}_{i}, x^{(u)}_{j};
+\mu_{(i,j)},\Sigma_{(i, j),(i, j)}\right) -
+</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">
+-P\left(x^{(l)}_{(-(i, j))}\leq X_{-(i, j)}\leq x^{(u)}_{(-(i, j))}|
+X_{i}=x^{(l)}_{i}, X_{j}=x^{(u)}_{j}\right)
+f_{X_{i}, X_{j}}\left(x^{(l)}_{i}, x^{(u)}_{j};
+\mu_{(i,j)},\Sigma_{(i, j),(i, j)}\right) -
+</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">
+-P\left(x^{(l)}_{(-(i, j))}\leq X_{-(i, j)}\leq x^{(u)}_{(-(i, j))}|
+X_{i}=x^{(u)}_{i}, X_{j}=x^{(l)}_{j}\right)
+f_{X_{i}, X_{j}}\left(x^{(u)}_{i}, x^{(l)}_{j};
+\mu_{(i,j)},\Sigma_{(i, j),(i, j)}\right) +
+</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">
++P\left(x^{(l)}_{(-(i, j))}\leq X_{-(i, j)}\leq x^{(u)}_{(-(i, j))}|
+X_{i}=x^{(l)}_{i}, X_{j}=x^{(l)}_{j}\right)
+f_{X_{i}, X_{j}}\left(x^{(l)}_{i}, x^{(l)}_{j};
+\mu_{(i,j)},\Sigma_{(i, j),(i, j)}\right)
+</code>
+</p>
+
+<p>Note that if some of integration limits are infinite then some elements
+of this equation converge to zero which highly simplifies the calculations.
+</p>
+<p>Derivatives respect to variances are calculated using derivatives
+respect to covariances and integration limits:
+</p>
+<p style="text-align: center;"><code class="reqn">
+\frac{\partial P\left(x^{(l)}\leq X\leq 
+x^{(u)}\right)}{\partial \Sigma_{i, i}}=
+</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">
+-\frac{\partial P\left(x^{(l)}\leq X\leq 
+x^{(u)}\right)}{\partial x^{(l)}_{i}} \frac{x^{(l)}_{i}}{2\Sigma_{i, i}}
+-\frac{\partial P\left(x^{(l)}\leq X\leq 
+x^{(u)}\right)}{\partial x^{(u)}_{i}} \frac{x^{(u)}_{i}}{2\Sigma_{i, i}}-
+</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">
+-\sum\limits_{j\ne i}\frac{\partial P\left(x^{(l)}\leq X\leq 
+x^{(u)}\right)}{\partial \Sigma_{i, j}}
+\frac{\Sigma_{i, j}}{2\Sigma_{i, i}}
+</code>
+</p>
+
+<p>If <code>grad_given</code> is <code>TRUE</code> then function additionally estimates the
+gradient respect to <code>given_x</code> using formulas similar to those
+described in Details section of <code>dmnorm</code>.
+</p>
+<p>More details on abovementioned differentiation formulas could
+be found in the appendix of E. Kossova and B. Potanin (2018).
+</p>
+<p>If <code>marginal</code> is not empty then Gaussian copula will be used instead of
+a classical multivariate normal distribution. Without loss of generality
+let's assume that <code class="reqn">\mu</code> is a vector of zeros and introduce some
+additional notations:
+</p>
+<p style="text-align: center;"><code class="reqn">
+q_{i}^{(u)} = \Phi^{-1}\left(P_{i}\left(\frac{x_{i}^{(u)}}{\sigma_{i}}\right)\right)
+</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">
+q_{i}^{(l)} = \Phi^{-1}\left(P_{i}\left(\frac{x_{i}^{(l)}}{\sigma_{i}}\right)\right)
+</code>
+</p>
+
+<p>where <code class="reqn">\Phi(.)^{-1}</code> is a quantile function of a standard
+normal distribution and <code class="reqn">P_{i}</code> is a cumulative distribution function
+of the standartized (to zero mean and unit variance) marginal distribution 
+which name and parameters are defined by 
+<code>names(marginal)[i]</code> and <code>marginal[[i]]</code> correspondingly. 
+For example if <code>marginal[i] = "logistic"</code> then:
+</p>
+<p style="text-align: center;"><code class="reqn">
+P_{i}(t) = \frac{1}{1+e^{-\pi t / \sqrt{3}}}
+</code>
+</p>
+
+<p>Let's denote by <code class="reqn">X^{*}</code> random vector which is distributed
+with Gaussian (its covariance matrix is <code class="reqn">\Sigma</code>) copula and 
+marginals defined by <code>marginal</code>.
+Then probabilities for these random vector are calculated as follows:
+</p>
+<p style="text-align: center;"><code class="reqn">P\left(x^{(l)}\leq X^{*}\leq 
+x^{(u)}\right) = 
+P\left(\sigma q^{(l)}\leq X\leq 
+\sigma q^{(u)}\right) = P_{0}\left(\sigma q^{(l)}, \sigma q^{(u)}\right)</code>
+</p>
+
+<p>where <code class="reqn">q^{(l)} = (q_{1}^{(l)},...,q_{m}^{(l)})</code>,
+<code class="reqn">q^{(u)} = (q_{1}^{(u)},...,q_{m}^{(u)})</code> and 
+<code class="reqn">\sigma = (\sqrt{\Sigma_{1, 1}},...,\sqrt{\Sigma_{m, m}})</code>. Therefore
+probabilities of <code class="reqn">X^{*}</code> may be calculated using probabilities
+of multivariate normal random vector <code class="reqn">X</code> (with the same
+covariance matrix) by
+substituting lower and upper integration limits <code class="reqn">x^{(l)}</code> and
+<code class="reqn">x^{(u)}</code> with <code class="reqn">\sigma q^{(l)}</code> and <code class="reqn">\sigma q^{(u)}</code> 
+correspondingly. Therefore differentiation formulas are similar to
+those mentioned above and will be automatically adjusted if
+<code>marginal</code> is not empty (including conditional probabilities).
+</p>
+<p>Argument <code>control</code> is a list with the following input parameters:
+</p>
+
+<ul><li> <p><code>random_sequence</code> – numeric matrix of uniform pseudo random numbers 
+(like Halton sequence). The number of columns should be equal to
+the number of dimensions of multivariate random vector. If omitted than 
+this matrix will be generated automatically using <code>n_sim</code> number 
+of simulations.</p>
+</li></ul>
+<h3>Value</h3>
+
+<p>This function returns an object of class "mnorm_pmnorm".<br><br>
+An object of class "mnorm_pmnorm" is a list containing the 
+following components:
+</p>
+
+<ul>
+<li> <p><code>prob</code> - probability that multivariate normal random variable 
+will be between <code>lower</code> and <code>upper</code> bounds.
+</p>
+</li>
+<li> <p><code>grad_lower</code> - gradient of probability respect to <code>lower</code> if 
+<code>grad_lower</code> or <code>grad_sigma</code> input argument is set to <code>TRUE</code>.
+</p>
+</li>
+<li> <p><code>grad_upper</code> - gradient of probability respect to <code>upper</code> if 
+<code>grad_upper</code> or <code>grad_sigma</code> input argument is set to <code>TRUE</code>.  
+</p>
+</li>
+<li> <p><code>grad_sigma</code> - gradient respect to the elements of <code>sigma</code>
+if <code>grad_sigma</code> input argument is set to <code>TRUE</code>.
+</p>
+</li>
+<li> <p><code>grad_given</code> - gradient respect to the elements of <code>given_x</code>
+if <code>grad_given</code> input argument is set to <code>TRUE</code>.
+</p>
+</li>
+<li> <p><code>grad_marginal</code> - gradient respect to the elements of 
+<code>marginal_par</code> if <code>grad_marginal</code> input argument is set 
+to <code>TRUE</code>. Currently only derivatives respect to the parameters
+of <code>"PGN"</code> distribution are available.
+</p>
+</li>
+</ul>
+<p>If <code>log</code> is <code>TRUE</code> then <code>prob</code> is a log-probability
+so output <code>grad_lower</code>, <code>grad_upper</code>, <code>grad_sigma</code> and
+<code>grad_given</code> are calculated respect to the log-probability.
+</p>
+<p>Output <code>grad_lower</code> and <code>grad_upper</code> are Jacobian matrices which 
+rows are gradients of the probabilities calculated for each row of 
+<code>lower</code> and <code>upper</code> correspondingly. Similarly <code>grad_given</code>
+is a Jacobian matrix respect to <code>given_x</code>.
+</p>
+<p>Output <code>grad_sigma</code> is a 3D array such that <code>grad_sigma[i, j, k]</code> 
+is a partial derivative of the probability function respect to the 
+<code>sigma[i, j]</code> estimated for <code>k</code>-th observation.
+</p>
+<p>Output <code>grad_marginal</code> is a list such that <code>grad_marginal[[i]]</code> 
+is a Jacobian matrice which rows are gradients of the probabilities 
+calculated for each row of <code>lower</code> and <code>upper</code> correspondingly
+respect to the elements of <code>marginal_par[[i]]</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Genz, A. (2004), Numerical computation of rectangular bivariate 
+and trivariate normal and t-probabilities, Statistics and 
+Computing, 14, 251-260.
+</p>
+<p>Genz, A. and Bretz, F. (2009), Computation of Multivariate 
+Normal and t Probabilities. Lecture Notes in Statistics, Vol. 195. 
+Springer-Verlag, Heidelberg.
+</p>
+<p>E. Kossova, B. Potanin (2018). 
+Heckman method and switching regression model multivariate generalization.
+Applied Econometrics, vol. 50, pages 114-143.
+</p>
+<p>H. I. Gassmann (2003). 
+Multivariate Normal Probabilities: Implementing an Old Idea of Plackett's.
+Journal of Computational and Graphical Statistics, vol. 12 (3),
+pages 731-752.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Consider multivariate normal vector:
+# X = (X1, X2, X3, X4, X5) ~ N(mean, sigma)
+
+# Prepare multivariate normal vector parameters
+  # expected value
+mean &lt;- c(-2, -1, 0, 1, 2)
+n_dim &lt;- length(mean)
+  # correlation matrix
+cor &lt;- c(   1,  0.1,  0.2,   0.3,  0.4,
+          0.1,    1, -0.1,  -0.2, -0.3,
+          0.2, -0.1,    1,   0.3,  0.2,
+          0.3, -0.2,  0.3,     1, -0.05,
+          0.4, -0.3,  0.2, -0.05,     1)
+cor &lt;- matrix(cor, ncol = n_dim, nrow = n_dim, byrow = TRUE)
+  # covariance matrix
+sd_mat &lt;- diag(c(1, 1.5, 2, 2.5, 3))
+sigma &lt;- sd_mat %*% cor %*% t(sd_mat)
+
+# Estimate probability:
+# P(-3 &lt; X1 &lt; 1, -2.5 &lt; X2 &lt; 1.5, -2 &lt; X3 &lt; 2, -1.5 &lt; X4 &lt; 2.5, -1 &lt; X5 &lt; 3)
+lower &lt;- c(-3, -2.5, -2, -1.5, -1)
+upper &lt;- c(1, 1.5, 2, 2.5, 3)
+p.list &lt;- pmnorm(lower = lower, upper = upper,
+                 mean = mean, sigma = sigma)
+p &lt;- p.list$prob
+print(p)
+
+# Additionally estimate a probability
+lower.1 &lt;- c(-Inf, 0, -Inf, 1, -Inf)
+upper.1 &lt;- c(Inf, Inf, 3, 4, 5)
+lower.mat &lt;- rbind(lower, lower.1)
+upper.mat &lt;- rbind(upper, upper.1)
+p.list.1 &lt;- pmnorm(lower = lower.mat, upper = upper.mat,
+                   mean = mean, sigma = sigma)
+p.1 &lt;- p.list.1$prob
+print(p.1)
+
+# Estimate the probabilities
+# P(-1 &lt; X1 &lt; 1, -3 &lt; X3 &lt; 3, -5 &lt; X5 &lt; 5 | X2 = -2, X4 = 4)
+lower.2 &lt;- c(-1, -3, -5)
+upper.2 &lt;- c(1, 3, 5)
+given_ind &lt;- c(2, 4)
+given_x &lt;- c(-2, 4)
+p.list.2 &lt;- pmnorm(lower = lower.2, upper = upper.2,
+                   mean = mean, sigma = sigma,
+                   given_ind = given_ind, given_x = given_x)
+p.2 &lt;- p.list.2$prob
+print(p.2)
+
+# Additionally estimate the probability
+# P(-Inf &lt; X1 &lt; 1, -3 &lt; X3 &lt; Inf, -Inf &lt; X5 &lt; Inf | X2 = 4, X4 = -2)
+lower.3 &lt;- c(-Inf, -3, -Inf)
+upper.3 &lt;- c(1, Inf, Inf)
+given_x.1 &lt;- c(-2, 4)
+lower.mat.2 &lt;- rbind(lower.2, lower.3)
+upper.mat.2 &lt;- rbind(upper.2, upper.3)
+given_x.mat &lt;- rbind(given_x, given_x.1)
+p.list.3 &lt;- pmnorm(lower = lower.mat.2, upper = upper.mat.2,
+                   mean = mean, sigma = sigma,
+                   given_ind = given_ind, given_x = given_x.mat)
+p.3 &lt;- p.list.3$prob
+print(p.3)
+
+# Estimate the gradient of previous probabilities respect various arguments
+p.list.4 &lt;- pmnorm(lower = lower.mat.2, upper = upper.mat.2,
+                   mean = mean, sigma = sigma,
+                   given_ind = given_ind, given_x = given_x.mat,
+                   grad_lower = TRUE, grad_upper = TRUE,
+                   grad_sigma = TRUE, grad_given = TRUE)
+p.4 &lt;- p.list.4$prob
+print(p.4)
+# Gradient respect to 'lower'
+grad_lower &lt;- p.list.4$grad_lower
+   # for the first probability
+print(grad_lower[1, ])
+   # for the second probability
+print(grad_lower[2, ])
+# Gradient respect to 'upper'
+grad_upper &lt;- p.list.4$grad_upper
+   # for the first probability
+print(grad_upper[1, ])
+   # for the second probability
+print(grad_upper[2, ])
+# Gradient respect to 'given_x'
+grad_given &lt;- p.list.4$grad_given
+   # for the first probability
+print(grad_given[1, ])
+   # for the second probability
+print(grad_given[2, ])
+# Gradient respect to 'sigma'
+grad_given &lt;- p.list.4$grad_given
+   # for the first probability
+print(grad_given[1, ])
+   # for the second probability
+print(grad_given[2, ])
+
+
+# Compare analytical gradients from the previous example with
+# their numeric (forward difference) analogues for the first probability
+n_dependent &lt;- length(lower.2)
+n_given &lt;- length(given_x)
+n_dim &lt;- n_dependent + n_given
+delta &lt;- 1e-6
+grad_lower.num &lt;- rep(NA, n_dependent)
+grad_upper.num &lt;- rep(NA, n_dependent)
+grad_given.num &lt;- rep(NA, n_given)
+grad_sigma.num &lt;- matrix(NA, nrow = n_dim, ncol = n_dim)
+for (i in 1:n_dependent)
+{
+  # respect to lower
+  lower.delta &lt;- lower.2
+  lower.delta[i] &lt;- lower.2[i] + delta
+  p.list.delta &lt;- pmnorm(lower = lower.delta, upper = upper.2,
+                         given_x = given_x,
+                         mean = mean, sigma = sigma,
+                         given_ind = given_ind)
+  grad_lower.num[i] &lt;- (p.list.delta$prob - p.list.4$prob[1]) / delta
+  # respect to upper
+  upper.delta &lt;- upper.2
+  upper.delta[i] &lt;- upper.2[i] + delta
+  p.list.delta &lt;- pmnorm(lower = lower.2, upper = upper.delta,
+                         given_x = given_x,
+                         mean = mean, sigma = sigma,
+                         given_ind = given_ind)
+  grad_upper.num[i] &lt;- (p.list.delta$prob - p.list.4$prob[1]) / delta
+}
+for (i in 1:n_given)
+{
+  # respect to lower
+  given_x.delta &lt;- given_x
+  given_x.delta[i] &lt;- given_x[i] + delta
+  p.list.delta &lt;- pmnorm(lower = lower.2, upper = upper.2,
+                         given_x = given_x.delta,
+                         mean = mean, sigma = sigma,
+                         given_ind = given_ind)
+  grad_given.num[i] &lt;- (p.list.delta$prob - p.list.4$prob[1]) / delta
+}
+for (i in 1:n_dim)
+{
+  for(j in 1:n_dim)
+  {
+    # respect to sigma
+    sigma.delta &lt;- sigma
+    sigma.delta[i, j] &lt;- sigma[i, j] + delta 
+    sigma.delta[j, i] &lt;- sigma[j, i] + delta 
+    p.list.delta &lt;- pmnorm(lower = lower.2, upper = upper.2,
+                           given_x = given_x,
+                           mean = mean, sigma = sigma.delta,
+                           given_ind = given_ind)
+    grad_sigma.num[i, j] &lt;- (p.list.delta$prob - p.list.4$prob[1]) / delta
+  }
+}
+# Comparison of gradients respect to lower integration limits
+h.lower &lt;- cbind(analytical = p.list.4$grad_lower[1, ], 
+                 numeric = grad_lower.num)
+print(h.lower)
+# Comparison of gradients respect to upper integration limits
+h.upper &lt;- cbind(analytical = p.list.4$grad_upper[1, ], 
+                 numeric = grad_upper.num)
+print(h.upper)
+# Comparison of gradients respect to given values
+h.given &lt;- cbind(analytical = p.list.4$grad_given[1, ], 
+                 numeric = grad_given.num)
+print(h.given)
+# Comparison of gradients respect to the covariance matrix
+h.sigma &lt;- list(analytical = p.list.4$grad_sigma[, , 1], 
+                numeric = grad_sigma.num)
+print(h.sigma)
+
+# Let's again estimate probability
+# P(-1 &lt; X1 &lt; 1, -3 &lt; X3 &lt; 3, -5 &lt; X5 &lt; 5 | X2 = -2, X4 = 4)
+# But assume that standardized (to zero mean and unit variance): 
+# 1) X1 and X2 have standardized PGN distribution with coefficients vectors
+#    pc1 = (0.5, -0.2, 0.1) and pc2 = (0.2, 0.05) correspondingly.
+# 2) X3 has standardized student distribution with 5 degrees of freedom
+# 3) X4 has standardized logistic distribution
+# 4) X5 has standard normal distribution
+marginal &lt;- list(PGN = c(0.5, -0.2, 0.1), hpa = c(0.2, 0.05), 
+                 student = 5, logistic = numeric(), normal = NULL)
+p.list.5 &lt;- pmnorm(lower = lower.2, upper = upper.2,
+                   mean = mean, sigma = sigma,
+                   given_ind = given_ind, given_x = given_x,
+                   grad_lower = TRUE, grad_upper = TRUE,
+                   grad_sigma = TRUE, grad_given = TRUE,
+                   marginal = marginal, grad_marginal = TRUE)     
+# Lets investigate derivatives respect to parameters
+# of marginal distributions
+  # respect to pc1 of X1
+p.list.5$grad_marginal[[1]]              
+  # respect to pc2 of X2
+p.list.5$grad_marginal[[2]]  
+  # derivative respect to degrees of freedom of X5 is
+  # currently unavailable and will be set to 0
+p.list.5$grad_marginal[[3]]                    
+</code></pre>
+
+
+</div>

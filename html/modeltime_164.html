@@ -1,0 +1,182 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>table_modeltime_accuracy</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Interactive Accuracy Tables</h2>
+
+<h3>Description</h3>
+
+<p>Converts results from <code>modeltime_accuracy()</code> into
+either interactive (<code>reactable</code>) or static (<code>gt</code>) tables.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">table_modeltime_accuracy(
+  .data,
+  .round_digits = 2,
+  .sortable = TRUE,
+  .show_sortable = TRUE,
+  .searchable = TRUE,
+  .filterable = FALSE,
+  .expand_groups = TRUE,
+  .title = "Accuracy Table",
+  .interactive = TRUE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>.data</code></td>
+<td>
+<p>A <code>tibble</code> that is the output of <code>modeltime_accuracy()</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.round_digits</code></td>
+<td>
+<p>Rounds accuracy metrics to a specified number of digits.
+If <code>NULL</code>, rounding is not performed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.sortable</code></td>
+<td>
+<p>Allows sorting by columns.
+Only applied to <code>reactable</code> tables.
+Passed to <code>reactable(sortable)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.show_sortable</code></td>
+<td>
+<p>Shows sorting.
+Only applied to <code>reactable</code> tables.
+Passed to <code>reactable(showSortable)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.searchable</code></td>
+<td>
+<p>Adds search input.
+Only applied to <code>reactable</code> tables.
+Passed to <code>reactable(searchable)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.filterable</code></td>
+<td>
+<p>Adds filters to table columns.
+Only applied to <code>reactable</code> tables.
+Passed to <code>reactable(filterable)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.expand_groups</code></td>
+<td>
+<p>Expands groups dropdowns.
+Only applied to <code>reactable</code> tables.
+Passed to <code>reactable(defaultExpanded)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.title</code></td>
+<td>
+<p>A title for static (<code>gt</code>) tables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.interactive</code></td>
+<td>
+<p>Return interactive or static tables. If <code>TRUE</code>,
+returns <code>reactable</code> table. If <code>FALSE</code>, returns static <code>gt</code> table.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments passed to <code>reactable::reactable()</code>
+or <code>gt::gt()</code> (depending on <code>.interactive</code> selection).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><strong>Groups</strong>
+</p>
+<p>The function respects <code>dplyr::group_by()</code> groups and thus scales with multiple groups.
+</p>
+<p><strong>Reactable Output</strong>
+</p>
+<p>A <code>reactable()</code> table is an interactive format that enables live searching and sorting.
+When <code>.interactive = TRUE</code>, a call is made to  <code>reactable::reactable()</code>.
+</p>
+<p><code>table_modeltime_accuracy()</code> includes several common options like toggles for sorting and searching.
+Additional arguments can be passed to <code>reactable::reactable()</code> via <code>...</code>.
+</p>
+<p><strong>GT Output</strong>
+</p>
+<p>A <code>gt</code> table is an HTML-based table that is "static" (e.g. non-searchable, non-sortable). It's
+commonly used in PDF and Word documents that does not support interactive content.
+</p>
+<p>When <code>.interactive = FALSE</code>, a call is made to <code>gt::gt()</code>. Arguments can be passed via <code>...</code>.
+</p>
+<p>Table customization is implemented using a piping workflow (<code style="white-space: pre;">⁠%&gt;%⁠</code>).
+For more information, refer to the <a href="https://gt.rstudio.com/index.html">GT Documentation</a>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A static <code>gt</code> table or an interactive <code>reactable</code> table containing
+the accuracy information.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(dplyr)
+library(lubridate)
+library(timetk)
+library(parsnip)
+library(rsample)
+
+# Data
+m750 &lt;- m4_monthly %&gt;% filter(id == "M750")
+
+# Split Data 80/20
+splits &lt;- initial_time_split(m750, prop = 0.9)
+
+# --- MODELS ---
+
+# Model 1: prophet ----
+model_fit_prophet &lt;- prophet_reg() %&gt;%
+    set_engine(engine = "prophet") %&gt;%
+    fit(value ~ date, data = training(splits))
+
+
+# ---- MODELTIME TABLE ----
+
+models_tbl &lt;- modeltime_table(
+    model_fit_prophet
+)
+
+# ---- ACCURACY ----
+
+models_tbl %&gt;%
+    modeltime_calibrate(new_data = testing(splits)) %&gt;%
+    modeltime_accuracy() %&gt;%
+    table_modeltime_accuracy()
+
+
+</code></pre>
+
+
+</div>

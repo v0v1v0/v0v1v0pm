@@ -1,0 +1,246 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>computeMutualInfo</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compute (conditional) mutual information</h2>
+
+<h3>Description</h3>
+
+<p>For discrete or categorical variables, the (conditional)
+mutual information is computed using the empirical frequencies minus a
+complexity cost (computed as BIC or with the Normalized Maximum Likelihood).
+When continuous variables are present, each continuous variable is
+discretized for each mutual information estimate so as to maximize the
+mutual information minus the complexity cost (see Cabeli 2020).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">computeMutualInfo(
+  x,
+  y,
+  df_conditioning = NULL,
+  maxbins = NULL,
+  cplx = c("nml", "bic"),
+  n_eff = -1,
+  sample_weights = NULL,
+  is_continuous = NULL,
+  plot = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>[a vector]
+The <code class="reqn">X</code> vector that contains the observational data of the first variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>[a vector]
+The <code class="reqn">Y</code> vector that contains the observational data of the second variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df_conditioning</code></td>
+<td>
+<p>[a data frame]
+The data frame of the observations of the conditioning variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxbins</code></td>
+<td>
+<p>[an integer]
+When the data contain continuous variables, the maximum number of bins
+allowed during the discretization. A smaller number makes the computation
+faster, a larger number allows finer discretization.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cplx</code></td>
+<td>
+<p>[a string]
+The complexity model:
+</p>
+
+<ul>
+<li>
+<p>["bic"] Bayesian Information Criterion
+</p>
+</li>
+<li>
+<p>["nml"] Normalized Maximum Likelihood, more accurate complexity cost
+compared to BIC, especially on small sample size.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_eff</code></td>
+<td>
+<p>[an integer]
+The effective number of samples. When there is significant autocorrelation
+between successive samples, you may want to specify an effective number of
+samples that is lower than the total number of samples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sample_weights</code></td>
+<td>
+<p>[a vector of floats]
+Individual weights for each sample, used for the same reason as the effective
+number of samples but with individual weights.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>is_continuous</code></td>
+<td>
+<p>[a vector of booleans]
+Specify if each variable is to be treated as continuous (TRUE) or discrete
+(FALSE), must be of length 'ncol(df_conditioning) + 2', in the order
+<code class="reqn">X, Y, U1, U2, ...</code>. If not specified, factors and character vectors are
+considered as discrete, and numerical vectors as continuous.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot</code></td>
+<td>
+<p>[a boolean]
+Specify whether the resulting XY optimum discretization is to be plotted
+(requires 'ggplot2' and 'gridExtra').</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For a pair of continuous variables <code class="reqn">X</code> and <code class="reqn">Y</code>, the mutual
+information <code class="reqn">I(X;Y)</code> will be computed iteratively. In each iteration, the
+algorithm optimizes the partitioning of <code class="reqn">X</code> and then of <code class="reqn">Y</code>,
+in order to maximize
+</p>
+<p style="text-align: center;"><code class="reqn">Ik(X_{d};Y_{d}) = I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})</code>
+</p>
+
+<p>where <code class="reqn">cplx(X_{d}; Y_{d})</code> is the complexity cost of the corresponding
+partitioning (see Cabeli 2020).
+Upon convergence, the information terms <code class="reqn">I(X_{d};Y_{d})</code>
+and <code class="reqn">Ik(X_{d};Y_{d})</code>, as well as the partitioning of <code class="reqn">X_{d}</code>
+and <code class="reqn">Y_{d}</code> in terms of cutpoints, are returned.
+</p>
+<p>For conditional mutual information with a conditioning set <code class="reqn">U</code>, the
+computation is done based on
+</p>
+<p style="text-align: center;"><code class="reqn">
+  Ik(X;Y|U) = 0.5*(Ik(X_{d};Y_{d},U_{d}) - Ik(X_{d};U_{d})
+                 + Ik(Y_{d};X_{d},U_{d}) - Ik(Y_{d};U_{d})),
+</code>
+</p>
+
+<p>where each of the four summands is estimated separately.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list that contains :
+</p>
+
+<ul>
+<li>
+<p> cutpoints1: Only when <code class="reqn">X</code> is continuous, a vector containing
+the cutpoints for the partitioning of <code class="reqn">X</code>.
+</p>
+</li>
+<li>
+<p> cutpoints2: Only when <code class="reqn">Y</code> is continuous, a vector containing
+the cutpoints for the partitioning of <code class="reqn">Y</code>.
+</p>
+</li>
+<li>
+<p> n_iterations: Only when at least one of the input variables is
+continuous, the number of iterations it takes to reach the convergence of
+the estimated information.
+</p>
+</li>
+<li>
+<p> iteration1, iteration2, ... Only when at least one of the input
+variables is continuous, the list of vectors of cutpoints of each
+iteration.
+</p>
+</li>
+<li>
+<p> info: The estimation of (conditional) mutual information without the
+complexity cost.
+</p>
+</li>
+<li>
+<p> infok: The estimation of (conditional) mutual information with the
+complexity cost (<code class="reqn">Ik = I - cplx</code>).
+</p>
+</li>
+<li>
+<p> plot: Only when 'plot == TRUE', the plot object.
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+
+<ul>
+<li>
+<p> Cabeli <em>et al.</em>, PLoS Comput. Biol. 2020, <a href="https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007866">Learning clinical networks from medical records based on information estimates in mixed-type data</a>
+</p>
+</li>
+<li>
+<p> Affeldt <em>et al.</em>, UAI 2015, <a href="https://auai.org/uai2015/proceedings/papers/293.pdf">Robust Reconstruction of Causal Graphical Models based on Conditional 2-point and 3-point Information</a>
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(miic)
+N &lt;- 1000
+# Dependence, conditional independence : X &lt;- Z -&gt; Y
+Z &lt;- runif(N)
+X &lt;- Z * 2 + rnorm(N, sd = 0.2)
+Y &lt;- Z * 2 + rnorm(N, sd = 0.2)
+res &lt;- computeMutualInfo(X, Y, plot = FALSE)
+message("I(X;Y) = ", res$info)
+res &lt;- computeMutualInfo(X, Y, df_conditioning = matrix(Z, ncol = 1), plot = FALSE)
+message("I(X;Y|Z) = ", res$info)
+
+
+# Conditional independence with categorical conditioning variable : X &lt;- Z -&gt; Y
+Z &lt;- sample(1:3, N, replace = TRUE)
+X &lt;- -as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
+Y &lt;- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
+res &lt;- miic::computeMutualInfo(X, Y, cplx = "nml")
+message("I(X;Y) = ", res$info)
+res &lt;- miic::computeMutualInfo(X, Y, matrix(Z, ncol = 1), is_continuous = c(TRUE, TRUE, FALSE))
+message("I(X;Y|Z) = ", res$info)
+
+
+# Independence, conditional dependence : X -&gt; Z &lt;- Y
+X &lt;- runif(N)
+Y &lt;- runif(N)
+Z &lt;- X + Y + rnorm(N, sd = 0.1)
+res &lt;- computeMutualInfo(X, Y, plot = TRUE)
+message("I(X;Y) = ", res$info)
+res &lt;- computeMutualInfo(X, Y, df_conditioning = matrix(Z, ncol = 1), plot = TRUE)
+message("I(X;Y|Z) = ", res$info)
+
+</code></pre>
+
+
+</div>

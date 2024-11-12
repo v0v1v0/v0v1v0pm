@@ -1,0 +1,167 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pick_spectra</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Cherry-pick Bruker MALDI Biotyper spectra</h2>
+
+<h3>Description</h3>
+
+<p>Using the clusters information, and potential additional metadata as external
+criteria, spectra are labeled as to be picked for each cluster. Note that some
+spectra and therefore clusters can be explicitly removed (<em>masked</em>)
+from the picking decision if they have been previously picked
+or should be discarded, using logical columns in the metadata table.
+If no metadata are provided, the reference spectra of each cluster will be picked.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pick_spectra(
+  cluster_df,
+  metadata_df = NULL,
+  criteria_column = NULL,
+  hard_mask_column = NULL,
+  soft_mask_column = NULL,
+  is_descending_order = TRUE,
+  is_sorted = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>cluster_df</code></td>
+<td>
+<p>A tibble with clusters information
+from the delineate_with_similarity or the import_spede_clusters function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>metadata_df</code></td>
+<td>
+<p>Optional tibble with relevant metadata to guide the
+picking process (e.g., OD600).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>criteria_column</code></td>
+<td>
+<p>Optional character indicating the column in <code>metadata_df</code>
+to be used as a criteria.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hard_mask_column</code></td>
+<td>
+<p>Column name in the <code>cluster_df</code> or <code>metadata_df</code> tibble indicating whether the spectra, <strong>and the clusters to which they belong</strong> should be discarded (<code>TRUE</code>) or not (<code>FALSE</code>) before the picking decision.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>soft_mask_column</code></td>
+<td>
+<p>Column name in the <code>cluster_df</code> or <code>metadata_df</code> tibble indicating whether the spectra should be discarded (<code>TRUE</code>) or not (<code>FALSE</code>) before the picking decision.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>is_descending_order</code></td>
+<td>
+<p>Optional logical indicating whether to sort the <code>criteria_column</code> from the highest-to-lowest value (<code>TRUE</code>) or lowest-to-highest (<code>FALSE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>is_sorted</code></td>
+<td>
+<p>Optional logical to indicate that the <code>cluster_df</code> is
+already sorted by cluster based on (usually multiple) internal criteria to
+pick the first of each cluster. This flag is <strong>overridden</strong> if a <code>metadata_df</code>
+is provided.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A tibble with as many rows as <code>cluster_df</code> with an additional logical
+column named <code>to_pick</code> to indicate whether the colony associated to the spectra
+should be picked. If <code>metadata_df</code> is provided, then additional columns from
+this tibble are added to the returned tibble.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>delineate_with_similarity, set_reference_spectra. For a useful utility function to soft-mask specific spectra: is_well_on_edge.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># 0. Load a toy example of a tibble of clusters created by
+#   the `delineate_with_similarity` function.
+clusters &lt;- readRDS(
+  system.file("clusters_tibble.RDS",
+    package = "maldipickr"
+  )
+)
+# 1. By default and if no other metadata are provided,
+#   the function picks reference spectra for each clusters.
+#
+# N.B: The spectra `name` and `to_pick` columns are moved to the left
+# only for clarity using the `relocate()` function.
+#
+pick_spectra(clusters) %&gt;%
+  dplyr::relocate(name, to_pick) # only for clarity
+
+# 2.1 Simulate OD600 values with uniform distribution
+#  for each of the colonies we measured with
+#  the Bruker MALDI Biotyper
+set.seed(104)
+metadata &lt;- dplyr::transmute(
+  clusters,
+  name = name, OD600 = runif(n = nrow(clusters))
+)
+metadata
+
+# 2.2 Pick the spectra based on the highest
+#   OD600 value per cluster
+pick_spectra(clusters, metadata, "OD600") %&gt;%
+  dplyr::relocate(name, to_pick) # only for clarity
+
+# 3.1 Say that the wells on the right side of the plate are
+#   used for negative controls and should not be picked.
+metadata &lt;- metadata %&gt;% dplyr::mutate(
+  well = gsub(".*[A-Z]([0-9]{1,2}$)", "\\1", name) %&gt;%
+    strtoi(),
+  is_edge = is_well_on_edge(
+    well_number = well, plate_layout = 96, edges = "right"
+  )
+)
+
+# 3.2 Pick the spectra after discarding (or soft masking)
+#   the spectra indicated by the `is_edge` column.
+pick_spectra(clusters, metadata, "OD600",
+  soft_mask_column = "is_edge"
+) %&gt;%
+  dplyr::relocate(name, to_pick) # only for clarity
+
+# 4.1 Say that some spectra were picked before
+#   (e.g., in the column F) in a previous experiment.
+# We do not want to pick clusters with those spectra
+#   included to limit redundancy.
+metadata &lt;- metadata %&gt;% dplyr::mutate(
+  picked_before = grepl("_F", name)
+)
+# 4.2 Pick the spectra from clusters without spectra
+#   labeled as `picked_before` (hard masking).
+pick_spectra(clusters, metadata, "OD600",
+  hard_mask_column = "picked_before"
+) %&gt;%
+  dplyr::relocate(name, to_pick) # only for clarity
+</code></pre>
+
+
+</div>

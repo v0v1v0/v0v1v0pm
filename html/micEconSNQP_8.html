@@ -1,0 +1,422 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>snqProfitEst</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimation of a SNQ Profit function</h2>
+
+<h3>Description</h3>
+
+<p>Estimation of a Symmetric Normalized Quadratic (SNQ) Profit function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">snqProfitEst( priceNames, quantNames, fixNames = NULL, instNames = NULL,
+   data, form = 0, base = 1, scalingFactors = NULL,
+   weights = snqProfitWeights( priceNames, quantNames, data, "DW92", base = base ),
+   method = ifelse( is.null( instNames ), "SUR", "3SLS" ), ... )
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>priceNames</code></td>
+<td>
+<p>a vector of strings containing the names of netput prices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quantNames</code></td>
+<td>
+<p>a vector of strings containing the names of netput quantities
+(inputs must be negative).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixNames</code></td>
+<td>
+<p>an optional vector of strings containing the names of the
+quantities of (quasi-)fixed inputs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>instNames</code></td>
+<td>
+<p>an optional vector of strings containing the names of
+instrumental variables (for 3SLS estimation).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a data frame containing the data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>form</code></td>
+<td>
+<p>the functional form to be estimated (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>base</code></td>
+<td>
+<p>the base period(s) for scaling prices (see details).
+If argument <code>weights</code> is not specified,
+argument <code>base</code> is also used to obtain the weights
+for normalizing prices (see <code>snqProfitWeights</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scalingFactors</code></td>
+<td>
+<p>a vector of factors to scale prices (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>a vector of weights for normalizing prices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>the estimation method (passed to
+<code>systemfit</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>arguments passed to <code>systemfit</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The Symmetric Normalized Quadratic (SNQ) profit function is defined as
+follows (this functional form is used if argument <code>form</code> equals 0):
+</p>
+<p style="text-align: center;"><code class="reqn"> \pi \left( p, z \right) =
+      \sum_{i=1}^{n} \alpha_{i} p_{i} +
+      \frac{1}{2} w^{-1} \sum_{i=1}^{n} \sum_{j=1}^{n} \beta_{ij} p_{i} p_{j} +
+      \sum_{i=1}^{n} \sum_{j=1}^{m} \delta_{ij} p_{i} z_{j} +
+      \frac{1}{2} w \sum_{i=1}^{m} \sum_{j=1}^{m} \gamma_{ij} z_{i} z_{j}
+   </code>
+</p>
+
+<p>with <code class="reqn">\pi</code> = profit, <code class="reqn">p_i</code> = netput prices,
+<code class="reqn">z_i</code> = quantities of fixed inputs,
+<code class="reqn"> w=\sum_{i=1}^{n}\theta_{i}p_{i} </code> = price index for normalization,
+<code class="reqn">\theta_i</code> = weights of prices for normalization, and
+<code class="reqn">\alpha_i</code>, <code class="reqn">\beta_{ij}</code>, <code class="reqn">\delta_{ij}</code> and
+<code class="reqn">\gamma_{ij}</code> = coefficients to be estimated.<br>
+The netput equations (output supply in input demand) can be obtained
+by Hotelling's Lemma (<code class="reqn"> q_{i} = \left. \partial \pi \right/ \partial p_{i} </code>):
+</p>
+<p style="text-align: center;"><code class="reqn"> x_{i} = \alpha_{i} +
+      w^{-1} \sum_{j=1}^{n} \beta_{ij} p_{j} -
+      \frac{1}{2} \theta_{i} w^{-2} \sum_{j=1}^{n} \sum_{k=1}^{n}
+      \beta_{jk} p_{j} p_{k} +
+      \sum_{j=1}^{m} \delta_{ij} z_{j} +
+      \frac{1}{2} \theta_{i} \sum_{j=1}^{m} \sum_{k=1}^{m} \gamma_{jk} z_{j} z_{k}
+   </code>
+</p>
+
+<p>In my experience the fit of the model is sometimes not very good,
+because the effect of the fixed inputs is forced to be proportional
+to the weights for price normalization <code class="reqn">\theta_i</code>.
+In this cases I use following extended SNQ profit function
+(this functional form is used if argument <code>form</code> equals 1):
+</p>
+<p style="text-align: center;"><code class="reqn"> \pi \left( p, z \right) =
+      \sum_{i=1}^{n} \alpha_{i} p_{i} +
+      \frac{1}{2} w^{-1} \sum_{i=1}^{n} \sum_{j=1}^{n} \beta_{ij} p_{i} p_{j} +
+      \sum_{i=1}^{n} \sum_{j=1}^{m} \delta_{ij} p_{i} z_{j} +
+      \frac{1}{2} \sum_{i=1}^{n} \sum_{j=1}^{m} \sum_{k=1}^{m}
+      \gamma_{ijk} p_i z_{j} z_{k}
+   </code>
+</p>
+
+<p>The netput equations are now:
+</p>
+<p style="text-align: center;"><code class="reqn"> x_{i} = \alpha_{i} +
+      w^{-1} \sum_{j=1}^{n} \beta_{ij} p_{j} -
+      \frac{1}{2} \theta_{i} w^{-2} \sum_{j=1}^{n} \sum_{k=1}^{n}
+      \beta_{jk} p_{j} p_{k} +
+      \sum_{j=1}^{m} \delta_{ij} z_{j} +
+      \frac{1}{2} \sum_{j=1}^{m} \sum_{k=1}^{m} \gamma_{ijk} z_{j} z_{k}
+   </code>
+</p>
+
+<p>Argument <code>scalingFactors</code> can be used to scale prices,
+e.g. for improving the numerical stability of the estimation
+(e.g. if prices are very large or very small numbers)
+or for assessing the robustness of the results
+when changing the units of measurement.
+The prices are multiplied by the scaling factors,
+while the quantities are divided my the scaling factors
+so that the monetary values of the inputs and outputs
+and thus, the profit, remains unchanged.
+If argument <code>scalingFactors</code> is <code>NULL</code>,
+argument <code>base</code> is used to automatically obtain scaling factors
+so that the scaled prices are unity in the base period or - if there
+is more than one base period - that the
+means of the scaled prices over the base periods are unity.
+Argument <code>base</code> can be either <br>
+(a) a single number: the row number of the base prices, <br>
+(b) a vector indicating several observations: The means of these
+observations are used as base prices, <br>
+(c) a logical vector with length equal to the number of rows 
+of the data set that is specified by argument <code>data</code>: The
+means of the observations indicated as 'TRUE' are used as base prices, or<br>
+(d) <code>NULL</code>: prices are not scaled. 
+If argument <code>base</code> is <code>NULL</code>,
+argument <code>weights</code> must be specified,
+because the weights cannot be calculated
+if the base period is not specified.
+An alternative way to use unscaled prices
+is to set argument <code>scalingFactors</code> equal to a vector of ones
+(see examples below).<br>
+If the scaling factors are explicitly specified
+by argument <code>scalingFactors</code>,
+argument <code>base</code> is not used for obtaining scaling factors
+(but it is used for obtaining weights
+if argument <code>weights</code> is not specified).
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list of class <code>snqProfitEst</code> containing following objects:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>coef</code></td>
+<td>
+<p>a list containing the vectors/matrix of the estimated
+coefficients:<br>
+* alpha = <code class="reqn">\alpha_i</code>.<br>
+* beta = <code class="reqn">\beta_{ij}</code>.<br>
+* delta =  <code class="reqn">\delta_{ij}</code> (only if quasi-fix inputs are present).<br>
+* gamma = <code class="reqn">\gamma_{ij}</code> (only if quasi-fix inputs are present).<br>
+* allCoef = vector of all coefficients.<br>
+* allCoefCov = covariance matrix of all coefficients.<br>
+* stats = all coefficients with standard errors, t-values and p-values.<br>
+* liCoef = vector of linear independent coefficients.<br>
+* liCoefCov = covariance matrix of linear independent coefficients.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ela</code></td>
+<td>
+<p>a list of class <code>snqProfitEla</code> that contains
+(amongst others) the price elasticities at mean prices and mean
+quantities (see <code>snqProfitEla</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixEla</code></td>
+<td>
+<p>matrix of the fixed factor elasticities at mean prices and
+mean quantities.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hessian</code></td>
+<td>
+<p>hessian matrix of the profit function with respect to prices
+evaluated at mean prices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convexity</code></td>
+<td>
+<p>logical. Convexity of the profit function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>r2</code></td>
+<td>
+<p><code class="reqn">R^2</code>-values of all netput equations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est</code></td>
+<td>
+<p>estimation results returned by <code>systemfit</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>the weights of prices used for normalization.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>normPrice</code></td>
+<td>
+<p>vector used for normalization of prices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>data frame of originally supplied data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fitted</code></td>
+<td>
+<p>data frame that contains the fitted netput quantities and
+the fitted profit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pMeans</code></td>
+<td>
+<p>means of the scaled netput prices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>qMeans</code></td>
+<td>
+<p>means of the scaled netput quantities.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fMeans</code></td>
+<td>
+<p>means of the (quasi-)fixed input quantities.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priceNames</code></td>
+<td>
+<p>a vector of strings containing the names of netput prices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quantNames</code></td>
+<td>
+<p>a vector of strings containing the names of netput quantities
+(inputs must be negative).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixNames</code></td>
+<td>
+<p>an optional vector of strings containing the names of the
+quantities of (quasi-)fixed inputs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>instNames</code></td>
+<td>
+<p>an optional vector of strings containing the names of
+instrumental variables (for 3SLS estimation).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>form</code></td>
+<td>
+<p>the functional form (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>base</code></td>
+<td>
+<p>the base period(s) for scaling prices (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>vector of weights of the prices for normalization.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scalingFactors</code></td>
+<td>
+<p>factors to scale prices (and quantities).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>the estimation method.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Arne Henningsen</p>
+
+
+<h3>References</h3>
+
+<p>Diewert, W.E. and T.J. Wales (1987)
+Flexible functional forms and global curvature conditions.
+<em>Econometrica</em>, 55, p. 43-68.
+</p>
+<p>Diewert, W.E. and T.J. Wales (1992)
+Quadratic Spline Models for Producer's Supply and Demand Functions.
+<em>International Economic Review</em>, 33, p. 705-722.
+</p>
+<p>Kohli, U.R. (1993)
+A symmetric normalized quadratic GNP function and the US demand
+for imports and supply of exports.
+<em>International Economic Review</em>, 34, p. 243-255.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>snqProfitEla</code> and <code>snqProfitWeights</code>.</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">if( requireNamespace( 'micEcon', quietly = TRUE ) ) {
+   data( germanFarms, package = "micEcon" )
+   germanFarms$qOutput   &lt;- germanFarms$vOutput / germanFarms$pOutput
+   germanFarms$qVarInput &lt;- -germanFarms$vVarInput / germanFarms$pVarInput
+   germanFarms$qLabor    &lt;- -germanFarms$qLabor
+   priceNames &lt;- c( "pOutput", "pVarInput", "pLabor" )
+   quantNames &lt;- c( "qOutput", "qVarInput", "qLabor" )
+
+   estResult &lt;- snqProfitEst( priceNames, quantNames, "land", data = germanFarms )
+   estResult$ela   # Oh, that looks bad!
+
+   # it it reasonable to account for technological progress
+   germanFarms$time &lt;- c( 0:19 )
+   estResult2 &lt;- snqProfitEst( priceNames, quantNames, c("land","time"), 
+      data = germanFarms )
+   estResult2$ela   # Ah, that looks better!
+   
+   # estimation with unscaled prices
+   estResultNoScale &lt;- snqProfitEst( priceNames, quantNames, c("land","time"), 
+    data = germanFarms, scalingFactors = rep( 1, 3 ) )
+   print( estResultNoScale )
+   
+   # alternative way of estimation with unscaled prices
+   estResultNoScale2 &lt;- snqProfitEst( priceNames, quantNames, c("land","time"), 
+      data = germanFarms, base = NULL, 
+      weights = snqProfitWeights( priceNames, quantNames, germanFarms ) )
+   all.equal( estResultNoScale[-20], estResultNoScale2[] )
+
+   # please note that the SNQ Profit function is not invariant
+   # to units of measurement so that different scaling factors 
+   # result in different estimates of elasticities:
+   all.equal( estResult2$ela, estResultNoScale$ela )
+}
+</code></pre>
+
+
+</div>

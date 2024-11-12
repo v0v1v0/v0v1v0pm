@@ -1,0 +1,477 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>tucker</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Tucker Factor Analysis
+</h2>
+
+<h3>Description</h3>
+
+<p>Fits Ledyard R. Tucker's factor analysis model to 3-way or 4-way data arrays. Parameters are estimated via alternating least squares.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">tucker(X, nfac, nstart = 10, Afixed = NULL,
+       Bfixed = NULL, Cfixed = NULL, Dfixed = NULL,
+       Bstart = NULL, Cstart = NULL, Dstart = NULL,
+       maxit = 500, ctol = 1e-4, parallel = FALSE, cl = NULL, 
+       output = c("best", "all"), verbose = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+
+<p>Three-way data array with <code>dim=c(I,J,K)</code> or four-way data array with <code>dim=c(I,J,K,L)</code>. Missing data are allowed (see Note).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nfac</code></td>
+<td>
+
+<p>Number of factors in each mode.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nstart</code></td>
+<td>
+
+<p>Number of random starts.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Afixed</code></td>
+<td>
+
+<p>Fixed Mode A weights. Only used to fit model with fixed weights in Mode A.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Bfixed</code></td>
+<td>
+
+<p>Fixed Mode B weights. Only used to fit model with fixed weights in Mode B.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Cfixed</code></td>
+<td>
+
+<p>Fixed Mode C weights. Only used to fit model with fixed weights in Mode C.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Dfixed</code></td>
+<td>
+
+<p>Fixed Mode D weights. Only used to fit model with fixed weights in Mode D.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Bstart</code></td>
+<td>
+
+<p>Starting Mode B weights for ALS algorithm. Default uses random weights.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Cstart</code></td>
+<td>
+
+<p>Starting Mode C weights for ALS algorithm. Default uses random weights.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Dstart</code></td>
+<td>
+
+<p>Starting Mode D weights for ALS algorithm. Default uses random weights.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit</code></td>
+<td>
+
+<p>Maximum number of iterations.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ctol</code></td>
+<td>
+
+<p>Convergence tolerance.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+
+<p>Logical indicating if <code>parLapply</code> should be used. See Examples.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+
+<p>Cluster created by <code>makeCluster</code>. Only used when <code>parallel=TRUE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output</code></td>
+<td>
+
+<p>Output the best solution (default) or output all <code>nstart</code> solutions.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+
+<p>If <code>TRUE</code>, fitting progress is printed via <code>txtProgressBar</code>. Ignored if <code>parallel=TRUE</code>.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Given a 3-way array <code>X = array(x,dim=c(I,J,K))</code>, the 3-way Tucker model can be written as 
+</p>
+
+<table><tr>
+<td style="text-align: center;">
+<code> X[i,j,k] = sum sum sum A[i,p]*B[j,q]*C[k,r]*G[p,q,r] + E[i,j,k] </code>
+</td>
+</tr></table>
+<p>where <code>A = matrix(a,I,P)</code> are the Mode A (first mode) weights, <code>B = matrix(b,J,Q)</code> are the Mode B (second mode) weights, <code>C = matrix(c,K,R)</code> are the Mode C (third mode) weights, <code>G = array(g,dim=c(P,Q,R))</code> is the 3-way core array, and <code>E = array(e,dim=c(I,J,K))</code> is the 3-way residual array. The summations are for <code>p = seq(1,P)</code>, <code>q = seq(1,Q)</code>, and <code>r = seq(1,R)</code>.
+</p>
+<p>Given a 4-way array <code>X = array(x,dim=c(I,J,K,L))</code>, the 4-way Tucker model can be written as 
+</p>
+
+<table><tr>
+<td style="text-align: center;">
+<code> X[i,j,k,l] = sum sum sum sum A[i,p]*B[j,q]*C[k,r]*D[l,s]*G[p,q,r,s] + E[i,j,k,l] </code>
+</td>
+</tr></table>
+<p>where <code>D = matrix(d,L,S)</code> are the Mode D (fourth mode) weights, <code>G = array(g,dim=c(P,Q,R,S))</code> is the 4-way residual array, <code>E = array(e,dim=c(I,J,K,L))</code> is the 4-way residual array, and the other terms can be interprered as previously described.
+</p>
+<p>Weight matrices are estimated using an alternating least squares algorithm.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>output="best"</code>, returns an object of class <code>"tucker"</code> with the following elements:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>A</code></td>
+<td>
+<p>Mode A weight matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>B</code></td>
+<td>
+<p>Mode B weight matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C</code></td>
+<td>
+<p>Mode C weight matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>D</code></td>
+<td>
+<p>Mode D weight matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>G</code></td>
+<td>
+<p>Core array.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SSE</code></td>
+<td>
+<p>Sum of Squared Errors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Rsq</code></td>
+<td>
+<p>R-squared value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>GCV</code></td>
+<td>
+<p>Generalized Cross-Validation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>edf</code></td>
+<td>
+<p>Effective degrees of freedom.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>Number of iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cflag</code></td>
+<td>
+<p>Convergence flag.</p>
+</td>
+</tr>
+</table>
+<p>Otherwise returns a list of length <code>nstart</code> where each element is an object of class <code>"tucker"</code>.
+</p>
+
+
+<h3>Warnings </h3>
+
+<p>The ALS algorithm can perform poorly if the number of factors <code>nfac</code> is set too large.
+</p>
+<p>Input matrices in <code>Afixed</code>, <code>Bfixed</code>, <code>Cfixed</code>, <code>Dfixed</code>, <code>Bstart</code>, <code>Cstart</code>, and <code>Dstart</code> must be columnwise orthonormal.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Default use is 10 random strarts (<code>nstart=10</code>) with 500 maximum iterations of the ALS algorithm for each start (<code>maxit=500</code>) using a convergence tolerance of 1e-4 (<code>ctol=1e-4</code>). The algorithm is determined to have converged once the change in R^2 is less than or equal to <code>ctol</code>.
+</p>
+<p>Output <code>cflag</code> gives convergence information: <code>cflag=0</code> if ALS algorithm converged normally, and <code>cflag=1</code> if maximum iteration limit was reached before convergence.
+</p>
+<p>Missing data should be specified as <code>NA</code> values in the input <code>X</code>. The missing data are randomly initialized and then iteratively imputed as a part of the ALS algorithm.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nathaniel E. Helwig &lt;helwig@umn.edu&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Kroonenberg, P. M., &amp; de Leeuw, J. (1980). Principal component analysis of three-mode data by means of alternating least squares algorithms. <em>Psychometrika, 45</em>, 69-97.
+</p>
+<p>Tucker, L. R. (1966). Some mathematical notes on three-mode factor analysis. <em>Psychometrika, 31</em>, 279-311.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">##########   3-way example   ##########
+
+####****####   TUCKER3   ####****####
+
+# create random data array with Tucker3 structure
+set.seed(3)
+mydim &lt;- c(50,20,5)
+nf &lt;- c(3,2,3)
+Amat &lt;- matrix(rnorm(mydim[1]*nf[1]), mydim[1], nf[1])
+Amat &lt;- svd(Amat, nu = nf[1], nv = 0)$u
+Bmat &lt;- matrix(rnorm(mydim[2]*nf[2]), mydim[2], nf[2])
+Bmat &lt;- svd(Bmat, nu = nf[2], nv = 0)$u
+Cmat &lt;- matrix(rnorm(mydim[3]*nf[3]), mydim[3], nf[3])
+Cmat &lt;- svd(Cmat, nu = nf[3], nv = 0)$u
+Gmat &lt;- matrix(rnorm(prod(nf)), nf[1], prod(nf[2:3]))
+Xmat &lt;- tcrossprod(Amat %*% Gmat, kronecker(Cmat, Bmat))
+Xmat &lt;- array(Xmat, dim = mydim)
+Emat &lt;- array(rnorm(prod(mydim)), dim = mydim)
+Emat &lt;- nscale(Emat, 0, ssnew = sumsq(Xmat))   # SNR=1
+X &lt;- Xmat + Emat
+
+# fit Tucker3 model
+tuck &lt;- tucker(X, nfac = nf, nstart = 1)
+tuck
+
+# check solution
+Xhat &lt;- fitted(tuck)
+sum((Xmat-Xhat)^2) / prod(mydim)
+
+# reorder mode="A"
+tuck$A[1:4,]
+tuck$G
+tuck &lt;- reorder(tuck, neworder = c(3,1,2), mode = "A")
+tuck$A[1:4,]
+tuck$G
+Xhat &lt;- fitted(tuck)
+sum((Xmat-Xhat)^2)/prod(mydim)
+
+# reorder mode="B"
+tuck$B[1:4,]
+tuck$G
+tuck &lt;- reorder(tuck, neworder=2:1, mode="B")
+tuck$B[1:4,]
+tuck$G
+Xhat &lt;- fitted(tuck)
+sum((Xmat-Xhat)^2)/prod(mydim)
+
+# resign mode="C"
+tuck$C[1:4,]
+tuck &lt;- resign(tuck, mode="C")
+tuck$C[1:4,]
+Xhat &lt;- fitted(tuck)
+sum((Xmat-Xhat)^2)/prod(mydim)
+
+
+####****####   TUCKER2   ####****####
+
+# create random data array with Tucker2 structure
+set.seed(3)
+mydim &lt;- c(50, 20, 5)
+nf &lt;- c(3, 2, mydim[3])
+Amat &lt;- matrix(rnorm(mydim[1]*nf[1]), mydim[1], nf[1])
+Amat &lt;- svd(Amat, nu = nf[1], nv = 0)$u
+Bmat &lt;- matrix(rnorm(mydim[2]*nf[2]), mydim[2], nf[2])
+Bmat &lt;- svd(Bmat, nu = nf[2], nv = 0)$u
+Cmat &lt;- diag(nf[3])
+Gmat &lt;- matrix(rnorm(prod(nf)), nf[1], prod(nf[2:3]))
+Xmat &lt;- tcrossprod(Amat %*% Gmat, kronecker(Cmat, Bmat))
+Xmat &lt;- array(Xmat, dim = mydim)
+Emat &lt;- array(rnorm(prod(mydim)), dim = mydim)
+Emat &lt;- nscale(Emat, 0, ssnew = sumsq(Xmat))   # SNR=1
+X &lt;- Xmat + Emat
+
+# fit Tucker2 model
+tuck &lt;- tucker(X, nfac = nf, nstart = 1, Cfixed = diag(nf[3]))
+tuck
+
+# check solution
+Xhat &lt;- fitted(tuck)
+sum((Xmat-Xhat)^2) / prod(mydim)
+
+
+####****####   TUCKER1   ####****####
+
+# create random data array with Tucker1 structure
+set.seed(3)
+mydim &lt;- c(50, 20, 5)
+nf &lt;- c(3, mydim[2:3])
+Amat &lt;- matrix(rnorm(mydim[1]*nf[1]), mydim[1], nf[1])
+Amat &lt;- svd(Amat, nu = nf[1], nv = 0)$u
+Bmat &lt;- diag(nf[2])
+Cmat &lt;- diag(nf[3])
+Gmat &lt;- matrix(rnorm(prod(nf)), nf[1], prod(nf[2:3]))
+Xmat &lt;- tcrossprod(Amat %*% Gmat, kronecker(Cmat, Bmat))
+Xmat &lt;- array(Xmat, dim = mydim)
+Emat &lt;- array(rnorm(prod(mydim)), dim = mydim)
+Emat &lt;- nscale(Emat, 0, ssnew = sumsq(Xmat))   # SNR=1
+X &lt;- Xmat + Emat
+
+# fit Tucker1 model
+tuck &lt;- tucker(X, nfac = nf, nstart = 1,
+               Bfixed = diag(nf[2]), Cfixed = diag(nf[3]))
+tuck
+
+# check solution
+Xhat &lt;- fitted(tuck)
+sum((Xmat-Xhat)^2) / prod(mydim)
+
+# closed-form Tucker1 solution via SVD
+tsvd &lt;- svd(matrix(X, nrow = mydim[1]), nu = nf[1], nv = nf[1])
+Gmat0 &lt;- t(tsvd$v %*% diag(tsvd$d[1:nf[1]]))
+Xhat0 &lt;- array(tsvd$u %*% Gmat0, dim = mydim)
+sum((Xmat-Xhat0)^2) / prod(mydim)
+
+# get Mode A weights and core array 
+tuck0 &lt;- NULL
+tuck0$A &lt;- tsvd$u                   # A weights
+tuck0$G &lt;- array(Gmat0, dim = nf)   # core array
+
+
+
+##########   4-way example   ##########
+
+# create random data array with Tucker structure
+set.seed(4)
+mydim &lt;- c(30,10,8,10)
+nf &lt;- c(2,3,4,3)
+Amat &lt;- svd(matrix(rnorm(mydim[1]*nf[1]),mydim[1],nf[1]),nu=nf[1])$u
+Bmat &lt;- svd(matrix(rnorm(mydim[2]*nf[2]),mydim[2],nf[2]),nu=nf[2])$u
+Cmat &lt;- svd(matrix(rnorm(mydim[3]*nf[3]),mydim[3],nf[3]),nu=nf[3])$u
+Dmat &lt;- svd(matrix(rnorm(mydim[4]*nf[4]),mydim[4],nf[4]),nu=nf[4])$u
+Gmat &lt;- array(rnorm(prod(nf)),dim=nf)
+Xmat &lt;- array(tcrossprod(Amat%*%matrix(Gmat,nf[1],prod(nf[2:4])),
+                      kronecker(Dmat,kronecker(Cmat,Bmat))),dim=mydim)
+Emat &lt;- array(rnorm(prod(mydim)),dim=mydim)
+Emat &lt;- nscale(Emat, 0, ssnew = sumsq(Xmat))   # SNR=1
+X &lt;- Xmat + Emat
+
+# fit Tucker model
+tuck &lt;- tucker(X,nfac=nf,nstart=1)
+tuck
+
+# check solution
+Xhat &lt;- fitted(tuck)
+sum((Xmat-Xhat)^2)/prod(mydim)
+
+
+## Not run: 
+
+##########   parallel computation   ##########
+
+# create random data array with Tucker structure
+set.seed(3)
+mydim &lt;- c(50,20,5)
+nf &lt;- c(3,2,3)
+Amat &lt;- svd(matrix(rnorm(mydim[1]*nf[1]),mydim[1],nf[1]),nu=nf[1])$u
+Bmat &lt;- svd(matrix(rnorm(mydim[2]*nf[2]),mydim[2],nf[2]),nu=nf[2])$u
+Cmat &lt;- svd(matrix(rnorm(mydim[3]*nf[3]),mydim[3],nf[3]),nu=nf[3])$u
+Gmat &lt;- array(rnorm(prod(nf)),dim=nf)
+Xmat &lt;- array(tcrossprod(Amat%*%matrix(Gmat,nf[1],nf[2]*nf[3]),kronecker(Cmat,Bmat)),dim=mydim)
+Emat &lt;- array(rnorm(prod(mydim)),dim=mydim)
+Emat &lt;- nscale(Emat, 0, ssnew = sumsq(Xmat))   # SNR=1
+X &lt;- Xmat + Emat
+
+# fit Tucker model (10 random starts -- sequential computation)
+set.seed(1)
+system.time({tuck &lt;- tucker(X,nfac=nf)})
+tuck$Rsq
+
+# fit Tucker model (10 random starts -- parallel computation)
+cl &lt;- makeCluster(detectCores())
+ce &lt;- clusterEvalQ(cl,library(multiway))
+clusterSetRNGStream(cl, 1)
+system.time({tuck &lt;- tucker(X,nfac=nf,parallel=TRUE,cl=cl)})
+tuck$Rsq
+stopCluster(cl)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,140 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>strip_rawdata</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Strip rawdata from a generalized additive model</h2>
+
+<h3>Description</h3>
+
+<p>This function removes all individual participant data from a generalized additive
+model object, while keeping aggregated quantities. The resulting object can be
+shared without exposing individual participant data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">strip_rawdata(model, path = NULL, save_ranges = TRUE, ...)
+
+## S3 method for class 'list'
+strip_rawdata(model, path = NULL, save_ranges = TRUE, ...)
+
+## S3 method for class 'gamm'
+strip_rawdata(model, path = NULL, save_ranges = TRUE, ...)
+
+## S3 method for class 'bam'
+strip_rawdata(model, path = NULL, save_ranges = TRUE, ...)
+
+## S3 method for class 'gam'
+strip_rawdata(model, path = NULL, save_ranges = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>A model fitted using <code>mgcv::gam</code>, <code>mgcv::bam</code>,
+<code>mgcv::gamm</code>, or <code>gamm4::gamm4</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>path</code></td>
+<td>
+<p>Optional path in which to save the object as a <code>.rds</code> file.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>save_ranges</code></td>
+<td>
+<p>Logical specifying whether to save the ranges of each
+variable used by the model. For numeric variables this amounts to the minimum
+and maximum, and for factors all levels are saved. The values will be in the
+list element <code>var.summary</code> of the returned object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Other arguments (not used).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Thin plate regression splines (<code>bs='tp'</code> and <code>bs='ts'</code>) and Duchon splines <code>bs='ds'</code>
+are currently not supported, since for these splines <code>mgcv</code>
+requires the unique values of the explanatory variables for each smooth term for the <code>predict</code>
+method to work. Future updates to this package will fix this.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Model object with individual participant data removed.
+</p>
+
+
+<h3>Methods (by class)</h3>
+
+
+<ul>
+<li> <p><code>strip_rawdata(list)</code>: Strip rawdata from list object returned by gamm4
+</p>
+</li>
+<li> <p><code>strip_rawdata(gamm)</code>: Strip rawdata from gamm object
+</p>
+</li>
+<li> <p><code>strip_rawdata(bam)</code>: Strip rawdata from gam object
+</p>
+</li>
+<li> <p><code>strip_rawdata(gam)</code>: Strip rawdata from gam object
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(metagam)
+library(mgcv)
+
+## Create 5 datasets
+set.seed(1234)
+datasets &lt;- lapply(1:5, function(x) gamSim(scale = 5, verbose = FALSE))
+
+## Fit a GAM in each dataset, then use strip_rawdata() to remove
+## individual participant data
+models &lt;- lapply(datasets, function(dat){
+  ## This uses the gam() function from mgcv
+  model &lt;- gam(y ~ s(x0, bs = "cr") + s(x1, bs = "cr") + s(x2, bs = "cr"), data = dat)
+  ## This uses strip_rawdata() from metagam
+  strip_rawdata(model)
+})
+
+## Next, we meta-analyze the models.
+## It is often most convenient to analyze a single term at a time. We focus on s(x1).
+meta_analysis &lt;- metagam(models, terms = "s(x1)", grid_size = 30)
+
+## We can print some information
+summary(meta_analysis)
+
+## We can plot the meta-analytic fit together with the individual fits
+plot(meta_analysis)
+plot(meta_analysis, ci = "pointwise")
+
+## We can also compute p-values and simultaneous confidence intervals, by setting the nsim argument.
+## For details, see the separate vignette.
+## Not run: 
+  meta_analysis &lt;- metagam(models, terms = "s(x0)", grid_size = 30, nsim = 1000)
+  summary(meta_analysis)
+  plot(meta_analysis, ci = "both")
+  plot(meta_analysis, ci = "simultaneous")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

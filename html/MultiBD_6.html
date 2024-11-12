@@ -1,0 +1,136 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>SIR_prob</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Transition probabilities of an SIR process</h2>
+
+<h3>Description</h3>
+
+<p>Computes the transition pobabilities of an SIR process 
+using the bivariate birth process representation
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">SIR_prob(t, alpha, beta, S0, I0, nSI, nIR, direction = c("Forward",
+  "Backward"), nblocks = 20, tol = 1e-12, computeMode = 0, nThreads = 4)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>t</code></td>
+<td>
+<p>time</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>removal rate</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta</code></td>
+<td>
+<p>infection rate</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>S0</code></td>
+<td>
+<p>initial susceptible population</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>I0</code></td>
+<td>
+<p>initial infectious population</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nSI</code></td>
+<td>
+<p>number of infection events</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nIR</code></td>
+<td>
+<p>number of removal events</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>direction</code></td>
+<td>
+<p>direction of the transition probabilities (either <code>Forward</code> or <code>Backward</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nblocks</code></td>
+<td>
+<p>number of blocks</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>tolerance</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>computeMode</code></td>
+<td>
+<p>computation mode</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nThreads</code></td>
+<td>
+<p>number of threads</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a matrix of the transition probabilities
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(Eyam)
+
+loglik_sir &lt;- function(param, data) {
+  alpha &lt;- exp(param[1]) # Rates must be non-negative
+  beta  &lt;- exp(param[2])
+  
+  if(length(unique(rowSums(data[, c("S", "I", "R")]))) &gt; 1) {
+    stop ("Please make sure the data conform with a closed population")
+  }
+  
+  sum(sapply(1:(nrow(data) - 1), # Sum across all time steps k
+             function(k) {
+               log(
+                 SIR_prob(  # Compute the forward transition probability matrix
+                   t  = data$time[k + 1] - data$time[k], # Time increment
+                   alpha = alpha, beta = beta, 
+                   S0 = data$S[k], I0 = data$I[k],       # From: R(t_k), I(t_k)
+                   nSI = data$S[k] - data$S[k + 1], nIR = data$R[k + 1] - data$R[k],
+                   computeMode = 4, nblocks = 80         # Compute using 4 threads
+                 )[data$S[k] - data$S[k + 1] + 1, 
+                   data$R[k + 1] - data$R[k] + 1]        # To: R(t_(k+1)), I(t_(k+1))
+               )
+             }))
+}
+
+loglik_sir(log(c(3.204, 0.019)), Eyam) # Evaluate at mode
+</code></pre>
+
+
+</div>

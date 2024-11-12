@@ -1,0 +1,272 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_callback_set</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Base Class for Callbacks</h2>
+
+<h3>Description</h3>
+
+<p>Base class from which callbacks should inherit (see section <em>Inheriting</em>).
+A callback set is a collection of functions that are executed at different stages of the training loop.
+They can be used to gain more control over the training process of a neural network without
+having to write everything from scratch.
+</p>
+<p>When used a in torch learner, the <code>CallbackSet</code> is wrapped in a <code>TorchCallback</code>.
+The latters parameter set represents the arguments of the <code>CallbackSet</code>'s <code style="white-space: pre;">⁠$initialize()⁠</code> method.
+</p>
+
+
+<h3>Inheriting</h3>
+
+<p>For each available stage (see section <em>Stages</em>) a public method <code style="white-space: pre;">⁠$on_&lt;stage&gt;()⁠</code> can be defined.
+The evaluation context (a <code>ContextTorch</code>) can be accessed via <code>self$ctx</code>, which contains
+the current state of the training loop.
+This context is assigned at the beginning of the training loop and removed afterwards.
+Different stages of a callback can communicate with each other by assigning values to <code style="white-space: pre;">⁠$self⁠</code>.
+</p>
+<p><em>State</em>:
+To be able to store information in the <code style="white-space: pre;">⁠$model⁠</code> slot of a <code>LearnerTorch</code>, callbacks support a state API.
+You can overload the <code style="white-space: pre;">⁠$state_dict()⁠</code> public method to define what will be stored in <code style="white-space: pre;">⁠learner$model$callbacks$&lt;id&gt;⁠</code>
+after training finishes.
+This then also requires to implement a <code style="white-space: pre;">⁠$load_state_dict(state_dict)⁠</code> method that defines how to load a previously saved
+callback state into a different callback.
+Note that the <code style="white-space: pre;">⁠$state_dict()⁠</code> should not include the parameter values that were used to initialize the callback.
+</p>
+<p>For creating custom callbacks, the function <code>torch_callback()</code> is recommended, which creates a
+<code>CallbackSet</code> and then wraps it in a <code>TorchCallback</code>.
+To create a <code>CallbackSet</code> the convenience function <code>callback_set()</code> can be used.
+These functions perform checks such as that the stages are not accidentally misspelled.
+</p>
+
+
+<h3>Stages</h3>
+
+
+<ul>
+<li> <p><code>begin</code> :: Run before the training loop begins.
+</p>
+</li>
+<li> <p><code>epoch_begin</code> :: Run he beginning of each epoch.
+</p>
+</li>
+<li> <p><code>batch_begin</code> :: Run before the forward call.
+</p>
+</li>
+<li> <p><code>after_backward</code> :: Run after the backward call.
+</p>
+</li>
+<li> <p><code>batch_end</code> :: Run after the optimizer step.
+</p>
+</li>
+<li> <p><code>batch_valid_begin</code> :: Run before the forward call in the validation loop.
+</p>
+</li>
+<li> <p><code>batch_valid_end</code> :: Run after the forward call in the validation loop.
+</p>
+</li>
+<li> <p><code>valid_end</code> :: Run at the end of validation.
+</p>
+</li>
+<li> <p><code>epoch_end</code> :: Run at the end of each epoch.
+</p>
+</li>
+<li> <p><code>end</code> :: Run after last epoch.
+</p>
+</li>
+<li> <p><code>exit</code> :: Run at last, using <code>on.exit()</code>.
+</p>
+</li>
+</ul>
+<h3>Terminate Training</h3>
+
+<p>If training is to be stopped, it is possible to set the field <code style="white-space: pre;">⁠$terminate⁠</code> of <code>ContextTorch</code>.
+At the end of every epoch this field is checked and if it is <code>TRUE</code>, training stops.
+This can for example be used to implement custom early stopping.
+</p>
+
+
+<h3>Public fields</h3>
+
+<div class="r6-fields">
+
+<dl>
+<dt><code>ctx</code></dt>
+<dd>
+<p>(<code>ContextTorch</code> or <code>NULL</code>)<br>
+The evaluation context for the callback.
+This field should always be <code>NULL</code> except during the <code style="white-space: pre;">⁠$train()⁠</code> call of the torch learner.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Active bindings</h3>
+
+<div class="r6-active-bindings">
+
+<dl>
+<dt><code>stages</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+The active stages of this callback set.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-CallbackSet-print"><code>CallbackSet$print()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-CallbackSet-state_dict"><code>CallbackSet$state_dict()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-CallbackSet-load_state_dict"><code>CallbackSet$load_state_dict()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-CallbackSet-clone"><code>CallbackSet$clone()</code></a>
+</p>
+</li>
+</ul>
+<hr>
+<a id="method-CallbackSet-print"></a>
+
+
+
+<h4>Method <code>print()</code>
+</h4>
+
+<p>Prints the object.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>CallbackSet$print(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(any)<br>
+Currently unused.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-CallbackSet-state_dict"></a>
+
+
+
+<h4>Method <code>state_dict()</code>
+</h4>
+
+<p>Returns information that is kept in the the <code>LearnerTorch</code>'s state after training.
+This information should be loadable into the callback using <code style="white-space: pre;">⁠$load_state_dict()⁠</code> to be able to continue training.
+This returns <code>NULL</code> by default.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>CallbackSet$state_dict()</pre></div>
+
+
+<hr>
+<a id="method-CallbackSet-load_state_dict"></a>
+
+
+
+<h4>Method <code>load_state_dict()</code>
+</h4>
+
+<p>Loads the state dict into the callback to continue training.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>CallbackSet$load_state_dict(state_dict)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>state_dict</code></dt>
+<dd>
+<p>(any)<br>
+The state dict as retrieved via <code style="white-space: pre;">⁠$state_dict()⁠</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-CallbackSet-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>CallbackSet$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>See Also</h3>
+
+<p>Other Callback: 
+<code>TorchCallback</code>,
+<code>as_torch_callback()</code>,
+<code>as_torch_callbacks()</code>,
+<code>callback_set()</code>,
+<code>mlr3torch_callbacks</code>,
+<code>mlr_callback_set.checkpoint</code>,
+<code>mlr_callback_set.progress</code>,
+<code>mlr_context_torch</code>,
+<code>t_clbk()</code>,
+<code>torch_callback()</code>
+</p>
+
+
+</div>

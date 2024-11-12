@@ -1,0 +1,130 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bDist</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Computes distances between sequences</h2>
+
+<h3>Description</h3>
+
+<p>Computes distance between all sequences based on the BLAST bit-scores.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bDist(blast.files = NULL, blast.tbl = NULL, e.value = 1, verbose = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>blast.files</code></td>
+<td>
+<p>A text vector of BLAST result filenames.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>blast.tbl</code></td>
+<td>
+<p>A table with BLAST results.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>e.value</code></td>
+<td>
+<p>A threshold E-value to immediately discard (very) poor BLAST alignments.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Logical, indicating if textual output should be given to monitor the progress.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The essential input is either a vector of BLAST result filenames (<code>blast.files</code>) or a
+table of the BLAST results (<code>blast.tbl</code>). It is no point in providing both, then <code>blast.tbl</code> is ignored.
+</p>
+<p>For normal sized data sets (e.g. less than 100 genomes), you would provide the BLAST filenames as the argument
+<code>blast.files</code> to this function.
+Then results are read, and distances are computed. Only if you have huge data sets, you may find it more efficient to 
+read the files using <code>readBlastSelf</code> and <code>readBlastPair</code> separately, and then provide as the
+argument <code>blast.tbl]</code> the table you get from binding these results. In all cases, the BLAST result files must
+have been produced by <code>blastpAllAll</code>.
+</p>
+<p>Setting a small ‘<span class="samp">⁠e.value⁠</span>’ threshold can speed up the computation and reduce the size of the
+output, but you may loose some alignments that could produce smallish distances for short sequences.
+</p>
+<p>The distance computed is based on alignment bitscores. Assume the alignment of query A against hit B
+has a bitscore of S(A,B). The distance is D(A,B)=1-2*S(A,B)/(S(A,A)+S(B,B)) where S(A,A) and S(B,B) are
+the self-alignment bitscores, i.e. the scores of aligning against itself. A distance of
+0.0 means A and B are identical. The maximum possible distance is 1.0, meaning there is no BLAST between A and B.
+</p>
+<p>This distance should not be interpreted as lack of identity! A distance of 0.0 means 100% identity,
+but a distance of 0.25 does <em>not</em> mean 75% identity. It has some resemblance to an evolutinary
+(raw) distance, but since it is based on protein alignments, the type of mutations plays a significant
+role, not only the number of mutations.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The function returns a table with columns ‘<span class="samp">⁠Dbase⁠</span>’, ‘<span class="samp">⁠Query⁠</span>’, ‘<span class="samp">⁠Bitscore⁠</span>’
+and ‘<span class="samp">⁠Distance⁠</span>’. Each row corresponds to a pair of sequences (Dbase and Query sequences) having at least
+one BLAST hit between
+them. All pairs <em>not</em> listed in the output have distance 1.0 between them.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Lars Snipen and Kristian Hovde Liland.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>blastpAllAll</code>, <code>readBlastSelf</code>, <code>readBlastPair</code>,
+<code>bClust</code>, <code>isOrtholog</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Using BLAST result files in this package...
+prefix &lt;- c("GID1_vs_GID1_",
+            "GID2_vs_GID1_",
+            "GID3_vs_GID1_",
+            "GID2_vs_GID2_",
+            "GID3_vs_GID2_",
+            "GID3_vs_GID3_")
+bf &lt;- file.path(path.package("micropan"), "extdata", str_c(prefix, ".txt.xz"))
+
+# We need to uncompress them first...
+blast.files &lt;- tempfile(pattern = prefix, fileext = ".txt.xz")
+ok &lt;- file.copy(from = bf, to = blast.files)
+blast.files &lt;- unlist(lapply(blast.files, xzuncompress))
+
+# Computing pairwise distances
+blast.dist &lt;- bDist(blast.files)
+
+# Read files separately, then use bDist
+self.tbl &lt;- readBlastSelf(blast.files)
+pair.tbl &lt;- readBlastPair(blast.files)
+blast.dist &lt;- bDist(blast.tbl = bind_rows(self.tbl, pair.tbl))
+
+# ...and cleaning...
+ok &lt;- file.remove(blast.files)
+
+# See also example for blastpAl
+
+</code></pre>
+
+
+</div>

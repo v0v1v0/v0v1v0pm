@@ -1,0 +1,485 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MCMCpaircompare2dDP</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Markov Chain Monte Carlo for the Two-Dimensional Pairwise Comparisons
+Model with Dirichlet Process Prior in Yu and Quinn (2021)</h2>
+
+<h3>Description</h3>
+
+<p>This function generates a sample from the posterior distribution of a
+model for pairwise comparisons data with a probit link. Unlike standard
+models for pairwise comparisons data, in this model the latent attribute
+of each item being compared is a vector in two-dimensional Euclidean space.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MCMCpaircompare2dDP(
+  pwc.data,
+  theta.constraints = list(),
+  burnin = 1000,
+  mcmc = 20000,
+  thin = 1,
+  verbose = 0,
+  seed = NA,
+  gamma.start = NA,
+  theta.start = NA,
+  store.theta = TRUE,
+  store.gamma = FALSE,
+  tune = 0.3,
+  procrustes = FALSE,
+  alpha.start = 1,
+  cluster.max = 100,
+  cluster.mcmc = 500,
+  alpha.fixed = TRUE,
+  a0 = 1,
+  b0 = 1,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>pwc.data</code></td>
+<td>
+<p>A data.frame containing the pairwise comparisons data.
+Each row of <code>pwc.data</code> corresponds to a single pairwise comparison.
+<code>pwc.data</code> needs to have exactly four columns. The first column
+contains a unique identifier for the rater. Column two contains the unique
+identifier for the first item being compared. Column three contains the
+unique identifier for the second item being compared. Column four contains
+the unique identifier of the item selected from the two items being
+compared. If a tie occurred, the entry in the fourth column should be NA.
+<strong>The identifiers in columns 2 through 4 must start with a letter.
+Examples are provided below.</strong></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>theta.constraints</code></td>
+<td>
+<p>A list specifying possible simple equality or
+inequality constraints on the item parameters. A
+typical entry in the list has one of three forms:
+<code>itemname=list(d,c)</code> which will constrain the dth dimension of
+theta for the item named <code>itemname</code> to be equal to c,
+<code>itemname=list(d,"+")</code> which will constrain the dth dimension of
+theta for the item named <code>itemname</code> to be positive, and
+<code>itemname=list(d, "-")</code> which will constrain the dth dimension of
+theta for the item named <code>itemname</code> to be negative.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p>The number of burn-in iterations for the sampler.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mcmc</code></td>
+<td>
+<p>The number of Gibbs iterations for the sampler.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thin</code></td>
+<td>
+<p>The thinning interval used in the simulation.  The number of
+Gibbs iterations must be divisible by this value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>A switch which determines whether or not the progress of the
+sampler is printed to the screen.  If <code>verbose</code> is greater than 0 
+output is printed to the screen every
+<code>verbose</code>th iteration.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>The seed for the random number generator.  If NA, the Mersenne
+Twister generator is used with default seed 12345; if an integer is passed
+it is used to seed the Mersenne twister.  The user can also pass a list of
+length two to use the L'Ecuyer random number generator, which is suitable
+for parallel computation.  The first element of the list is the L'Ecuyer
+seed, which is a vector of length six or NA (if NA a default seed of
+<code>rep(12345,6)</code> is used).  The second element of list is a positive
+substream number. See the MCMCpack specification for more details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma.start</code></td>
+<td>
+<p>The starting value for the gamma vector.  This
+can either be a scalar or a column vector with dimension equal to the number
+of raters.  If this takes a scalar value, then that value will serve as the
+starting value for all of the gammas. The default value of NA will set the
+starting value of each gamma parameter to <code class="reqn">\pi/4</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>theta.start</code></td>
+<td>
+<p>Starting values for the theta. Can be either a numeric
+scalar, a J by 2 matrix (where J is the number of items compared), or NA.
+If a scalar, all theta values are set to that value (except elements already
+specified via theta.contraints. If NA, then non constrained elements of
+theta are set equal to 0, elements constrained to be positive are set equal
+to 0.5, elements constrained to be negative are set equal to -0.5 and
+elements with equality constraints are set to satisfy those constraints.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>store.theta</code></td>
+<td>
+<p>Should the theta draws be returned? Default is TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>store.gamma</code></td>
+<td>
+<p>Should the gamma draws be returned? Default is TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tune</code></td>
+<td>
+<p>Tuning parameter for the random walk Metropolis proposal for
+each gamma_i. <code>tune</code> is the width of the uniform proposal centered at
+the current value of gamma_i. Must be a positive scalar.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>procrustes</code></td>
+<td>
+<p>Should the theta and gamma draws be post-processed with
+a Procrustes transformation? Default is FALSE. The Procrustes target matrix
+is derived from the constrained elements of theta. Each row of theta that
+has both theta values constrained is part of the of the target matrix.
+Elements with equality constraints are set to those values. Elements
+constrained to be positive are set to 1. Elements constrained to be negative
+are set to -1. If <code>procrustes</code> is set to <code>TRUE</code> theta.constraints
+must be set so that there are at least three rows of theta that have both
+elements of theta constrained.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha.start</code></td>
+<td>
+<p>The starting value for the DP concentration parameter
+alpha. Must be a positive scalar. Defaults to 1. If <code>alpha.fixed</code> is
+set equal to TRUE, then alpha is held fixed at alpha.start.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cluster.max</code></td>
+<td>
+<p>The maximum number of clusters allowed in the
+approximation to the DP prior for gamma. Defaults to 100. Must be a
+positive integer.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cluster.mcmc</code></td>
+<td>
+<p>The number of additional MCMC iterations that are done
+to sample each cluster-specific gamma value within one main MCMC iteration.
+Must be a positive integer. Defaults to 500. Setting this to a lower value
+speeds runtime at the cost of (possibly) worse mixing.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha.fixed</code></td>
+<td>
+<p>Logical value indicating whether the DP concentration
+parameter alpha be held fixed (<code>TRUE</code>) or estimated (<code>FALSE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>a0</code></td>
+<td>
+<p>The shape parameter of the gamma prior for alpha. This is the
+same parameterization of the gamma distribution as R's internal
+<code>rgamma()</code> function. Only relevant if <code>alpha.fixed</code> is set equal
+to <code>FALSE</code>. Defaults to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b0</code></td>
+<td>
+<p>The rate parameter of the gamma prior for alpha.  This is the
+same parameterization of the gamma distribution as R's internal
+<code>rgamma()</code> function. Only relevant if <code>alpha.fixed</code> is set equal
+to <code>FALSE</code>. Defaults to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments to be passed</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>MCMCpaircompare2d</code> uses the data augmentation approach of Albert and
+Chib (1993) in conjunction with Gibbs and Metropolis-within-Gibbs steps
+to fit the model. The user supplies data and a sample from the
+posterior is returned as an <code>mcmc</code> object, which can be subsequently
+analyzed in the <code>coda</code> package.
+</p>
+<p>The simulation is done in compiled C++ code to maximize efficiency.
+</p>
+<p>Please consult the <code>coda</code> package documentation for a comprehensive
+list of functions that can be used to analyze the posterior sample.
+</p>
+<p>The model takes the following form:
+</p>
+<p style="text-align: center;"><code class="reqn">i = 1,...,I \ \ \ \   (raters) </code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">j = 1,...,J \ \ \ \   (items)  </code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">Y_{ijj'} = 1 \ \  if  \ \  i \ \  chooses \ \  j \ \ over \ \ j'</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">Y_{ijj'} = 0 \ \ if \ \ i \ \ chooses \ \ j' \ \ over \ \ j</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">Y_{ijj'} = NA \ \  if \ \ i \ \ chooses \ \ neither</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\Pr(Y_{ijj'} = 1) = \Phi( \mathbf{z}_{i}' [\boldsymbol{\theta}_{j} -
+\boldsymbol{\theta}_{ j'} ])</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\mathbf{z}_{i}=[\cos(\gamma_{i}), \  \sin(\gamma_{i})]' </code>
+</p>
+
+<p>The following priors are assumed:
+</p>
+<p style="text-align: center;"><code class="reqn">\gamma_i \sim G</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">G \sim \mathcal{DP}(\alpha G_0)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">G_0 = \mathcal{U}nif(0,   \pi/2)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\alpha \sim \mathcal{G}amma(a_0, b_0)</code>
+</p>
+ 
+<p style="text-align: center;"><code class="reqn">\boldsymbol{\theta}_j \sim
+\mathcal{N}_{2}(\mathbf{0}, \mathbf{I}_{2})</code>
+</p>
+
+<p>For identification, some <code class="reqn">\boldsymbol{\theta}_j</code>s are truncated
+above or below 0, or fixed to constants.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An mcmc object that contains the posterior sample.  This object can
+be summarized by functions provided by the coda package. Most of the column
+names of the mcmc object are self explanatory. Note however that the columns
+with names of the form "cluster.[raterID]" give the cluster membership of
+each rater at each stored MCMC iteration. Because of the possibility of
+label switching, the particular values of these cluster membership variables
+are not meaningful. What is meaningful is whether two raters share the same
+cluster membership value at a particular MCMC iteration. This indicates
+that those two raters were clustered together during that iteration.
+Finally, note that the "n.clusters" column gives the number of distinct
+gamma values at each iteration, i.e. the number of clusters at that
+iteration.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Qiushi Yu &lt;yuqiushi@umich.edu&gt; and
+Kevin M. Quinn &lt;kmq@umich.edu&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Albert, J. H. and S. Chib. 1993. “Bayesian Analysis of Binary
+and Polychotomous Response Data.” <em>J. Amer. Statist. Assoc.</em> 88,
+669-679
+</p>
+<p>Yu, Qiushi and Kevin M. Quinn. 2021. “A Multidimensional Pairwise
+Comparison Model for Heterogeneous Perceptions with an Application to
+Modeling the Perceived Truthfulness of Public Statements on COVID-19.”
+University of Michigan Working Paper.
+</p>
+<p>Andrew D. Martin, Kevin M. Quinn, and Jong Hee Park. 2011.  “MCMCpack:
+Markov Chain Monte Carlo in R.”, <em>Journal of Statistical Software</em>.
+42(9): 1-21.  <a href="https://doi.org/10.18637/jss.v042.i09">doi:10.18637/jss.v042.i09</a>.
+</p>
+<p>Daniel Pemstein, Kevin M. Quinn, and Andrew D. Martin.  2007.  <em>Scythe
+Statistical Library 1.0.</em> <a href="http://scythe.wustl.edu.s3-website-us-east-1.amazonaws.com/">http://scythe.wustl.edu.s3-website-us-east-1.amazonaws.com/</a>.
+</p>
+<p>Martyn Plummer, Nicky Best, Kate Cowles, and Karen Vines. 2006.  “Output
+Analysis and Diagnostics for MCMC (CODA)”, <em>R News</em>. 6(1): 7-11.
+<a href="https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf">https://CRAN.R-project.org/doc/Rnews/Rnews_2006-1.pdf</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>plot.mcmc</code>,<code>summary.mcmc</code>,
+<code>MCMCpaircompare</code>,
+<code>MCMCpaircompare2dDP</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+## a synthetic data example
+set.seed(123)
+
+I &lt;- 65  ## number of raters
+J &lt;- 50 ## number of items to be compared
+
+## 3 clusters:
+## raters 1 to 5 put most weight on dimension 1
+## raters 6 to 10 put most weight on dimension 2
+## raters 11 to I put substantial weight on both dimensions
+gamma.true &lt;- c(rep(0.05, 5),
+             rep(1.50, 5),
+             rep(0.7, I-10) )
+theta1.true &lt;- rnorm(J, m=0, s=1)
+theta2.true &lt;- rnorm(J, m=0, s=1)
+theta1.true[1] &lt;- 2
+theta2.true[1] &lt;- 2
+theta1.true[2] &lt;- -2
+theta2.true[2] &lt;- -2
+theta1.true[3] &lt;-  2
+theta2.true[3] &lt;- -2
+
+
+
+n.comparisons &lt;- 125 ## number of pairwise comparisons for each rater
+
+## generate synthetic data according to the assumed model
+rater.id &lt;- NULL
+item.1.id &lt;- NULL
+item.2.id &lt;- NULL
+choice.id &lt;- NULL
+for (i in 1:I){
+    for (c in 1:n.comparisons){
+        rater.id &lt;- c(rater.id, i+100)
+        item.numbers &lt;- sample(1:J, size=2, replace=FALSE)
+        item.1 &lt;- item.numbers[1]
+        item.2 &lt;- item.numbers[2]
+        item.1.id &lt;- c(item.1.id, item.1)
+        item.2.id &lt;- c(item.2.id, item.2)
+        z &lt;- c(cos(gamma.true[i]), sin(gamma.true[i]))
+        eta &lt;- z[1] * (theta1.true[item.1] - theta1.true[item.2])  +
+            z[2] * (theta2.true[item.1] - theta2.true[item.2])
+        prob.item.1.chosen &lt;- pnorm(eta)
+        u &lt;- runif(1)
+        if (u &lt;= prob.item.1.chosen){
+            choice.id &lt;- c(choice.id, item.1)
+        }
+        else{
+            choice.id &lt;- c(choice.id, item.2)
+        }
+    }
+}
+item.1.id &lt;- paste("item", item.1.id+100, sep=".")
+item.2.id &lt;- paste("item", item.2.id+100, sep=".")
+choice.id &lt;- paste("item", choice.id+100, sep=".")
+
+sim.data &lt;- data.frame(rater.id, item.1.id, item.2.id, choice.id)
+
+
+## fit the model (should be run for more than 10500 iterations)
+posterior &lt;- MCMCpaircompare2dDP(pwc.data=sim.data,
+                                 theta.constraints=list(item.101=list(1,2),
+                                                        item.101=list(2,2),
+                                                        item.102=list(1,-2),
+                                                        item.102=list(2,-2),
+                                                        item.103=list(1,"+"),
+                                                        item.103=list(2,"-")),
+                                 verbose=100,
+                                 burnin=500, mcmc=10000, thin=5,
+                                 cluster.mcmc=10,
+                                 store.theta=TRUE, store.gamma=TRUE,
+                                 tune=0.1)
+
+
+
+
+
+theta1.draws &lt;- posterior[, grep("theta1", colnames(posterior))]
+theta2.draws &lt;- posterior[, grep("theta2", colnames(posterior))]
+gamma.draws &lt;- posterior[, grep("gamma", colnames(posterior))]
+
+theta1.post.med &lt;- apply(theta1.draws, 2, median)
+theta2.post.med &lt;- apply(theta2.draws, 2, median)
+gamma.post.med &lt;- apply(gamma.draws, 2, median)
+
+theta1.post.025 &lt;- apply(theta1.draws, 2, quantile, prob=0.025)
+theta1.post.975 &lt;- apply(theta1.draws, 2, quantile, prob=0.975)
+theta2.post.025 &lt;- apply(theta2.draws, 2, quantile, prob=0.025)
+theta2.post.975 &lt;- apply(theta2.draws, 2, quantile, prob=0.975)
+gamma.post.025 &lt;- apply(gamma.draws, 2, quantile, prob=0.025)
+gamma.post.975 &lt;- apply(gamma.draws, 2, quantile, prob=0.975)
+
+
+
+## compare estimates to truth
+par(mfrow=c(2,2))
+plot(theta1.true, theta1.post.med, xlim=c(-2.5, 2.5), ylim=c(-2.5, 2.5),
+     col=rgb(0,0,0,0.3))
+segments(x0=theta1.true, x1=theta1.true,
+         y0=theta1.post.025, y1=theta1.post.975,
+         col=rgb(0,0,0,0.3)) 
+abline(0, 1, col=rgb(1,0,0,0.5))
+
+plot(theta2.true, theta2.post.med, xlim=c(-2.5, 2.5), ylim=c(-2.5, 2.5),
+     col=rgb(0,0,0,0.3))
+segments(x0=theta2.true, x1=theta2.true,
+         y0=theta2.post.025, y1=theta2.post.975,
+         col=rgb(0,0,0,0.3)) 
+abline(0, 1, col=rgb(1,0,0,0.5))
+
+plot(gamma.true, gamma.post.med, xlim=c(0, 1.6), ylim=c(0, 1.6),
+     col=rgb(0,0,0,0.3))
+segments(x0=gamma.true, x1=gamma.true,
+         y0=gamma.post.025, y1=gamma.post.975,
+         col=rgb(0,0,0,0.3)) 
+abline(0, 1, col=rgb(1,0,0,0.5))
+
+
+## plot point estimates 
+plot(theta1.post.med, theta2.post.med,
+     xlim=c(-2.5, 2.5), ylim=c(-2.5, 2.5),
+     col=rgb(0,0,0,0.3))
+for (i in 1:length(gamma.post.med)){
+    arrows(x0=0, y0=0,
+           x1=cos(gamma.post.med[i]),
+           y1=sin(gamma.post.med[i]),
+           col=rgb(1,0,0,0.2), len=0.05, lwd=0.5)
+}
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

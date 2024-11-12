@@ -1,0 +1,138 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>makeModelMultiplexer</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create model multiplexer for model selection to tune over multiple
+possible models.</h2>
+
+<h3>Description</h3>
+
+<p>Combines multiple base learners by dispatching
+on the hyperparameter “selected.learner” to a specific model class.
+This allows to tune not only the model class (SVM, random forest, etc) but also
+their hyperparameters in one go. Combine this with tuneParams and
+makeTuneControlIrace for a very powerful approach, see example below.
+</p>
+<p>The parameter set is the union of all (unique) base learners. In order to
+avoid name clashes all parameter names are prefixed with the base learner id,
+i.e. <code>learnerId.parameterName</code>.
+</p>
+<p>The predict.type of the Multiplexer is inherited from the predict.type of the
+base learners.
+</p>
+<p>The getter getLearnerProperties returns the properties of the
+selected base learner.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">makeModelMultiplexer(base.learners)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table><tr style="vertical-align: top;">
+<td><code>base.learners</code></td>
+<td>
+<p>([list' of Learner)<br>
+List of Learners with unique IDs.</p>
+</td>
+</tr></table>
+<h3>Value</h3>
+
+<p>(ModelMultiplexer). A Learner specialized as <code>ModelMultiplexer</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Note that logging output during tuning is somewhat shortened to make it
+more readable. I.e., the artificial prefix before parameter names is
+suppressed.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other multiplexer: 
+<code>makeModelMultiplexerParamSet()</code>
+</p>
+<p>Other tune: 
+<code>TuneControl</code>,
+<code>getNestedTuneResultsOptPathDf()</code>,
+<code>getNestedTuneResultsX()</code>,
+<code>getResamplingIndices()</code>,
+<code>getTuneResult()</code>,
+<code>makeModelMultiplexerParamSet()</code>,
+<code>makeTuneControlCMAES()</code>,
+<code>makeTuneControlDesign()</code>,
+<code>makeTuneControlGenSA()</code>,
+<code>makeTuneControlGrid()</code>,
+<code>makeTuneControlIrace()</code>,
+<code>makeTuneControlMBO()</code>,
+<code>makeTuneControlRandom()</code>,
+<code>makeTuneWrapper()</code>,
+<code>tuneParams()</code>,
+<code>tuneThreshold()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+set.seed(123)
+
+library(BBmisc)
+bls = list(
+  makeLearner("classif.ksvm"),
+  makeLearner("classif.randomForest")
+)
+lrn = makeModelMultiplexer(bls)
+# simple way to contruct param set for tuning
+# parameter names are prefixed automatically and the 'requires'
+# element is set, too, to make all paramaters subordinate to 'selected.learner'
+ps = makeModelMultiplexerParamSet(lrn,
+  makeNumericParam("sigma", lower = -10, upper = 10, trafo = function(x) 2^x),
+  makeIntegerParam("ntree", lower = 1L, upper = 500L)
+)
+print(ps)
+rdesc = makeResampleDesc("CV", iters = 2L)
+# to save some time we use random search. but you probably want something like this:
+# ctrl = makeTuneControlIrace(maxExperiments = 500L)
+ctrl = makeTuneControlRandom(maxit = 10L)
+res = tuneParams(lrn, iris.task, rdesc, par.set = ps, control = ctrl)
+print(res)
+
+df = as.data.frame(res$opt.path)
+print(head(df[, -ncol(df)]))
+
+# more unique and reliable way to construct the param set
+ps = makeModelMultiplexerParamSet(lrn,
+  classif.ksvm = makeParamSet(
+    makeNumericParam("sigma", lower = -10, upper = 10, trafo = function(x) 2^x)
+  ),
+  classif.randomForest = makeParamSet(
+    makeIntegerParam("ntree", lower = 1L, upper = 500L)
+  )
+)
+
+# this is how you would construct the param set manually, works too
+ps = makeParamSet(
+  makeDiscreteParam("selected.learner", values = extractSubList(bls, "id")),
+  makeNumericParam("classif.ksvm.sigma", lower = -10, upper = 10, trafo = function(x) 2^x,
+    requires = quote(selected.learner == "classif.ksvm")),
+  makeIntegerParam("classif.randomForest.ntree", lower = 1L, upper = 500L,
+    requires = quote(selected.learner == "classif.randomForst"))
+)
+
+# all three ps-objects are exactly the same internally.
+
+
+</code></pre>
+
+
+</div>

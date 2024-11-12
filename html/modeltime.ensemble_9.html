@@ -1,0 +1,236 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ensemble_model_spec</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Creates a Stacked Ensemble Model from a Model Spec</h2>
+
+<h3>Description</h3>
+
+<p>A 2-stage stacking regressor that follows:
+</p>
+
+<ol>
+<li>
+<p> Stage 1: Sub-Model's are Trained &amp; Predicted using <code>modeltime.resample::modeltime_fit_resamples()</code>.
+</p>
+</li>
+<li>
+<p> Stage 2: A Meta-learner (<code>model_spec</code>) is trained on Out-of-Sample Sub-Model
+Predictions using <code>ensemble_model_spec()</code>.
+</p>
+</li>
+</ol>
+<h3>Usage</h3>
+
+<pre><code class="language-R">ensemble_model_spec(
+  object,
+  model_spec,
+  kfolds = 5,
+  param_info = NULL,
+  grid = 6,
+  control = control_grid()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A Modeltime Table. Used for ensemble sub-models.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model_spec</code></td>
+<td>
+<p>A <code>model_spec</code> object defining the
+meta-learner stacking model specification to be used.
+</p>
+<p>Can be either:
+</p>
+
+<ol>
+<li> <p><strong>A non-tunable <code>model_spec</code>:</strong> Parameters are specified and are not optimized via tuning.
+</p>
+</li>
+<li> <p><strong>A tunable <code>model_spec</code>:</strong> Contains parameters identified for tuning with
+<code>tune::tune()</code>
+</p>
+</li>
+</ol>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kfolds</code></td>
+<td>
+<p>K-Fold Cross Validation for tuning the Meta-Learner.
+Controls the number of folds used in the meta-learner's cross-validation.
+Gets passed to <code>rsample::vfold_cv()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>param_info</code></td>
+<td>
+<p>A <code>dials::parameters()</code> object or <code>NULL</code>. If none is given, a
+parameters set is derived from other arguments. Passing this argument
+can be useful when parameter ranges need to be customized.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grid</code></td>
+<td>
+<p>Grid specification or grid size for tuning the Meta Learner.
+Gets passed to <code>tune::tune_grid()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>An object used to modify the tuning process.
+Uses <code>tune::control_grid()</code> by default.
+Use <code>control_grid(verbose = TRUE)</code> to follow the training process.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><strong>Stacked Ensemble Process</strong>
+</p>
+
+<ul>
+<li>
+<p> Start with a <em>Modeltime Table</em> to define your sub-models.
+</p>
+</li>
+<li>
+<p> Step 1: Use <code>modeltime.resample::modeltime_fit_resamples()</code> to perform the submodel resampling procedure.
+</p>
+</li>
+<li>
+<p> Step 2: Use <code>ensemble_model_spec()</code> to define and train the meta-learner.
+</p>
+</li>
+</ul>
+<p><strong>What goes on inside the Meta Learner?</strong>
+</p>
+<p>The Meta-Learner Ensembling Process uses the following basic steps:
+</p>
+
+<ol>
+<li> <p><strong>Make Cross-Validation Predictions.</strong>
+Cross validation predictions are made for each sub-model with <code>modeltime.resample::modeltime_fit_resamples()</code>.
+The out-of-sample sub-model predictions contained in <code>.resample_results</code>
+are used as the input to the meta-learner.
+</p>
+</li>
+<li> <p><strong>Train a Stacked Regressor (Meta-Learner).</strong>
+The sub-model out-of-sample cross validation predictions are then
+modeled using a <code>model_spec</code> with options:
+</p>
+
+<ul>
+<li> <p><strong>Tuning:</strong> If the <code>model_spec</code> does include tuning parameters via <code>tune::tune()</code>
+then the meta-learner will be hypeparameter tuned using K-Fold Cross Validation. The
+parameters and grid can adjusted using <code>kfolds</code>, <code>grid</code>, and <code>param_info</code>.
+</p>
+</li>
+<li> <p><strong>No-Tuning:</strong> If the <code>model_spec</code> does <em>not</em> include tuning parameters via <code>tune::tune()</code>
+then the meta-learner will not be hypeparameter tuned and will have the model
+fitted to the sub-model predictions.
+</p>
+</li>
+</ul>
+</li>
+<li> <p><strong>Final Model Selection.</strong>
+</p>
+
+<ul>
+<li> <p><strong>If tuned</strong>, the final model is selected based on RMSE, then
+retrained on the full set of out of sample predictions.
+</p>
+</li>
+<li> <p><strong>If not-tuned</strong>, the fitted model from Stage 2 is used.
+</p>
+</li>
+</ul>
+</li>
+</ol>
+<p><strong>Progress</strong>
+</p>
+<p>The best way to follow the training process and watch progress is to use
+<code>control = control_grid(verbose = TRUE)</code> to see progress.
+</p>
+<p><strong>Parallelize</strong>
+</p>
+<p>Portions of the process can be parallelized. To parallelize, set
+up parallelization using <code>tune</code> via one of the backends such as
+<code>doFuture</code>. Then set <code>control = control_grid(allow_par = TRUE)</code>
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>mdl_time_ensemble</code> object.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(tidymodels)
+library(modeltime)
+library(modeltime.ensemble)
+library(dplyr)
+library(timetk)
+library(glmnet)
+
+# Step 1: Make resample predictions for submodels
+resamples_tscv &lt;- training(m750_splits) %&gt;%
+    time_series_cv(
+        assess  = "2 years",
+        initial = "5 years",
+        skip    = "2 years",
+        slice_limit = 1
+    )
+
+submodel_predictions &lt;- m750_models %&gt;%
+    modeltime_fit_resamples(
+        resamples = resamples_tscv,
+        control   = control_resamples(verbose = TRUE)
+    )
+
+# Step 2: Metalearner ----
+
+# * No Metalearner Tuning
+ensemble_fit_lm &lt;- submodel_predictions %&gt;%
+    ensemble_model_spec(
+        model_spec = linear_reg() %&gt;% set_engine("lm"),
+        control    = control_grid(verbose = TRUE)
+    )
+
+ensemble_fit_lm
+
+# * With Metalearner Tuning ----
+ensemble_fit_glmnet &lt;- submodel_predictions %&gt;%
+    ensemble_model_spec(
+        model_spec = linear_reg(
+            penalty = tune(),
+            mixture = tune()
+        ) %&gt;%
+            set_engine("glmnet"),
+        grid       = 2,
+        control    = control_grid(verbose = TRUE)
+    )
+
+ensemble_fit_glmnet
+
+
+
+</code></pre>
+
+
+</div>

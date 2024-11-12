@@ -1,0 +1,69 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ModelInfo_rma</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Returns an rma ModelInfo list for use with caret</h2>
+
+<h3>Description</h3>
+
+<p>This function allows users to rely on the powerful <code>caret</code> package for
+cross-validating and tuning a rma analysis. Methods for rma are not included
+in the caret package, because the interface of caret is not entirely
+compatible with rma's model call. Specifically, rma is not compatible with
+the <code>train</code> methods for classes 'formula' or 'recipe'. The  variance of
+the effect sizes can be passed to the 'weights' parameter of <code>train</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ModelInfo_rma()
+</code></pre>
+
+
+<h3>Details</h3>
+
+<p>When using clustered data (effect sizes within studies), make sure to use
+'index = groupKFold(your_study_id_variable, k = 10))' in traincontrol, to
+sample by study ID when creating cross-validation partitions; otherwise the
+testing error will be positively biased.
+</p>
+
+
+<h3>Value</h3>
+
+<p>ModelInfo list of length 13.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Prepare data
+dat &lt;- escalc(measure="RR", ai=tpos, bi=tneg, ci=cpos, di=cneg, data=dat.bcg)
+dat$yi &lt;- as.numeric(dat$yi)
+dat$alloc &lt;- factor(dat$alloc)
+# Run rma
+rma.model &lt;- rma(y = dat$yi, mods = dat[, c("ablat", "year")], vi = dat$vi)
+# R^2 is estimated to be .64
+rma.model$R2
+# Now, use cross-validation to see how well this model generalizes
+# Leave-one-out cross-validation is more appropriate than 10-fold cv because
+# the sample size is very small
+fit_control &lt;- trainControl(method = "LOOCV")
+# Train the model without tuning, because rma has no tuning parameters
+cv.mf.cluster &lt;- train(y = dat$yi, x = dat[, c("ablat", "year")],
+                       weights = dat$vi,
+                       method = ModelInfo_rma(),
+                       trControl = fit_control)
+# Cross-validated R^2 is .08, suggesting substantial overfitting of the
+# original rma model
+cv.mf.cluster$results$Rsquared
+
+## End(Not run)
+</code></pre>
+
+
+</div>

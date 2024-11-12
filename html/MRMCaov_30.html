@@ -1,0 +1,448 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>OR_to_RMH</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Convert Obuchowski-Rockette Parameters to Roe &amp; Metz Parameters</h2>
+
+<h3>Description</h3>
+
+<p>Determines Roe &amp; Metz (RM) simulation model parameters for simulating
+multireader multicase likelihood-of-disease rating data based on real-data or
+conjectured Obuchowski-Rockette (OR) parameter estimates that describe the
+distribution of the empirical AUC reader performance measure. The algorithm
+assumes the constrained unequal-variance RM model (Hillis, 2012) which
+generalizes the original RM model (Roe and Metz, 1997) by allowing the
+diseased and nondiseased decision-variable distributions to have unequal
+variances for each reader, with the variance components
+involving diseased cases constrained to differ by a factor of 1/b^2 from
+corresponding variance components involving nondiseased cases. This algorithm
+is described in Hillis (2020). <em>Throughout we refer to the Hillis (2012)
+RM model as the <b>RMH model</b>.</em>
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">OR_to_RMH(...)
+
+## Default S3 method:
+OR_to_RMH(
+  ...,
+  AUC1,
+  AUC2,
+  var_R,
+  var_TR,
+  corr1,
+  corr2,
+  corr3,
+  var_error = NULL,
+  n0,
+  n1,
+  b_method = c("unspecified", "mean_to_sigma", "specified"),
+  mean_sig_input = NULL,
+  b_input = NULL,
+  b_le_1 = TRUE
+)
+
+## S3 method for class 'data.frame'
+OR_to_RMH(params, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>arguments passed to the default method.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>AUC1, AUC2</code></td>
+<td>
+<p>test 1 and 2 expected empirical AUCs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var_R, var_TR</code></td>
+<td>
+<p>OR reader and test-by-reader variance components.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>corr1, corr2, corr3</code></td>
+<td>
+<p>OR error correlations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var_error</code></td>
+<td>
+<p>OR error variance.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n0, n1</code></td>
+<td>
+<p>number of nondiseased and diseased cases.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b_method</code></td>
+<td>
+<p>method of estimating RMH b parameter.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mean_sig_input</code></td>
+<td>
+<p>mean-to-sigma ratio, required only if
+<code>b_method = "mean_to_sigma"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b_input</code></td>
+<td>
+<p>binormal <em>b</em> value, required only if
+<code>b_method = "specified"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b_le_1</code></td>
+<td>
+<p>logical indicating whether the algorithm searches first for
+b &lt;= 1 and then, if no solution, for b &gt;= 1; if FALSE, the algorithm
+searches only for for b &gt;= 1. Required only if
+<code>b_method = "unspecified"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>params</code></td>
+<td>
+<p>data frame of above OR parameter values in the columns.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Hillis (2012) modified the original RM model (Roe and Metz, 1997) by allowing
+variance components involving case to depend on truth (diseased/nondiseased),
+with variance components involving diseased cases set equal to those
+involving nondiseased cases multiplied by the factor 1/b^2, b&gt;0.  <em>We
+refer to the Hillis (2012) model as the <b>RMH</b> model</em>.  Hillis (2018)
+derived analytical formulas that express OR parameters describing the
+distribution of empirical AUC outcomes computed from RMH simulated data as
+functions of the RMH model parameters.  The reverse mapping from the RMH
+parameters to the OR parameters is implemented in <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span> by the  RMH_to_OR
+function. The OR_to_RMH function uses an iterative search procedure.
+</p>
+<p><code>b_method</code> indicates the method for estimating the RMH <em>b</em>
+parameter. Note that <em>b</em> is the conventional binormal-curve slope, i.e.,
+the slope of each reader's true ROC curve plotted in probit space.
+</p>
+
+<ul>
+<li> <p><code>b_method = "unspecified"</code> should be used when the goal is to
+determine RM parameters that result in simulated data for which the
+empirical AUC distribution is described by the inputted values for the
+OR parameter vector </p>
+<p style="text-align: center;"><code class="reqn">\beta_OR = (AUC1, AUC2, var_R, var_TR,
+    var_error, corr1, corr2, corr3).</code>
+</p>
+
+</li>
+<li> <p><code>b_method = "mean_to_sigma"</code> should be used when the goal is to
+determine RM parameters that result in simulated data for which the
+empirical AUC distribution is described by the inputted values for the OR
+parameter vector </p>
+<p style="text-align: center;"><code class="reqn">\beta1_OR = (AUC1, AUC2, var_R, var_TR, corr1,
+    corr2, corr3),</code>
+</p>
+<p> and such that the median mean-to-sigma ratio across
+readers is equal to <code>mean_sig_input</code> for the test having the lowest
+AUC.  Note that <code class="reqn">\beta1_OR</code> differs from <code class="reqn">\beta_OR</code> in that it
+does not contain the OR error variance.
+</p>
+</li>
+<li> <p><code>b_method = "specified"</code> should be used when the goal is to
+determine RM parameters that result in simulated data for which the
+empirical AUC distribution is described by the inputted values for the OR
+parameter vector <code class="reqn">\beta1_OR</code> (see above) with <em>b</em> equal to
+<code>mean_sig_input</code>.  (E.g., set <code>b_input = 1</code> for symmetric
+ROC curve.)
+</p>
+</li>
+</ul>
+<p>For <code>b_method = "mean_to_sigma"</code> or <code>"specified"</code>, the simulated
+empirical AUC estimate distribution is specified by the parameter values
+in <code>params</code>, except for <code>var_error</code>. Thus for these two options,
+<code>var_error</code> can be equal to <code>NA</code> or excluded from <code>params</code>.
+</p>
+<p>Parameter <code>mean_sig_input</code> is the inputted mean-to-sigma ratio needed
+for <code>b_method = "mean_to_sig"</code>. See Hillis &amp; Berbaum (2011) for more
+information.
+</p>
+<p>Parameter <code>b_input</code> is the inputted binormal <em>b</em> value needed for
+<code>b_method = "specified"</code>.
+</p>
+<p>There may not be a solution for a set of OR parameters values.  When this
+occurs, the function will either produce an approximate solution or indicate
+what OR input needs to be changed.
+</p>
+<p>A related function is the RMH_to_OR function, which determines OR parameters
+that describe the distribution of empirical AUC estimates computed from
+inputted RM model parameter values, based on the analytical mapping provided
+by Hillis (2018).
+</p>
+
+
+<h3>Value</h3>
+
+<p>The RMH model parameters are returned in a data frame with the following
+elements.
+</p>
+
+<dl>
+<dt>delta1</dt>
+<dd>
+<p>mean separation of nondiseased and diseased decision-variable
+distributions for test 1 across reader population.</p>
+</dd>
+<dt>delta2</dt>
+<dd>
+<p>mean separation of nondiseased and diseased decision-variable
+distributions for test 2 across reader population.</p>
+</dd>
+<dt>var_R</dt>
+<dd>
+<p>RMH reader variance  compnent.</p>
+</dd>
+<dt>var_TR</dt>
+<dd>
+<p>RMH text-by-reader variance component.</p>
+</dd>
+<dt>var_C</dt>
+<dd>
+<p>RMH case variance component.</p>
+</dd>
+<dt>var_TC</dt>
+<dd>
+<p>RMH test-by-case variance.</p>
+</dd>
+<dt>var_RC</dt>
+<dd>
+<p>RMH reader-by-case variance.</p>
+</dd>
+<dt>var_error</dt>
+<dd>
+<p>RMH error variance.</p>
+</dd>
+<dt>b</dt>
+<dd>
+<p>variance components involving diseased cases are constrained to
+differ by a factor of 1/b^2 from corresponding variance components
+involving nondiseased cases.</p>
+</dd>
+</dl>
+<p>Related quantities that are also returned in the data frame:
+</p>
+
+<dl>
+<dt>b_method</dt>
+<dd>
+<p>method used to estimate b.</p>
+</dd>
+<dt>n0</dt>
+<dd>
+<p>number of nondiseased cases per simulated sample.</p>
+</dd>
+<dt>n1</dt>
+<dd>
+<p>number of diseased cases per simulated sample.</p>
+</dd>
+<dt>mean_to_sig1</dt>
+<dd>
+<p>expected mean-to-sigma ratio across readers for test
+1.</p>
+</dd>
+<dt>mean_to_sig2</dt>
+<dd>
+<p>expected mean-to-sigma ratio across readers for test
+2.</p>
+</dd>
+<dt>Pr1_improper</dt>
+<dd>
+<p>probability that the test 1 ROC curve for a random
+reader will be noticeably improper (i.e, |mean-to-sigma ratio| &lt; 2).</p>
+</dd>
+<dt>Pr2_improper</dt>
+<dd>
+<p>probability that the test 2 ROC curve for a random
+reader will be noticeably improper (i.e, |mean-to-sigma ratio| &lt; 2).</p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>Stephen L. Hillis, Departments of Radiology and Biostatistics,
+University of Iowa, <a href="mailto:steve-hillis@uiowa.edu">steve-hillis@uiowa.edu</a>
+</p>
+<p>Brian J. Smith, Department of Biostatistics, University of Iowa,
+<a href="mailto:brian-j-smith@uiowa.edu">brian-j-smith@uiowa.edu</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Hillis SL (2012). Simulation of unequal-variance binormal multireader
+ROC decision data: an extension of the Roe and Metz simulation model.
+<em>Academic Radiology</em>, 19(12): 1518-1528. doi: 10.1016/j.acra.2012.09.011
+</p>
+<p>Hillis SL (2018). Relationship between Roe and Metz simulation model
+for multireader diagnostic data and Obuchowski-Rockette model parameters.
+<em>Statistics in Medicine</em>, 37(13): 2067-2093. doi: 10.1002/sim.7616
+</p>
+<p>Hillis SL (2020). Determining Roe and Metz model parameters for simulating
+multireader multicase confidence-of-disease rating data based on read-data or
+conjectured Obuchowski-Rockette parameter estimates. Vol. 11316, SPIE Medical
+Imaging: SPIE. doi.org/10.1117/12.2550541
+</p>
+<p>Hillis SL and Kevin SB (2011). Using the mean-to-sigma ratio as a measure of
+the improperness of binormal ROC curves. <em>Academic Radiology</em>, 18(2):
+143-154. doi: 10.1016/j.acra.2010.09.002
+</p>
+<p>Roe CA and Metz CE (1997). Dorfman-Berbaum-Metz method for statistical
+analysis of multireader, multimodality receiver operating characteristic
+data: validation with computer simulation. <em>Academic Radiology</em>, 4(4):
+298-303. doi: 10.1016/S1076-6332(97)80032-3
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>RMH_to_OR</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Example 1: Computing RM parameters from OR parameters directly
+##--------------------------------------------------------------
+## Example 1a: Using b_method ="unspecified" (the default)
+RM &lt;- OR_to_RMH(n0 = 69, n1 = 45, AUC1 = 0.897, AUC2 = 0.941,
+                corr1 = 0.433, corr2 = 0.430, corr3 = 0.299,
+                var_R = 0.00154, var_TR = 0.000208, var_error = 0.000788)
+RM
+##  We recommend also computing the OR parameter values ("true values")
+# that describe the distribution of simulated data based on above RM parameters,
+# using the RMH_to_OR function. Ideally the true values will be the same as the
+# inputted OR values used for deriving the RM parameter values. We recommend
+# always performing this check.  This check is carried out below, as shown below.
+true_values = RMH_to_OR(RM)
+true_values
+#   From the output we see, for this example, that the true OR values are identical to the
+# inputted OR values
+
+
+# Example 1b: Using b_method = "specified" with b_input = 1
+#   Note that the error variance does not need to be specified since this b_method
+# does not utilize it.
+RM &lt;- OR_to_RMH(n0 = 69, n1 = 45, AUC1 = 0.897, AUC2 = 0.941,
+                corr1 = 0.433, corr2 = 0.430, corr3 = 0.299,
+                var_R = 0.00154, var_TR = 0.000208,
+                b_method = "specified", b_input = 1)
+RM
+true_values &lt;- RMH_to_OR(RM)
+true_values
+#  From the output we see, for this example, that the true values are identical
+# (within rounding error) to the inputted OR values (but note that var_error was
+# not inputted)
+
+## Example 1c: Using b_method = "mean_to_sigma" with mean_to_sig_input = 4.5
+#   Note the error variance does not need to be  specified since this b_method
+# does not utilize it.
+RM &lt;- OR_to_RMH(n0 = 69, n1 = 45, AUC1 = 0.897, AUC2 = 0.941,
+                corr1 = 0.433, corr2 = 0.430, corr3 = 0.299,
+                var_R = 0.00154, var_TR = 0.000208,
+                b_method = "mean_to_sigma", mean_sig_input = 4.5)
+RM
+true_values &lt;- RMH_to_OR(RM)
+true_values
+#   From the output we see for this example that the true OR values are identical
+# (within rounding error) to the inputted OR values (but note that var_error was
+# not inputted)
+
+##---------------------------------------------------------------------
+
+## Example 2: Computing RM parameters from a data frame of OR parameters
+## ---------------------------------------------------------------------
+## Example 2a: One study
+vandyke_OR &lt;- data.frame(n0 = 69, n1 = 45, AUC1 = 0.897, AUC2 = 0.941,
+                         corr1 = 0.433, corr2 = 0.430, corr3 = 0.299,
+                         var_R = 0.00154, var_TR = 0.000208, var_error = 0.000788)
+vandyke_RM &lt;- OR_to_RMH(vandyke_OR)
+vandyke_RM
+true_values &lt;- RMH_to_OR(vandyke_RM)
+true_values
+
+## Example 2b: Three studies
+three_studies_OR &lt;- data.frame(
+  rbind(
+    vandyke = c(69, 45, 0.89793704, 0.94083736, 0.432, 0.429, 0.298, 0.00154,
+                0.0002, 0.00080229),
+    franken = c(33, 67, .8477498869, 0.8368950701, 0.521430051, 0.319691199,
+                0.3386375697, 0.0000433385, 0.0, 0.0014967254),
+    kundel = c(66, 29, 0.8038793103, 0.8413662487, 0.507695244, 0.3843523762,
+               0.4035662578, 0.0007340122, 0, 0.002148844)
+  )
+)
+colnames(three_studies_OR) &lt;- c("n0", "n1", "AUC1", "AUC2", "corr1", "corr2",
+                                "corr3", "var_R", "var_TR", "var_error")
+three_studies_OR
+three_studies_RM &lt;- OR_to_RMH(three_studies_OR)
+three_studies_RM
+true_values &lt;- RMH_to_OR(three_studies_RM)
+true_values
+##   Note above that the true values for corr2 and corr3 for the Franken study
+# differ slightly from the inputted values; this is because corr2 &lt; corr3 for the
+# inputted OR values, which is not possible for simulated RM model data.
+
+##Example 2c: Examples 1a, 1b and 1c run using one data frame
+vandyke_OR &lt;- data.frame(n0 = 69, n1 = 45, AUC1 = 0.897, AUC2 = 0.941,
+                         corr1 = 0.433, corr2 = 0.430, corr3 = 0.299,
+                         var_R = 0.00154, var_TR = 0.000208, var_error = 0.000788)
+vandyke_OR_x3 &lt;- vandyke_OR[c(1,1,1),] #has 3 rows, each equal to vandyke_OR
+b_method = c("unspecified","mean_to_sigma","specified")
+mean_sig_input = c(NA,4.5,NA)
+b_input = c(NA,NA,1)
+vandyke_OR_3ex &lt;- cbind(vandyke_OR_x3,b_method,mean_sig_input,b_input)
+vandyke_OR_3ex
+vandyke_OR_3ex_RM &lt;- OR_to_RMH(vandyke_OR_3ex)
+vandyke_OR_3ex_RM
+true_values &lt;- RMH_to_OR(vandyke_OR_3ex_RM)
+true_values
+
+
+## Example 3: Printing the alternative x1 -- x7 parameter values
+## ---------------------------------------------------
+## The OR_to_RMH function first finds the solutions using the alternative RM
+## parameterization consisting of b and the alternative parameters
+## x1, x2, x3, x4, x5, x6, and x7, and then solves for the conventional RM
+## parameters in terms of these alternative parameters.  (See Hillis (2020) for details.)
+## Although the user generally has no need to know these parameter values, they
+## can be printed out using the all = TRUE print option, as shown below
+## using Example 1a:
+
+RM &lt;- OR_to_RMH(n0 = 69, n1 = 45, AUC1 = 0.897, AUC2 = 0.941,
+               corr1 = 0.433, corr2 = 0.430, corr3 = 0.299,
+               var_R = 0.00154, var_TR = 0.000208, var_error = 0.000788)
+print(RM,all = TRUE)
+
+
+</code></pre>
+
+
+</div>

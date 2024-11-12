@@ -1,0 +1,247 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mt_map</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Map trajectories to prototypes.</h2>
+
+<h3>Description</h3>
+
+<p><code>mt_map</code> maps trajectories onto a predefined set of prototype
+trajectories. It first computes distances between the trajectories and each
+of the supplied trajectory types and then assigns each trajectory to the
+prototype that produced the smallest distance.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mt_map(
+  data,
+  use = "ln_trajectories",
+  save_as = "prototyping",
+  dimensions = c("xpos", "ypos"),
+  prototypes = mousetrap::mt_prototypes,
+  weights = rep(1, length(dimensions)),
+  pointwise = TRUE,
+  na_rm = FALSE,
+  minkowski_p = 2,
+  use2 = "data",
+  grouping_variables = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a mousetrap data object created using one of the mt_import
+functions (see mt_example for details). Alternatively, a trajectory
+array can be provided directly (in this case <code>use</code> will be ignored).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use</code></td>
+<td>
+<p>a character string specifying which trajectory data should be
+used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>save_as</code></td>
+<td>
+<p>a character string specifying where the resulting data should
+be stored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dimensions</code></td>
+<td>
+<p>a character vector specifying which trajectory variables
+should be used. Can be of length 2 or 3 for two-dimensional or
+three-dimensional trajectories respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prototypes</code></td>
+<td>
+<p>a trajectory array containing the prototypes the
+trajectories are mapped to. As a starting point, the trajectories stored in
+mt_prototypes can be used. See Details and Examples for selecting
+prototypes and creating new ones.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>numeric vector specifying the relative importance of the
+variables specified in <code>dimensions</code>. Defaults to a vector of 1s
+implying equal importance. Technically, each variable is rescaled so that
+the standard deviation matches the corresponding value in <code>weights</code>.
+To use the original variables, set <code>weights = NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pointwise</code></td>
+<td>
+<p>boolean specifying the way dissimilarity between the
+trajectories is measured (see Details). If <code>TRUE</code> (the default),
+<code>mt_distmat</code> measures the average dissimilarity and then sums the
+results. If <code>FALSE</code>, <code>mt_distmat</code>  measures dissimilarity once
+(by treating the various points as independent dimensions).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na_rm</code></td>
+<td>
+<p>logical specifying whether trajectory points containing NAs
+should be removed. Removal is done column-wise. That is, if any trajectory
+has a missing value at, e.g., the 10th recorded position, the 10th position
+is removed for all trajectories. This is necessary to compute distance
+between trajectories.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>minkowski_p</code></td>
+<td>
+<p>an integer specifying the distance metric.
+<code>minkowski_p = 1</code> computes the city-block distance, <code>minkowski_p 
+  = 2</code> (the default) computes the Euclidian distance, <code>minkowski_p = 3</code>
+the cubic distance, etc.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use2</code></td>
+<td>
+<p>an optional character string specifying where the data that
+contain the variables used for grouping can be found (in case
+<code>grouping_variables</code> are specified). Defaults to "data" as
+<code>data[["data"]]</code> usually contains all non mouse-tracking trial data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grouping_variables</code></td>
+<td>
+<p>a character string (or vector) specifying one or
+more variables in <code>use2</code>. If specified, prototypes will be rescaled
+separately to match the coordinate system of the trajectories for each
+level of the variable(s). If unspecified (the default), the prototypes are
+rescaled in the same way across all trajectories.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Mouse trajectories often occur in distinct, qualitative types (see Wulff et
+al., 2019; Wulff et al., 2022). Common trajectory types are linear
+trajectories, mildly and strongly curved trajectories, and single and
+multiple change-of-mind trials. <code>mt_map</code> allows to map trajectories to a
+predefined set of trajectory types.
+</p>
+<p>First, <code>mt_map</code> adjusts prototypes to match the coordinate system of the
+trajectories specified by <code>use</code>. Next, <code>mt_map</code> computes the
+distances between each trajectory and each of the supplied prototypes (see
+mt_distmat) and then assigns each trajectory to the closest prototype
+(i.e., the prototype that produced the smallest distance).
+</p>
+<p>Mapping trajectories to prototypes requires that the endpoints of all
+trajectories (and added prototypes) share the same direction, i.e., that all
+trajectories end in the top-left corner of the coordinate system
+(mt_remap_symmetric or mt_align can be used to achieve this).
+Furthermore, it is recommended to use length normalized trajectories (see
+mt_length_normalize; Wulff et al., 2019, Wulff et al., 2023).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A mousetrap data object (see mt_example) with an additional
+data.frame (by default called <code>prototyping</code>) that contains the
+best fitting prototype for each trajectory (the number of the prototype is
+specified under <code>prototype</code>, the label of the prototype under
+<code>prototype_label</code>) and the distance of the trajectory to the best
+fitting prototype (<code>min_dist</code>). If a trajectory array was provided
+directly as <code>data</code>, only the data.frame containing the results will be
+returned.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Dirk U. Wulff
+</p>
+<p>Jonas M. B. Haslbeck
+</p>
+<p>Pascal J. Kieslich
+</p>
+
+
+<h3>References</h3>
+
+<p>Wulff, D. U., Haslbeck, J. M. B., Kieslich, P. J., Henninger, F.,
+&amp; Schulte-Mecklenbeck, M. (2019). Mouse-tracking: Detecting types in
+movement trajectories. In M. Schulte-Mecklenbeck, A. Kühberger, &amp; J. G.
+Johnson (Eds.), <em>A Handbook of Process Tracing Methods</em> (pp. 131-145).
+New York, NY: Routledge.
+</p>
+<p>Wulff, D. U., Kieslich, P. J., Henninger, F., Haslbeck, J. M. B., &amp;
+Schulte-Mecklenbeck, M. (2023). <em>Movement tracking of psychological
+processes: A tutorial using mousetrap.</em> PsyArXiv.
+<a href="https://doi.org/10.31234/osf.io/v685r">doi:10.31234/osf.io/v685r</a>
+</p>
+<p>Wulff, D. U., Haslbeck, J. M. B., &amp; Schulte-Mecklenbeck, M. (2022).
+<em>Measuring the (dis-)continuous mind: What movement trajectories
+reveal about cognition</em>. Manuscript in preparation.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Length normalize trajectories
+KH2017 &lt;- mt_length_normalize(KH2017)
+
+# Map trajectories onto standard prototype set
+KH2017 &lt;- mt_map(KH2017,
+  use="ln_trajectories")
+
+
+# Plot prototypes
+mt_plot(mt_prototypes,facet_col="mt_id") + 
+  ggplot2::facet_grid(.~factor(mt_id,levels=unique(mt_id)))
+
+# Plot trajectories per assigned prototype
+mt_plot(KH2017,use="ln_trajectories",
+  use2="prototyping",facet_col="prototype_label")
+
+
+# Map trajectories onto reduced prototype set
+KH2017 &lt;- mt_map(KH2017,
+  use="ln_trajectories",
+  prototypes=mt_prototypes[c("straight","curved","cCoM"),,],
+  save_as="prototyping_red")
+
+
+# Map trajectories onto extended prototype set
+
+# Add additional prototypes
+mt_prototypes_ext &lt;- mt_add_trajectory(mt_prototypes,
+   xpos = c(0,1,-1,1,-1), ypos = c(0,1.5,1.5,1.5,1.5), id = "dCoM3"
+)
+mt_prototypes_ext &lt;- mt_add_trajectory(mt_prototypes_ext,
+   xpos = c(0,0,-1), ypos = c(0,1.5,1.5), id = "neutral"
+)
+
+# Map trajectories
+KH2017 &lt;- mt_map(KH2017,
+  use="ln_trajectories", prototypes=mt_prototypes_ext,
+  save_as="prototyping_ext")
+
+
+</code></pre>
+
+
+</div>

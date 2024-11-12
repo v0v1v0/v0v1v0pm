@@ -1,0 +1,277 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MunsellToxyY</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Convert Munsell HVC to xyY coordinates</h2>
+
+<h3>Description</h3>
+
+<p><code>MunsellToxyY</code> Converts Munsell HVC to xyY coordinates, by interpolating over the
+extrapolated Munsell renotation data
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MunsellToxyY( MunsellSpec, xyC='NBS', hcinterp='bicubic', vinterp='cubic',
+                     YfromV='ASTM', warn=TRUE ) </code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>MunsellSpec</code></td>
+<td>
+<p> a numeric Nx3 matrix or a vector that can be converted to
+such a matrix.
+Each row has Munsell HVC, where H is Hue Number,
+and V and C are the standard Munsell Value and Chroma.
+The Hue is automatically wrapped to the interval (0,100].
+<code>MunsellSpec</code> can also be a character N-vector with standard Munsell notation; it is converted to an Nx3 matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xyC</code></td>
+<td>
+<p> a numeric 2-vector with xy chromaticity of Illuminant C.
+It can also be one of the strings in the first column of this table;
+it is then replaced by the corresponding xy in the second column.
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+             </td>
+<td style="text-align: left;">   xy white point </td>
+<td style="text-align: left;">   reference </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>'NBS'</code> </td>
+<td style="text-align: left;">  <code>c(0.3101,0.3163)</code> </td>
+<td style="text-align: left;"> Kelly, et. al. [RP1549] (1943). Rheinboldt et al. (1960) </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>'JOSA'</code> </td>
+<td style="text-align: left;">  <code>c(0.31012,0.31631)</code> </td>
+<td style="text-align: left;"> Judd, Deane B. (1933) </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>'NTSC'</code> </td>
+<td style="text-align: left;">  <code>c(0.310,0.316)</code>  </td>
+<td style="text-align: left;">  NTSC (1953) </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>'CIE'</code>  </td>
+<td style="text-align: left;">  <code>c(0.31006,0.31616)</code>  </td>
+<td style="text-align: left;">  CIE:15 2004</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<p>The default <code>'NBS'</code> is probably what is intended by <cite>Newhall et. al.</cite>
+although no xy for C appears in that paper.
+This is the C used in the first computer program for conversion:
+<em>Rheinboldt et al. (1960)</em>.
+The other options are provided so that a neutral Munsell chip has the xy that
+the user expects.  Alternative values of <code>xyC</code> should not be <em>too far</em>
+from the above.
+If <code>hcinterp</code> is <code>'bicubic'</code>,
+this parameter only affects chips with Chroma <code class="reqn">&lt;</code> 4 (except Chroma=2).
+If <code>hcinterp</code> is <code>'bilinear'</code>,
+this parameter only affects chips with Chroma <code class="reqn">&lt;</code> 2.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hcinterp</code></td>
+<td>
+<p>either <code>'bicubic'</code> or <code>'bilinear'</code> (partial matching enabled).
+In the bicubic case, for a general input point, the output value is interpolated
+using a 4x4 subgrid of the lookup table, and the interpolation function is class <code class="reqn">C^1</code>
+(except at the neutrals).
+In the bilinear case, the interpolation uses a 2x2 subgrid,
+and the function is class <code class="reqn">C^0</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vinterp</code></td>
+<td>
+<p>either <code>'cubic'</code> or <code>'linear'</code> (partial matching enabled).
+In the cubic case, for a general input point, the output value is interpolated
+using 4 planes of constant Value, and the interpolation function is class <code class="reqn">C^1</code>.
+In the linear case, the interpolation uses 2 planes and the function is class <code class="reqn">C^0</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>YfromV</code></td>
+<td>
+<p>passed as the parameter <code>which</code> to the function <code>YfromV()</code>.
+See <code>YfromV()</code> for details.
+Option <code>'MGO'</code> is not allowed because then Y&gt;100 when V=10.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>warn</code></td>
+<td>
+<p>if a chip cannot be mapped (usually because the Chroma is too large),
+its x and y are set to <code>NA</code> in the returned
+<code>data.frame</code>.
+Just before returning, if any rows have <code>NA</code>, and this argument is <code>TRUE</code>,
+then a warning is logged.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>In case <code>hcinterp='bicubic'</code> or <code>vinterp='cubic'</code> a Catmull-Rom spline is used;
+see the article <em>Cubic Hermite spline</em>.
+This spline has the nice property that it is <em>local</em> and requires at most 4 points.
+And if the knot spacing is uniform:
+1) the resulting spline is <code class="reqn">C^1</code>,
+2) if the knots are on a line, the interpolated points are on the line too.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a <code>data.frame</code> with these columns:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>SAMPLE_NAME</code></td>
+<td>
+<p>the original <code>MunsellSpec</code> if that was a character vector.
+Or the Munsell notation string converted from the input matrix HVC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>HVC</code></td>
+<td>
+<p>the input Nx3 matrix, or the HVC matrix converted from the input Munsell notation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xyY</code></td>
+<td>
+<p>the computed output matrix, with CIE xyY coordinates of MunsellSpec illuminated by Illuminant C.
+In case of error, x and y are set to <code>NA</code>.
+The rownames of xyY are set to those of HVC, unless they are NULL when they are set to <code>SAMPLE_NAME</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Warning</h3>
+
+<p>Even when <code>vinterp='cubic'</code> the function HVC   →  xyY is not <code class="reqn">C^1</code>
+on the plane V=1.
+This is because of a change in Value spacing:
+when V<code class="reqn">\ge</code>1 the Value spacing is 1, but when V<code class="reqn">\le</code>1 the Value spacing is 0.2.
+</p>
+
+
+<h3>Note</h3>
+
+<p>When making plots in planes of constant Value,
+option <code>hcinterp='bicubic'</code> makes fairly smooth ovals,
+and <code>hcinterp='bilinear'</code> makes polygons.
+The ovals are smooth even when <code>vinterp='linear'</code>,
+but the function is not class <code class="reqn">C^1</code> at the planes of integer Value.
+To get a fully <code class="reqn">C^1</code> function (except at the neutrals and on the plane V=1),
+<code>hcinterp</code> and <code>vinterp</code> must be set to the defaults.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jose Gama and Glenn Davis</p>
+
+
+<h3>Source</h3>
+
+<p>Paul Centore 2014
+The Munsell and Kubelka-Munk Toolbox
+<a href="https://www.munsellcolourscienceforpainters.com/MunsellAndKubelkaMunkToolbox/MunsellAndKubelkaMunkToolbox.html">https://www.munsellcolourscienceforpainters.com/MunsellAndKubelkaMunkToolbox/MunsellAndKubelkaMunkToolbox.html</a><br><a href="https://www.rit.edu/science/munsell-color-lab">https://www.rit.edu/science/munsell-color-lab</a><br><a href="https://www.rit-mcsl.org/MunsellRenotation/all.dat">https://www.rit-mcsl.org/MunsellRenotation/all.dat</a><br><a href="https://www.rit-mcsl.org/MunsellRenotation/real.dat">https://www.rit-mcsl.org/MunsellRenotation/real.dat</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Judd, Deane B.
+<b>The 1931 I.C.I. Standard Observer and Coordinate System for Colorimetry</b>.
+Journal of the Optical Society of America.
+Vol. 23. pp. 359-374.
+October 1933.
+</p>
+<p>Newhall, Sidney M.,
+Dorothy Nickerson,
+Deane B. Judd.
+<b>Final Report of the O.S.A. Subcommitte on the Spacing of the Munsell Colors</b>.
+Journal of the Optical Society of America.
+Vol. 33.  No. 7.  pp. 385-418.
+July 1943.
+</p>
+<p>Kelly, Kenneth L.
+Kasson S. Gibson.
+Dorothy Nickerson.
+<b>Tristimulus Specification of the Munsell Book of Color from Spectrophometric
+Measurements</b>
+National Bureau of Standards RP1549
+Volume 31. August 1943.
+</p>
+<p>Judd, Deane B. and Günther Wyszecki.
+<b>Extension of the Munsell Renotation System to Very Dark Colors</b>.
+Journal of the Optical Society of America.
+Vol. 46.  No. 4.  pp. 281-284.
+April 1956.
+</p>
+<p>National Television System Committee.
+[Report and Reports of Panel No. 11, 11-A, 12-19,
+with Some supplementary references cited in the Reports,
+and the Petition for adoption of transmission standards
+for color television before the Federal Communications Commission]
+(1953)
+</p>
+<p>Rheinboldt, Werner C. and
+John P. Menard.
+<b>Mechanized Conversion of Colorimetric Data to Munsell Renotations</b>.
+Journal of the Optical Society of America.
+Vol. 50, Issue 8, pp. 802-807.
+August 1960.
+</p>
+<p>Wikipedia.
+Cubic Hermite spline.
+<a href="https://en.wikipedia.org/wiki/Cubic_Hermite_spline">https://en.wikipedia.org/wiki/Cubic_Hermite_spline</a>
+</p>
+<p>Paul Centore 2014
+The Munsell and Kubelka-Munk Toolbox
+<a href="https://www.munsellcolourscienceforpainters.com/MunsellAndKubelkaMunkToolbox/MunsellAndKubelkaMunkToolbox.html">https://www.munsellcolourscienceforpainters.com/MunsellAndKubelkaMunkToolbox/MunsellAndKubelkaMunkToolbox.html</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>xyYtoMunsell()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">MunsellToxyY( '7.6P 8.9/2.2' )
+##    SAMPLE_NAME  HVC.H HVC.V HVC.C      xyY.x      xyY.y      xyY.Y
+##  1 7.6P 8.9/2.2  87.6   8.9   2.2  0.3109520  0.3068719 74.6134498
+</code></pre>
+
+
+</div>

@@ -1,0 +1,220 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>FitMCMC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MCMC/Bayesian estimation.</h2>
+
+<h3>Description</h3>
+
+<p>Method that performs MCMC/Bayesian estimation of
+a <code>MSGARCH_SPEC</code> object on a set of observations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">FitMCMC(spec, data, ctr = list())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>spec</code></td>
+<td>
+<p>Model specification of class <code>MSGARCH_SPEC</code>
+created with <code>CreateSpec</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Vector (of size T) of observations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ctr</code></td>
+<td>
+<p>A list of control parameters:
+</p>
+
+<ul>
+<li> <p><code>par0</code>: Vector (of size d) where d must have
+the same length as the default parameters of the specification.
+It is the starting value for the chain (if empty the
+the method automatically set starting parameters; see *Details*).
+</p>
+</li>
+<li> <p><code>nburn</code> (integer &gt;= 0): Number of discarded draws.
+(Default: <code>nburn = 5000L</code>)
+</p>
+</li>
+<li> <p><code>nmcmc</code> (integer &gt; 0): Number of draws.
+(Default: <code>nmcmc = 10000L</code>)
+</p>
+</li>
+<li> <p><code>nthin</code> (integer &gt; 0): Thinning factor (every <code>nthin</code>
+draws are kept). (Default: <code>nthin = 10L</code>)
+</p>
+</li>
+<li> <p><code>do.sort</code> (bool): Logical indicating if the MCMC draws are post-sorted
+following Geweke (2007). By default, <code>do.sort = TRUE</code>, such that the
+MCMC draws are ordered to ensure that unconditional variance is an 
+increasing function of the regime (identification constraint). If the user sets
+<code>do.sort = FALSE</code>, no sorting is imposed, and label switching can occur (see *Details*).
+</p>
+</li>
+<li> <p><code>SamplerFUN</code>: Custom MCMC sampler (see *Details*).
+</p>
+</li>
+</ul>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The total number of draws is equal to <code>nmcmc / nthin</code>.
+The MCMC/Bayesian estimation relies on an <span class="pkg">Rcpp</span> implementation of the adaptive sampler of Vihola (2012). 
+The implementation is based on the R package <span class="pkg">adaptMCMC</span> (Andreas, 2012).
+Starting values when <code>par0</code> is not provided are chosen automatically
+before sampling (see Ardia et al. (2019) for more details).<br><code>SamplerFUN</code> allows for a custom sampler to be used. The function
+must take the form: <br><code>function(f_posterior, data, spec, par0, ctr)</code>, <br>
+where  <code>f_posterior</code> is the function to optimize, <code>data</code> is
+the data, <code>spec</code> is the specification,
+<code>par0</code> are the starting parameters, and <code>ctr</code> are the control
+parameters. The inputs <code>spec</code> and <code>data</code>,
+must be passed as inputs in the sampler (see *Examples*).
+The custom sampler must output a matrix containing the MCMC chain. <br>
+When <code>do.sort = TRUE</code>, sorting of each MCMC draw conditional on the unconditional variance is done across homogeneous regime specification.<br></p>
+
+
+<h3>Value</h3>
+
+<p>A list of class <code>MSGARCH_MCMC_FIT</code> with the following elements:
+</p>
+
+<ul>
+<li> <p><code>par</code>: The MCMC chain (matrix from the <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span> package
+<code>coda</code> (Plummer et al., 2006) of size <code>nmcmc</code> / <code>nthin</code> x d).
+</p>
+</li>
+<li> <p><code>accept</code>: Acceptance rate of the sampler.
+</p>
+</li>
+<li> <p><code>spec</code>:  Model specification of class <code>MSGARCH_SPEC</code>
+created with <code>CreateSpec</code>.
+</p>
+</li>
+<li> <p><code>data</code>:  Vector (of size T) of observations.
+</p>
+</li>
+<li> <p><code>ctr</code>: <code>list</code> of the control used for the fit.
+</p>
+</li>
+</ul>
+<p>The <code>MSGARCH_MCMC_FIT</code> with the following methods:
+</p>
+
+<ul>
+<li> <p><code>DIC</code>: Deviance Information Criterion (DIC).
+</p>
+</li>
+<li> <p><code>simulate</code>: Simulation.
+</p>
+</li>
+<li> <p><code>Volatility</code>: In-sample conditional volatility.
+</p>
+</li>
+<li> <p><code>predict</code>: Forecast of the conditional volatility (and predictive distribution).
+</p>
+</li>
+<li> <p><code>UncVol</code>: Unconditional volatility.
+</p>
+</li>
+<li> <p><code>PredPdf</code>: Predictive density (pdf).
+</p>
+</li>
+<li> <p><code>PIT</code>: Probability Integral Transform.
+</p>
+</li>
+<li> <p><code>Risk</code>: Value-at-Risk and Expected-Shortfall.
+</p>
+</li>
+<li> <p><code>State</code>: State probabilities (smoothed, filtered, predictive, Viterbi).
+</p>
+</li>
+<li> <p><code>ExtractStateFit</code>: Single-regime model extractor.
+</p>
+</li>
+<li> <p><code>summary</code>: Summary of the fit.
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>Andreas, S. (2012).
+<code>adaptMCMC</code>: Implementation of a generic adaptive Monte Carlo Markov chain sampler.
+<a href="https://cran.r-project.org/package=adaptMCMC">https://cran.r-project.org/package=adaptMCMC</a>
+</p>
+<p>Ardia, D. Bluteau, K. Boudt, K. Catania, L. Trottier, D.-A. (2019).
+Markov-switching GARCH models in <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span>: The <span class="pkg">MSGARCH</span> package.
+<em>Journal of Statistical Software</em>, 91(4), 1-38.
+doi: <a href="https://doi.org/10.18637/jss.v091.i04">10.18637/jss.v091.i04</a>
+</p>
+<p>Geweke J (2007).
+Interpretation and Inference in Mixture Models: Simple MCMC Works.
+<em>Computational Statistics &amp; Data Analysis</em>, 51(7), 3529-3550.
+doi: <a href="https://doi.org/10.1016/j.csda.2006.11.026">10.1016/j.csda.2006.11.026</a>
+</p>
+<p>MacDonald, I.L., Zucchini, W. (1997).
+<em>Hidden Markov and other models for discrete-valued time series</em>.
+CRC press.
+</p>
+<p>Plummer, M. Best, N. Cowles, K. &amp; Vines, K. (2006).
+<code>coda</code>: Convergence diagnosis and output analysis for MCMC.
+<em>R News</em>, 6, 7-11.
+<a href="https://cran.r-project.org/package=coda">https://cran.r-project.org/package=coda</a>
+</p>
+<p>Vihola, M. (2012).
+Robust adaptive Metropolis algorithm with coerced acceptance rate.
+<em>Statistics and Computing</em>, 22, 997-1008.
+doi: <a href="https://doi.org/10.1007/s11222-011-9269-5">10.1007/s11222-011-9269-5</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># create model specification
+spec &lt;- CreateSpec()
+
+# load data
+data("SMI", package = "MSGARCH")
+
+# fit the model on the data by MCMC
+set.seed(123)
+fit &lt;- FitMCMC(spec = spec, data = SMI, ctr = list(nburn = 500L, nmcmc = 500L, nthin = 1L))
+summary(fit)
+
+# custom sampler example
+## Not run: 
+library("mcmc")
+f_MCMC &lt;- function(f_posterior, data, spec, par0, ctr){
+  par &lt;- mcmc::metrop(f_posterior, initial = par0, nbatch = ctr$nmcmc + ctr$nburn,
+                        data = data, spec = spec)$batch
+  colnames(par) = names(par0)
+  return(par)
+}
+
+set.seed(123)
+fit &lt;- FitMCMC(spec, data = SMI, ctr  = list(SamplerFUN = f_MCMC,
+                                             nburn = 500L, nmcmc = 500L, nthin = 1L))
+summary(fit)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

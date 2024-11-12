@@ -1,0 +1,418 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modgam</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Fit a Generalized Additive Model (GAM) with a Two-Dimensional Smooth and Make Predictions</h2>
+
+<h3>Description</h3>
+
+<p>Fits a crude or adjusted regression on a user-supplied grid for spatial analysis using a generalized additive model with a two-dimensional LOESS smooth for geolocation (or any other two-dimensional predictor).  Includes optional pointwise confidence intervals and permutation tests for global and local tests of the null hypothesis that the two-dimensional predictor (e.g., geolocation) is not associated with the outcome.  Most applications will pass the output of this function to <code>plot.modgam</code> to map the resulting odds ratios or other effect estimates.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modgam(formula, rgrid, data, subset, offset, family = binomial(), permute = 0, 
+       conditional = TRUE, pointwise = FALSE, m = "adjusted", sp = seq(0.05,0.95,0.05), 
+       degree=1, keep=FALSE, type=c("spatial","all"), reference = "median", 
+       se.fit = FALSE, alpha = 0.05, verbose = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+
+<p>a formula expression, with the response on the left of a ~ oprator, and the predictors on the right. If fitting a Cox additive model, the response must be a survival object as returned by the Surv function. A built-in nonparametric smoothing term is indicated by <code>lo</code> for loess smooth terms. The two-dimensional predictor (e.g.,geolocation) should be specified as auguments in <code>lo()</code>. <code>formula</code> can be missing if <code>data</code> and <code>family</code> are specified.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rgrid</code></td>
+<td>
+
+<p>a data frame containing the values of X and Y coordinates at which to generate predictions. If missing, the predictions will be generated for the two-dimentional predictor in <code>data</code>. The <code>predgrid</code> function can be used to supply an appropriate rgrid for rdata, with the grid clipped according to any specified base map (see examples below).   
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>a data frame containing the variables in the model. If <code>formula</code> is specified, <code>data</code> is optional. In this way, if not found in <code>data</code>, the variables are taken from <code>environment(formula)</code>. If <code>formula</code> is missing, the data must be structured so that the outcome is in the 1st column (1st and 2nd colums for survival data) and the X and Y coordinates for two-dimensional predictor (e.g., geolocation) are in the 2nd and 3rd columns (3rd and 4th columns for survival data), respectively.  If more than 3 (4 for survival data) columns are provided and <code>m = "adjusted"</code>, the additional columns will be entered as linear predictors in the GAM model.    
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+
+<p>a description of the error distribution and link function to be used in the model. This can be a character string naming a family function, a family function or the result of a call to a family function. (See <code>family</code> for details of family functions.  Note that unlike other packages, MapGAM defaults to the binomial family and logit link, i.e., a logistic model.). If <code>formula</code> is missing, <code>family = "survival"</code> must be specified to fit a Cox proportional hazard additive model.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+
+<p>an optional vector specifying a subset of observations to be used in the fitting process.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offset</code></td>
+<td>
+
+<p>name in data and rgrid that will be used as offset in the model. It will be ignored if offset is specified in <code>formula</code>. <code>offset</code> will be ignored if <code>family="survival"</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>permute</code></td>
+<td>
+
+<p>the number of permutations of the data set for testing the significance of the two-dimensional predictor. <code>permute = 0</code> (default) produces no permutation tests.  If <code>permute &gt; 0</code>, the paired coordinates for the two-dimensional predictor are randomly permuted in order to simulate the distribution of results under the null hypothesis that location is not associated with the outcome.  1000 permutations are recommended for reasonable accuracy of p-values.  WARNING: Because each permutation requires refitting the GAM, permutation tests can be quite slow.    
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conditional</code></td>
+<td>
+
+<p>a logical value indicating whether to run a conditional or unconditional permutation test; this argument is used only when <code>permute &gt; 0</code>.  The default is a conditional permutation test: the span size is held fixed throughout all permutations even if <code>sp = NULL</code> to optimize the span size for the original data (see Young et al., 2012).  The unconditional permutation test repeats the span size optimization for each permutation, which is more conservative but takes about 20 times longer to compute.  If <code>conditional = FALSE</code> the sp argument is ignored when fitting both the original and permuted data sets.               
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pointwise</code></td>
+<td>
+
+<p>a logical value indicated whether to include pointwise permutation tests for every grid point.  This argument is only used
+when <code>permute &gt; 0</code>.  Using <code>se.fit = TRUE</code> to determine grid points with significantly different outcomes is usually preferable to using pointwise permutation tests.     	
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>m</code></td>
+<td>
+
+<p>model type for the GAM.  Options are "crude" or "adjusted" (default).  If "crude", only the smooth for the two-dimensional predictor is included in the model (i.e., "crude" is a synonym for "unadjusted").  If "adjusted", all covariates in the data set (columns &gt;= 4) are included in the model.     
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sp</code></td>
+<td>
+
+<p>the span size for the LOESS smooth of the two-dimensional predictor.  If <code>sp</code> is a vector an optimal span size will be determined using the <code>optspan</code> function, using the vector as candidate values.  By default the optimal span is chosen from among a sequence of values ranging from 0.05 to 0.95, in increments of 0.05. See the help file for <code>optspan</code> for more details. It will be ignored if span is indicated in <code>formula</code>.  
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>degree</code></td>
+<td>
+
+<p>the degree of the polynomials to be used for LOESS smooth, normally 1 or 2. It will be ignored if the degree is indicated in <code>formula</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep</code></td>
+<td>
+
+<p>a logical value indicating whether to store and return the pointwise odds ratios, and if conditional = FALSE the span size, for every permuted data set.  These values aren't necessary for mapping or cluster identification, and storing them slows the permutation tests, so the default is <code>keep = FALSE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+
+<p>use <code>type="spatial"</code>(default for censored survival data) to estimate the spatial effect, or <code>type="all"</code>(default for univariate outcome) to estimate the effect of all covariates included in the model.  
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reference</code></td>
+<td>
+
+<p>referent for the predicted values or effects. If <code>reference="none"</code>, the output will be predicted values at each grid point for either the spatial effect (<code>type="spatial"</code>) or the linear predictor including all covariates (<code>type="all"</code>).  If <code>reference = "median"</code>, the output will be the difference between the estimated effect/predictor at each grid point and the median effect/predictor (e.g., the log odds ratio for a binomial model with logit link). If <code>reference = "mean"</code>, the output will be the difference between the estimated effect/predictor at each grid point and the mean effect/predictor.  If <code>reference</code> is a data frame indicating a specific geolocation, the output will be the difference between the estimated effect/predictor at each grid point and the effect/predictor at the geolocation specified by <code>reference</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>se.fit</code></td>
+<td>
+
+<p>if <code>TRUE</code>, pointwise standard errors and confidence intervals are computed along with the predictions.  Results can be passed to <code>plot.modgam</code> with <code>contours = "interval"</code> to identify  clusters of the outcome (e.g., spatial regions with statistically significant outcomes–e.g., unusually high or low risks).   
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+
+<p>the significace level used for confidence intervals when <code>se.fit = TRUE</code>  
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+
+<p>a logical value indicating whether to print the GAM model statement, the percentile rank for the global deviance statistic in the permutation test, and the progress of the permutation test (report completion of every 10 permutations).  The default is <code>verbose = TRUE</code>.      
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>further arguments to be passed to the <code>gam</code> or <code>gamcox</code> function (e.g., weights).  	
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The model used to fit the data is a generalized additive model with a LOESS smooth for a two-dimensional predictor such as geolocation (Hastie and Tibshirani, 1990; Kelsall and Diggle, 1998; Webster et al., 2006).  Although any family and link function supported by the <code>gam</code> function is supported, the default binomial family with logit link yields the following model:
+</p>
+<p style="text-align: center;"><code class="reqn">\ln \left(\frac{\pi_{i}}{1-\pi_{i}}\right) = S(x_{i},y_{i}) + \mathbf{Z_{i}} \boldsymbol{\beta}</code>
+</p>
+	
+<p>where <code class="reqn">\pi_{i}</code> is the probability that the outcome is 1 for participant <em>i</em>, <code class="reqn">x_{i}</code> and <code class="reqn">y_{i}</code> are predictor coordinates for participant <em>i</em> (i.e., projected distance east and north, respectively, from an arbitrarily defined origin location), <code class="reqn">S(.,.)</code> is a 2-dimensional smoothing function (currently LOESS), <code class="reqn">\mathbf{Z_{i}}</code> is a row vector of covariate values for participant <em>i</em>, and <code class="reqn">\boldsymbol{\beta}</code> is a vector of unknown regression parameters (including an intercept).  
+When a permutation test is requested, for each permutation the paired X and Y coordinates in the data set are randomly reassigned to participants, consistent with the null hypothesis that the geolocation (or another two-dimensional predictor entered in place of X and Y) is not associated with the outcome.  Note that this procedure intentionally preserves associations between other covariates and the outcome variable so the permutation test reflects the significance of geolocation.  See the references for more details.              
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>modgam</code> returns an object of class <code>modgam</code>. It can be examined by <code>print</code> and <code>plot</code>.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>grid</code></td>
+<td>
+<p>a data frame with X and Y coordinates from rgrid.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>span</code></td>
+<td>
+<p>the span size used for the LOESS smooth.  If <code>keep = TRUE</code> and <code>conditional = FALSE</code>, a vector with optimized span sizes for the original data set and each of the permuted data sets.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamobj</code></td>
+<td>
+<p>the <code>gam</code> or <code>gamcox</code> model object from the fit to the data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>predobj</code></td>
+<td>
+<p>the <code>mypredict.gam</code> or <code>predict.gamcox</code> model object from the fit to the data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>the family and link function used for the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fit</code></td>
+<td>
+<p>the predicted values for each point on the grid.  For Gaussian family models, predicted values are for the outcome variable at each grid point.  For non-Gaussian families, predicted values are for the spatial effect alone on the scale of the linear predictor, compared to a referent specified through augument <code>reference</code> (e.g., for a binomial family logit link model with <code>reference = "median"</code>, the fit values are the difference in log odds of the outcome between the grid point and the median log odds, holding other predictors constant).  If predicted responses are desired for non-Gaussian families, they can be obtained from the fit values by setting <code>reference="none"</code> and applying the inverse link function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exp.fit</code></td>
+<td>
+<p>the exponential of <code>fit</code>.  Primarily useful for logit or log link functions (e.g., this provides odds ratios for a binomial family with logit link function.)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>global.pvalue</code></td>
+<td>
+<p>the p-value based on the likelihood ratio test comparing models with and without geolocation (or other two-dimensional predictor).
+</p>
+</td>
+</tr>
+</table>
+<p>If <code>se.fit = TRUE</code> then the following values are provided:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>se</code></td>
+<td>
+<p>an estimated standard error for each predicted value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf.low</code></td>
+<td>
+<p>the lower bounds for pointwise (1-<code>alpha</code>) confidence intervals.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf.high</code></td>
+<td>
+<p>the higher bounds for pointwise (1-<code>alpha</code>) confidence intervals.</p>
+</td>
+</tr>
+</table>
+<p>If <code>permute &gt; 0</code> then the following values are also provided:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>global.permt</code></td>
+<td>
+<p>the p-value based on the deviance statistic comparing models with and without geolocation (or other two-dimensional predictor), using the distribution of deviance statistics from the permuted data sets to represent the null distribution.  For a test of H0: geolocation is unassociated with the outcome variable (adjusting for any covariates if <code>m = "adjusted"</code>), reject H0 if the percentile rank is below alpha.   WARNING: by default <code>modgam</code> uses a conditional permutation test which produces inflated type I error rates; Young et al. (2012) recommend using alpha=0.025 to limit the type I error rate to approximately 5%.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pointwise.permt</code></td>
+<td>
+<p>Only provided when <code>pointwise = TRUE</code>.  For each point on the grid, the percentile rank of the local linear predictor for the model compared to the local linear predictor distribution from the permuted data sets.  This result can be used to define clusters of the outcome (e.g., spatial regions with statistically significant outcomes–e.g., unusually high or low risks), as in <code>plot.modgam</code> with <code>contours="permrank"</code>.</p>
+</td>
+</tr>
+</table>
+<p>If <code>permute</code> &gt; 0 and <code>keep = T</code> then the following values are also provided:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>permutations</code></td>
+<td>
+<p>a matrix containing null permuted values for each point on the grid, with the results for each permutation in a separate column.  For the binomial family and logit link these are provided as odds ratios, otherwise they are reported as linear predictors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>deviances.permt</code></td>
+<td>
+<p>a vector containing deviances for each permutation.</p>
+</td>
+</tr>
+</table>
+<h3>Warning </h3>
+
+<p>Permutation tests are computationally intensive, often requiring several hours or more.</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Lu Bai, Scott Bartell, Robin Bliss, and Veronica Vieira 
+</p>
+<p>Send bug reports to <a href="mailto:sbartell@uci.edu">sbartell@uci.edu</a>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Bai L, Gillen DL, Bartell SM, Vieira VM. <a href="https://doi.org/10.32614/RJ-2020-001">doi:10.32614/RJ-2020-001</a>Mapping smoothed spatial effect estimates from individual-level data:  MapGAM. The R Journal 2020, 12:32-48. 
+</p>
+<p>Hastie TJ, Tibshirani RJ. Generalized Additive Models.  (Chapman &amp; Hall/CRC Monographs on Statistics &amp; Applied Probability, Boca Raton, Florida, 1990).  
+</p>
+<p>Kelsall J, Diggle P. <a href="https://doi.org/10.1111/1467-9876.00128">doi:10.1111/1467-9876.00128</a>Spatial variation in risk of disease: a nonparametric binary 
+regression approach. J Roy Stat Soc C-App 1998, 47:559-573. 	
+</p>
+<p>Vieira V, Webster T, Weinberg J, Aschengrau A, Ozonoff D. <a href="https://doi.org/10.1186/1476-069X-4-11">doi:10.1186/1476-069X-4-11</a>Spatial analysis of lung, colorectal, and breast cancer on Cape Cod: An application of generalized additive models to case-control data. Environmental Health 2005, 4:11. 
+</p>
+<p>Webster T, Vieira V, Weinberg J, Aschengrau A. <a href="https://doi.org/10.1186/1476-072X-5-26">doi:10.1186/1476-072X-5-26</a>Method for mapping population-based case-control studies using Generalized Additive Models. International Journal of Health Geographics 2006, 5:26.
+</p>
+<p>Young RL, Weinberg J, Vieira V, Ozonoff A, Webster TF. <a href="https://doi.org/10.1186/1476-072X-9-37">doi:10.1186/1476-072X-9-37</a>A power comparison of generalized additive models and the spatial scan statistic in a case-control setting. International Journal of Health Geographics 2010, 9:37.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>predgrid</code>, 
+<code>optspan</code>, 
+<code>plot.modgam</code>
+<code>colormap</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Load base map in SpatialPolygonsDataFrame format
+# This map was read from ESRI shapefiles using the readShapePoly function (soon to be deprecated)
+data(MAmap)	
+# Load data and create grid on base map
+data(MAdata)							
+gamgrid &lt;- predgrid(MAdata, map=MAmap)    
+# Fit crude logistic GAM to the MA data using span size of 50%
+# and predict odds ratios for every point on gamgrid
+fit1 &lt;- modgam(data=MAdata, rgrid=gamgrid, m="crude", sp=0.5)  
+# Summary statistics for pointwise crude odds ratios 
+summary(fit1$exp.fit)			
+# Summary stats for pointwise crude log odds (linear predictor) 
+summary(fit1$fit)			
+
+# fit adjusted GAM using span size of 50%, 
+# including a (too small) conditional permutation test
+fit2 &lt;- modgam(data=MAdata, rgrid=gamgrid, permute=25, m="adjusted", sp=0.5)  
+fit2
+
+# fit adjusted GAM by specifiying formula
+fit2.f &lt;- modgam(Case~lo(Xcoord,Ycoord)+Smoking + Mercury + Selenium,data=MAdata,
+          rgrid=gamgrid, sp=0.5)
+fit2.f
+
+# Detailed example with a continuous outcome variable, map projections, 
+# and data trimming:  investigating tweet times by geolocation
+# NOTE: this example requires the maps and mapproj packages
+# Convert base map and beer tweet data locations to US Albers projection 
+# for better distance estimates than using (lat,long) as (X,Y) coords 
+if(require(maps) &amp; require(mapproj)) {
+	USmap &lt;- map("state",projection="albers",parameters=c(29.5,45.5),
+		plot=FALSE,fill=TRUE,col="transparent")
+	data(beertweets)
+	# Reuse last map projection to convert data coordinates	
+	XY &lt;- mapproject(beertweets$longitude,beertweets$latitude)[1:2]  
+	jtime &lt;- julian(beertweets$time)
+	# Convert tweet dates and times to time of day (24-hour)
+	tweettime &lt;- as.numeric(jtime-trunc(jtime))*24
+	beerproj &lt;- data.frame(tweettime, XY[1], XY[2], beertweets$beer)			 
+	# Generate grid on the US map, trimmed to range of beer data
+	USgrid &lt;- predgrid(beerproj, map=USmap)						
+	# Fit adjusted model--adjusting for beer indicator variable 
+	fit3 &lt;- modgam(data=beerproj, rgrid=USgrid, family=gaussian, 
+		reference="none", m="adjusted", sp=0.05)	
+	# Get summary statistics for predicted tweet times across grid points 
+	summary(fit3$fit)	
+}
+
+# Smoothing survival rates over geolocations with adjustement of Age and Insurance
+# Including generating pointwise standard errors and confidence intervals
+data(CAdata)
+data(CAgrid)
+data = CAdata[1:1000,]	# use a subset of the California data
+# manually set the categorical variables as factors
+data$INS = factor(data$INS)
+# no formula needed if data are arranged in a specific order (see \code{data} argument)
+fit4 &lt;- modgam(data=data, rgrid=CAgrid, family="survival", sp=0.2)
+fit4
+# fit the same model using the formula argument, with data columns in any order
+fit4.f &lt;- modgam(Surv(time,event)~AGE+factor(INS)+lo(X,Y), data=data,
+                rgrid = CAgrid, family="survival", sp=0.2)
+
+# Smoothing for two-dimensional chemical exposure instead of geolocation
+# case status in 1st column, mercury and selenium in 2nd and 3rd columns   
+ma2 &lt;- MAdata[,c(1,5:6)]  
+expgrid &lt;- predgrid(ma2)
+fit5 &lt;- modgam(data=ma2,rgrid=expgrid,sp=.5,m="crude") 
+summary(fit5$exp.fit)
+# plot the results, with mercury on the X axis and selenium on the Y axis
+plot(fit5, contours="response", arrow=FALSE, axes=TRUE) 
+
+</code></pre>
+
+
+</div>

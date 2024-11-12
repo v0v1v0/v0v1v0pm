@@ -1,0 +1,501 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>micSim</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Run microsimulation (sequentially)
+</h2>
+
+<h3>Description</h3>
+
+<p>Performs a continuous-time microsimulation run (sequentially, i.e., using only one CPU core).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">micSim(initPop, immigrPop=NULL, transitionMatrix, absStates=NULL, 
+        fixInitStates = c(), varInitStates=c(), initStatesProb=c(), 
+        maxAge=99, simHorizon, fertTr=c(), monthSchoolEnrol=c())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>initPop</code></td>
+<td>
+
+<p>Data frame comprising the starting population of the simulation.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>immigrPop</code></td>
+<td>
+
+<p>Data frame comprising information about the immigrants entering the population across simulation time. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transitionMatrix</code></td>
+<td>
+
+<p>A matrix indicating the transition pattern and the names of the functions determining the respective transition rates (with rates to be returned as vectors, i.e. for input age 0 to 10 eleven rate values have to be returned).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>absStates</code></td>
+<td>
+
+<p>A vector indicating the absorbing states of the model.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixInitStates</code></td>
+<td>
+
+<p>(Vector of) Indices of substates determining the attributes/substates that a newborn will be taken over from the mother.
+If empty or not defined, no attributes will be inherited.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>varInitStates</code></td>
+<td>
+
+<p>(A vector comprising the) Substates / attributes that are assigned to a newborn randomly according to the probabilities <code>initStatesProb</code>, i.e. that are not inherited from the mother. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initStatesProb</code></td>
+<td>
+
+<p>A vector comprising the probabilities corresponding to <code>varInitStates</code>. 
+If <code>fixInitStates</code> are given (i.e. attributes from the mother are inherited), these probabilities have to sum to one   conditioned on the inherited attributes, i.e. for  each (set of) inherited attribute(s) separately. Otherwise, the sum of <code>initStatesProb</code> has to be one.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxAge</code></td>
+<td>
+
+<p>A scalar indicating the exact maximal age (i.e., sharp 100.00 years) which an individual can reach during simulation. <code>maxAge</code> has to be greater than zero. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>simHorizon</code></td>
+<td>
+
+<p>A vector comprising the starting and ending date of the simulation. Both dates have to be given as strings in the format ‘yyyymmdd’. The starting date has to precede the ending date.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fertTr</code></td>
+<td>
+
+<p>A vector indicating all transitions triggering a child birth event during simulation, that is, the creation of a new individual. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>monthSchoolEnrol</code></td>
+<td>
+
+<p>The month (as numeric value from 1 to 12) indicating the general enrollment month for elementary school, e.g., 9 for September. If transition to elementary school is not defined (see below under ‘details’) and no such month is given school enrollment to elementary school is not modelled / simulated. 
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>All nonabsorbing states considered during simulation have to be defined as composite states. In more detail, they consist of labels indicating values of state variables. Within states, labels are separated by a forward slash "/". Possible state variables are, for example, gender, number of children ever born, and educational attainment. Corresponding values are, for example, "m" and "f" (gender), "0","1","2", and "3+" (number of children ever born), "no", "low", "med", and "high" (educational attainment). Possible examples of states are "m/0/low" for a childless male with elementary education  or "f/1/high" for a female with one child and a higher secondary school degree. All state variables considered plus accordant value labels have to be provided by the user. The only exception is gender which is predefined by labels "m" and "f" indicating male and female individuals. The label values "no" and "low" are reserved for enrolment events to elementary school (see below).
+</p>
+<p>Nonabsorbing states have to be given as strings such as "dead" for being dead or "rest" for emigrated.
+</p>
+<p><code>micSim</code> is able to conduct enrollment events to elementary school such that they take place on the first day of the <code>monthSchoolEnrol</code>th month of a particular year. For this purpose, a state variable defining educational attainment has to be created first. Then, labels of possible values have to be defined such that "no" describes no education and "low" describes elementary education. Finally, the transition function determining the transition rate for the respective enrollment event has to be defined to return "Inf" for the age x at which children should be enrolled (e.g., at age seven) and zero otherwise. That way, an event "school enrollment on <code>dateSchoolEnrol</code> of the year in which a child turns x years old" is enforced. A related illustration is given below in the second example.
+</p>
+<p>If school enrollment is not of interest to the modeller, <code>monthSchoolEnrol</code> can let be unspecified. Then during simulation that feature is ignored. 
+</p>
+<p>The starting population <code>initPop</code> has to be given in the form of a data frame. Each row of the data frame corresponds to one individual. <code>initPop</code> has to comprise the following information: 
+unique numerical person identifier (ID), birth date, and initial state (i.e., the state occupied by the individual when entering the synthetic population). Birth dates have to be given as strings in the format ‘yyyymmdd’, e.g. ‘20220815’ for Aug 15th 2022. Be aware that at simulation starting date all individuals in the initial population have already to be born and younger than <code>maxAge</code>. Otherwise, <code>micSim</code> throws an error message pointing to this issue. 
+</p>
+<p>Information about immigrants has to be given in the form of a data frame (<code>immigrPop</code>). Each row of the data frame corresponds to one immigrant.
+<code>immigrPop</code> contains the following data: unique numerical person identifier (ID), immigration date, birth date, and initial state (i.e., the state occupied by the immigrant when entering the simulated population). Immigration dates and birth dates have to provided as strings in the format ‘yyyymmdd’, e.g. ‘20220815’ for Aug 15th 2022. Immigration dates have to be specified to occur after simulation starting date and before simulation stopping date. Immigrants must be born when they migrate. Otherwise, <code>micSim</code> throws error messages pointing to this issues.   
+</p>
+<p>For each transition that should be considered during simulation accordant transition rates have to be provided. Since MicSim's model is a continuous-time multi-state model these rates are transition intensities (as also used for defining time-inhomogeneuous Markov models) and not probabilities. Palloni (2000) illustrates very well the difference between both concepts. Zinn (2011) describes methods for estimating rates for MicSim's model. A crude way of transforming transition probabilities to rates is assuming that the rates <code class="reqn">lambda_{ij}</code> (for leaving state <code class="reqn">i</code> to enter state <code class="reqn">j</code>) are constant in the time interval (of length <code class="reqn">t</code>) captured by a corresponding probability <code class="reqn">p_{ij}</code>:
+</p>
+<p><code class="reqn">p_{ij} = 1 - exp(- lambda_{ij} * t)</code> which yields <code class="reqn">lambda_{ij} = - 1/t * ln(1-p_{ij})</code>.
+</p>
+<p>Be aware that this is only an approximation since this formula belongs to a time-homogeneuous Markov model and not to the more flexible time-inhomogeneuous Markov model (as used by MicSim). Thus, here for the time interval covered by <code class="reqn">p_{ij}</code> a time-homogeneuous Markov model is assumed. Many users may have annual transition probabilities at hand, i.e., <code class="reqn">t=1</code>. 
+</p>
+<p><code>micSim</code> requires these rates in form of functions which are handed over via the transition matrix <code>transitionMatrix</code> (described in the subsequent paragraph). The <code>MicSim</code> package allows rates to depend on three time scales: age, calendar time, and the time that has elapsed since the last change of a particular state variable (e.g., the time elapsed since wedding). 
+In accordance therewith, <code>micSim</code> requires transition rates functions to feature three input parameters, namely <code>age</code>, <code>calTime</code>, and <code>duration</code>.
+Via <code>age</code> the age of an individual is handed over, via <code>caltime</code> the calendar time, and via <code>duration</code> the time that has elapsed since the last change of the affected state variable. 
+All three input parameters might vary, or only one or two of them.
+Also none of the input parameters can be specified to vary, i.e., transition rates can be defined to be constant. 
+Since <code>micSim</code> computes integrals of rates along simulation procedure, the rates functions must deliver vector of rates for vectors of inputs, i.e. for an input vector of ages (e.g. ages [0,1,2,3]) the rates functions have to given as many rate values as is the length of the age vector (in the example, four rate values). More details on this are given in the examples below or in the vignette to this package. 
+If rates are assumed to be independent of a specific time scale, the corresponding input argument can simply be ignored within the body of the rates function (i.e., is not used to determine a specific rate value).
+For illustration, see the examples in the example section. 
+Beware that rates for age have to be delivered at maximal only until <code>maxAge</code>. If *more* rates are given, this does not cause an error but they are not used.  
+Note that allowing transition rates to vary along the time elapsed since a last transition facilitates modelling gestation gaps after a delivery: For a period of nine or ten months transition rates for higher order parities are simply set to zero (e.g., see the complex example in the example section).  
+</p>
+<p>The transition matrix <code>transitionMatrix</code> has as many rows as the simulation model comprises nonabsorbing states and as many columns as the simulation model comprises absorbing and nonabsorbing states. The rows of <code>transitionMatrix</code> mark starting states of transitions and the columns mark arrival states. At positions of <code>transitionMatrix</code> indicating impossible transitions, the matrix contains zeros. Otherwise the name of the function determining the respective transition rates has to be given. The function buildTransitionMatrix supports the construction of <code>transitionMatrix</code>.
+</p>
+<p>If, during simulation, an individual reaches <code>maxAge</code>, he/she stays in his/her current state until simulation ending date is reached, that is, the respective individual is no longer at risk of experiencing any events and his/her ongoing episode will be censored at simlation ending date.  
+</p>
+<p>Each element of <code>fertTr</code> has to be of the form "A-&gt;B", that is, "A" indicates the starting attribute of the transition and "B" the arrival attribute. ("-&gt;" is the placeholder defined to mark a transition.) For example, "0" (childless) gives the starting point of the transition marking a first birth event and "1" (first child) its arrival point. All fertility attributes given in <code>fertTr</code> have to be part of the state variable specifiying fertility in the state space. That is, if there is none, <code>fertTr</code> is empty: <code>fertTr=c()</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The data frame <code>pop</code> contains the whole synthetic population considered during simulation including all events generated. In more detail, <code>pop</code> contains as many rows as there are transitions performed by the individuals. Also, "entering the population" is considered as an event. In general, individuals can enter the simulation via three channels: by being part of the starting population, by immigration, and by being born during simulation. If fertility events are part of the model's specification (i.e., <code>fertTr</code> is not empty), <code>pop</code> contains an additional column indicating the ID of the mother for individuals born during simulation. For all other individuals, the ID of the mother is unknown (i.e., set to ‘NA’).
+</p>
+<p>The function convertToLongFormat reshapes the microsimulation output into long format, while the function convertToWideFormat gives the microsimulation in wide format. 
+</p>
+
+
+<h3>Note</h3>
+
+<p>For large-scale models and simulation, I recommend parallel computing using micSimParallel. This speeds up execution times considerably.
+However, before running an extensive simulation on multiple cores, the package user should definitely check whether the input for the simulation fits. 
+This can best be achieved by first running a short and less extensive simulation with only one core (e.g., running only a one percent sample of the initial population).</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sabine Zinn
+</p>
+
+
+<h3>References</h3>
+
+<p>Palloni, A. (2001). Increment-Decrement Life Tables. In: Preston, S., Heuveline, P., &amp; Guillot, M. (eds). Demography: measuring and modeling population processes. Malden, MA: Blackwell Publishers.
+</p>
+<p>Zinn, S. (2011). Preparation of required input data. In: Zinn, S. A Continuous-Time Microsimulation and First Steps Towards a Multi-Level Approach in Demography, Disseration, Chapter 3, <a href="https://rosdok.uni-rostock.de/file/rosdok_derivate_0000004766/Dissertation_Zinn_2011.pdf">https://rosdok.uni-rostock.de/file/rosdok_derivate_0000004766/Dissertation_Zinn_2011.pdf</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">######################################################################################
+# 1. Simple example only dealing with mortality events
+######################################################################################
+
+# Clean workspace 
+rm(list=ls())
+
+# Defining simulation horizon
+startDate &lt;- 20000101 # yyyymmdd
+endDate   &lt;- 21001231 # yyyymmdd
+simHorizon &lt;- c(startDate=startDate, endDate=endDate)
+
+# Seed for random number generator
+set.seed(234)
+
+# Definition of maximal age
+maxAge &lt;- 120
+
+# Defintion of nonabsorbing and absorbing states
+sex &lt;- c("m","f")
+stateSpace &lt;- sex
+attr(stateSpace,"name") &lt;- "sex"
+absStates &lt;- "dead"
+
+# Definition of an initial population 
+birthDates &lt;- c("19301231","19990403","19561015","19911111","19650101")
+initStates &lt;- c("f","m","f","m","m")
+initPop &lt;- data.frame(ID=1:5,birthDate=birthDates,initState=initStates)
+
+# Definition of mortality rates (Gompertz model)
+mortRates &lt;- function(age, calTime, duration){
+  a &lt;- 0.00003
+  b &lt;- ifelse(calTime&lt;=2020, 0.1, 0.097)
+  rate &lt;- a*exp(b*age)
+  return(rate)
+}
+
+# Transition pattern and assignment of functions specifying transition rates
+absTransitions &lt;- c("dead","mortRates")
+transitionMatrix &lt;- buildTransitionMatrix(allTransitions=NULL,
+  absTransitions=absTransitions, stateSpace=stateSpace)
+
+# Execute microsimulation (sequentially, i.e., using only one CPU)
+pop &lt;- micSim(initPop=initPop, transitionMatrix=transitionMatrix, absStates=absStates, 
+  maxAge=maxAge, simHorizon=simHorizon)
+  
+######################################################################################
+# 2. More complex, but only illustrative example dealing with mortality, changes in 
+# fertily, and with the inheritance of attributes of the mother
+######################################################################################  
+
+# Clean workspace 
+rm(list=ls())
+
+# Defining simulation horizon
+startDate &lt;- 20140101 # yyyymmdd
+endDate   &lt;- 20241231 # yyyymmdd
+simHorizon &lt;- c(startDate=startDate, endDate=endDate)
+  
+# Seed for random number generator
+set.seed(234)
+
+# Definition of maximal age 
+maxAge &lt;- 100  
+
+# Defintion of nonabsorbing and absorbing states
+sex &lt;- c("m","f")                     
+nat &lt;- c("DE","AT","IT") # nationality
+fert &lt;- c("0","1")           
+stateSpace &lt;- expand.grid(sex=sex,nat=nat,fert=fert)
+absStates &lt;- "dead" 
+
+# Definition of an initial population (for illustration purposes, create a random population)
+N = 100   
+birthDates &lt;- runif(N, min=getInDays(19500101), max=getInDays(20131231)) 
+getRandInitState &lt;- function(birthDate){
+  age &lt;- trunc((getInDays(simHorizon[1]) - birthDate)/365.25) 
+  s1 &lt;- sample(sex,1)
+  s2 &lt;- sample(nat,1)
+  s3 &lt;- ifelse(age&lt;=18, fert[1], sample(fert,1))
+  initState &lt;- paste(c(s1,s2,s3),collapse="/")
+  return(initState)
+}
+initPop &lt;- data.frame(ID=1:N, birthDate=birthDates, initState=sapply(birthDates, getRandInitState))
+initPop$birthDate &lt;- getInDateFormat(initPop$birthDate)
+
+# Definition of initial states for newborns
+# To have possibility to define distinct sex ratios for distinct nationalities, 
+# inherit related substate from the mother 
+fixInitStates &lt;- 2 # give indices for attribute/substate that will be taken over 
+                   # from the mother, here: nat 
+varInitStates &lt;- rbind(c("m","DE","0"), c("f","DE","0"),
+                       c("m","AT","0"), c("f","AT","0"), 
+                       c("m","IT","0"), c("f","IT","0")) 
+initStatesProb &lt;- c(0.515,0.485, 
+                    0.515,0.485,
+                    0.515,0.485)
+# Mind: depending on the inherited attribute nat="DE", nat="AT", or nat="IT"
+# initials probabilites must sum to one                       
+
+# Definition of (possible) transition rates  
+# Fertility rates (Hadwiger mixture model)
+fertRates &lt;- function(age, calTime, duration){ 
+  b &lt;- ifelse(calTime&lt;=2020, 3.5, 3.0)
+  c &lt;- ifelse(calTime&lt;=2020, 28, 29)
+  rate &lt;-  (b/c)*(c/age)^(3/2)*exp(-b^2*(c/age+age/c-2))
+  rate[age&lt;=15 | age&gt;=45] &lt;- 0
+  return(rate)
+}
+# Mortality rates (Gompertz model)
+mortRates &lt;- function(age, calTime, duration){
+  a &lt;- .00003
+  b &lt;- ifelse(calTime&lt;=2020, 0.1, 0.097)
+  rate &lt;- a*exp(b*age)
+  return(rate)
+}
+
+fertTrMatrix &lt;- cbind(c("f/DE/0-&gt;f/DE/1", "f/AT/0-&gt;f/AT/1", "f/IT/0-&gt;f/IT/1"),
+                      c(rep("fertRates",3))) 
+allTransitions &lt;- fertTrMatrix
+
+absTransitions &lt;- cbind(c("f/DE/dead", "f/AT/dead", "f/IT/dead", 
+                          "m/DE/dead", "m/AT/dead", "m/IT/dead"),
+                       c(rep("mortRates",6)))                          
+
+transitionMatrix &lt;- buildTransitionMatrix(allTransitions=allTransitions,
+                                          absTransitions=absTransitions, 
+                                          stateSpace=stateSpace)
+
+# Define transitions triggering a birth event
+fertTr &lt;- fertTrMatrix[,1]
+
+# Execute microsimulation 
+pop &lt;- micSim(initPop=initPop,
+               transitionMatrix=transitionMatrix, absStates=absStates,
+               varInitStates=varInitStates, initStatesProb=initStatesProb,
+               fixInitStates=fixInitStates,
+               maxAge=maxAge, simHorizon=simHorizon,fertTr=fertTr)  
+  
+######################################################################################
+# 3. Complex example dealing with mortality, changes in the fertily and the marital 
+# status, in the educational attainment, as well as dealing with migration
+######################################################################################
+
+# Clean workspace 
+rm(list=ls())
+
+# Defining simulation horizon
+startDate &lt;- 20140101 # yyyymmdd
+endDate   &lt;- 20241231 # yyyymmdd
+simHorizon &lt;- c(startDate=startDate, endDate=endDate)
+
+# Seed for random number generator
+set.seed(234)
+
+# Definition of maximal age 
+maxAge &lt;- 100  
+
+# Defintion of nonabsorbing and absorbing states
+sex &lt;- c("m","f")                     
+fert &lt;- c("0","1+")           
+marital &lt;- c("NM","M","D","W")        
+edu &lt;- c("no","low","med","high")   
+stateSpace &lt;- expand.grid(sex=sex,fert=fert,marital=marital,edu=edu)
+absStates &lt;- c("dead","rest")   
+
+# General month of enrollment to elementary school
+monthSchoolEnrol &lt;- 9
+
+# Definition of an initial population (for illustration purposes, create a random population)
+N = 100                                                       
+birthDates &lt;- runif(N, min=getInDays(19500101), max=getInDays(20131231)) 
+getRandInitState &lt;- function(birthDate){
+  age &lt;- trunc((getInDays(simHorizon[1]) - birthDate)/365.25) 
+  s1 &lt;- sample(sex,1)
+  s2 &lt;- ifelse(age&lt;=18, fert[1], sample(fert,1))
+  s3 &lt;- ifelse(age&lt;=18, marital[1], ifelse(age&lt;=22, sample(marital[1:3],1), 
+                                           sample(marital,1)))
+  s4 &lt;- ifelse(age&lt;=7, edu[1], ifelse(age&lt;=18, edu[2], ifelse(age&lt;=23, sample(edu[2:3],1), 
+                                                              sample(edu[-1],1))))
+  initState &lt;- paste(c(s1,s2,s3,s4),collapse="/")
+  return(initState)
+}
+initPop &lt;- data.frame(ID=1:N, birthDate=birthDates, initState=sapply(birthDates, getRandInitState))
+initPop$birthDate &lt;- getInDateFormat(initPop$birthDate)
+range(initPop$birthDate)
+
+# Definition of immigrants entering the population (for illustration purposes, create immigrants 
+# randomly)
+M = 20                                                           
+immigrDates &lt;- runif(M, min=getInDays(20140101), max=getInDays(20241231)) 
+immigrAges &lt;- runif(M, min=15*365.25, max=70*365.25)
+immigrBirthDates &lt;- immigrDates - immigrAges
+IDmig &lt;- max(as.numeric(initPop[,"ID"]))+(1:M)
+immigrPop &lt;- data.frame(ID = IDmig, immigrDate = immigrDates, birthDate=immigrBirthDates, 
+                        immigrInitState=sapply(immigrBirthDates, getRandInitState))  
+immigrPop$birthDate &lt;- getInDateFormat(immigrPop$birthDate)
+immigrPop$immigrDate &lt;- getInDateFormat(immigrPop$immigrDate)
+
+# Definition of initial states for newborns 
+varInitStates &lt;- rbind(c("m","0","NM","no"),c("f","0","NM","no")) 
+# Definition of related occurrence probabilities
+initStatesProb &lt;- c(0.515,0.485)                              
+
+# Definition of (possible) transition rates  
+# (1) Fertility rates (Hadwiger mixture model)
+fert1Rates &lt;- function(age, calTime, duration){  # parity 1
+  b &lt;- ifelse(calTime&lt;=2020, 3.9, 3.3)
+  c &lt;- ifelse(calTime&lt;=2020, 28, 29)
+  rate &lt;-  (b/c)*(c/age)^(3/2)*exp(-b^2*(c/age+age/c-2))
+  rate[age&lt;=15 | age&gt;=45] &lt;- 0
+  return(rate)
+}
+fert2Rates &lt;- function(age, calTime, duration){  # partiy 2+
+  b &lt;- ifelse(calTime&lt;=2020, 3.2, 2.8)
+  c &lt;- ifelse(calTime&lt;=2020, 32, 33)
+  rate &lt;-  (b/c)*(c/age)^(3/2)*exp(-b^2*(c/age+age/c-2))
+  rate[age&lt;=15 | age&gt;=45 | duration&lt;0.75] &lt;- 0
+  return(rate)
+}
+# (2) Rates for first marriage (normal density)
+marriage1Rates &lt;- function(age, calTime, duration){  
+  m &lt;- ifelse(calTime&lt;=2020, 25, 30)
+  s &lt;- ifelse(calTime&lt;=2020, 3, 3)
+  rate &lt;- dnorm(age, mean=m, sd=s)
+  rate[age&lt;=16] &lt;- 0
+  return(rate)
+}
+# (3) Remariage rates (log-logistic model)
+marriage2Rates &lt;- function(age, calTime, duration){  
+  b &lt;- ifelse(calTime&lt;=2020, 0.07, 0.10)
+  p &lt;- ifelse(calTime&lt;=2020, 2.7,2.7)
+  lambda &lt;- ifelse(calTime&lt;=1950, 0.04, 0.03)
+  rate &lt;- b*p*(lambda*age)^(p-1)/(1+(lambda*age)^p)
+  rate[age&lt;=18] &lt;- 0
+  return(rate)
+}
+# (4) Divorce rates (normal density)
+divorceRates &lt;- function(age, calTime, duration){
+  m &lt;- 40
+  s &lt;- ifelse(calTime&lt;=2020, 7, 6)
+  rate &lt;- dnorm(age,mean=m,sd=s)
+  rate[age&lt;=18] &lt;- 0
+  return(rate)
+}
+# (5) Widowhood rates (gamma cdf)
+widowhoodRates &lt;- function(age, calTime, duration){
+  rate &lt;- ifelse(age&lt;=30, 0, pgamma(age-30, shape=6, rate=0.06))
+  return(rate)
+}
+# (6) Rates to change educational attainment
+# Set rate to `Inf' to make transition for age 7 deterministic.
+noToLowEduRates &lt;- function(age, calTime, duration){
+  rate &lt;- ifelse(age==7,Inf,0) 
+  return(rate)
+}
+lowToMedEduRates &lt;- function(age, calTime, duration){
+  rate &lt;- dnorm(age,mean=16,sd=1)
+  rate[age&lt;=15 | age&gt;=25] &lt;- 0
+  return(rate)
+}
+medToHighEduRates &lt;- function(age, calTime, duration){
+  rate &lt;- dnorm(age,mean=20,sd=3)
+  rate[age&lt;=18 | age&gt;=35] &lt;- 0
+  return(rate)
+}
+# (7) Mortality rates (Gompertz model)
+mortRates &lt;- function(age, calTime, duration){
+  a &lt;- .00003
+  b &lt;- ifelse(calTime&lt;=2020, 0.1, 0.097)
+  rate &lt;- a*exp(b*age)
+  return(rate)
+}
+# (8) Emigration rates 
+emigrRates &lt;- function(age, calTime, duration){
+  rate &lt;- ifelse(age&lt;=18,0,0.0025)
+  return(rate)
+}
+
+# Transition pattern and assignment of functions specifying transition rates
+fertTrMatrix &lt;- cbind(c("0-&gt;1+","1+-&gt;1+"),                         
+  c("fert1Rates", "fert2Rates"))
+maritalTrMatrix &lt;- cbind(c("NM-&gt;M","M-&gt;D","M-&gt;W","D-&gt;M","W-&gt;M"),              
+  c("marriage1Rates","divorceRates","widowhoodRates",
+ "marriage2Rates","marriage2Rates"))
+eduTrMatrix &lt;- cbind(c("no-&gt;low","low-&gt;med","med-&gt;high"),
+  c("noToLowEduRates","lowToMedEduRates","medToHighEduRates")) 
+allTransitions &lt;- rbind(fertTrMatrix, maritalTrMatrix, eduTrMatrix)
+absTransitions &lt;- rbind(c("dead","mortRates"),c("rest","emigrRates"))
+transitionMatrix &lt;- buildTransitionMatrix(allTransitions=allTransitions,
+  absTransitions=absTransitions, stateSpace=stateSpace)
+
+# Define transitions triggering a birth event
+fertTr &lt;- fertTrMatrix[,1]
+
+# Execute microsimulation 
+pop &lt;- micSim(initPop=initPop, immigrPop=immigrPop, 
+              transitionMatrix=transitionMatrix, 
+              absStates=absStates, 
+              varInitStates=varInitStates, 
+              initStatesProb=initStatesProb, 
+              maxAge=maxAge, 
+              simHorizon=simHorizon, 
+              fertTr=fertTr, 
+              monthSchoolEnrol=monthSchoolEnrol)  
+  
+
+</code></pre>
+
+
+</div>

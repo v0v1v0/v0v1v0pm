@@ -1,0 +1,592 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>OptimizerMies</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Mixed Integer Evolution Strategies Optimizer</h2>
+
+<h3>Description</h3>
+
+<p>Perform optimization using evolution strategies. <code>OptimizerMies</code> and <code>TunerMies</code> implement a standard ES optimization
+algorithm, performing initialization first, followed by a loop of performance evaluation, survival selection, parent selection, mutation, and
+recombination to generate new individuals to be evaluated. Currently, two different survival modes ("comma" and "plus") are supported.
+Multi-fidelity optimization, similar to the "rolling-tide" algorithm described in Fieldsend (2014), is supported.
+The modular design and reliance on <code>MiesOperator</code> objects to perform central parts of the optimization algorithm makes this
+<code>Optimizer</code> highly flexible and configurable. In combination with <code>OperatorCombination</code> mutators and recombinators, an algorithm
+as presented in Li (2013) can easily be implemented.
+</p>
+<p><code>OptimizerMies</code> implements a standard evolution strategies loop:
+</p>
+
+<ol>
+<li>
+<p> Prime operators, using <code>mies_prime_operators()</code>
+</p>
+</li>
+<li>
+<p> Initialize and evaluate population, using <code>mies_init_population()</code>
+</p>
+</li>
+<li>
+<p> Generate offspring by selecting parents, recombining and mutating them, using <code>mies_generate_offspring()</code>
+</p>
+</li>
+<li>
+<p> Evaluate performance, using <code>mies_evaluate_offspring()</code>
+</p>
+</li>
+<li>
+<p> Select survivors, using either <code>mies_survival_plus()</code> or <code>mies_survival_comma()</code>, depending on the <code>survival_strategy</code> configuration parameter
+</p>
+</li>
+<li>
+<p> Optionally, evaluate survivors with higher fidelity if the multi-fidelity functionality is being used
+</p>
+</li>
+<li>
+<p> Jump to 3.
+</p>
+</li>
+</ol>
+<h3>Terminating</h3>
+
+<p>As with all optimizers, <code>Terminator</code>s are used to end optimization after a specific number of evaluations were performed,
+time elapsed, or other conditions are satisfied. Of particular interest is <code>TerminatorGenerations</code>, which terminates after a number
+of generations were evaluated in <code>OptimizerMies</code>. The initial population counts as generation 1, its offspring as generation 2 etc.;
+fidelity refinements (step 6. in the algorithm description above) are always included in their generation, <code>TerminatorGenerations</code>
+avoids terminating right before they are evaluated. Other terminators may, however, end the optimization process at any time.
+</p>
+
+
+<h3>Multi-Fidelity</h3>
+
+<p><code>miesmuschel</code> provides a simple multi-fidelity optimization mechanism that allows both the refinement of fidelity as the optimization progresses,
+as well as fidelity refinement within each generation. When <code>multi_fidelity</code> is <code>TRUE</code>, then one search space component of the
+<code>OptimInstance</code> must have the <code>"budget"</code> tag, which is then optimized as the "budget" component. This means that the value of this component is
+determined by the <code>fidelity</code>/<code>fidelity_offspring</code> parameters, which are functions that get called whenever individuals get evaluated.
+The <code>fidelity</code> function is evaluated before step 2 and before every occurrence of step 6 in the algorithm, it returns the value of the budget search space component that all individuals
+that survive the current generation should be evaluated with. <code>fidelity_offspring</code> is called before step 4 and determines the fidelity that newly
+sampled offspring individuals should be evaluated with; it may be desirable to set this to a lower value than <code>fidelity</code> to save budget when
+preliminarily evaluating newly sampled individuals that may or may not perform well compared to already sampled individuals.
+Individuals that survive the generation and are not removed in step 5 will be re-evaluated with the <code>fidelity</code>-value in step 6 before the next loop
+iteration.
+</p>
+<p><code>fidelity</code> and <code>fidelity_offspring</code> must have arguments <code>inst</code>, <code>budget_id</code>, <code>last_fidelity</code> and <code>last_fidelity_offspring</code>. <code>inst</code> is the
+<code>OptimInstance</code> bein optimized, the functions can use it to determine the progress of the optimization, e.g. query
+the current generation with <code>mies_generation</code>. <code>budget_id</code> identifies the search space component being used as budget parameter. <code>last_fidelity</code>
+and <code>last_fidelity_offspring</code> contain the last values given by <code>fidelity</code> / <code>fidelity_offspring</code>. Should the offspring-fidelity (as returned
+by <code>fidelity_offspring</code> always be the same as the parent generation fidelity (as returned by <code>fidelity</code>), for example, then <code>fidelity_offspring</code>
+can be set to a function that just returns <code>last_fidelity</code>; this is actually the behaviour that <code>fidelity_offspring</code> is initialized with.
+</p>
+<p><code>OptimizerMies</code> avoids re-evaluating individuals if the fidelity parameter does not change. This means that setting <code>fidelity</code> and <code>fidelity_offspring</code>
+to the same value avoids re-evaluating individuals in step 6. When <code>fidelity_monotonic</code> is <code>TRUE</code>, re-evaluation is also avoided should the
+desired fidelity parameter value decrease. When <code>fidelity_current_gen_only</code> is <code>TRUE</code>, then step 6 only re-evaluates individuals that were
+created in the current generation (in the previous step 4) and sets the fidelity for individuals that are created in step 6, but it does not
+re-evaluate individuals that survived from earlier generations or were already in the <code>OptimInstance</code> when
+optimization started; it is recommended to leave this value at <code>TRUE</code> which it is initialized with.
+</p>
+
+
+<h3>Additional Components</h3>
+
+<p>The search space over which the optimization is performed is fundamentally tied to the <code>Objective</code>, and therefore
+to the <code>OptimInstance</code> given to <code>OptimizerMies$optimize()</code>. However, some advanced Evolution Strategy based
+algorithms may need to make use of additional search space components that are independent of the particular objective. An example is
+self-adaption as implemented in <code>OperatorCombination</code>, where one or several components can be used to adjust operator behaviour.
+These additional components are supplied to the optimizer through the <code>additional_component_sampler</code> configuration parameter, which takes
+a <code>Sampler</code> object. This object both has an associated <code>ParamSet</code> which represents the
+additional components that are present, and it provides a method for generating the initial values of these components. The search space
+that is seen by the <code>MiesOperator</code>s is then the union of the <code>OptimInstance</code>'s <code>ParamSet</code>, and the
+<code>Sampler</code>'s <code>ParamSet</code>.
+</p>
+
+
+<h3>Configuration Parameters</h3>
+
+<p><code>OptimizerMies</code> has the configuration parameters of the <code>mutator</code>, <code>recombinator</code>, <code>parent_selector</code>, <code>survival_selector</code>, <code>init_selector</code>, and, if given,
+<code>elite_selector</code> operator given during construction, and prefixed according to the name of the argument (<code>mutator</code>'s configuration parameters
+are prefixed <code>"mutator."</code> etc.). When using the construction arguments' default values, they are all "proxy" operators: <code>MutatorProxy</code>,
+<code>RecombinatorProxy</code> and <code>SelectorProxy</code>. This means that the respective configuration parameters become <code>mutator.operation</code>, <code>recombinator.operation</code> etc.,
+so the operators themselves can be set via configuration parameters in this case.
+</p>
+<p>Further configuration parameters are:
+</p>
+
+<ul>
+<li> <p><code>lambda</code> :: <code>integer(1)</code><br>
+Offspring size: Number of individuals that are created and evaluated anew for each generation. This is equivalent to the
+<code>lambda</code> parameter of <code>mies_generate_offspring()</code>, see there for more information. Must be set by the user.
+</p>
+</li>
+<li> <p><code>mu</code> :: <code>integer(1)</code><br>
+Population size: Number of individuals that are sampled in the beginning, and which are selected with each survival step.
+This is equivalent to the <code>mu</code> parameter of <code>mies_init_population()</code>, see there for more information. Must be set by the user.
+</p>
+</li>
+<li> <p><code>survival_strategy</code> :: <code>character(1)</code><br>
+May be <code>"plus"</code>, or, if the <code>elite_selector</code> construction argument is not <code>NULL</code>, <code>"comma"</code>: Choose whether <code>mies_survival_plus()</code>
+or <code>mies_survival_comma()</code> is used for survival selection. Initialized to <code>"plus"</code>.
+</p>
+</li>
+<li> <p><code>n_elite</code> :: <code>integer(1)</code><br>
+Only if the <code>elite_selector</code> construction argument is not <code>NULL</code>, and only valid when <code>survival_strategy</code> is <code>"comma"</code>:
+Number of elites, i.e. individuals from the parent generation, to keep during "Comma" survival.
+This is equivalent to the <code>n_elite</code> parameter of <code>mies_survival_comma()</code>, see there for more information.
+</p>
+</li>
+<li> <p><code>initializer</code> :: <code>function</code><br>
+Function that generates the initial population as a <code>Design</code> object,
+with arguments <code>param_set</code> and <code>n</code>, functioning like <code>paradox::generate_design_random</code> or <code>paradox::generate_design_lhs</code>.
+This is equivalent to the <code>initializer</code> parameter of <code>mies_init_population()</code>, see there for more information. Initialized to
+<code>generate_design_random()</code>.
+</p>
+</li>
+<li> <p><code>additional_component_sampler</code> :: <code>Sampler</code> | <code>NULL</code><br>
+Additional components that may be part of individuals as seen by mutation, recombination, and selection <code>MiesOperator</code>s, but
+that are not part of the search space of the <code>OptimInstance</code> being optimized.
+This is equivalent to the <code>additional_component_sampler</code> parameter of <code>mies_init_population()</code>, see there for more information.
+Initialized to <code>NULL</code> (no additional components).
+</p>
+</li>
+<li> <p><code>fidelity</code> :: <code>function</code><br>
+Only if the <code>multi_fidelity</code> construction argument is <code>TRUE</code>:
+Function that determines the value of the "budget" component of surviving individuals being evaluated when doing multi-fidelity optimization.
+It must have arguments named <code>inst</code>, <code>budget_id</code>, <code>last_fidelity</code> and <code>last_fidelity_offspring</code>, see the "Multi-Fidelity"-section
+for more details. Its return value is given to <code>mies_init_population()</code> and <code>mies_step_fidelity()</code>.
+When this configuration parameter is present (i.e. <code>multi_fidelity</code> is <code>TRUE</code>), then it is initialized to a <code>function</code> returning the value 1.
+</p>
+</li>
+<li> <p><code>fidelity_offspring</code> :: <code>function</code><br>
+Only if the <code>multi_fidelity</code> construction argument is <code>TRUE</code>:
+Function that determines the value of the "budget" component of newly sampled offspring individuals being evaluated when doing multi-fidelity optimization.
+It must have arguments named <code>inst</code>, <code>budget_id</code>, <code>last_fidelity</code> and <code>last_fidelity_offspring</code>, see the "Multi-Fidelity"-section
+for more details. Its return value is given to <code>mies_evaluate_offspring()</code>.
+When this configuration parameter is present (i.e. <code>multi_fidelity</code> is <code>TRUE</code>), then it is initialized to a <code>function</code> returning the value of <code>last_fidelity</code>,
+i.e. the value returned by the last call to the <code>fidelity</code> configuration parameter. This is the recommended value when fidelity should not change within
+a generation, since this means that survivor selection is performed with individuals that were evaluated with the same fidelity
+(at least if <code>fidelity_current_gen_only</code> is also set to <code>FALSE</code>) .
+</p>
+</li>
+<li> <p><code>fidelity_current_gen_only</code> :: <code>logical(1)</code><br>
+Only if the <code>multi_fidelity</code> construction argument is <code>TRUE</code>:
+When doing fidelity refinement in <code>mies_step_fidelity()</code>, whether to refine all individuals with different budget component,
+or only individuals created in the current generation.
+This is equivalent to the <code>current_gen_only</code> parameter of <code>mies_step_fidelity()</code>, see there for more information.<br>
+When this configuration parameter is present (i.e. <code>multi_fidelity</code> is <code>TRUE</code>), then it is initialized to <code>FALSE</code>, the recommended value.
+</p>
+</li>
+<li> <p><code>fidelity_monotonic</code> :: <code>logical(1)</code><br>
+Only if the <code>multi_fidelity</code> construction argument is <code>TRUE</code>:
+Whether to only do fidelity refinement in <code>mies_step_fidelity()</code> for individuals for which the budget component value would <em>increase</em>.
+This is equivalent to the <code>monotonic</code> parameter of <code>mies_step_fidelity()</code>, see there for more information.<br>
+When this configuration parameter is present (i.e. <code>multi_fidelity</code> is <code>TRUE</code>), then it is initialized to <code>TRUE</code>. When optimization is performed
+on problems that have a categorical "budget" parameter, then this value should be set to <code>FALSE</code>.
+</p>
+</li>
+</ul>
+<h3>Super classes</h3>
+
+<p><code>bbotk::OptimizerBatch</code> -&gt; <code>miesmuschel::Optimizer</code> -&gt; <code>OptimizerMies</code>
+</p>
+
+
+<h3>Active bindings</h3>
+
+<div class="r6-active-bindings">
+
+<dl>
+<dt><code>mutator</code></dt>
+<dd>
+<p>(<code>Mutator</code>)<br>
+Mutation operation to perform during <code>mies_generate_offspring()</code>.</p>
+</dd>
+<dt><code>recombinator</code></dt>
+<dd>
+<p>(<code>Recombinator</code>)<br>
+Recombination operation to perform during <code>mies_generate_offspring()</code>.</p>
+</dd>
+<dt><code>parent_selector</code></dt>
+<dd>
+<p>(<code>Selector</code>)<br>
+Parent selection operation to perform during <code>mies_generate_offspring()</code>.</p>
+</dd>
+<dt><code>survival_selector</code></dt>
+<dd>
+<p>(<code>Selector</code>)<br>
+Survival selection operation to use in <code>mies_survival_plus()</code> or <code>mies_survival_comma()</code>.</p>
+</dd>
+<dt><code>elite_selector</code></dt>
+<dd>
+<p>(<code>Selector</code> | <code>NULL</code>)<br>
+Elite selector used in <code>mies_survival_comma()</code>.</p>
+</dd>
+<dt><code>init_selector</code></dt>
+<dd>
+<p>(<code>Selector</code>)<br>
+Selection operation to use when there are more than <code>mu</code> individuals present at the beginning of the optimization.</p>
+</dd>
+<dt><code>param_set</code></dt>
+<dd>
+<p>(<code>ParamSet</code>)<br>
+Configuration parameters of the optimization algorithm.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-OptimizerMies-new"><code>OptimizerMies$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-OptimizerMies-clone"><code>OptimizerMies$clone()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="bbotk" data-topic="Optimizer" data-id="format"><a href="../../bbotk/html/Optimizer.html#method-Optimizer-format"><code>bbotk::Optimizer$format()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="bbotk" data-topic="Optimizer" data-id="help"><a href="../../bbotk/html/Optimizer.html#method-Optimizer-help"><code>bbotk::Optimizer$help()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="bbotk" data-topic="Optimizer" data-id="print"><a href="../../bbotk/html/Optimizer.html#method-Optimizer-print"><code>bbotk::Optimizer$print()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="bbotk" data-topic="OptimizerBatch" data-id="optimize"><a href="../../bbotk/html/OptimizerBatch.html#method-OptimizerBatch-optimize"><code>bbotk::OptimizerBatch$optimize()</code></a></span></li>
+</ul></details><hr>
+<a id="method-OptimizerMies-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Initialize the <code>OptimizerMies</code> object.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>OptimizerMies$new(
+  mutator = MutatorProxy$new(),
+  recombinator = RecombinatorProxy$new(),
+  parent_selector = SelectorProxy$new(),
+  survival_selector = SelectorProxy$new(),
+  elite_selector = NULL,
+  init_selector = survival_selector,
+  multi_fidelity = FALSE
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>mutator</code></dt>
+<dd>
+<p>(<code>Mutator</code>)<br>
+Mutation operation to perform during <code>mies_generate_offspring()</code>, see there for more information. Default is <code>MutatorProxy</code>, which
+exposes the operation as a configuration parameter of the optimizer itself.<br>
+The <code style="white-space: pre;">⁠$mutator⁠</code> field will reflect this value.</p>
+</dd>
+<dt><code>recombinator</code></dt>
+<dd>
+<p>(<code>Recombinator</code>)<br>
+Recombination operation to perform during <code>mies_generate_offspring()</code>, see there for more information. Default is <code>RecombinatorProxy</code>,
+which exposes the operation as a configuration parameter of the optimizer itself. Note: The default <code>RecombinatorProxy</code> has <code style="white-space: pre;">⁠$n_indivs_in⁠</code> set to 2,
+so to use recombination operations with more than two inputs, or to use population size of 1, it may be necessary to construct this
+argument explicitly.<br>
+The <code style="white-space: pre;">⁠$recombinator⁠</code> field will reflect this value.</p>
+</dd>
+<dt><code>parent_selector</code></dt>
+<dd>
+<p>(<code>Selector</code>)<br>
+Parent selection operation to perform during <code>mies_generate_offspring()</code>, see there for more information. Default is <code>SelectorProxy</code>,
+which exposes the operation as a configuration parameter of the optimizer itself.<br>
+The <code style="white-space: pre;">⁠$parent_selector⁠</code> field will reflect this value.</p>
+</dd>
+<dt><code>survival_selector</code></dt>
+<dd>
+<p>(<code>Selector</code>)<br>
+Survival selection operation to use in <code>mies_survival_plus()</code> or <code>mies_survival_comma()</code> (depending on the <code>survival_strategy</code> configuration parameter),
+see there for more information. Default is <code>SelectorProxy</code>, which exposes the operation as a configuration parameter of the optimizer itself.<br>
+The <code style="white-space: pre;">⁠$survival_selector⁠</code> field will reflect this value.</p>
+</dd>
+<dt><code>elite_selector</code></dt>
+<dd>
+<p>(<code>Selector</code> | <code>NULL</code>)<br>
+Elite selector used in <code>mies_survival_comma()</code>, see there for more information. "Comma" selection is only available when this
+argument is not <code>NULL</code>. Default <code>NULL</code>.<br>
+The <code style="white-space: pre;">⁠$elite_selector⁠</code> field will reflect this value.</p>
+</dd>
+<dt><code>init_selector</code></dt>
+<dd>
+<p>(<code>Selector</code>)<br>
+Survival selection operation to give to the <code>survival_selector</code> argument of <code>mies_init_population()</code>; it is used if
+the <code>OptimInstance</code> being optimized already
+contains more (alive) individuals than <code>mu</code>. Default is the value given to <code>survival_selector</code>.
+The <code style="white-space: pre;">⁠$init_selector⁠</code> field will reflect this value.</p>
+</dd>
+<dt><code>multi_fidelity</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)<br>
+Whether to enable multi-fidelity optimization. When this is <code>TRUE</code>, then the <code>OptimInstance</code> being optimized must
+contain a <code>Domain</code> tagged <code>"budget"</code>, which is then used as the "budget" search space component, determined by
+<code>fidelity</code> and <code>fidelity_offspring</code> instead of by the <code>MiesOperator</code>s themselves. For multi-fidelity optimization, the <code>fidelity</code>,
+<code>fidelity_offspring</code>, <code>fidelity_current_gen_only</code>, and <code>fidelity_monotonic</code> configuration parameters must be given to determine
+multi-fidelity behaviour. (While the initial values for most of these are probably good for most cases in which more budget implies
+higher fidelity, at least the <code>fidelity</code> configuration parameter should be adjusted in most cases). Default is <code>FALSE</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-OptimizerMies-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>OptimizerMies$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>Super classes</h3>
+
+<p><code>mlr3tuning::Tuner</code> -&gt; <code>mlr3tuning::TunerBatch</code> -&gt; <code>mlr3tuning::TunerBatchFromOptimizerBatch</code> -&gt; <code>TunerMies</code>
+</p>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-TunerMies-new"><code>TunerMies$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-TunerMies-clone"><code>TunerMies$clone()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="mlr3tuning" data-topic="Tuner" data-id="format"><a href="../../mlr3tuning/html/Tuner.html#method-Tuner-format"><code>mlr3tuning::Tuner$format()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3tuning" data-topic="Tuner" data-id="help"><a href="../../mlr3tuning/html/Tuner.html#method-Tuner-help"><code>mlr3tuning::Tuner$help()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3tuning" data-topic="Tuner" data-id="print"><a href="../../mlr3tuning/html/Tuner.html#method-Tuner-print"><code>mlr3tuning::Tuner$print()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3tuning" data-topic="TunerBatchFromOptimizerBatch" data-id="optimize"><a href="../../mlr3tuning/html/TunerBatchFromOptimizerBatch.html#method-TunerBatchFromOptimizerBatch-optimize"><code>mlr3tuning::TunerBatchFromOptimizerBatch$optimize()</code></a></span></li>
+</ul></details><hr>
+<a id="method-TunerMies-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Initialize the <code>TunerMies</code> object.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>TunerMies$new(
+  mutator = MutatorProxy$new(),
+  recombinator = RecombinatorProxy$new(),
+  parent_selector = SelectorProxy$new(),
+  survival_selector = SelectorProxy$new(),
+  elite_selector = NULL,
+  init_selector = survival_selector,
+  multi_fidelity = FALSE
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>mutator</code></dt>
+<dd>
+<p>(<code>Mutator</code>)</p>
+</dd>
+<dt><code>recombinator</code></dt>
+<dd>
+<p>(<code>Recombinator</code>)</p>
+</dd>
+<dt><code>parent_selector</code></dt>
+<dd>
+<p>(<code>Selector</code>)</p>
+</dd>
+<dt><code>survival_selector</code></dt>
+<dd>
+<p>(<code>Selector</code>)</p>
+</dd>
+<dt><code>elite_selector</code></dt>
+<dd>
+<p>(<code>Selector</code> | <code>NULL</code>)</p>
+</dd>
+<dt><code>init_selector</code></dt>
+<dd>
+<p>(<code>Selector</code>)</p>
+</dd>
+<dt><code>multi_fidelity</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-TunerMies-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>TunerMies$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>References</h3>
+
+<p>Fieldsend, E J, Everson, M R (2014).
+“The rolling tide evolutionary algorithm: A multiobjective optimizer for noisy optimization problems.”
+<em>IEEE Transactions on Evolutionary Computation</em>, <b>19</b>(1), 103–117.
+</p>
+<p>Li, Rui, Emmerich, TM M, Eggermont, Jeroen, B"ack, Thomas, Sch"utz, Martin, Dijkstra, Jouke, Reiber, HC J (2013).
+“Mixed integer evolution strategies for parameter optimization.”
+<em>Evolutionary computation</em>, <b>21</b>(1), 29–64.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+lgr::threshold("warn")
+
+op.m &lt;- mut("gauss", sdev = 0.1)
+op.r &lt;- rec("xounif", p = .3)
+op.parent &lt;- sel("random")
+op.survival &lt;- sel("best")
+
+#####
+# Optimizing a Function
+#####
+
+library("bbotk")
+
+# Define the objective to optimize
+objective &lt;- ObjectiveRFun$new(
+  fun = function(xs) {
+    z &lt;- exp(-xs$x^2 - xs$y^2) + 2 * exp(-(2 - xs$x)^2 - (2 - xs$y)^2)
+    list(Obj = z)
+  },
+  domain = ps(x = p_dbl(-2, 4), y = p_dbl(-2, 4)),
+  codomain = ps(Obj = p_dbl(tags = "maximize"))
+)
+
+# Get a new OptimInstance
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 100)
+)
+
+# Create OptimizerMies object
+mies_opt &lt;- opt("mies", mutator = op.m, recombinator = op.r,
+  parent_selector = op.parent, survival_selector = op.survival,
+  mu = 10, lambda = 5)
+
+# mies_opt$optimize performs MIES optimization and returns the optimum
+mies_opt$optimize(oi)
+
+#####
+# Optimizing a Machine Learning Method
+#####
+
+# Note that this is a short example, aiming at clarity and short runtime.
+# The settings are not optimal for hyperparameter tuning. The resampling
+# in particular should not be "holdout" for small datasets where this gives
+# a very noisy estimate of performance.
+
+library("mlr3")
+library("mlr3tuning")
+
+# The Learner to optimize
+learner = lrn("classif.rpart")
+
+# The hyperparameters to optimize
+learner$param_set$values[c("cp", "maxdepth")] = list(to_tune())
+
+# Get a TuningInstance
+ti = TuningInstanceSingleCrit$new(
+  task = tsk("iris"),
+  learner = learner,
+  resampling = rsmp("holdout"),
+  measure = msr("classif.acc"),
+  terminator = trm("gens", generations = 10)
+)
+
+# Create TunerMies object
+mies_tune &lt;- tnr("mies", mutator = op.m, recombinator = op.r,
+  parent_selector = op.parent, survival_selector = op.survival,
+  mu = 10, lambda = 5)
+
+# mies_tune$optimize performs MIES optimization and returns the optimum
+mies_tune$optimize(ti)
+
+</code></pre>
+
+
+</div>

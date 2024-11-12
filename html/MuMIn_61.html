@@ -1,0 +1,193 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pdredge</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Automated model selection using parallel computation</h2>
+
+<h3>Description</h3>
+
+<p>Parallelized version of <code>dredge</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pdredge(global.model, cluster = NULL, 
+  beta = c("none", "sd", "partial.sd"), evaluate = TRUE, rank = "AICc", 
+  fixed = NULL, m.lim = NULL, m.min, m.max, subset, trace = FALSE, 
+  varying, extra, ct.args = NULL, deps = attr(allTerms0, "deps"),
+  check = FALSE, ...)
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>global.model, beta, rank, fixed, m.lim, m.max, m.min, 
+subset, varying, extra, ct.args, deps, ...</code></td>
+<td>
+
+<p>see <code>dredge</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>evaluate</code></td>
+<td>
+<p>whether to evaluate and rank the models. If <code>FALSE</code>, a
+list of unevaluated <code>call</code>s is returned and <code>cluster</code> is 
+not used. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trace</code></td>
+<td>
+<p> displays the generated calls, but may not work as expected
+since the models are evaluated in batches rather than one by one. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cluster</code></td>
+<td>
+<p> either a valid <code>"cluster"</code> object, or <code>NULL</code> for a
+single threaded execution. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>check</code></td>
+<td>
+<p> either integer or logical value controlling how much checking
+for existence and correctness of dependencies is done on the cluster
+nodes. See ‘Details’. </p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>All the dependencies for fitting the <code>global.model</code>, including the data
+and any objects that the modelling function will use must be exported
+to the cluster worker nodes (e.g. <em>via</em> <code>clusterExport</code>). 
+The required packages must be also loaded thereinto (e.g. <em>via</em>
+<code>clusterEvalQ(..., library(package))</code>, before the cluster is used by
+<code>pdredge</code>.
+</p>
+<p>If <code>check</code> is <code>TRUE</code> or positive, <code>pdredge</code> tries to check whether
+all the variables and functions used in the call to <code>global.model</code> are
+present in the cluster nodes' <code>.GlobalEnv</code> before proceeding further.
+This will cause false errors if some arguments of the model call (other than
+<code>subset</code>) would be evaluated in the <code>data</code> environment. In that 
+case is desirable to use <code>check = FALSE</code> (the default).
+</p>
+<p>If <code>check</code> is <code>TRUE</code> or greater than one, <code>pdredge</code> will
+compare the <code>global.model</code> updated on the cluster nodes with the one
+given as an argument.
+</p>
+
+
+<h3>Value</h3>
+
+<p>See <code>dredge</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>As of version 1.45.0, using <code>pdredge</code> directly is deprecated. Use 
+<code>dredge</code> instead and provide <code>cluster</code> argument. 
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kamil Bartoń</p>
+
+
+<h3>See Also</h3>
+
+<p><code>makeCluster</code> and other cluster related functions in packages
+<span class="pkg">parallel</span> or <span class="pkg">snow</span>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+
+# One of these packages is required:
+## Not run: require(parallel) || require(snow)
+
+# From example(Beetle)
+
+Beetle100 &lt;- Beetle[sample(nrow(Beetle), 100, replace = TRUE),]
+
+fm1 &lt;- glm(Prop ~ dose + I(dose^2) + log(dose) + I(log(dose)^2),
+    data = Beetle100, family = binomial, na.action = na.fail)
+
+msubset &lt;- expression(xor(dose, `log(dose)`) &amp; (dose | !`I(dose^2)`)
+    &amp; (`log(dose)` | !`I(log(dose)^2)`))
+varying.link &lt;- list(family = alist(logit = binomial("logit"),
+    probit = binomial("probit"), cloglog = binomial("cloglog") ))
+
+# Set up the cluster
+clusterType &lt;- if(length(find.package("snow", quiet = TRUE))) "SOCK" else "PSOCK"
+clust &lt;- try(makeCluster(getOption("cl.cores", 2), type = clusterType))
+
+clusterExport(clust, "Beetle100")
+
+# noticeable gain only when data has about 3000 rows (Windows 2-core machine)
+print(system.time(dredge(fm1, subset = msubset, varying = varying.link)))
+print(system.time(dredge(fm1, cluster = FALSE, subset = msubset,
+    varying = varying.link)))
+print(system.time(pdd &lt;- dredge(fm1, cluster = clust, subset = msubset,
+    varying = varying.link)))
+
+print(pdd)
+
+## Not run: 
+# Time consuming example with 'unmarked' model, based on example(pcount).
+# Having enough patience you can run this with 'demo(pdredge.pcount)'.
+library(unmarked)
+data(mallard)
+mallardUMF &lt;- unmarkedFramePCount(mallard.y, siteCovs = mallard.site,
+    obsCovs = mallard.obs)
+(ufm.mallard &lt;- pcount(~ ivel + date + I(date^2) ~ length + elev + forest,
+    mallardUMF, K = 30))
+clusterEvalQ(clust, library(unmarked))
+clusterExport(clust, "mallardUMF")
+
+# 'stats4' is needed for AIC to work with unmarkedFit objects but is not
+# loaded automatically with 'unmarked'.
+require(stats4)
+invisible(clusterCall(clust, "library", "stats4", character.only = TRUE))
+
+#system.time(print(pdd1 &lt;- dredge(ufm.mallard,
+#   subset = `p(date)` | !`p(I(date^2))`, rank = AIC)))
+
+system.time(print(pdd2 &lt;- dredge(ufm.mallard, cluster = clust,
+    subset = `p(date)` | !`p(I(date^2))`, rank = AIC, extra = "adjR^2")))
+
+
+# best models and null model
+subset(pdd2, delta &lt; 2 | df == min(df))
+
+# Compare with the model selection table from unmarked
+# the statistics should be identical:
+models &lt;- get.models(pdd2, delta &lt; 2 | df == min(df), cluster = clust)
+
+modSel(fitList(fits = structure(models, names = model.names(models,
+    labels = getAllTerms(ufm.mallard)))), nullmod = "(Null)")
+
+## End(Not run)
+
+stopCluster(clust)
+
+
+</code></pre>
+
+
+</div>

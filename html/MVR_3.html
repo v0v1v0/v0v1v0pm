@@ -1,0 +1,496 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvr</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Function for Mean-Variance Regularization and Variance Stabilization</h2>
+
+<h3>Description</h3>
+
+<p>End-user function for Mean-Variance Regularization (MVR) and Variance Stabilization by similarity statistic
+under sample group homoscedasticity or heteroscedasticity assumptions.
+</p>
+<p>Return an object of class "<code>mvr</code>". Offers the option of parallel computation for improved efficiency.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">    mvr(data,
+        block = rep(1,nrow(data)),
+        tolog = FALSE,
+        nc.min = 1,
+        nc.max = 30,
+        probs = seq(0, 1, 0.01),
+        B = 100,
+        parallel = FALSE,
+        conf = NULL,
+        verbose = TRUE, 
+        seed = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p><code>numeric</code> <code>matrix</code> of untransformed (raw) data,
+where samples are by rows and variables (to be clustered) are by columns,
+or an object that can be coerced to such a <code>matrix</code> (such as a <code>numeric</code> <code>vector</code>
+or a <code>data.frame</code> with all <code>numeric</code> columns).
+Missing values (<code>NA</code>), NotANumber values (<code>NaN</code>) or Infinite values (<code>Inf</code>) are not allowed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>block</code></td>
+<td>
+<p><code>character</code> or <code>numeric</code> <code>vector</code>, or <code>factor</code> of group membership indicator variable 
+(grouping/blocking variable) of length the data sample size with as many different values or <code>levels</code> 
+as the number of data sample groups. Defaults to single group situation. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tolog</code></td>
+<td>
+<p><code>logical</code> scalar. Is the data to be log2-transformed first? Optional, defaults to <code>FALSE</code>.
+Note that negative or null values will be changed to 1 before taking log2-transformation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nc.min</code></td>
+<td>
+<p>Positive <code>integer</code> scalar of the minimum number of clusters, defaults to 1</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nc.max</code></td>
+<td>
+<p>Positive <code>integer</code> scalar of the maximum number of clusters, defaults to 30</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>probs</code></td>
+<td>
+<p><code>numeric</code> <code>vector</code> of probabilities for quantile diagnostic plots. Defaults to <code>seq</code>(0, 1, 0.01).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>B</code></td>
+<td>
+<p>Positive <code>integer</code> scalar of the number of Monte Carlo replicates of the inner loop
+of the sim statistic function (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p><code>logical</code> scalar. Is parallel computing to be performed? Optional, defaults to <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf</code></td>
+<td>
+
+<p><code>list</code> of 5 fields containing the parameters values needed for creating the parallel backend (cluster configuration).
+See details below for usage. Optional, defaults to <code>NULL</code>, but all fields are required if used:
+</p>
+
+<ul>
+<li> <p><code>type</code> : <code>character</code> <code>vector</code> specifying the cluster type ("SOCKET", "MPI").
+</p>
+</li>
+<li> <p><code>spec</code> : A specification (<code>character</code> <code>vector</code> or <code>integer</code> scalar) appropriate to the type of cluster.
+</p>
+</li>
+<li> <p><code>homogeneous</code> : <code>logical</code> scalar to be set to <code>FALSE</code> for inhomogeneous clusters.
+</p>
+</li>
+<li> <p><code>verbose</code> : <code>logical</code> scalar to be set to <code>FALSE</code> for quiet mode.
+</p>
+</li>
+<li> <p><code>outfile</code> : <code>character</code> <code>vector</code> of an output log file name to direct the stdout and stderr
+connection output from the workernodes. "" indicates no redirection.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p><code>logical</code> scalar. Is the output to be verbose? Optional, defaults to <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>Positive <code>integer</code> scalar of the user seed to reproduce the results.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Argument <code>block</code> will be converted to a factor, whose levels will match the data groups. It defaults to a single group situation, 
+that is, under the assumption of equal variance between sample groups. All group sample sizes must be greater than 1, 
+otherwise the program will stop.
+</p>
+<p>Argument <code>nc.max</code> currently defaults to 30. Empirically, we found that this is enough for most datasets tested.
+This depends on (i) the dimensionality/sample size ratio <code class="reqn">\frac{p}{n}</code>, (ii) the signal/noise ratio, and
+(iii) whether a pre-transformation has been applied (see <cite>Dazard, J-E. and J. S. Rao (2012)</cite> for more details).
+See the cluster diagnostic function <code>cluster.diagnostic</code> for more details, whether larger values of <code>nc.max</code> may be required.
+</p>
+<p>The function <code>mvr</code> relies on the R package <span class="pkg">parallel</span> to create a parallel backend within an R session. This enables access to a cluster
+of compute cores and/or nodes on a local and/or remote machine(s) and scaling-up with the number of CPU cores available and efficient parallel 
+execution. To run a procedure in parallel (with parallel RNG), argument <code>parallel</code> is to be set to <code>TRUE</code> and argument <code>conf</code> 
+is to be specified (i.e. non <code>NULL</code>). Argument <code>conf</code> uses the options described in function <code>makeCluster</code> of the R packages 
+<span class="pkg">parallel</span> and <span class="pkg">snow</span>. <span class="pkg">PRIMsrc</span> supports two types of communication mechanisms between master and worker processes: 
+'Socket' or  'Message-Passing Interface' ('MPI'). In <span class="pkg">PRIMsrc</span>, parallel 'Socket' clusters use sockets communication mechanisms only 
+(no forking) and are therefore available on all platforms, including Windows, while parallel 'MPI' clusters use high-speed interconnects 
+mechanism in networks of computers (with distributed memory) and are therefore available only in these architectures. A parallel 'MPI' 
+cluster also requires R package <span class="pkg">Rmpi</span> to be installed first. Value <code>type</code> is used to setup a cluster of type 'Socket' ("SOCKET") 
+or 'MPI' ("MPI"), respectively. Depending on this type, values of <code>spec</code> are to be used alternatively:
+</p>
+
+<ul>
+<li>
+<p> For 'Socket' clusters (<code>conf$type="SOCKET"</code>), <code>spec</code> should be a <code>character</code> <code>vector</code> naming the hosts on which 
+to run the job; it can default to a unique local machine, in which case, one may use the unique host name "localhost".
+Each host name can potentially be repeated to the number of CPU cores available on the local machine.
+It can also be an <code>integer</code> scalar specifying the number of processes to spawn on the local machine; 
+or a list of machine specifications (a character value named host specifying the name or address of the host to use).
+</p>
+</li>
+<li>
+<p> For 'MPI' clusters (<code>conf$type="MPI"</code>), <code>spec</code> should be an <code>integer</code> scalar 
+specifying the total number of processes to be spawned across the network of available nodes, counting the workernodes and masternode.
+</p>
+</li>
+</ul>
+<p>The actual creation of the cluster, its initialization, and closing are all done internally. For more details, 
+see the reference manual of R package <span class="pkg">snow</span> and examples below.
+</p>
+<p>When random number generation is needed, the creation of separate streams of parallel RNG per node is done internally by 
+distributing the stream states to the nodes. For more details, see the vignette of R package <span class="pkg">parallel</span>. 
+The use of a seed allows to reproduce the results within the same type of session: the same seed will reproduce the same results within 
+a non-parallel session or within a parallel session, but it will not necessarily give the exact same results (up to sampling variability)
+between a non-parallelized and parallelized session due to the difference of management of the seed between the two (see parallel RNG and 
+value of returned seed below).
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Xraw</code></td>
+<td>
+<p><code>numeric</code> <code>matrix</code> of original data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Xmvr</code></td>
+<td>
+<p><code>numeric</code> <code>matrix</code> of MVR-transformed data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>centering</code></td>
+<td>
+<p><code>numeric</code> <code>vector</code> of centering values for standardization (cluster mean of pooled sample mean).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scaling</code></td>
+<td>
+<p><code>numeric</code> <code>vector</code> of scaling values for standardization (cluster mean of pooled sample std dev).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MVR</code></td>
+<td>
+<p><code>list</code> (of size the number of groups) containing for each group:
+</p>
+
+<ul>
+<li>
+<p> membership <code>numeric</code> <code>vector</code> of cluster membership of each variable
+</p>
+</li>
+<li>
+<p> nc Positive <code>integer</code> scalar of number of clusters found in optimal cluster configuration
+</p>
+</li>
+<li>
+<p> gap <code>numeric</code> <code>vector</code> of the similarity statistic values
+</p>
+</li>
+<li>
+<p> sde <code>numeric</code> <code>vector</code> of the standard errors of the similarity statistic values
+</p>
+</li>
+<li>
+<p> mu.std <code>numeric</code> <code>matrix</code> (<code>K</code> x p) of the vector of standardized means by groups (rows), 
+where <code>K</code> = \#groups and <code>p</code> = \#variables
+</p>
+</li>
+<li>
+<p> sd.std <code>numeric</code> <code>matrix</code> (<code>K</code> x p) of the vector of standardized standard deviations by groups (rows),
+where <code>K</code> = \#groups and <code>p</code> = \#variables
+</p>
+</li>
+<li>
+<p> mu.quant <code>numeric</code> <code>matrix</code> (<code>nc.max</code> - <code>nc.min</code> + 1) x (length(<code>probs</code>)) of quantiles of means
+</p>
+</li>
+<li>
+<p> sd.quant <code>numeric</code> <code>matrix</code> (<code>nc.max</code> - <code>nc.min</code> + 1) x (length(<code>probs</code>)) of quantiles of standard deviations
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>block</code></td>
+<td>
+<p>Value of argument <code>block</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tolog</code></td>
+<td>
+<p>Value of argument <code>tolog</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nc.min</code></td>
+<td>
+<p>Value of argument <code>nc.min</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nc.max</code></td>
+<td>
+<p>Value of argument <code>nc.max</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>probs</code></td>
+<td>
+<p>Value of argument <code>probs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>User seed(s) used: <code>integer</code> of a single value, if parallelization is used. 
+<code>integer</code> <code>vector</code> of values, one for each replication, if parallelization is not used.</p>
+</td>
+</tr>
+</table>
+<h3>Acknowledgments</h3>
+
+<p>This work made use of the High Performance Computing Resource in the Core Facility for Advanced Research Computing at Case Western Reserve University. 
+This project was partially funded by the National Institutes of Health (P30-CA043703).
+</p>
+
+
+<h3>Note</h3>
+
+<p>End-user function.
+</p>
+
+
+<h3>Author(s)</h3>
+
+
+<ul>
+<li>
+<p> "Jean-Eudes Dazard, Ph.D." <a href="mailto:jean-eudes.dazard@case.edu">jean-eudes.dazard@case.edu</a>
+</p>
+</li>
+<li>
+<p> "Hua Xu, Ph.D." <a href="mailto:huaxu77@gmail.com">huaxu77@gmail.com</a>
+</p>
+</li>
+<li>
+<p> "Alberto Santana, MBA." <a href="mailto:ahs4@case.edu">ahs4@case.edu</a>
+</p>
+</li>
+</ul>
+<p>Maintainer: "Jean-Eudes Dazard, Ph.D." <a href="mailto:jean-eudes.dazard@case.edu">jean-eudes.dazard@case.edu</a>    
+</p>
+
+
+<h3>References</h3>
+
+
+<ul>
+<li>
+<p> Dazard J-E. and J. S. Rao (2010). "<em>Regularized Variance Estimation and Variance Stabilization of High-Dimensional Data.</em>"
+In JSM Proceedings, Section for High-Dimensional Data Analysis and Variable Selection. 
+Vancouver, BC, Canada: American Statistical Association IMS - JSM, 5295-5309.
+</p>
+</li>
+<li>
+<p> Dazard J-E., Hua Xu and J. S. Rao (2011). "<em>R package MVR for Joint Adaptive Mean-Variance Regularization and Variance Stabilization.</em>"
+In JSM Proceedings, Section for Statistical Programmers and Analysts. 
+Miami Beach, FL, USA: American Statistical Association IMS - JSM, 3849-3863.
+</p>
+</li>
+<li>
+<p> Dazard J-E. and J. S. Rao (2012). "<em>Joint Adaptive Mean-Variance Regularization and Variance Stabilization of High Dimensional Data.</em>"
+Comput. Statist. Data Anal. 56(7):2317-2333.
+</p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+
+<ul>
+<li> <p><code>makeCluster</code> (R package <span class="pkg">parallel</span>).
+</p>
+</li>
+<li> <p><code>justvsn</code> (R package <span class="pkg">vsn</span>) Variance stabilization and calibration for microarray data <cite>Huber, 2002</cite>
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">#===================================================
+# Loading the library and its dependencies
+#===================================================
+library("MVR")
+
+## Not run: 
+    #===================================================
+    # MVR package news
+    #===================================================
+    MVR.news()
+
+    #================================================
+    # MVR package citation
+    #================================================
+    citation("MVR")
+
+    #===================================================
+    # Loading of the Synthetic and Real datasets
+    # Use help for descriptions
+    #===================================================
+    data("Synthetic", "Real", package="MVR")
+    ?Synthetic
+    ?Real
+
+## End(Not run)
+
+#===================================================
+# Mean-Variance Regularization (Synthetic dataset)
+# Single-Group Assumption
+# Assuming equal variance between groups
+# Without cluster usage
+#===================================================
+nc.min &lt;- 1
+nc.max &lt;- 10
+probs &lt;- seq(0, 1, 0.01)
+n &lt;- 10
+mvr.obj &lt;- mvr(data = Synthetic,
+               block = rep(1,n),
+               tolog = FALSE,
+               nc.min = nc.min,
+               nc.max = nc.max,
+               probs = probs,
+               B = 100,
+               parallel = FALSE,
+               conf = NULL,
+               verbose = TRUE,
+               seed = 1234)
+
+## Not run: 
+    #===================================================
+    # Examples of parallel backend parametrization 
+    #===================================================
+    if (require("parallel")) {
+       print("'parallel' is attached correctly \n")
+    } else {
+       stop("'parallel' must be attached first \n")
+    }
+    #===================================================
+    # Ex. #1 - Multicore PC
+    # Running WINDOWS
+    # SOCKET communication cluster
+    # Shared memory parallelization
+    #===================================================
+    cpus &lt;- detectCores(logical = TRUE)
+    conf &lt;- list("spec" = rep("localhost", cpus),
+                 "type" = "SOCKET",
+                 "homo" = TRUE,
+                 "verbose" = TRUE,
+                 "outfile" = "")
+    #===================================================
+    # Ex. #2 - Master node + 3 Worker nodes cluster
+    # All nodes equipped with identical setups of multicores 
+    # (8 core CPUs per machine for a total of 32)
+    # SOCKET communication cluster
+    # Distributed memory parallelization
+    #===================================================
+    masterhost &lt;- Sys.getenv("HOSTNAME")
+    slavehosts &lt;- c("compute-0-0", "compute-0-1", "compute-0-2")
+    nodes &lt;- length(slavehosts) + 1
+    cpus &lt;- 8
+    conf &lt;- list("spec" = c(rep(masterhost, cpus),
+                            rep(slavehosts, cpus)),
+                 "type" = "SOCKETs",
+                 "homo" = TRUE,
+                 "verbose" = TRUE,
+                 "outfile" = "")
+    #===================================================
+    # Ex. #3 - Enterprise Multinode Cluster w/ multicore/node  
+    # Running LINUX with SLURM scheduler
+    # MPI communication cluster
+    # Distributed memory parallelisation
+    #==================================================
+    if (require("Rmpi")) {
+        print("'Rmpi' is attached correctly \n")
+    } else {
+        stop("'Rmpi' must be attached first \n")
+    }
+    # Below, variable 'cpus' is the total number of requested 
+    # taks (threads/CPUs), which is specified from within a 
+    # SLURM script.
+    cpus &lt;- as.numeric(Sys.getenv("SLURM_NTASKS"))
+    conf &lt;- list("spec" = cpus,
+                 "type" = "MPI",
+                 "homo" = TRUE,
+                 "verbose" = TRUE,
+                 "outfile" = "")
+    #===================================================
+    # Mean-Variance Regularization (Real dataset)
+    # Multi-Group Assumption
+    # Assuming unequal variance between groups
+    #===================================================
+    nc.min &lt;- 1
+    nc.max &lt;- 30
+    probs &lt;- seq(0, 1, 0.01)
+    n &lt;- 6
+    GF &lt;- factor(gl(n = 2, k = n/2, length = n),
+                 ordered = FALSE,
+                 labels = c("M", "S"))
+    mvr.obj &lt;- mvr(data = Real,
+                   block = GF,
+                   tolog = FALSE,
+                   nc.min = nc.min,
+                   nc.max = nc.max,
+                   probs = probs,
+                   B = 100,
+                   parallel = TRUE,
+                   conf = conf,
+                   verbose = TRUE,
+                   seed = 1234)
+    
+## End(Not run)
+</code></pre>
+
+
+</div>

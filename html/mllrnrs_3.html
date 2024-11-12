@@ -1,0 +1,209 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>LearnerRanger</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>R6 Class to construct a Ranger learner</h2>
+
+<h3>Description</h3>
+
+<p>The <code>LearnerRanger</code> class is the interface to the <code>ranger</code> R package for use
+with the <code>mlexperiments</code> package.
+</p>
+
+
+<h3>Details</h3>
+
+<p>Optimization metric:
+</p>
+
+<ul>
+<li>
+<p> classification: classification error rate
+</p>
+</li>
+<li>
+<p> regression: mean squared error
+Can be used with
+</p>
+</li>
+<li> <p>mlexperiments::MLTuneParameters
+</p>
+</li>
+<li> <p>mlexperiments::MLCrossValidation
+</p>
+</li>
+<li> <p>mlexperiments::MLNestedCV
+</p>
+</li>
+</ul>
+<h3>Super class</h3>
+
+<p><code>mlexperiments::MLLearnerBase</code> -&gt; <code>LearnerRanger</code>
+</p>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-LearnerRanger-new"><code>LearnerRanger$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-LearnerRanger-clone"><code>LearnerRanger$clone()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="bayesian_scoring_function"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-bayesian_scoring_function"><code>mlexperiments::MLLearnerBase$bayesian_scoring_function()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="cross_validation"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-cross_validation"><code>mlexperiments::MLLearnerBase$cross_validation()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="fit"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-fit"><code>mlexperiments::MLLearnerBase$fit()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="predict"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-predict"><code>mlexperiments::MLLearnerBase$predict()</code></a></span></li>
+</ul></details><hr>
+<a id="method-LearnerRanger-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Create a new <code>LearnerRanger</code> object.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerRanger$new()</pre></div>
+
+
+
+<h5>Returns</h5>
+
+<p>A new <code>LearnerRanger</code> R6 object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>LearnerRanger$new()
+
+</pre>
+</div>
+
+
+<hr>
+<a id="method-LearnerRanger-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerRanger$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>See Also</h3>
+
+<p><code>ranger::ranger()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># binary classification
+
+library(mlbench)
+data("PimaIndiansDiabetes2")
+dataset &lt;- PimaIndiansDiabetes2 |&gt;
+  data.table::as.data.table() |&gt;
+  na.omit()
+
+seed &lt;- 123
+feature_cols &lt;- colnames(dataset)[1:8]
+
+param_list_ranger &lt;- expand.grid(
+  num.trees = seq(500, 1000, 500),
+  mtry = seq(2, 6, 2),
+  min.node.size = seq(1, 9, 4),
+  max.depth = seq(1, 9, 4),
+  sample.fraction = seq(0.5, 0.8, 0.3)
+)
+
+train_x &lt;- model.matrix(
+  ~ -1 + .,
+  dataset[, .SD, .SDcols = feature_cols]
+)
+train_y &lt;- as.integer(dataset[, get("diabetes")]) - 1L
+
+fold_list &lt;- splitTools::create_folds(
+  y = train_y,
+  k = 3,
+  type = "stratified",
+  seed = seed
+)
+ranger_cv &lt;- mlexperiments::MLCrossValidation$new(
+  learner = mllrnrs::LearnerRanger$new(),
+  fold_list = fold_list,
+  ncores = 2,
+  seed = 123
+)
+ranger_cv$learner_args &lt;- c(
+  as.list(
+    data.table::data.table(
+      param_list_ranger[37, ],
+      stringsAsFactors = FALSE
+    ),
+  ),
+  list(classification = TRUE)
+)
+ranger_cv$performance_metric_args &lt;- list(positive = "1")
+ranger_cv$performance_metric &lt;- mlexperiments::metric("auc")
+
+# set data
+ranger_cv$set_data(
+  x = train_x,
+  y = train_y
+)
+
+ranger_cv$execute()
+
+
+## ------------------------------------------------
+## Method `LearnerRanger$new`
+## ------------------------------------------------
+
+LearnerRanger$new()
+
+</code></pre>
+
+
+</div>

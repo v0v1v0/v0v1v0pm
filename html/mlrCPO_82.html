@@ -1,0 +1,220 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>CPOTrained</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Get the Retransformation or Inversion Function from a Resulting Object</h2>
+
+<h3>Description</h3>
+
+<p>When applying a <code>CPO</code> to a <code>data.frame</code> or <code>Task</code>,
+the data is not only changed, additionally a retransformation and an inversion
+object is created that can be applied to other data of the same
+kind. This is useful if new data (for prediction or validation) is to be handled in the same machine learning
+procedure.
+</p>
+<p>For example, when performing PCA on training data using <code>cpoPca</code>, the rotation
+matrix is saved and can be used on new (prediction) data. As another example, consider
+a log-transformation of the target column in a regression problem. When predictions are made with
+new data, it may be useful to invert the transformation on the predicted values by exponentiating them.
+</p>
+<p>The information created when a <code>CPO</code> is applied is saved in a <code>CPORetrafo</code> object, and a <code>CPOInverter</code>
+object, which are both saved as <em>attributes</em>. The <code>retrafo</code> and <code>inverter</code> function
+retrieve these objects. It is furthermore possible to set these attributes using the <code>retrafo&lt;-</code>
+and <code>inverter&lt;-</code> functions, using constructs like <code>retrafo(data) &lt;- retr.obj</code>. The <code>retrafo</code>
+or <code>inverter</code> attributes can be reset individually by setting them to <code>NULL</code>:
+<code>retrafo(data) &lt;- NULL</code>, or by using the <code>clearRI</code> function.
+</p>
+<p>When chaining <code>%&gt;&gt;%</code> on a data object, the retrafo and inverter
+associated with the result is also chained automatically. Beware,
+however, that this just accesses the retrafo attribute internally. Therefore, if you plan to do apply
+multiple transformations with other operations in between,
+make sure to reset the retrafo function by setting it to <code>NULL</code>, or using the <code>clearRI</code>
+function. See examples.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">retrafo(data)
+
+inverter(data)
+
+retrafo(data) &lt;- value
+
+inverter(data) &lt;- value
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>[<code>data.frame</code> | <code>Task</code> | <code>WrappedModel</code>]<br>
+The result of a <code>CPO</code> applied to a data set.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>value</code></td>
+<td>
+<p>[<code>CPOTrained</code> | NULL]<br>
+The retrafo or inverter to set. This must either be a
+<code>CPORetrafo</code> for <code>retrafo&lt;-</code> or a <code>CPOInverter</code> for <code>inverter&lt;-</code>,
+or <code>NULL</code> to reset the <code>retrafo</code> or <code>inverter</code> attributes.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>[<code>CPOTrained</code>]. The retransformation function that can be
+applied to new data. This is a <code>CPORetrafo</code> object for <code>retrafo</code>
+or a <code>CPOInverter</code> object for <code>inverter</code>.
+</p>
+
+
+<h3>
+<code>CPORetrafo</code> and <code>CPOInverter</code>
+</h3>
+
+<p><code>CPORetrafo</code> and <code>CPOInverter</code> objects are members of the <em><code>CPOTrained</code></em> class, which can be handled similarly to CPO objects:
+Their hyperparameters can be inspected using <code>getParamSet</code> and <code>link[mlr]{getHyperPars}</code>,
+<code>print.CPOTrained</code> is used for (possibly verbose) printing. To apply the retrafo or inverter transformation represented by the
+object to data, use the <code>applyCPO</code> or <code>%&gt;&gt;%</code> function.
+</p>
+<p><code>CPOTrained</code> objects can be chained using <code>%&gt;&gt;%</code> or <code>pipeCPO</code>, and broken into primitives using <code>as.list.CPOTrained</code>.
+However, since the <code>CPOTrained</code> objects represent transformations that relate closely to the data used to train it (and therefore
+to the position within a CPO pipeline), it is only advisable to chain or break apart <code>CPOTrained</code> pipes for inspection, or
+if you really know what you are doing.
+</p>
+<p>(Primitive) <code>CPORetrafo</code> objects can be inspected using <code>getCPOTrainedState</code>, and it is possible to create new <code>CPORetrafo</code>
+objects from (possibly modified) retrafo state using <code>makeCPOTrainedFromState</code>.
+</p>
+
+
+<h3>Difference between <code>CPORetrafo</code> and <code>CPOInverter</code>
+</h3>
+
+<p>The fundamental difference between <code>CPORetrafo</code> and <code>CPOInverter</code> is that a <code>CPORetrafo</code> is
+created only when a <code>CPO</code> is applied to a data set, and is used to perform the same transformation on new
+(prediction) data. The <code>CPOInverter</code> is created whenever a <code>CPO</code> <em>or</em> <code>CPORetrafo</code> is
+applied to data (whether training or prediction data). It is in fact used to invert the transformation done to the target
+column of a <code>Task</code>. Since this operation may depend on the new prediction data, and not only on the training
+data fed to the <code>CPO</code> when the <code>CPORetrafo</code> was created, the <code>CPOInverter</code> object is more
+closely bound to the particular data set used to create it.
+</p>
+<p>In some cases a target transformation is independent of the data used to create it (e.g. log-transform of a regression target
+column); in that case the <code>CPORetrafo</code> can be used with <code>invert</code>. This is the concept of
+<code>CPOTrainedCapability</code>, which can be queried using <code>getCPOTrainedCapability</code>.
+</p>
+
+
+<h3>Using <code>CPORetrafo</code>
+</h3>
+
+<p><code>CPORetrafo</code> objects can be applied to new data sets using the <code>%&gt;&gt;%</code> operator, the
+<code>applyCPO</code> generic, or the <code>predict</code> generic, all of which perform the same action.
+</p>
+
+
+<h3>Using <code>CPOInverter</code>
+</h3>
+
+<p>To use a <code>CPOInverter</code>, use the <code>invert</code> function.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>clearRI</code> about the problem of needing to reset <code>retrafo</code> and <code>inverter</code> attributes sometimes.
+</p>
+<p>Other CPO lifecycle related: 
+<code>CPOConstructor</code>,
+<code>CPOLearner</code>,
+<code>CPO</code>,
+<code>NULLCPO</code>,
+<code>%&gt;&gt;%()</code>,
+<code>attachCPO()</code>,
+<code>composeCPO()</code>,
+<code>getCPOClass()</code>,
+<code>getCPOConstructor()</code>,
+<code>getCPOTrainedCPO()</code>,
+<code>identicalCPO()</code>,
+<code>makeCPO()</code>
+</p>
+<p>Other retrafo related: 
+<code>NULLCPO</code>,
+<code>%&gt;&gt;%()</code>,
+<code>applyCPO()</code>,
+<code>as.list.CPO</code>,
+<code>clearRI()</code>,
+<code>getCPOClass()</code>,
+<code>getCPOName()</code>,
+<code>getCPOOperatingType()</code>,
+<code>getCPOPredictType()</code>,
+<code>getCPOProperties()</code>,
+<code>getCPOTrainedCPO()</code>,
+<code>getCPOTrainedCapability()</code>,
+<code>getCPOTrainedState()</code>,
+<code>is.retrafo()</code>,
+<code>makeCPOTrainedFromState()</code>,
+<code>pipeCPO()</code>,
+<code>print.CPOConstructor()</code>
+</p>
+<p>Other inverter related: 
+<code>NULLCPO</code>,
+<code>%&gt;&gt;%()</code>,
+<code>applyCPO()</code>,
+<code>as.list.CPO</code>,
+<code>clearRI()</code>,
+<code>getCPOClass()</code>,
+<code>getCPOName()</code>,
+<code>getCPOOperatingType()</code>,
+<code>getCPOPredictType()</code>,
+<code>getCPOProperties()</code>,
+<code>getCPOTrainedCPO()</code>,
+<code>getCPOTrainedCapability()</code>,
+<code>getCPOTrainedState()</code>,
+<code>is.inverter()</code>,
+<code>makeCPOTrainedFromState()</code>,
+<code>pipeCPO()</code>,
+<code>print.CPOConstructor()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">traindat = subsetTask(pid.task, 1:400)
+preddat = subsetTask(pid.task, 401:768)
+
+trained = traindat %&gt;&gt;% cpoPca()
+reFun = retrafo(trained)
+predicted = preddat %&gt;&gt;% reFun
+head(getTaskData(predicted))
+
+# chaining works
+trained = traindat %&gt;&gt;% cpoPca() %&gt;&gt;% cpoScale()
+reFun = retrafo(trained)
+predicted = preddat %&gt;&gt;% reFun
+head(getTaskData(predicted))
+
+# reset the retrafo when doing other steps!
+
+trained.tmp = traindat %&gt;&gt;% cpoPca()
+reFun1 = retrafo(trained.tmp)
+
+imp = impute(trained.tmp)
+trained.tmp = imp$task  # nonsensical example
+retrafo(trained.tmp) = NULL  # NECESSARY HERE
+
+trained = trained.tmp %&gt;&gt;% cpoScale()
+
+reFun2 = retrafo(trained)
+predicted = getTaskData(reimpute(preddat %&gt;&gt;% reFun1, imp$desc),
+  target.extra = TRUE)$data %&gt;&gt;% reFun2
+</code></pre>
+
+
+</div>

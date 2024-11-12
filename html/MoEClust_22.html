@@ -1,0 +1,115 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MoE_dens</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Density for MoEClust Mixture Models</h2>
+
+<h3>Description</h3>
+
+<p>Computes densities (or log-densities) of observations in MoEClust mixture models.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MoE_dens(data,
+         mus,
+         sigs,
+         log.tau = 0L,
+         Vinv = NULL,
+         logarithm = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>If there are no expert network covariates, <code>data</code> should be a numeric matrix or data frame, wherein rows correspond to observations (n) and columns correspond to variables (d). If there are expert network covariates, this should be a list of length G containing matrices/data.frames of (multivariate) WLS residuals for each component.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mus</code></td>
+<td>
+<p>The mean for each of G components. If there is more than one component, this is a matrix whose k-th column is the mean of the k-th component of the mixture model. For the univariate models, this is a G-vector of means. In the presence of expert network covariates, all values should be equal to <code>0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigs</code></td>
+<td>
+<p>The <code>variance</code> component in the parameters list from the output to e.g. <code>MoE_clust</code>. The components of this list depend on the specification of <code>modelName</code> (see <code>mclustVariance</code> for details). The number of components <code>G</code>, the number of variables <code>d</code>, and the <code>modelName</code> are inferred from <code>sigs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>log.tau</code></td>
+<td>
+<p>If covariates enter the gating network, an n times G matrix of mixing proportions, otherwise a G-vector of mixing proportions for the components of the mixture. <strong>Must</strong> be on the log-scale in both cases. The default of <code>0</code> effectively means densities (or log-densities) aren't scaled by the mixing proportions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Vinv</code></td>
+<td>
+<p>An estimate of the reciprocal hypervolume of the data region. See the function <code>noise_vol</code>. Used only if an initial guess as to which observations are noise is supplied. Mixing proportion(s) must be included for the noise component also.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logarithm</code></td>
+<td>
+<p>A logical value indicating whether or not the logarithm of the component densities should be returned. This defaults to <code>TRUE</code>, otherwise component densities are returned, obtained from the component log-densities by exponentiation. The <strong>log</strong>-densities can be passed to <code>MoE_estep</code> or <code>MoE_cstep</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A numeric matrix whose <code>[i,k]</code>-th entry is the density or log-density of observation <em>i</em> in component <em>k</em>, scaled by the mixing proportions. These densities are unnormalised.
+</p>
+
+
+<h3>Note</h3>
+
+<p>This function is intended for joint use with <code>MoE_estep</code> or <code>MoE_cstep</code>, using the <strong>log</strong>-densities. Note that models with a noise component are facilitated here too.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Keefe Murphy - &lt;<a href="mailto:keefe.murphy@mu.ie">keefe.murphy@mu.ie</a>&gt;
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MoE_estep</code>, <code>MoE_cstep</code>, <code>MoE_clust</code>, <code>mclustVariance</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(ais)
+hema  &lt;- ais[,3:7]
+model &lt;- MoE_clust(hema, G=3, gating= ~ BMI + sex, modelNames="EEE", network.data=ais)
+Dens  &lt;- MoE_dens(data=hema, mus=model$parameters$mean,
+                  sigs=model$parameters$variance, log.tau=log(model$parameters$pro))
+
+# Construct the z matrix and compute the log-likelihood
+Estep &lt;- MoE_estep(Dens=Dens)
+(ll   &lt;- Estep$loglik)
+
+# Check that the z matrix &amp; classification are the same as those from the model
+identical(max.col(Estep$z), as.integer(unname(model$classification))) #TRUE
+identical(Estep$z, model$z)                                           #TRUE
+
+# The same can be done for models with expert covariates &amp;/or a noise component
+# Note for models with expert covariates that the mean has to be supplied as 0,
+# and the data has to be supplied as "resid.data"
+m2    &lt;- MoE_clust(hema, G=2, expert= ~ sex, modelNames="EVE", network.data=ais, tau0=0.1)
+Dens2 &lt;- MoE_dens(data=m2$resid.data, sigs=m2$parameters$variance, mus=0, 
+                  log.tau=log(m2$parameters$pro), Vinv=m2$parameters$Vinv)
+</code></pre>
+
+
+</div>

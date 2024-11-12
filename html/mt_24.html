@@ -1,0 +1,150 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>df.util</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Summary Utilities
+</h2>
+
+<h3>Description</h3>
+
+<p>Functions to summarise data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">df.summ(dat, method=vec.summ,...)
+  
+vec.summ(x)
+
+vec.summ.1(x)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>dat</code></td>
+<td>
+
+<p>A data frame or matrix of data set. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+
+<p>A vector value.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>Summary method such as <code>vec.summ</code> and <code>vec.summ.1</code>.
+For user-defined methods, see examples below.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Additional parameters to <code>method</code> function. 
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>df.summ</code> returns a summarised data frame. 
+</p>
+<p><code>vec.summ</code> returns an vector of number of variables (exclusing NAs),
+minimum, mean, median, maximum and standard derivation.
+</p>
+<p><code>vec.summ.1</code> returns an vector of number of variables (exclusing NAs),
+mean, median, 95% confidence interval of median, IQR and standard derivation.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Wanchang Lin 
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(abr1)
+dat &lt;- (abr1$pos)[,110:150]
+cls &lt;- factor(abr1$fact$class)
+
+## sort out missing value
+dat &lt;- mv.zene(dat)
+
+## summary of an individual column
+vec.summ(dat[,2])
+vec.summ.1(dat[,2])
+
+## summary of data frame
+summ   &lt;- df.summ(dat)                       ## default: vec.summ
+summ.1 &lt;- df.summ(dat, method=vec.summ.1)
+
+## summary by groups
+by(dat, list(cls=cls), df.summ)
+
+## User-defined summary function: 
+vec.segment &lt;- function(x, bar=c("SD", "SE", "CI"))
+{  
+  bar &lt;- match.arg(bar)
+
+  centre &lt;- mean(x, na.rm = TRUE)
+
+  if (bar == "SD") {
+    stderr &lt;- sd(x, na.rm = TRUE)        ## Standard derivation (SD)
+    lower  &lt;- centre - stderr
+    upper  &lt;- centre + stderr
+  } else if (bar == "SE") {      ## Standard error(SE) of mean
+    stderr &lt;- sd(x, na.rm = TRUE)/sqrt(sum(!is.na(x)))
+    ## stderr &lt;- sqrt(var(x, na.rm = TRUE)/length(x[complete.cases(x)]))
+    lower  &lt;- centre - stderr
+    upper  &lt;- centre + stderr
+  } else if (bar == "CI") {      ## Confidence interval (CI), here 95%.
+    conf   &lt;- t.test(x)$conf.int
+    lower  &lt;- conf[1]
+    upper  &lt;- conf[2]
+  } else {
+    stop("'method' invalid")
+  }
+
+  res &lt;- c(lower=lower, centre=centre, upper=upper)
+  return(res)
+}
+
+## test it
+vec.segment(dat[,2])
+summ.2 &lt;- df.summ(dat, method=vec.segment, bar="SE")
+
+## ----------------------------------------------------------
+#' iris data
+df.summ(iris)
+
+#' Group summary
+## library(plyr)
+## ddply(iris, .(Species), df.summ)
+## (tmp &lt;- dlply(iris, .(Species), df.summ, method=vec.segment))
+##do.call("rbind", tmp)
+
+#' or you can use summarise to get the group summary for single variable:
+## ddply(iris, .(Species), summarise, 
+##      mean=mean(Sepal.Length), std=sd(Sepal.Length))
+
+</code></pre>
+
+
+</div>

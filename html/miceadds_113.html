@@ -1,0 +1,155 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mice.impute.bygroup</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Groupwise Imputation Function
+</h2>
+
+<h3>Description</h3>
+
+<p>The function <code>mice.impute.bygroup</code> performs groupwise imputation for arbitrary
+imputation methods defined in <span class="pkg">mice</span>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mice.impute.bygroup(y, ry, x, wy=NULL, group, imputationFunction, ...)
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Incomplete data vector of length <code>n</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ry</code></td>
+<td>
+
+<p>Vector of missing data pattern (<code>FALSE</code> – missing,
+<code>TRUE</code> – observed)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Matrix (<code>n</code> x <code>p</code>) of complete
+covariates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wy</code></td>
+<td>
+<p>Vector of <code>length(y)</code> indicating which entries should be imputed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>group</code></td>
+<td>
+
+<p>Name of grouping variable
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>imputationFunction</code></td>
+<td>
+
+<p>Imputation method for <span class="pkg">mice</span>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>More arguments to be passed to imputation function
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Vector of imputed values
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+#############################################################################
+# EXAMPLE 1: Cluster-specific imputation for some variables
+#############################################################################
+
+library(mice)
+data( data.ma01, package="miceadds")
+dat &lt;- data.ma01
+
+# use sub-dataset
+dat &lt;- dat[ dat$idschool &lt;=1006, ]
+V &lt;- ncol(dat)
+# create initial predictor matrix and imputation methods
+predictorMatrix &lt;- matrix( 1, nrow=V, ncol=V)
+diag(predictorMatrix) &lt;- 0
+rownames(predictorMatrix) &lt;- colnames(predictorMatrix) &lt;- colnames(dat)
+predictorMatrix[, c("idstud", "studwgt","urban" ) ] &lt;- 0
+method &lt;- rep("norm", V)
+names(method) &lt;- colnames(dat)
+
+#** groupwise imputation of variable books
+method["books"] &lt;- "bygroup"
+# specify name of the grouping variable ('idschool') and imputation method ('norm')
+group &lt;- list( "books"="idschool" )
+imputationFunction &lt;- list("books"="norm" )
+
+#** conduct multiple imputation in mice
+imp &lt;- mice::mice( dat, method=method, predictorMatrix=predictorMatrix,
+            m=1, maxit=1, group=group, imputationFunction=imputationFunction )
+
+#############################################################################
+# EXAMPLE 2: Group-wise multilevel imputation '2l.pan'
+#############################################################################
+
+library(mice)
+data( data.ma01, package="miceadds" )
+dat &lt;- data.ma01
+
+# select data
+dat &lt;- dat[, c("idschool","hisei","books","female") ]
+V &lt;- ncol(dat)
+dat &lt;- dat[ ! is.na( dat$books), ]
+# define factor variable
+
+dat$books &lt;- as.factor(dat$books)
+# create initial predictor matrix and imputation methods
+predictorMatrix &lt;- matrix( 0, nrow=V, ncol=V)
+rownames(predictorMatrix) &lt;- colnames(predictorMatrix) &lt;- colnames(dat)
+predictorMatrix["idschool", ] &lt;- 0
+predictorMatrix[ "hisei", "idschool" ] &lt;- -2
+predictorMatrix[ "hisei", c("books","female") ] &lt;- 1
+method &lt;- rep("", V)
+names(method) &lt;- colnames(dat)
+method["hisei"] &lt;- "bygroup"
+group &lt;- list( "hisei"="female" )
+imputationFunction &lt;- list("hisei"="2l.pan" )
+
+#** conduct multiple imputation in mice
+imp &lt;- mice::mice( dat, method=method, predictorMatrix=predictorMatrix,
+            m=1, maxit=1, group=group, imputationFunction=imputationFunction )
+str(imp)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

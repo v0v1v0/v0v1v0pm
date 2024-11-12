@@ -1,0 +1,182 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>iso.bin</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Three-stage monotonic binning procedure</h2>
+
+<h3>Description</h3>
+
+<p><code>iso.bin</code> implements three-stage monotonic binning procedure. The first stage is isotonic regression
+used to achieve the monotonicity, while the remaining two stages are possible corrections for
+minimum percentage of observations and target rate.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">iso.bin(
+  x,
+  y,
+  sc = c(NA, NaN, Inf, -Inf),
+  sc.method = "together",
+  y.type = NA,
+  min.pct.obs = 0.05,
+  min.avg.rate = 0.01,
+  force.trend = NA
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Numeric vector to be binned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Numeric target vector (binary or continuous).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sc</code></td>
+<td>
+<p>Numeric vector with special case elements. Default values are <code>c(NA, NaN, Inf, -Inf)</code>.
+Recommendation is to keep the default values always and add new ones if needed. Otherwise, if these values exist
+in <code>x</code> and are not defined in the <code>sc</code> vector, function will report the error.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sc.method</code></td>
+<td>
+<p>Define how special cases will be treated, all together or in separate bins.
+Possible values are <code>"together", "separately"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y.type</code></td>
+<td>
+<p>Type of <code>y</code>, possible options are <code>"bina"</code> (binary) and <code>"cont"</code> (continuous).
+If default value (<code>NA</code>) is passed, then algorithm will identify if <code>y</code> is 0/1 or continuous variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min.pct.obs</code></td>
+<td>
+<p>Minimum percentage of observations per bin. Default is 0.05 or minimum 30 observations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min.avg.rate</code></td>
+<td>
+<p>Minimum <code>y</code> average rate. Default is 0.01 or minimum 1 bad case for y 0/1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>force.trend</code></td>
+<td>
+<p>If the expected trend should be forced. Possible values: <code>"i"</code> for
+increasing trend (<code>y</code> increases with increase of <code>x</code>), <code>"d"</code> for decreasing trend
+(<code>y</code> decreases with decrease of <code>x</code>). Default value is <code>NA</code>.
+If the default value is passed, then trend will be identified based on the sign of the Spearman correlation
+coefficient between <code>x</code> and <code>y</code> on complete cases.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The corrections of isotonic regression results present an important step in credit rating model development.
+The minimum percentage of observation is capped to minimum 30 observations per bin, while target rate for
+binary target is capped to 1 bad case.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The command <code>iso.bin</code> generates a list of two objects. The first object, data frame <code>summary.tbl</code>
+presents a summary table of final binning, while <code>x.trans</code> is a vector of discretized values.
+In case of single unique value for <code>x</code> or <code>y</code> of complete cases (cases different than special cases),
+it will return data frame with info.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">suppressMessages(library(monobin))
+data(gcd)
+age.bin &lt;- iso.bin(x = gcd$age, y = gcd$qual)
+age.bin[[1]]
+table(age.bin[[2]])
+# force increasing trend
+iso.bin(x = gcd$age, y = gcd$qual, force.trend = "i")[[1]]
+
+#stage by stage example
+#inputs
+x &lt;- gcd$age		#risk factor
+y &lt;- gcd$qual	#binary dependent variable
+min.pct.obs &lt;- 0.05	#minimum percentage of observations per bin
+min.avg.rate &lt;- 0.01	#minimum percentage of defaults per bin
+#stage 1: isotonic regression
+db &lt;- data.frame(x, y)
+db &lt;- db[order(db$x), ]
+cc.sign &lt;- sign(cor(db$y, db$x, method = "spearman", use = "complete.obs"))
+iso.r &lt;- isoreg(x = db$x, y = cc.sign * db$y)
+db$y.hat &lt;- iso.r$yf
+db.s0 &lt;- db %&gt;%
+	   group_by(bin = y.hat) %&gt;%
+	   summarise(no = n(),
+			 y.sum = sum(y),
+			 y.avg = mean(y),
+			 x.avg = mean(x),
+			 x.min = min(x),
+			 x.max = max(x))
+db.s0 
+#stage 2: merging based on minimum percentage of observations
+db.s1 &lt;- db.s0
+thr.no &lt;- ceiling(ifelse(nrow(db) * min.pct.obs &lt; 30, 30, nrow(db) * min.pct.obs))
+thr.no #threshold for minimum number of observations per bin
+repeat {
+		 if	(nrow(db.s1) == 1) {break}
+		 values &lt;- db.s1[, "no"]
+		 if	(all(values &gt;= thr.no)) {break}
+		 gap &lt;- min(which(values &lt; thr.no))
+		 if	(gap == nrow(db.s1)) {
+			db.s1$bin[(gap - 1):gap] &lt;- db.s1$bin[(gap - 1)]
+			} else {
+			db.s1$bin[gap:(gap + 1)] &lt;- db.s1$bin[gap + 1]
+			}	
+		 db.s1 &lt;- db.s1 %&gt;%
+			    group_by(bin) %&gt;%
+			    mutate(
+				y.avg = weighted.mean(y.avg, no),
+				x.avg = weighted.mean(x.avg, no)) %&gt;% 
+			    summarise(
+				no = sum(no),
+				y.sum = sum(y.sum),
+				y.avg = unique(y.avg),
+				x.avg = unique(x.avg),
+				x.min = min(x.min),
+				x.max = max(x.max))
+		} 
+db.s1
+#stage 3: merging based on minimum percentage of bad cases
+db.s2 &lt;- db.s1
+thr.nb &lt;- ceiling(ifelse(nrow(db) * min.avg.rate &lt; 1, 1, nrow(db) * min.avg.rate))
+thr.nb #threshold for minimum number of observations per bin
+#already each bin has more bad cases than selected threshold hence no need for further merging
+all(db.s2$y.sum &gt; thr.nb)
+#final result
+db.s2
+#result of the iso.bin function (formatting and certain metrics has been added)
+iso.bin(x = gcd$age, y = gcd$qual)[[1]]
+
+</code></pre>
+
+
+</div>

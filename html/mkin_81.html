@@ -1,0 +1,434 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mkinfit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit a kinetic model to data with one or more state variables</h2>
+
+<h3>Description</h3>
+
+<p>This function maximises the likelihood of the observed data using the Port
+algorithm <code>stats::nlminb()</code>, and the specified initial or fixed
+parameters and starting values.  In each step of the optimisation, the
+kinetic model is solved using the function <code>mkinpredict()</code>, except
+if an analytical solution is implemented, in which case the model is solved
+using the degradation function in the mkinmod object. The
+parameters of the selected error model are fitted simultaneously with the
+degradation model parameters, as both of them are arguments of the
+likelihood function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mkinfit(
+  mkinmod,
+  observed,
+  parms.ini = "auto",
+  state.ini = "auto",
+  err.ini = "auto",
+  fixed_parms = NULL,
+  fixed_initials = names(mkinmod$diffs)[-1],
+  from_max_mean = FALSE,
+  solution_type = c("auto", "analytical", "eigen", "deSolve"),
+  method.ode = "lsoda",
+  use_compiled = "auto",
+  control = list(eval.max = 300, iter.max = 200),
+  transform_rates = TRUE,
+  transform_fractions = TRUE,
+  quiet = FALSE,
+  atol = 1e-08,
+  rtol = 1e-10,
+  error_model = c("const", "obs", "tc"),
+  error_model_algorithm = c("auto", "d_3", "direct", "twostep", "threestep", "fourstep",
+    "IRLS", "OLS"),
+  reweight.tol = 1e-08,
+  reweight.max.iter = 10,
+  trace_parms = FALSE,
+  test_residuals = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>mkinmod</code></td>
+<td>
+<p>A list of class mkinmod, containing the kinetic
+model to be fitted to the data, or one of the shorthand names ("SFO",
+"FOMC", "DFOP", "HS", "SFORB", "IORE"). If a shorthand name is given, a
+parent only degradation model is generated for the variable with the
+highest value in <code>observed</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>observed</code></td>
+<td>
+<p>A dataframe with the observed data.  The first column called
+"name" must contain the name of the observed variable for each data point.
+The second column must contain the times of observation, named "time".
+The third column must be named "value" and contain the observed values.
+Zero values in the "value" column will be removed, with a warning, in
+order to avoid problems with fitting the two-component error model. This
+is not expected to be a problem, because in general, values of zero are
+not observed in degradation data, because there is a lower limit of
+detection.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parms.ini</code></td>
+<td>
+<p>A named vector of initial values for the parameters,
+including parameters to be optimised and potentially also fixed parameters
+as indicated by <code>fixed_parms</code>.  If set to "auto", initial values for
+rate constants are set to default values.  Using parameter names that are
+not in the model gives an error.
+</p>
+<p>It is possible to only specify a subset of the parameters that the model
+needs. You can use the parameter lists "bparms.ode" from a previously
+fitted model, which contains the differential equation parameters from
+this model.  This works nicely if the models are nested. An example is
+given below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>state.ini</code></td>
+<td>
+<p>A named vector of initial values for the state variables of
+the model. In case the observed variables are represented by more than one
+model variable, the names will differ from the names of the observed
+variables (see <code>map</code> component of mkinmod). The default
+is to set the initial value of the first model variable to the mean of the
+time zero values for the variable with the maximum observed value, and all
+others to 0.  If this variable has no time zero observations, its initial
+value is set to 100.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>err.ini</code></td>
+<td>
+<p>A named vector of initial values for the error model
+parameters to be optimised.  If set to "auto", initial values are set to
+default values.  Otherwise, inital values for all error model parameters
+must be given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixed_parms</code></td>
+<td>
+<p>The names of parameters that should not be optimised but
+rather kept at the values specified in <code>parms.ini</code>. Alternatively,
+a named numeric vector of parameters to be fixed, regardless of the values
+in parms.ini.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixed_initials</code></td>
+<td>
+<p>The names of model variables for which the initial
+state at time 0 should be excluded from the optimisation. Defaults to all
+state variables except for the first one.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>from_max_mean</code></td>
+<td>
+<p>If this is set to TRUE, and the model has only one
+observed variable, then data before the time of the maximum observed value
+(after averaging for each sampling time) are discarded, and this time is
+subtracted from all remaining time values, so the time of the maximum
+observed mean value is the new time zero.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>solution_type</code></td>
+<td>
+<p>If set to "eigen", the solution of the system of
+differential equations is based on the spectral decomposition of the
+coefficient matrix in cases that this is possible. If set to "deSolve", a
+numerical ode solver from package deSolve is used. If
+set to "analytical", an analytical solution of the model is used. This is
+only implemented for relatively simple degradation models.  The default is
+"auto", which uses "analytical" if possible, otherwise "deSolve" if a
+compiler is present, and "eigen" if no compiler is present and the model
+can be expressed using eigenvalues and eigenvectors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method.ode</code></td>
+<td>
+<p>The solution method passed via <code>mkinpredict()</code>
+to <code>deSolve::ode()</code> in case the solution type is "deSolve". The default
+"lsoda" is performant, but sometimes fails to converge.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_compiled</code></td>
+<td>
+<p>If set to <code>FALSE</code>, no compiled version of the
+mkinmod model is used in the calls to <code>mkinpredict()</code> even if a compiled
+version is present.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>A list of control arguments passed to <code>stats::nlminb()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transform_rates</code></td>
+<td>
+<p>Boolean specifying if kinetic rate constants should
+be transformed in the model specification used in the fitting for better
+compliance with the assumption of normal distribution of the estimator. If
+TRUE, also alpha and beta parameters of the FOMC model are
+log-transformed, as well as k1 and k2 rate constants for the DFOP and HS
+models and the break point tb of the HS model.  If FALSE, zero is used as
+a lower bound for the rates in the optimisation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transform_fractions</code></td>
+<td>
+<p>Boolean specifying if formation fractions
+should be transformed in the model specification used in the fitting for
+better compliance with the assumption of normal distribution of the
+estimator. The default (TRUE) is to do transformations. If TRUE,
+the g parameter of the DFOP model is also transformed. Transformations
+are described in transform_odeparms.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quiet</code></td>
+<td>
+<p>Suppress printing out the current value of the negative
+log-likelihood after each improvement?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>atol</code></td>
+<td>
+<p>Absolute error tolerance, passed to <code>deSolve::ode()</code>. Default
+is 1e-8, which is lower than the default in the <code>deSolve::lsoda()</code>
+function which is used per default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rtol</code></td>
+<td>
+<p>Absolute error tolerance, passed to <code>deSolve::ode()</code>. Default
+is 1e-10, much lower than in <code>deSolve::lsoda()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>error_model</code></td>
+<td>
+<p>If the error model is "const", a constant standard
+deviation is assumed.
+</p>
+<p>If the error model is "obs", each observed variable is assumed to have its
+own variance.
+</p>
+<p>If the error model is "tc" (two-component error model), a two component
+error model similar to the one described by Rocke and Lorenzato (1995) is
+used for setting up the likelihood function.  Note that this model
+deviates from the model by Rocke and Lorenzato, as their model implies
+that the errors follow a lognormal distribution for large values, not a
+normal distribution as assumed by this method.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>error_model_algorithm</code></td>
+<td>
+<p>If "auto", the selected algorithm depends on
+the error model.  If the error model is "const", unweighted nonlinear
+least squares fitting ("OLS") is selected. If the error model is "obs", or
+"tc", the "d_3" algorithm is selected.
+</p>
+<p>The algorithm "d_3" will directly minimize the negative log-likelihood
+and independently also use the three step algorithm described below.
+The fit with the higher likelihood is returned.
+</p>
+<p>The algorithm "direct" will directly minimize the negative log-likelihood.
+</p>
+<p>The algorithm "twostep" will minimize the negative log-likelihood after an
+initial unweighted least squares optimisation step.
+</p>
+<p>The algorithm "threestep" starts with unweighted least squares, then
+optimizes only the error model using the degradation model parameters
+found, and then minimizes the negative log-likelihood with free
+degradation and error model parameters.
+</p>
+<p>The algorithm "fourstep" starts with unweighted least squares, then
+optimizes only the error model using the degradation model parameters
+found, then optimizes the degradation model again with fixed error model
+parameters, and finally minimizes the negative log-likelihood with free
+degradation and error model parameters.
+</p>
+<p>The algorithm "IRLS" (Iteratively Reweighted Least Squares) starts with
+unweighted least squares, and then iterates optimization of the error
+model parameters and subsequent optimization of the degradation model
+using those error model parameters, until the error model parameters
+converge.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reweight.tol</code></td>
+<td>
+<p>Tolerance for the convergence criterion calculated from
+the error model parameters in IRLS fits.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reweight.max.iter</code></td>
+<td>
+<p>Maximum number of iterations in IRLS fits.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trace_parms</code></td>
+<td>
+<p>Should a trace of the parameter values be listed?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>test_residuals</code></td>
+<td>
+<p>Should the residuals be tested for normal distribution?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments that will be passed on to
+<code>deSolve::ode()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Per default, parameters in the kinetic models are internally transformed in
+order to better satisfy the assumption of a normal distribution of their
+estimators.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with "mkinfit" in the class attribute.
+</p>
+
+
+<h3>Note</h3>
+
+<p>When using the "IORE" submodel for metabolites, fitting with
+"transform_rates = TRUE" (the default) often leads to failures of the
+numerical ODE solver. In this situation it may help to switch off the
+internal rate transformation.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Johannes Ranke
+</p>
+
+
+<h3>References</h3>
+
+<p>Rocke DM and Lorenzato S (1995) A two-component model
+for measurement error in analytical chemistry. <em>Technometrics</em> 37(2), 176-184.
+</p>
+<p>Ranke J and Meinecke S (2019) Error Models for the Kinetic Evaluation of Chemical
+Degradation Data. <em>Environments</em> 6(12) 124
+<a href="https://doi.org/10.3390/environments6120124">doi:10.3390/environments6120124</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>summary.mkinfit, plot.mkinfit, parms and lrtest.
+</p>
+<p>Comparisons of models fitted to the same data can be made using
+<code>AIC</code> by virtue of the method <code>logLik.mkinfit</code>.
+</p>
+<p>Fitting of several models to several datasets in a single call to
+<code>mmkin</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Use shorthand notation for parent only degradation
+fit &lt;- mkinfit("FOMC", FOCUS_2006_C, quiet = TRUE)
+summary(fit)
+
+# One parent compound, one metabolite, both single first order.
+# We remove zero values from FOCUS dataset D in order to avoid warnings
+FOCUS_D &lt;- subset(FOCUS_2006_D, value != 0)
+# Use mkinsub for convenience in model formulation. Pathway to sink included per default.
+SFO_SFO &lt;- mkinmod(
+  parent = mkinsub("SFO", "m1"),
+  m1 = mkinsub("SFO"))
+
+# Fit the model quietly to the FOCUS example dataset D using defaults
+fit &lt;- mkinfit(SFO_SFO, FOCUS_D, quiet = TRUE)
+plot_sep(fit)
+# As lower parent values appear to have lower variance, we try an alternative error model
+fit.tc &lt;- mkinfit(SFO_SFO, FOCUS_D, quiet = TRUE, error_model = "tc")
+# This avoids the warning, and the likelihood ratio test confirms it is preferable
+lrtest(fit.tc, fit)
+# We can also allow for different variances of parent and metabolite as error model
+fit.obs &lt;- mkinfit(SFO_SFO, FOCUS_D, quiet = TRUE, error_model = "obs")
+# The two-component error model has significantly higher likelihood
+lrtest(fit.obs, fit.tc)
+parms(fit.tc)
+endpoints(fit.tc)
+
+# We can show a quick (only one replication) benchmark for this case, as we
+# have several alternative solution methods for the model. We skip
+# uncompiled deSolve, as it is so slow. More benchmarks are found in the
+# benchmark vignette
+## Not run: 
+if(require(rbenchmark)) {
+  benchmark(replications = 1, order = "relative", columns = c("test", "relative", "elapsed"),
+    deSolve_compiled = mkinfit(SFO_SFO, FOCUS_D, quiet = TRUE, error_model = "tc",
+      solution_type = "deSolve", use_compiled = TRUE),
+    eigen = mkinfit(SFO_SFO, FOCUS_D, quiet = TRUE, error_model = "tc",
+      solution_type = "eigen"),
+    analytical = mkinfit(SFO_SFO, FOCUS_D, quiet = TRUE, error_model = "tc",
+      solution_type = "analytical"))
+}
+
+## End(Not run)
+
+# Use stepwise fitting, using optimised parameters from parent only fit, FOMC-SFO
+## Not run: 
+FOMC_SFO &lt;- mkinmod(
+  parent = mkinsub("FOMC", "m1"),
+  m1 = mkinsub("SFO"))
+fit.FOMC_SFO &lt;- mkinfit(FOMC_SFO, FOCUS_D, quiet = TRUE)
+# Again, we get a warning and try a more sophisticated error model
+fit.FOMC_SFO.tc &lt;- mkinfit(FOMC_SFO, FOCUS_D, quiet = TRUE, error_model = "tc")
+# This model has a higher likelihood, but not significantly so
+lrtest(fit.tc, fit.FOMC_SFO.tc)
+# Also, the missing standard error for log_beta and the t-tests for alpha
+# and beta indicate overparameterisation
+summary(fit.FOMC_SFO.tc, data = FALSE)
+
+# We can easily use starting parameters from the parent only fit (only for illustration)
+fit.FOMC = mkinfit("FOMC", FOCUS_2006_D, quiet = TRUE, error_model = "tc")
+fit.FOMC_SFO &lt;- mkinfit(FOMC_SFO, FOCUS_D, quiet = TRUE,
+  parms.ini = fit.FOMC$bparms.ode, error_model = "tc")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,152 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>compare_models</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compare the predictive accuracy of 2 or more MixSIAR models</h2>
+
+<h3>Description</h3>
+
+<p><code>compare_models</code> uses the <a href="https://CRAN.R-project.org/package=loo">'loo' package</a>
+to compute LOO (leave-one-out cross-validation) or WAIC (widely applicable information criterion)
+for 2 of more fit MixSIAR models.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">compare_models(x, loo = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>list of two or more <code>rjags</code> model objects (output from <code>run_model</code> function)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loo</code></td>
+<td>
+<p><code>TRUE/FALSE</code>: compute LOO if <code>TRUE</code> (preferred), compute WAIC if <code>FALSE</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>LOO and WAIC are "methods for estimating pointwise out-of-sample prediction accuracy
+from a fitted Bayesian model using the log-likelihood evaluated at the posterior
+simulations of the parameter values". See <a href="https://link.springer.com/article/10.1007/s11222-016-9696-4">Vehtari, Gelman, &amp; Gabry (2017)</a>.
+In brief:
+</p>
+
+<ul>
+<li>
+<p> LOO and WAIC are preferred over AIC or DIC
+</p>
+</li>
+<li>
+<p> LOO is more robust than WAIC
+</p>
+</li>
+<li> <p><code>'loo'</code> estimates standard errors for the difference in LOO/WAIC between two models
+</p>
+</li>
+<li>
+<p> We can calculate the relative support for each model using LOO/WAIC weights
+</p>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>Data frame with the following columns:
+</p>
+
+<ul>
+<li> <p><code>Model</code>: names of <code>x</code> (input list)
+</p>
+</li>
+<li> <p><code>LOOic</code> / <code>WAIC</code>: LOO information criterion or WAIC
+</p>
+</li>
+<li> <p><code>se_LOOic</code> / <code>se_WAIC</code>: standard error of LOOic / WAIC
+</p>
+</li>
+<li> <p><code>dLOOic</code> / <code>dWAIC</code>: difference between each model and the model with lowest LOOic/WAIC. Best model has dLOOic = 0.
+</p>
+</li>
+<li> <p><code>se_dLOOic</code> / <code>se_dWAIC</code>: standard error of the difference between each model and the model with lowest LOOic/WAIC
+</p>
+</li>
+<li> <p><code>weight</code>: relative support for each model, calculated as Akaike weights (p.75 Burnham &amp; Anderson 2002). Interpretation: "an estimate of the probability that the model will make the best predictions on new data, conditional on the set of models considered" (McElreath 2015).
+</p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+<p><a href="https://CRAN.R-project.org/package=loo">'loo' package</a>
+</p>
+<p><a href="https://link.springer.com/article/10.1007/s11222-016-9696-4">Vehtari, A, A Gelman, and J Gabry. 2017</a>. Practical Bayesian model evaluation using leave-one-out cross-validation and WAIC. Statistics and Computing.
+</p>
+<p>Pages 75-88 in <a href="https://www.springer.com/us/book/9780387953649">Burnham, KP and DR Anderson. 2002</a>. Model selection and multimodel inference: a practical information-theoretic approach. Springer Science &amp; Business Media.
+</p>
+<p>Pages 188-201 in <a href="https://www.routledge.com/Statistical-Rethinking-A-Bayesian-Course-with-Examples-in-R-and-STAN/McElreath/p/book/9780367139919">McElreath, R. 2016</a>. Statistical rethinking: a Bayesian course with examples in R and Stan. CRC Press.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Model 1 = wolf diet by Region + Pack
+mix.1 &lt;- load_mix_data(filename=mix.filename, 
+                     iso_names=c("d13C","d15N"), 
+                     factors=c("Region","Pack"), 
+                     fac_random=c(TRUE,TRUE), 
+                     fac_nested=c(FALSE,TRUE), 
+                     cont_effects=NULL)
+source.1 &lt;- load_source_data(filename=source.filename, source_factors="Region",
+                             conc_dep=FALSE, data_type="means", mix.1)
+discr.1 &lt;- load_discr_data(filename=discr.filename, mix.1)
+
+# Run Model 1
+jags.1 &lt;- run_model(run="test", mix.1, source.1, discr.1, model_filename, 
+                    alpha.prior = 1, resid_err=T, process_err=T)
+                    
+# Model 2 = wolf diet by Region (no Pack)
+mix.2 &lt;- load_mix_data(filename=mix.filename, 
+                     iso_names=c("d13C","d15N"), 
+                     factors=c("Region"), 
+                     fac_random=c(TRUE), 
+                     fac_nested=c(FALSE), 
+                     cont_effects=NULL)
+source.2 &lt;- load_source_data(filename=source.filename, source_factors="Region",
+                             conc_dep=FALSE, data_type="means", mix.2)
+discr.2 &lt;- load_discr_data(filename=discr.filename, mix.2)
+
+# Run Model 2
+jags.2 &lt;- run_model(run="test", mix.2, source.2, discr.2, model_filename, 
+                    alpha.prior = 1, resid_err=T, process_err=T)
+                    
+# Compare models 1 and 2 using LOO
+compare_models(x=list(jags.1, jags.2), loo=TRUE)
+
+# Compare models 1 and 2 using WAIC
+compare_models(x=list(jags.1, jags.2), loo=FALSE)
+
+# Get WAIC for model 1
+compare_models(x=list(jags.1), loo=FALSE)
+
+# Create named list of rjags objects to get model names in summary
+x &lt;- list(jags.1, jags.2)
+names(x) &lt;- c("Region + Pack", "Region")
+compare_models(x)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

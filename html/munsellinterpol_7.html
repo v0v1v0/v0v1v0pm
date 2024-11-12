@@ -1,0 +1,161 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>IsWithinMacAdamLimits</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Test xyY Coordinates for being Inside the MacAdam Limits
+</h2>
+
+<h3>Description</h3>
+
+<p>Test xyY Coordinates for being Inside the MacAdam Limits for Illuminants C and D65
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">IsWithinMacAdamLimits( xyY, Illuminant='C' )
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>xyY</code></td>
+<td>
+<p>a numeric Nx3 matrix with CIE xyY coordinates in the rows,
+or a vector that can be converted to such a matrix, by row. 
+The reference white is asssumed to have Y=100.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Illuminant</code></td>
+<td>
+<p>either <code>'C'</code> or <code>'D65'</code>. Partial matching is enabled, and is case-insensitive.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <em>MacAdam Limit</em> is the boundary of the
+<em>optimal color solid</em> (also called the <em>Rösch Farbkörper</em>),
+in XYZ coordinates.
+The optimal color solid is convex and depends on the illuminant.
+Points on the boundary of the solid are called <em>optimal colors</em>.
+
+It is symmetric about the midpoint of the segment joining black and white
+(the 50% gray point).
+It can be expressed as a <em>zonohedron</em> - a convex polyhedron with a special form;
+for details on zonohedra, see <cite>Centore</cite>.
+</p>
+<p>For each of the 2 illuminants, a zonohedron <code class="reqn">Z</code> is pre-computed
+(and stored in <code>sysdata.rda</code>).
+The wavelengths used are 380 to 780 nm with 5nm step (81 wavelengths).
+Each zonohedron has 81*80=6480 parallelogram faces, though some of them are coplanar.
+<code class="reqn">Z</code> is expressed as the intersection of 6480 halfspaces.
+The plane equation of each parallelogram is pre-computed,
+but redundant ones are not removed (in this version).
+</p>
+<p>For testing a query point xyY, a pseudo-distance metric <code class="reqn">\delta</code> is used.
+Let the zonohedron <code class="reqn">Z</code> be the intersection of the halfspaces
+  &amp;langle;  <code class="reqn">h_i,x</code>   &amp;rangle;  <code class="reqn">\le b_i ~~ i=1,...,n</code>, 
+where each <code class="reqn">h_i</code> is a unit vector.
+The point xyY is converted to XYZ, and <code class="reqn">\delta</code>(XYZ) is computed as:
+<code class="reqn">\delta</code>(XYZ) := max(   &amp;langle;  <code class="reqn">h_i</code>,XYZ   &amp;rangle;  - <code class="reqn">b_i</code> )
+where the maximum is taken over all <code class="reqn">i=1,...,n</code>.
+This calculation can be optimized;
+because the zonohedron is centrally symmetric, only half of the planes actually have to be stored,
+and this cuts the memory and processing time in half.
+It is clear that XYZ is within the zonohedron iff <code class="reqn">\delta</code>(XYZ) <code class="reqn">\le</code> 0,
+and that XYZ is on the boundary iff <code class="reqn">\delta</code>(XYZ)=0.
+This pseudo-distance is part of the returned <code>data.frame</code>.
+</p>
+<p>An interesting fact is that if <code class="reqn">\delta</code>(XYZ)&gt;0,
+then <code class="reqn">\delta</code>(XYZ) <code class="reqn">\le</code> dist(XYZ,<code class="reqn">Z</code>),
+with equality iff the segment from <code class="reqn">XYZ</code> to the
+point <code class="reqn">z</code> on the boundary of <code class="reqn">Z</code> closest to XYZ is
+normal to one of the faces of <code class="reqn">Z</code> that contains <code class="reqn">z</code>.
+This is why we call <code class="reqn">\delta</code> a <em>pseudo-distance</em>.
+Another interesting fact is that if <code class="reqn">\delta</code>(XYZ) <code class="reqn">\le</code> 0,
+then <code class="reqn">\delta</code>(XYZ) = -min( <code class="reqn">\Psi_Z(u)</code> -   &amp;langle;  <code class="reqn">u</code>,XYZ   &amp;rangle;  ),
+where the minimum is taken over all unit vectors <code class="reqn">u</code> and
+where <code class="reqn">\Psi_Z</code> is the <em>support function</em> of <code class="reqn">Z</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>data.frame</code> with N rows and these columns:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>within</code></td>
+<td>
+<p>a logical which is <code>TRUE</code> iff the corresponding row in <code>xyY</code>
+is inside the optimal color solid for the illuminant.
+If a point is exactly on the boundary (unlikely), <code>within=TRUE</code>.
+Explicitly, <code>within = (delta&lt;=0)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>delta</code></td>
+<td>
+<p>the pseudo-distance <code class="reqn">\delta</code> discussed in <b>Details</b></p>
+</td>
+</tr>
+</table>
+<p>The row names of the output value are set equal to the row names of <code>xyY</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Glenn Davis and Jose Gama
+</p>
+
+
+<h3>References</h3>
+
+<p>Centore, Paul.
+<em>A zonohedral approach to optimal colours</em>.
+<b>Color Research &amp; Application</b>.
+Vol. 38.
+No. 2.
+pp. 110-119.
+April 2013.
+</p>
+<p>Rösch, S.
+<b>Darstellung der Farbenlehre für die Zwecke des Mineralogen</b>.
+Fortschr. Mineral. Krist. Petrogr.
+Vol. 13 No. 143.
+1929.
+</p>
+<p>MacAdam, David L.
+<b>Maximum Visual Efficiency of Colored Materials</b>.
+Journal of the Optical Society of America.
+Vol 25, No. 11.
+pp. 361-367.
+November 1935.
+</p>
+<p>Wikipedia.
+<b>Support Function</b>.
+<a href="https://en.wikipedia.org/wiki/Support_function">https://en.wikipedia.org/wiki/Support_function</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">IsWithinMacAdamLimits( c(0.6,0.3,10, 0.6,0.3,20, 0.6,0.3,30, 0.6,0.3,40  ), 'C' )
+
+##    within  delta
+##  1   TRUE -1.941841
+##  2   TRUE -1.332442
+##  3  FALSE  3.513491
+##  4  FALSE 12.826172
+</code></pre>
+
+
+</div>

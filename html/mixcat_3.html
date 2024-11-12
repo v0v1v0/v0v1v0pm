@@ -1,0 +1,387 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>npmlt</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Mixed effects cumulative link and logistic regression models</h2>
+
+<h3>Description</h3>
+
+<p>Fits cumulative logit and baseline logit and link mixed effects regression models with non- parametric distribution for the random effects.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">npmlt(formula, formula.npo=~1, random=~1, id, k=1, eps=0.0001,
+      start.int=NULL, start.reg=NULL, start.mp=NULL,
+      start.m=NULL, link="clogit",
+      EB=FALSE, maxit=500, na.rm=TRUE, tol=0.0001)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a formula defining the response and the fixed, proportional odds, effects part of the model,
+e.g. <code>y ~ x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula.npo</code></td>
+<td>
+<p>a formula defining non proportional odds variables of the model.
+A response is not needed as it has been provided in <code>formula</code>.
+Intercepts need not be provided as they are always non proportional.
+Variables in <code>formula.npo</code> must be a subset of the variables
+that appear in the right hand side of <code>formula</code>, e.g. <code> ~ x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random</code></td>
+<td>
+<p>a formula defining the random part of the model. For instance, <code>random = ~1</code>
+defines a random intercept model, while <code>random = ~1+x</code> defines a model
+with random intercept and random slope for the variable <code>x</code>. If
+argument <code>k=1</code>, the resulting model is a fixed effects model (see below).
+Variables in <code>random</code> must be a subset of the variables that appear
+in the right hand side of <code>formula</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>a factor that defines the primary sampling units, e.g.
+groups, clusters, classes, or individuals in longitudinal studies. These sampling units
+have their own random coefficient, as defined in <code>random</code>.
+If argument <code>id</code> is missing it is taken to be <code>id=seq(N)</code>,
+where N is the total number of observations,
+suitable for overdispersed independent multinomial data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>the number of mass points and masses for the non-parametric (discrete) random effects distribution.
+If <code>k=1</code> the function fits a fixed effects models, regerdless of the <code>random</code> specification,
+as with <code>k=1</code> the random effects distribution is degenerate at zero.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>positive convergence tolerance <code class="reqn">epsilon</code>. Convergence is declared when the maximum
+of the absolute value of the score vector is less than <code class="reqn">epsilon</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start.int</code></td>
+<td>
+<p>a vector of length (number of categories minus one) with the starting values the
+fixed intercept(s).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start.reg</code></td>
+<td>
+<p>a vector with the starting values for the regression coefficients. One
+starting value for the proportional odds effects and (number of categories minus one)
+starting values for the non proportional effects, in the same order as they appear
+in <code>formula</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start.mp</code></td>
+<td>
+<p>starting values for the mass points of the random effects distribution in the form:
+(<code>k</code> starting values for the intercepts, <code>k</code> starting values for the
+first random slope,...).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start.m</code></td>
+<td>
+<p>starting values for the masses of the random effects distribution: a vector of
+length <code>k</code> with non-negative elements that sum to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>link</code></td>
+<td>
+<p>for a cumulative logit model set <code>link="clogit"</code> (default).
+For a baseline logit model, set <code>link="blogit"</code>. Baseline category
+is the last category.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>EB</code></td>
+<td>
+<p>if <code>EB=TRUE</code> the empirical Bayes estimates of the random effects are calculated
+and stored in the component <code>eBayes</code>. Further, fitted values of the linear predictor
+(stored in the component <code>fitted</code>) and fitted probabilities (stored in object <code>prob</code>) are
+obtained at the empirical Bayes estimates of the random
+effects. Otherwise, if <code>EB=FALSE</code> (default), empirical Bayes estimates are not
+calculated and fitted values of the linear predictors and probabilities are calculated at the zero
+value of the random effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit</code></td>
+<td>
+<p>integer giving the maximal number of iterations of the fitting algorithm until convergence.
+By default this number is set to 500.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na.rm</code></td>
+<td>
+<p>a logical value indicating whether NA values should be stripped before the computation proceeds.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>positive tolerance level used for calculating generalised inverses (g-inverses). Consider matrix
+<code class="reqn">A = P D P^T</code>, where <code class="reqn">D=Diag\{eigen_i\}</code> is diagonal with entries the eigen values of <code class="reqn">A</code>.
+Its g-inverse is calculated as <code class="reqn">A^{-} = P D^{-} P^T</code>, where <code class="reqn">D^{-}</code> is diagonal with entries
+<code class="reqn">1/eigen_i</code> if <code class="reqn">eigen_i &gt; tol</code>, and <code class="reqn">0</code> otherwise.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Maximizing a likelihood over an unspecified random effects distribution results in a
+discrete mass point estimate of this distribution (Laird, 1978; Lindsay, 1983).
+Thus, the terms ‘non-parametric’ (NP) and ‘discrete’ random effects distribution are used here
+interchangeably. Function <code>npmlt</code> allows the user to choose the number <code>k</code> of mass
+points/masses of the discrete distribution, a choice that should be based on the log-likelihood.
+Note that the mean of the NP distribution is constrained to be zero and thus for <code>k=1</code>
+the fitted model is equivalent to a fixed effects model. For <code>k&gt;1</code> and a random slope in the model,
+the mass points are bivariate with a component that corresponds to the intercept and another
+that corresponds to the slope.
+</p>
+<p>General treatments of non-parametric modeling can be found in Aitkin, M. (1999) and Aitkin et al. (2009).
+For more details on multinomial data see Hartzel et al (2001).
+</p>
+<p>The response variable <code>y</code> can be binary or multinomial. A binary response should
+take values 1 and 2, and the function <code>npmlt</code> will model the probability of 1. For an ordinal
+response, taking values <code class="reqn">1,\dots,q</code>, a cumulative logit model can be fit. Ignoring the random effects,
+such a model, with formula <code>y~x</code>, takes the form
+</p>
+<p style="text-align: center;"><code class="reqn">log \frac{P(Y \le r)}{1-P(Y \le r)}=\beta_r + \gamma x,</code>
+</p>
+
+<p>where <code class="reqn">\beta_r, r=1,\dots,q-1</code>, are the cut-points and <code class="reqn">\gamma</code> is the slope.
+Further, if argument formula.npo is specified as <code>~x</code>, the model becomes
+</p>
+<p style="text-align: center;"><code class="reqn">log \frac{P(Y \le r)}{1-P(Y \le r)}=\beta_r + \gamma_r x,</code>
+</p>
+
+<p>Similarly, for a nominal response with q categories, a baseline logit model can be fit.
+The fixed effects part of the model, <code>y~x</code>, takes the form,
+</p>
+<p style="text-align: center;"><code class="reqn">log \frac{P(Y=r)}{P(Y=q)} = \beta_r + \gamma x,</code>
+</p>
+
+<p>where <code class="reqn">r=1,\dots,q-1.</code> Again, formula.npo can be specified as <code>~x</code>, in which
+case slope <code class="reqn">\gamma</code> will be replaced by category specific slopes, <code class="reqn">\gamma_r</code>.
+</p>
+<p>The user is provided with the option of specifying starting values for some or all the model
+parameters. This option allows for starting the algorithm at different starting points, in order
+to ensure that it has convered to the point of maximum likelihood. Further, if the fitting algorithm
+fails, the user can start by fitting a less complex model and use the estimates of this model
+as starting values for the more complex one.
+</p>
+<p>With reference to the <code>tol</code> argument, the fitting
+algorithm calculates g-inverses of two matrices: 1. the information matrix of the model,
+and 2. the covariance matrix of multinomial proportions. The covariance matrix of a
+multinomial proportion <code class="reqn">p</code> of length <code class="reqn">q</code> is calculated as <code class="reqn">Diag\{p*\} -p* p*^T</code>,
+where <code class="reqn">p*</code> is of length <code class="reqn">q-1</code>. A g-inverse for this matrix is needed because elements
+of <code class="reqn">p*</code> can become zero or one.</p>
+
+
+<h3>Value</h3>
+
+<p>The function <code>npmlt</code> returns an object of class ‘npmreg’, a list containing at least the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>the matched call.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>the formula supplied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula.npo</code></td>
+<td>
+<p>the formula for the non proportional odds supplied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random</code></td>
+<td>
+<p>the random effects formula supplied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coefficients</code></td>
+<td>
+<p>a named vector of regression coefficients.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mass.points</code></td>
+<td>
+<p>a vector or a table that contains the mass point estimates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>masses</code></td>
+<td>
+<p>the masses (probabilities) corresponding to the mass points.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vcvremat</code></td>
+<td>
+<p>the estimated variance-covariance matrix of the random effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var.cor.mat</code></td>
+<td>
+<p>the estimated variance-covariance matrix of the random effects, with the upper triangular covariances replaced by the corresponding correlations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>m2LogL</code></td>
+<td>
+<p>minus twice the maximized log-likelihood of the chosen model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SE.coefficients</code></td>
+<td>
+<p>a named vector of standard errors of the estimated regression coefficients.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SE.mass.points</code></td>
+<td>
+<p>a vector or a table that contains the the standard errors of the estimated mass points.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SE.masses</code></td>
+<td>
+<p>the standard errors of the estimated masses.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>VRESE</code></td>
+<td>
+<p>the standard errors of the estimates of the variances of random effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CVmat</code></td>
+<td>
+<p>the inverse of the observed information matrix of the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eBayes</code></td>
+<td>
+<p>if <code>EB=TRUE</code> it contains the empirical Bayes estimates of the random effects. Otherwise it  contains vector(s) of zeros.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fitted</code></td>
+<td>
+<p>the fitted values of the linear predictors computed at the empirical Bayes estimates of the random effects, if <code>EB=TRUE</code>. Otherwise, if <code>EB=FALSE</code> (default) these fitted values are computed at the zero value of the random effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prob</code></td>
+<td>
+<p>the estimated probabilities of observing a response at one of the categories. These probabilities are computed at the empirical Bayes estimates of the random effects, if <code>EB=TRUE</code>. If <code>EB=FALSE</code> (default) these estimated probabilities are computed at the zero value of the random effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nrp</code></td>
+<td>
+<p>number of random slopes specified.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>the number of iterations of the fitting algorithm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit</code></td>
+<td>
+<p>the maximal allowed number of iterations of the fitting algorithm until convergence.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>flagcvm</code></td>
+<td>
+<p>last iteration at which eigenvalue(s) of covariance matrix of multinomial variable were less than <code>tol</code> argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>flaginfo</code></td>
+<td>
+<p>last iteration at which eigenvalue(s) of model information matrix were less than <code>tol</code> argument.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Georgios Papageorgiou <a href="mailto:gpapageo@gmail.com">gpapageo@gmail.com</a></p>
+
+
+<h3>References</h3>
+
+<p>Aitkin, M. (1999). A general maximum likelihood analysis of variance components in generalized linear models. Biometrics 55, 117-128.
+</p>
+<p>Aitkin, M., Francis, B., Hinde, J., and Darnell, R. (2009). Statistical Modelling in R. Oxford Statistical Science Series, Oxford, UK.
+</p>
+<p>Hedeker, D. and Gibbons, R. (2006). Longitudinal Data Analysis. Wiley, Palo Alto, CA.
+</p>
+<p>Hartzel, J., Agresti, A., and Caffo, B. (2001). Multinomial logit random effects models. Statistical Modelling, 1(2), 81-102.
+</p>
+<p>Laird, N. (1978). Nonparametric maximum likelihood estimation of a mixing distribution. Journal of the
+American Statistical Association, 73, 805-811.
+</p>
+<p>Lindsay, B. G. (1983). The geometry of mixture likelihoods, Part II: The exponential family. The Annals
+of Statistics, 11, 783-792.</p>
+
+
+<h3>See Also</h3>
+
+<p><code>summary.npmreg</code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(schizo)
+attach(schizo)
+
+npmlt(y~trt*sqrt(wk),formula.npo=~trt,random=~1+trt,id=id,k=2,EB=FALSE)
+
+</code></pre>
+
+
+</div>

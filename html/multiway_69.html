@@ -1,0 +1,553 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sca</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Simultaneous Component Analysis
+</h2>
+
+<h3>Description</h3>
+
+<p>Fits Timmerman and Kiers's four Simultaneous Component Analysis (SCA) models to a 3-way data array or a list of 2-way arrays with the same number of columns. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">sca(X, nfac, nstart = 10, maxit = 500,
+    type = c("sca-p", "sca-pf2", "sca-ind", "sca-ecp"),
+    rotation = c("none", "varimax", "promax"),
+    ctol = 1e-4, parallel = FALSE, cl = NULL, verbose = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+
+<p>List of length <code>K</code> where the <code>k</code>-th element contains the <code>I[k]</code>-by-<code>J</code> data matrix <code>X[[k]]</code>. If <code>I[k]=I[1]</code> for all <code>k</code>, can input 3-way data array with <code>dim=c(I,J,K)</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nfac</code></td>
+<td>
+
+<p>Number of factors.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nstart</code></td>
+<td>
+
+<p>Number of random starts.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit</code></td>
+<td>
+
+<p>Maximum number of iterations.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+
+<p>Type of SCA model to fit. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rotation</code></td>
+<td>
+
+<p>Rotation to use for <code>type="sca-p"</code> or <code>type="sca-ecp"</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ctol</code></td>
+<td>
+
+<p>Convergence tolerance.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+
+<p>Logical indicating if <code>parLapply</code> should be used. See Examples.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+
+<p>Cluster created by <code>makeCluster</code>. Only used when <code>parallel=TRUE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+
+<p>If <code>TRUE</code>, fitting progress is printed via <code>txtProgressBar</code>. Ignored if <code>parallel=TRUE</code>.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Given a list of matrices <code>X[[k]] = matrix(xk,I[k],J)</code> for <code>k = seq(1,K)</code>, the SCA model is 
+</p>
+
+<table><tr>
+<td style="text-align: center;">
+X[[k]] = tcrossprod(D[[k]],B) + E[[k]]
+</td>
+</tr></table>
+<p>where <code>D[[k]] = matrix(dk,I[k],R)</code> are the Mode A (first mode) weights for the <code>k</code>-th level of Mode C (third mode), <code>B = matrix(b,J,R)</code> are the Mode B (second mode) weights, and <code>E[[k]] = matrix(ek,I[k],J)</code> is the residual matrix corresponding to <code>k</code>-th level of Mode C. 
+</p>
+<p>There are four different versions of the SCA model: SCA with invariant pattern (SCA-P), SCA with Parafac2 constraints (SCA-PF2), SCA with INDSCAL constraints (SCA-IND), and SCA with equal average crossproducts (SCA-ECP). These four models differ with respect to the assumed crossproduct structure of the <code>D[[k]]</code> weights:
+</p>
+
+<table>
+<tr>
+<td style="text-align: right;">
+  SCA-P: </td>
+<td style="text-align: center;"> </td>
+<td style="text-align: left;"> <code>crossprod(D[[k]])/I[k] = Phi[[k]]</code> </td>
+</tr>
+<tr>
+<td style="text-align: right;">
+  SCA-PF2: </td>
+<td style="text-align: center;"> </td>
+<td style="text-align: left;"> <code>crossprod(D[[k]])/I[k] = diag(C[k,])%*%Phi%*%diag(C[k,])</code> </td>
+</tr>
+<tr>
+<td style="text-align: right;">
+  SCA-IND: </td>
+<td style="text-align: center;"> </td>
+<td style="text-align: left;"> <code>crossprod(D[[k]])/I[k] = diag(C[k,]*C[k,])</code> </td>
+</tr>
+<tr>
+<td style="text-align: right;">
+  SCA-ECP: </td>
+<td style="text-align: center;"> </td>
+<td style="text-align: left;"> <code>crossprod(D[[k]])/I[k] = Phi</code> </td>
+</tr>
+<tr>
+<td style="text-align: right;">
+  </td>
+</tr>
+</table>
+<p>where <code>Phi[[k]]</code> is specific to the <code>k</code>-th level of Mode C, <code>Phi</code> is common to all <code>K</code> levels of Mode C, and <code>C = matrix(c,K,R)</code> are the Mode C (third mode) weights. This function estimates the weight matrices <code>D[[k]]</code> and <code>B</code> (and <code>C</code> if applicable) using alternating least squares. 
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>D</code></td>
+<td>
+<p>List of length <code>K</code> where <code>k</code>-th element contains <code>D[[k]]</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>B</code></td>
+<td>
+<p>Mode B weight matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C</code></td>
+<td>
+<p>Mode C weight matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Phi</code></td>
+<td>
+<p>Mode A common crossproduct matrix (if <code>type!="sca-p"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SSE</code></td>
+<td>
+<p>Sum of Squared Errors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Rsq</code></td>
+<td>
+<p>R-squared value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>GCV</code></td>
+<td>
+<p>Generalized Cross-Validation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>edf</code></td>
+<td>
+<p>Effective degrees of freedom.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>Number of iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cflag</code></td>
+<td>
+<p>Convergence flag.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>Same as input <code>type</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rotation</code></td>
+<td>
+<p>Same as input <code>rotation</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Warnings </h3>
+
+<p>The ALS algorithm can perform poorly if the number of factors <code>nfac</code> is set too large.
+</p>
+
+
+<h3>Computational Details </h3>
+
+<p>The least squares SCA-P solution can be obtained from the singular value decomposition of the stacked matrix <code>rbind(X[[1]],...,X[[K]])</code>.
+</p>
+<p>The least squares SCA-PF2 solution can be obtained using the uncontrained Parafac2 ALS algorithm (see <code>parafac2</code>).
+</p>
+<p>The least squares SCA-IND solution can be obtained using the Parafac2 ALS algorithm with orthogonality constraints on Mode A.
+</p>
+<p>The least squares SCA-ECP solution can be obtained using the Parafac2 ALS algorithm with orthogonality constraints on Mode A and the Mode C weights fixed at <code>C[k,] = rep(I[k]^0.5,R)</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Default use is 10 random strarts (<code>nstart=10</code>) with 500 maximum iterations of the ALS algorithm for each start (<code>maxit=500</code>) using a convergence tolerance of 1e-4 (<code>ctol=1e-4</code>). The algorithm is determined to have converged once the change in R^2 is less than or equal to <code>ctol</code>.
+</p>
+<p>Output <code>cflag</code> gives convergence information: <code>cflag=0</code> if ALS algorithm converged normally, <code>cflag=1</code> if maximum iteration limit was reached before convergence, and <code>cflag=2</code> if ALS algorithm terminated abnormally due to problem with non-negativity constraints.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nathaniel E. Helwig &lt;helwig@umn.edu&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Helwig, N. E. (2013). The special sign indeterminacy of the direct-fitting Parafac2 model: Some implications, cautions, and recommendations, for Simultaneous Component Analysis. <em>Psychometrika, 78</em>, 725-739.
+</p>
+<p>Timmerman, M. E., &amp; Kiers, H. A. L. (2003). Four simultaneous component models for the analysis of multivariate time series from more than one subject to model intraindividual and interindividual differences. <em>Psychometrika, 68</em>, 105-121.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">##########   sca-p   ##########
+
+# create random data list with SCA-P structure
+set.seed(3)
+mydim &lt;- c(NA,10,20)
+nf &lt;- 2
+nk &lt;- rep(c(50,100,200), length.out = mydim[3])
+Dmat &lt;- matrix(rnorm(sum(nk)*nf),sum(nk),nf)
+Bmat &lt;- matrix(runif(mydim[2]*nf),mydim[2],nf)
+Dmats &lt;- vector("list",mydim[3])
+Xmat &lt;- Emat &lt;- vector("list",mydim[3])
+dfc &lt;- 0
+for(k in 1:mydim[3]){
+  dinds &lt;- 1:nk[k] + dfc
+  Dmats[[k]] &lt;- Dmat[dinds,]
+  dfc &lt;- dfc + nk[k]
+  Xmat[[k]] &lt;- tcrossprod(Dmats[[k]],Bmat)
+  Emat[[k]] &lt;- matrix(rnorm(nk[k]*mydim[2]),nk[k],mydim[2])
+}
+rm(Dmat)
+Emat &lt;- nscale(Emat, 0, ssnew = sumsq(Xmat))   # SNR=1
+X &lt;- mapply("+",Xmat,Emat)
+
+# fit SCA-P model (no rotation)
+scamod &lt;- sca(X,nfac=nf,nstart=1)
+scamod
+
+# check solution
+crossprod(scamod$D[[1]] %*% diag(scamod$C[1,]^-1) ) / nk[1]
+crossprod(scamod$D[[5]] %*% diag(scamod$C[5,]^-1) ) / nk[5]
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+# reorder and resign factors
+scamod$B[1:4,]
+scamod &lt;- reorder(scamod, 2:1)
+scamod$B[1:4,]
+scamod &lt;- resign(scamod, mode="B", newsign=c(1,-1))
+scamod$B[1:4,]
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+# rescale factors
+colSums(scamod$B^2)
+colSums(scamod$C^2)
+scamod &lt;- rescale(scamod, mode="C")
+colSums(scamod$B^2)
+colSums(scamod$C^2)
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+
+##########   sca-pf2   ##########
+
+# create random data list with SCA-PF2 (Parafac2) structure
+set.seed(3)
+mydim &lt;- c(NA,10,20)
+nf &lt;- 2
+nk &lt;- rep(c(50,100,200), length.out = mydim[3])
+Gmat &lt;- 10*matrix(rnorm(nf^2),nf,nf)
+Bmat &lt;- matrix(runif(mydim[2]*nf),mydim[2],nf)
+Cmat &lt;- matrix(runif(mydim[3]*nf),mydim[3],nf)
+Xmat &lt;- Emat &lt;- Fmat &lt;- vector("list",mydim[3])
+for(k in 1:mydim[3]){
+  Fmat[[k]] &lt;- svd(matrix(rnorm(nk[k]*nf),nk[k],nf),nv=0)$u
+  Xmat[[k]] &lt;- tcrossprod(Fmat[[k]]%*%Gmat%*%diag(Cmat[k,]),Bmat)
+  Emat[[k]] &lt;- matrix(rnorm(nk[k]*mydim[2]),nk[k],mydim[2])
+}
+Emat &lt;- nscale(Emat, 0, ssnew = sumsq(Xmat))   # SNR=1
+X &lt;- mapply("+",Xmat,Emat)
+
+# fit SCA-PF2 model
+scamod &lt;- sca(X,nfac=nf,nstart=1,type="sca-pf2")
+scamod
+
+# check solution
+scamod$Phi
+crossprod(scamod$D[[1]] %*% diag(scamod$C[1,]^-1) ) / nk[1]
+crossprod(scamod$D[[5]] %*% diag(scamod$C[5,]^-1) ) / nk[5]
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+# reorder and resign factors
+scamod$B[1:4,]
+scamod &lt;- reorder(scamod, 2:1)
+scamod$B[1:4,]
+scamod &lt;- resign(scamod, mode="B", newsign=c(1,-1))
+scamod$B[1:4,]
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+# rescale factors
+colSums(scamod$B^2)
+colSums(scamod$C^2)
+scamod &lt;- rescale(scamod, mode="C")
+colSums(scamod$B^2)
+colSums(scamod$C^2)
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+
+##########   sca-ind   ##########
+
+# create random data list with SCA-IND structure
+set.seed(3)
+mydim &lt;- c(NA,10,20)
+nf &lt;- 2
+nk &lt;- rep(c(50,100,200), length.out = mydim[3])
+Gmat &lt;- diag(nf)  # SCA-IND is Parafac2 with Gmat=identity
+Bmat &lt;- matrix(runif(mydim[2]*nf),mydim[2],nf)
+Cmat &lt;- 10*matrix(runif(mydim[3]*nf),mydim[3],nf)
+Xmat &lt;- Emat &lt;- Fmat &lt;- vector("list",mydim[3])
+for(k in 1:mydim[3]){
+  Fmat[[k]] &lt;- svd(matrix(rnorm(nk[k]*nf),nk[k],nf),nv=0)$u
+  Xmat[[k]] &lt;- tcrossprod(Fmat[[k]]%*%Gmat%*%diag(Cmat[k,]),Bmat)
+  Emat[[k]] &lt;- matrix(rnorm(nk[k]*mydim[2]),nk[k],mydim[2])
+}
+Emat &lt;- nscale(Emat, 0, ssnew = sumsq(Xmat))   # SNR=1
+X &lt;- mapply("+",Xmat,Emat)
+
+# fit SCA-IND model
+scamod &lt;- sca(X,nfac=nf,nstart=1,type="sca-ind")
+scamod
+
+# check solution
+scamod$Phi
+crossprod(scamod$D[[1]] %*% diag(scamod$C[1,]^-1) ) / nk[1]
+crossprod(scamod$D[[5]] %*% diag(scamod$C[5,]^-1) ) / nk[5]
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+# reorder and resign factors
+scamod$B[1:4,]
+scamod &lt;- reorder(scamod, 2:1)
+scamod$B[1:4,]
+scamod &lt;- resign(scamod, mode="B", newsign=c(1,-1))
+scamod$B[1:4,]
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+# rescale factors
+colSums(scamod$B^2)
+colSums(scamod$C^2)
+scamod &lt;- rescale(scamod, mode="C")
+colSums(scamod$B^2)
+colSums(scamod$C^2)
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+
+##########   sca-ecp   ##########
+
+# create random data list with SCA-ECP structure
+set.seed(3)
+mydim &lt;- c(NA,10,20)
+nf &lt;- 2
+nk &lt;- rep(c(50,100,200), length.out = mydim[3])
+Gmat &lt;- diag(nf)
+Bmat &lt;- matrix(runif(mydim[2]*nf),mydim[2],nf)
+Cmat &lt;- matrix(sqrt(nk),mydim[3],nf)
+Xmat &lt;- Emat &lt;- Fmat &lt;- vector("list",mydim[3])
+for(k in 1:mydim[3]){
+  Fmat[[k]] &lt;- svd(matrix(rnorm(nk[k]*nf),nk[k],nf),nv=0)$u
+  Xmat[[k]] &lt;- tcrossprod(Fmat[[k]]%*%Gmat%*%diag(Cmat[k,]),Bmat)
+  Emat[[k]] &lt;- matrix(rnorm(nk[k]*mydim[2]),nk[k],mydim[2])
+}
+Emat &lt;- nscale(Emat, 0, ssnew = sumsq(Xmat))   # SNR=1
+X &lt;- mapply("+",Xmat,Emat)
+
+# fit SCA-ECP model
+scamod &lt;- sca(X,nfac=nf,nstart=1,type="sca-ecp")
+scamod
+
+# check solution
+scamod$Phi
+crossprod(scamod$D[[1]] %*% diag(scamod$C[1,]^-1) ) / nk[1]
+crossprod(scamod$D[[5]] %*% diag(scamod$C[5,]^-1) ) / nk[5]
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+# reorder and resign factors
+scamod$B[1:4,]
+scamod &lt;- reorder(scamod, 2:1)
+scamod$B[1:4,]
+scamod &lt;- resign(scamod, mode="B", newsign=c(-1,1))
+scamod$B[1:4,]
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+# rescale factors
+colSums(scamod$B^2)
+colSums(scamod$C^2)
+scamod &lt;- rescale(scamod, mode="B")
+colSums(scamod$B^2)
+colSums(scamod$C^2)
+Xhat &lt;- fitted(scamod)
+sse &lt;- sumsq(mapply("-",Xmat,Xhat))
+sse/(sum(nk)*mydim[2])
+
+
+## Not run: 
+
+##########   parallel computation   ##########
+
+# create random data list with SCA-IND structure
+set.seed(3)
+mydim &lt;- c(NA,10,20)
+nf &lt;- 2
+nk &lt;- rep(c(50,100,200), length.out = mydim[3])
+Gmat &lt;- diag(nf)  # SCA-IND is Parafac2 with Gmat=identity
+Bmat &lt;- matrix(runif(mydim[2]*nf),mydim[2],nf)
+Cmat &lt;- 10*matrix(runif(mydim[3]*nf),mydim[3],nf)
+Xmat &lt;- Emat &lt;- Fmat &lt;- vector("list",mydim[3])
+for(k in 1:mydim[3]){
+  Fmat[[k]] &lt;- svd(matrix(rnorm(nk[k]*nf),nk[k],nf),nv=0)$u
+  Xmat[[k]] &lt;- tcrossprod(Fmat[[k]]%*%Gmat%*%diag(Cmat[k,]),Bmat)
+  Emat[[k]] &lt;- matrix(rnorm(nk[k]*mydim[2]),nk[k],mydim[2])
+}
+Emat &lt;- nscale(Emat, 0, ssnew = sumsq(Xmat))   # SNR=1
+X &lt;- mapply("+",Xmat,Emat)
+
+# fit SCA-PF2 model (10 random starts -- sequential computation)
+set.seed(1)
+system.time({scamod &lt;- sca(X,nfac=nf,type="sca-pf2")})
+scamod
+
+# fit SCA-PF2 model (10 random starts -- parallel computation)
+cl &lt;- makeCluster(detectCores())
+ce &lt;- clusterEvalQ(cl,library(multiway))
+clusterSetRNGStream(cl, 1)
+system.time({scamod &lt;- sca(X,nfac=nf,type="sca-pf2",parallel=TRUE,cl=cl)})
+scamod
+stopCluster(cl)
+
+# fit SCA-IND model (10 random starts -- sequential computation)
+set.seed(1)
+system.time({scamod &lt;- sca(X,nfac=nf,type="sca-ind")})
+scamod
+
+# fit SCA-IND model (10 random starts -- parallel computation)
+cl &lt;- makeCluster(detectCores())
+ce &lt;- clusterEvalQ(cl,library(multiway))
+clusterSetRNGStream(cl, 1)
+system.time({scamod &lt;- sca(X,nfac=nf,type="sca-ind",parallel=TRUE,cl=cl)})
+scamod
+stopCluster(cl)
+
+# fit SCA-ECP model (10 random starts -- sequential computation)
+set.seed(1)
+system.time({scamod &lt;- sca(X,nfac=nf,type="sca-ecp")})
+scamod
+
+# fit SCA-ECP model (10 random starts -- parallel computation)
+cl &lt;- makeCluster(detectCores())
+ce &lt;- clusterEvalQ(cl,library(multiway))
+clusterSetRNGStream(cl, 1)
+system.time({scamod &lt;- sca(X,nfac=nf,type="sca-ecp",parallel=TRUE,cl=cl)})
+scamod
+stopCluster(cl)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,206 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mice.impute.2l.contextual.pmm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Imputation by Predictive Mean Matching or Normal Linear Regression
+with Contextual Variables
+</h2>
+
+<h3>Description</h3>
+
+<p>This imputation method imputes a variable using linear regression
+with predictive mean matching as the imputation method.
+Including a contextual effects means that an aggregated variable at a cluster
+level is included as a further covariate.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mice.impute.2l.contextual.pmm(y, ry, x, type, imputationWeights=NULL,
+     interactions=NULL, quadratics=NULL, pls.facs=NULL, ...)
+
+mice.impute.2l.contextual.norm(y, ry, x, type, ridge=10^(-5),
+   imputationWeights=NULL, interactions=NULL, quadratics=NULL, pls.facs=NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+
+<p>Incomplete data vector of length <code>n</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ry</code></td>
+<td>
+
+<p>Vector of missing data pattern (<code>FALSE</code> – missing,
+<code>TRUE</code> – observed)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+
+<p>Matrix (<code>n</code> x <code>p</code>) of complete covariates.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+
+<p>Type of predictor variables. <code>type=-2</code> refers to the cluster variable,
+<code>type=2</code> denotes a variable for which also a contextual effect is
+included and <code>type=1</code> denotes all other variables which are
+included as 'ordinary' predictors.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>imputationWeights</code></td>
+<td>
+
+<p>Optional vector of sample weights
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>interactions</code></td>
+<td>
+
+<p>Vector of variable names used for creating interactions
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quadratics</code></td>
+<td>
+
+<p>Vector of variable names used for creating quadratic terms
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pls.facs</code></td>
+<td>
+<p>Number of factors used in partial least dimension reduction
+(if requested)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Further arguments to be passed
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ridge</code></td>
+<td>
+
+<p>Ridge parameter in the diagonal of <code class="reqn"> \bold{X}'\bold{X}</code>
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A vector of length <code>nmis=sum(!ry)</code> with imputed values.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>For imputations at level 2 variables see
+<code>mice::mice.impute.2lonly.norm</code>
+and <code>mice::mice.impute.2lonly.pmm</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+#############################################################################
+# EXAMPLE 1: Sequential hierarchical imputation for data.ma05 dataset
+#############################################################################
+
+data(data.ma05)
+dat &lt;- data.ma05
+
+# define predictor matrix
+predM &lt;- mice::make.predictorMatrix(data=dat)
+# exclude student IDs
+predM[, "idstud"] &lt;- 0
+# define idclass as the cluster variable (type=-2)
+predM[, "idclass" ] &lt;- -2
+
+# initialize with norm method
+impMethod &lt;- mice::make.method(data=dat)
+names(impMethod) &lt;- names( imp0$method )
+impMethod[ c("idstud","idclass")] &lt;- ""
+
+#*****
+# STUDENT LEVEL (Level 1)
+
+# Use a random slope model for Dscore and Mscore as the imputation method.
+# Here, variance homogeneity of residuals is assumed (contrary to
+# the 2l.norm imputation method in the mice package).
+impMethod[ c("Dscore", "Mscore") ] &lt;- "2l.pan"
+predM[ c("Dscore","Mscore"), "misei" ] &lt;- 2    # random slopes on 'misei'
+predM[, "idclass" ] &lt;- -2
+
+# For imputing 'manote' and 'denote' use contextual effects (i.e. cluszer means)
+# of variables 'misei' and 'migrant'
+impMethod[ c("denote", "manote") ] &lt;- "2l.contextual.pmm"
+predM[ c("denote", "manote"), c("misei","migrant")] &lt;- 2
+
+# Use no cluster variable 'idclass' for imputation of 'misei'
+impMethod[ "misei"] &lt;- "norm"
+predM[ "misei", "idclass"] &lt;- 0 # use no multilevel imputation model
+
+# Variable migrant: contextual effects of Dscore and misei
+impMethod[ "migrant"] &lt;- "2l.contextual.pmm"
+predM[ "migrant", c("Dscore",  "misei" ) ] &lt;- 2
+predM[ "migrant", "idclass" ] &lt;- -2
+
+#****
+# CLASS LEVEL (Level 2)
+# impute 'sprengel' and 'groesse' at the level of classes
+impMethod[ "sprengel"] &lt;- "2lonly.pmm"
+impMethod[ "groesse"] &lt;- "2lonly.norm"
+predM[ c("sprengel","groesse"), "idclass" ] &lt;- -2
+
+# do imputation
+imp &lt;- mice::mice( dat, predictorMatrix=predM, m=3,  maxit=4,
+           method=impMethod, paniter=100)
+summary(imp)
+
+#**** imputation model 2 with PLS dimension reduction
+
+# define some interaction effects
+interactions &lt;- list( manote=c("migrant", "misei") )
+# number of PLS factors (5 factors)
+pls.facs &lt;- list( manote=5 )
+
+# do imputation
+imp2 &lt;- mice::mice( dat, predictorMatrix=predM, interactions=interactions,
+            pls.facs=pls.facs, method=impMethod, paniter=100)
+summary(imp2)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

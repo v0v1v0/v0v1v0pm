@@ -1,0 +1,130 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>panPca</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Principal component analysis of a pan-matrix</h2>
+
+<h3>Description</h3>
+
+<p>Computes a principal component decomposition of a pan-matrix, with possible
+scaling and weightings.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">panPca(pan.matrix, scale = 0, weights = rep(1, ncol(pan.matrix)))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>pan.matrix</code></td>
+<td>
+<p>A pan-matrix, see <code>panMatrix</code> for details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p>An optional scale to control how copy numbers should affect the distances.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>Vector of optional weights of gene clusters.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>A principal component analysis (PCA) can be computed for any matrix, also a pan-matrix.
+The principal components will in this case be linear combinations of the gene clusters. One major
+idea behind PCA is to truncate the space, e.g. instead of considering the genomes as points in a
+high-dimensional space spanned by all gene clusters, we look for a few ‘smart’ combinations
+of the gene clusters, and visualize the genomes in a low-dimensional space spanned by these directions.
+</p>
+<p>The ‘<span class="samp">⁠scale⁠</span>’ can be used to control how copy number differences play a role in the PCA. Usually
+we assume that going from 0 to 1 copy of a gene is the big change of the genome, and going from 1 to
+2 (or more) copies is less. Prior to computing the PCA, the ‘<span class="samp">⁠pan.matrix⁠</span>’ is transformed according
+to the following affine mapping: If the original value in ‘<span class="samp">⁠pan.matrix⁠</span>’ is ‘<span class="samp">⁠x⁠</span>’, and ‘<span class="samp">⁠x⁠</span>’
+is not 0, then the transformed value is ‘<span class="samp">⁠1 + (x-1)*scale⁠</span>’. Note that with ‘<span class="samp">⁠scale=0.0⁠</span>’
+(default) this will result in 1 regardless of how large ‘<span class="samp">⁠x⁠</span>’ was. In this case the PCA only
+distinguish between presence and absence of gene clusters. If ‘<span class="samp">⁠scale=1.0⁠</span>’ the value ‘<span class="samp">⁠x⁠</span>’ is
+left untransformed. In this case the difference between 1 copy and 2 copies is just as big as between
+1 copy and 0 copies. For any ‘<span class="samp">⁠scale⁠</span>’ between 0.0 and 1.0 the transformed value is shrunk towards
+1, but a certain effect of larger copy numbers is still present. In this way you can decide if the PCA
+should be affected, and to what degree, by differences in copy numbers beyond 1.
+</p>
+<p>The PCA may also up- or downweight some clusters compared to others. The vector ‘<span class="samp">⁠weights⁠</span>’ must
+contain one value for each column in ‘<span class="samp">⁠pan.matrix⁠</span>’. The default is to use flat weights, i.e. all
+clusters count equal. See <code>geneWeights</code> for alternative weighting strategies.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>list</code> with three tables:
+</p>
+<p>‘<span class="samp">⁠Evar.tbl⁠</span>’ has two columns, one listing the component number and one listing the relative 
+explained variance for each component. The relative explained variance always sums to 1.0 over
+all components. This value indicates the importance of each component, and it is always in
+descending order, the first component being the most important.
+This is typically the first result you look at after a PCA has been computed, as it indicates
+how many components (directions) you need to capture the bulk of the total variation in the data.
+</p>
+<p>‘<span class="samp">⁠Scores.tbl⁠</span>’ has a column listing the ‘<span class="samp">⁠GID.tag⁠</span>’ for each genome, and then one column for each
+principal component. The columns are ordered corresponding to the elements in ‘<span class="samp">⁠Evar⁠</span>’. The
+scores are the coordinates of each genome in the principal component space.
+</p>
+<p>‘<span class="samp">⁠Loadings.tbl⁠</span>’ is similar to ‘<span class="samp">⁠Scores.tbl⁠</span>’ but contain values for each gene cluster
+instead of each genome. The columns are ordered corresponding to the elements in ‘<span class="samp">⁠Evar⁠</span>’.
+The loadings are the contributions from each gene cluster to the principal component directions.
+NOTE: Only gene clusters having a non-zero variance is used in a PCA. Gene clusters with the
+same value for every genome have no impact and are discarded from the ‘<span class="samp">⁠Loadings⁠</span>’.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Lars Snipen and Kristian Hovde Liland.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>distManhattan</code>, <code>geneWeights</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Loading a pan-matrix in this package
+data(xmpl.panmat)
+
+# Computing panPca
+ppca &lt;- panPca(xmpl.panmat)
+
+## Not run: 
+# Plotting explained variance
+library(ggplot2)
+ggplot(ppca$Evar.tbl) +
+  geom_col(aes(x = Component, y = Explained.variance))
+# Plotting scores
+ggplot(ppca$Scores.tbl) +
+  geom_text(aes(x = PC1, y = PC2, label = GID.tag))
+# Plotting loadings
+ggplot(ppca$Loadings.tbl) +
+  geom_text(aes(x = PC1, y = PC2, label = Cluster))
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

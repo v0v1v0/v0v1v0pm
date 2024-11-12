@@ -1,0 +1,732 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_learners_torch</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Base Class for Torch Learners</h2>
+
+<h3>Description</h3>
+
+<p>This base class provides the basic functionality for training and prediction of a neural network.
+All torch learners should inherit from this class.
+</p>
+
+
+<h3>Validation</h3>
+
+<p>To specify the validation data, you can set the <code style="white-space: pre;">⁠$validate⁠</code> field of the Learner, which can be set to:
+</p>
+
+<ul>
+<li> <p><code>NULL</code>: no validation
+</p>
+</li>
+<li> <p><code>ratio</code>: only proportion <code>1 - ratio</code> of the task is used for training and <code>ratio</code> is used for validation.
+</p>
+</li>
+<li> <p><code>"test"</code> means that the <code>"test"</code> task of a resampling is used and is not possible when calling <code style="white-space: pre;">⁠$train()⁠</code> manually.
+</p>
+</li>
+<li> <p><code>"predefined"</code>: This will use the predefined <code style="white-space: pre;">⁠$internal_valid_task⁠</code> of a <code>mlr3::Task</code>.
+</p>
+</li>
+</ul>
+<p>This validation data can also be used for early stopping, see the description of the <code>Learner</code>'s parameters.
+</p>
+
+
+<h3>Saving a Learner</h3>
+
+<p>In order to save a <code>LearnerTorch</code> for later usage, it is necessary to call the <code style="white-space: pre;">⁠$marshal()⁠</code> method on the <code>Learner</code>
+before writing it to disk, as the object will otherwise not be saved correctly.
+After loading a marshaled <code>LearnerTorch</code> into R again, you then need to call <code style="white-space: pre;">⁠$unmarshal()⁠</code> to transform it
+into a useable state.
+</p>
+
+
+<h3>Early Stopping and Tuning</h3>
+
+<p>In order to prevent overfitting, the <code>LearnerTorch</code> class allows to use early stopping via the <code>patience</code>
+and <code>min_delta</code> parameters, see the <code>Learner</code>'s parameters.
+When tuning a <code>LearnerTorch</code> it is also possible to combine the explicit tuning via <code>mlr3tuning</code>
+and the <code>LearnerTorch</code>'s internal tuning of the epochs via early stopping.
+To do so, you just need to include <code style="white-space: pre;">⁠epochs = to_tune(upper = &lt;upper&gt;, internal = TRUE)⁠</code> in the search space,
+where <code style="white-space: pre;">⁠&lt;upper&gt;⁠</code> is the maximally allowed number of epochs, and configure the early stopping.
+</p>
+
+
+<h3>Model</h3>
+
+<p>The Model is a list of class <code>"learner_torch_model"</code> with the following elements:
+</p>
+
+<ul>
+<li> <p><code>network</code> :: The trained network.
+</p>
+</li>
+<li> <p><code>optimizer</code> :: The <code style="white-space: pre;">⁠$state_dict()⁠</code> optimizer used to train the network.
+</p>
+</li>
+<li> <p><code>loss_fn</code> :: The <code style="white-space: pre;">⁠$state_dict()⁠</code> of the loss used to train the network.
+</p>
+</li>
+<li> <p><code>callbacks</code> :: The callbacks used to train the network.
+</p>
+</li>
+<li> <p><code>seed</code> :: The seed that was / is used for training and prediction.
+</p>
+</li>
+<li> <p><code>epochs</code> :: How many epochs the model was trained for (early stopping).
+</p>
+</li>
+<li> <p><code>task_col_info</code> :: A <code>data.table()</code> containing information about the train-task.
+</p>
+</li>
+</ul>
+<h3>Parameters</h3>
+
+<p><strong>General</strong>:
+</p>
+<p>The parameters of the optimizer, loss and callbacks,
+prefixed with <code>"opt."</code>, <code>"loss."</code> and <code>"cb.&lt;callback id&gt;."</code> respectively, as well as:
+</p>
+
+<ul>
+<li> <p><code>epochs</code> :: <code>integer(1)</code><br>
+The number of epochs.
+</p>
+</li>
+<li> <p><code>device</code> :: <code>character(1)</code><br>
+The device. One of <code>"auto"</code>, <code>"cpu"</code>, or <code>"cuda"</code> or other values defined in <code>mlr_reflections$torch$devices</code>.
+The value is initialized to <code>"auto"</code>, which will select <code>"cuda"</code> if possible, then try <code>"mps"</code> and otherwise
+fall back to <code>"cpu"</code>.
+</p>
+</li>
+<li> <p><code>num_threads</code> :: <code>integer(1)</code><br>
+The number of threads for intraop pararallelization (if <code>device</code> is <code>"cpu"</code>).
+This value is initialized to 1.
+</p>
+</li>
+<li> <p><code>seed</code> :: <code>integer(1)</code> or <code>"random"</code> or <code>NULL</code><br>
+The torch seed that is used during training and prediction.
+This value is initialized to <code>"random"</code>, which means that a random seed will be sampled at the beginning of the
+training phase. This seed (either set or randomly sampled) is available via <code style="white-space: pre;">⁠$model$seed⁠</code> after training
+and used during prediction.
+Note that by setting the seed during the training phase this will mean that by default (i.e. when <code>seed</code> is
+<code>"random"</code>), clones of the learner will use a different seed.
+If set to <code>NULL</code>, no seeding will be done.
+</p>
+</li>
+</ul>
+<p><strong>Evaluation</strong>:
+</p>
+
+<ul>
+<li> <p><code>measures_train</code> :: <code>Measure</code> or <code>list()</code> of <code>Measure</code>s.<br>
+Measures to be evaluated during training.
+</p>
+</li>
+<li> <p><code>measures_valid</code> :: <code>Measure</code> or <code>list()</code> of <code>Measure</code>s.<br>
+Measures to be evaluated during validation.
+</p>
+</li>
+<li> <p><code>eval_freq</code> :: <code>integer(1)</code><br>
+How often the train / validation predictions are evaluated using <code>measures_train</code> / <code>measures_valid</code>.
+This is initialized to <code>1</code>.
+Note that the final model is always evaluated.
+</p>
+</li>
+</ul>
+<p><strong>Early Stopping</strong>:
+</p>
+
+<ul>
+<li> <p><code>patience</code> :: <code>integer(1)</code><br>
+This activates early stopping using the validation scores.
+If the performance of a model does not improve for <code>patience</code> evaluation steps, training is ended.
+Note that the final model is stored in the learner, not the best model.
+This is initialized to <code>0</code>, which means no early stopping.
+The first entry from <code>measures_valid</code> is used as the metric.
+This also requires to specify the <code style="white-space: pre;">⁠$validate⁠</code> field of the Learner, as well as <code>measures_valid</code>.
+</p>
+</li>
+<li> <p><code>min_delta</code> :: <code>double(1)</code><br>
+The minimum improvement threshold (<code>&gt;</code>) for early stopping.
+Is initialized to 0.
+</p>
+</li>
+</ul>
+<p><strong>Dataloader</strong>:
+</p>
+
+<ul>
+<li> <p><code>batch_size</code> :: <code>integer(1)</code><br>
+The batch size (required).
+</p>
+</li>
+<li> <p><code>shuffle</code> :: <code>logical(1)</code><br>
+Whether to shuffle the instances in the dataset. Default is <code>FALSE</code>.
+This does not impact validation.
+</p>
+</li>
+<li> <p><code>sampler</code> :: <code>torch::sampler</code><br>
+Object that defines how the dataloader draw samples.
+</p>
+</li>
+<li> <p><code>batch_sampler</code> :: <code>torch::sampler</code><br>
+Object that defines how the dataloader draws batches.
+</p>
+</li>
+<li> <p><code>num_workers</code> :: <code>integer(1)</code><br>
+The number of workers for data loading (batches are loaded in parallel).
+The default is <code>0</code>, which means that data will be loaded in the main process.
+</p>
+</li>
+<li> <p><code>collate_fn</code> :: <code>function</code><br>
+How to merge a list of samples to form a batch.
+</p>
+</li>
+<li> <p><code>pin_memory</code> :: <code>logical(1)</code><br>
+Whether the dataloader copies tensors into CUDA pinned memory before returning them.
+</p>
+</li>
+<li> <p><code>drop_last</code> :: <code>logical(1)</code><br>
+Whether to drop the last training batch in each epoch during training. Default is <code>FALSE</code>.
+</p>
+</li>
+<li> <p><code>timeout</code> :: <code>numeric(1)</code><br>
+The timeout value for collecting a batch from workers.
+Negative values mean no timeout and the default is <code>-1</code>.
+</p>
+</li>
+<li> <p><code>worker_init_fn</code> :: <code style="white-space: pre;">⁠function(id)⁠</code><br>
+A function that receives the worker id (in <code style="white-space: pre;">⁠[1, num_workers]⁠</code>) and is exectued after seeding
+on the worker but before data loading.
+</p>
+</li>
+<li> <p><code>worker_globals</code> :: <code>list()</code> | <code>character()</code><br>
+When loading data in parallel, this allows to export globals to the workers.
+If this is a character vector, the objects in the global environment with those names
+are copied to the workers.
+</p>
+</li>
+<li> <p><code>worker_packages</code> :: <code>character()</code><br>
+Which packages to load on the workers.
+</p>
+</li>
+</ul>
+<p>Also see <code>torch::dataloder</code> for more information.
+</p>
+
+
+<h3>Inheriting</h3>
+
+<p>There are no seperate classes for classification and regression to inherit from.
+Instead, the <code>task_type</code> must be specified  as a construction argument.
+Currently, only classification and regression are supported.
+</p>
+<p>When inheriting from this class, one should overload two private methods:
+</p>
+
+<ul>
+<li> <p><code>.network(task, param_vals)</code><br>
+(<code>Task</code>, <code>list()</code>) -&gt; <code>nn_module</code><br>
+Construct a <code>torch::nn_module</code> object for the given task and parameter values, i.e. the neural network that
+is trained by the learner.
+For classification, the output of this network are expected to be the scores before the application of the
+final softmax layer.
+</p>
+</li>
+<li> <p><code>.dataset(task, param_vals)</code><br>
+(<code>Task</code>, <code>list()</code>) -&gt; <code>torch::dataset</code><br>
+Create the dataset for the task.
+Must respect the parameter value of the device.
+Moreover, one needs to pay attention respect the row ids of the provided task.
+</p>
+</li>
+</ul>
+<p>It is also possible to overwrite the private <code>.dataloader()</code> method instead of the <code>.dataset()</code> method.
+Per default, a dataloader is constructed using the output from the <code>.dataset()</code> method.
+However, this should respect the dataloader parameters from the <code>ParamSet</code>.
+</p>
+
+<ul><li> <p><code>.dataloader(task, param_vals)</code><br>
+(<code>Task</code>, <code>list()</code>) -&gt; <code>torch::dataloader</code><br>
+Create a dataloader from the task.
+Needs to respect at least <code>batch_size</code> and <code>shuffle</code> (otherwise predictions can be permuted).
+</p>
+</li></ul>
+<p>To change the predict types, the private <code>.encode_prediction()</code> method can be overwritten:
+</p>
+
+<ul><li> <p><code>.encode_prediction(predict_tensor, task, param_vals)</code><br>
+(<code>torch_tensor</code>, <code>Task</code>, <code>list()</code>) -&gt; <code>list()</code><br>
+Take in the raw predictions from <code>self$network</code> (<code>predict_tensor</code>) and encode them into a
+format that can be converted to valid <code>mlr3</code> predictions using <code>mlr3::as_prediction_data()</code>.
+This method must take <code>self$predict_type</code> into account.
+</p>
+</li></ul>
+<p>While it is possible to add parameters by specifying the <code>param_set</code> construction argument, it is currently
+not possible to remove existing parameters, i.e. those listed in section <em>Parameters</em>.
+None of the parameters provided in <code>param_set</code> can have an id that starts with <code>"loss."</code>, <code style="white-space: pre;">⁠"opt.", or ⁠</code>"cb."', as these are preserved for the dynamically constructed parameters of the optimizer, the loss function,
+and the callbacks.
+</p>
+<p>To perform additional input checks on the task, the private <code>.verify_train_task(task, param_vals)</code> and
+<code>.verify_predict_task(task, param_vals)</code> can be overwritten.
+</p>
+<p>For learners that have other construction arguments that should change the hash of a learner, it is required
+to implement the private <code style="white-space: pre;">⁠$.additional_phash_input()⁠</code>.
+</p>
+
+
+<h3>Super class</h3>
+
+<p><code>mlr3::Learner</code> -&gt; <code>LearnerTorch</code>
+</p>
+
+
+<h3>Active bindings</h3>
+
+<div class="r6-active-bindings">
+
+<dl>
+<dt><code>validate</code></dt>
+<dd>
+<p>How to construct the internal validation data. This parameter can be either <code>NULL</code>,
+a ratio in $(0, 1)$, <code>"test"</code>, or <code>"predefined"</code>.</p>
+</dd>
+<dt><code>loss</code></dt>
+<dd>
+<p>(<code>TorchLoss</code>)<br>
+The torch loss.</p>
+</dd>
+<dt><code>optimizer</code></dt>
+<dd>
+<p>(<code>TorchOptimizer</code>)<br>
+The torch optimizer.</p>
+</dd>
+<dt><code>callbacks</code></dt>
+<dd>
+<p>(<code>list()</code> of <code>TorchCallback</code>s)<br>
+List of torch callbacks.
+The ids will be set as the names.</p>
+</dd>
+<dt><code>internal_valid_scores</code></dt>
+<dd>
+<p>Retrieves the internal validation scores as a named <code>list()</code>.
+Specify the <code style="white-space: pre;">⁠$validate⁠</code> field and the <code>measures_valid</code> parameter to configure this.
+Returns <code>NULL</code> if learner is not trained yet.</p>
+</dd>
+<dt><code>internal_tuned_values</code></dt>
+<dd>
+<p>When early stopping is activate, this returns a named list with the early-stopped epochs,
+otherwise an empty list is returned.
+Returns <code>NULL</code> if learner is not trained yet.</p>
+</dd>
+<dt><code>marshaled</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)<br>
+Whether the learner is marshaled.</p>
+</dd>
+<dt><code>network</code></dt>
+<dd>
+<p>(<code>nn_module()</code>)<br>
+Shortcut for <code>learner$model$network</code>.</p>
+</dd>
+<dt><code>param_set</code></dt>
+<dd>
+<p>(<code>ParamSet</code>)<br>
+The parameter set</p>
+</dd>
+<dt><code>hash</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Hash (unique identifier) for this object.</p>
+</dd>
+<dt><code>phash</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Hash (unique identifier) for this partial object, excluding some components
+which are varied systematically during tuning (parameter values).</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-LearnerTorch-new"><code>LearnerTorch$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-LearnerTorch-format"><code>LearnerTorch$format()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-LearnerTorch-print"><code>LearnerTorch$print()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-LearnerTorch-marshal"><code>LearnerTorch$marshal()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-LearnerTorch-unmarshal"><code>LearnerTorch$unmarshal()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-LearnerTorch-dataset"><code>LearnerTorch$dataset()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-LearnerTorch-clone"><code>LearnerTorch$clone()</code></a>
+</p>
+</li>
+</ul>
+<details><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="base_learner"><a href="../../mlr3/html/Learner.html#method-Learner-base_learner"><code>mlr3::Learner$base_learner()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="help"><a href="../../mlr3/html/Learner.html#method-Learner-help"><code>mlr3::Learner$help()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="predict"><a href="../../mlr3/html/Learner.html#method-Learner-predict"><code>mlr3::Learner$predict()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="predict_newdata"><a href="../../mlr3/html/Learner.html#method-Learner-predict_newdata"><code>mlr3::Learner$predict_newdata()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="reset"><a href="../../mlr3/html/Learner.html#method-Learner-reset"><code>mlr3::Learner$reset()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3" data-topic="Learner" data-id="train"><a href="../../mlr3/html/Learner.html#method-Learner-train"><code>mlr3::Learner$train()</code></a></span></li>
+</ul></details><hr>
+<a id="method-LearnerTorch-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Creates a new instance of this R6 class.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerTorch$new(
+  id,
+  task_type,
+  param_set,
+  properties,
+  man,
+  label,
+  feature_types,
+  optimizer = NULL,
+  loss = NULL,
+  packages = character(),
+  predict_types = NULL,
+  callbacks = list()
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>id</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+The id for of the new object.</p>
+</dd>
+<dt><code>task_type</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+The task type.</p>
+</dd>
+<dt><code>param_set</code></dt>
+<dd>
+<p>(<code>ParamSet</code> or <code>alist()</code>)<br>
+Either a parameter set, or an <code>alist()</code> containing different values of self,
+e.g. <code>alist(private$.param_set1, private$.param_set2)</code>, from which a <code>ParamSet</code> collection
+should be created.</p>
+</dd>
+<dt><code>properties</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+The properties of the object.
+See <code>mlr_reflections$learner_properties</code> for available values.</p>
+</dd>
+<dt><code>man</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+String in the format <code style="white-space: pre;">⁠[pkg]::[topic]⁠</code> pointing to a manual page for this object.
+The referenced help package can be opened via method <code style="white-space: pre;">⁠$help()⁠</code>.</p>
+</dd>
+<dt><code>label</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Label for the new instance.</p>
+</dd>
+<dt><code>feature_types</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+The feature types.
+See <code>mlr_reflections$task_feature_types</code> for available values,
+Additionally, <code>"lazy_tensor"</code> is supported.</p>
+</dd>
+<dt><code>optimizer</code></dt>
+<dd>
+<p>(<code>NULL</code> or <code>TorchOptimizer</code>)<br>
+The optimizer to use for training.
+Defaults to adam.</p>
+</dd>
+<dt><code>loss</code></dt>
+<dd>
+<p>(<code>NULL</code> or <code>TorchLoss</code>)<br>
+The loss to use for training.
+Defaults to MSE for regression and cross entropy for classification.</p>
+</dd>
+<dt><code>packages</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+The R packages this object depends on.</p>
+</dd>
+<dt><code>predict_types</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+The predict types.
+See <code>mlr_reflections$learner_predict_types</code> for available values.
+For regression, the default is <code>"response"</code>.
+For classification, this defaults to <code>"response"</code> and <code>"prob"</code>.
+To deviate from the defaults, it is necessary to overwrite the private <code style="white-space: pre;">⁠$.encode_prediction()⁠</code>
+method, see section <em>Inheriting</em>.</p>
+</dd>
+<dt><code>callbacks</code></dt>
+<dd>
+<p>(<code>list()</code> of <code>TorchCallback</code>s)<br>
+The callbacks to use for training.
+Defaults to an empty<code> list()</code>, i.e. no callbacks.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-LearnerTorch-format"></a>
+
+
+
+<h4>Method <code>format()</code>
+</h4>
+
+<p>Helper for print outputs.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerTorch$format(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(ignored).</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-LearnerTorch-print"></a>
+
+
+
+<h4>Method <code>print()</code>
+</h4>
+
+<p>Prints the object.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerTorch$print(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(any)<br>
+Currently unused.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-LearnerTorch-marshal"></a>
+
+
+
+<h4>Method <code>marshal()</code>
+</h4>
+
+<p>Marshal the learner.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerTorch$marshal(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(any)<br>
+Additional parameters.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>self
+</p>
+
+
+<hr>
+<a id="method-LearnerTorch-unmarshal"></a>
+
+
+
+<h4>Method <code>unmarshal()</code>
+</h4>
+
+<p>Unmarshal the learner.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerTorch$unmarshal(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(any)<br>
+Additional parameters.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>self
+</p>
+
+
+<hr>
+<a id="method-LearnerTorch-dataset"></a>
+
+
+
+<h4>Method <code>dataset()</code>
+</h4>
+
+<p>Create the dataset for a task.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerTorch$dataset(task)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>task</code></dt>
+<dd>
+<p><code>Task</code><br>
+The task</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>dataset</code>
+</p>
+
+
+<hr>
+<a id="method-LearnerTorch-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerTorch$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>See Also</h3>
+
+<p>Other Learner: 
+<code>mlr_learners.mlp</code>,
+<code>mlr_learners.tab_resnet</code>,
+<code>mlr_learners.torch_featureless</code>,
+<code>mlr_learners_torch_image</code>,
+<code>mlr_learners_torch_model</code>
+</p>
+
+
+</div>

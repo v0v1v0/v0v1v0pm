@@ -1,0 +1,210 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>updateable</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Make a function return updateable result</h2>
+
+<h3>Description</h3>
+
+<p>Creates a function wrapper that stores a call in the object returned by its
+argument <code>FUN</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">updateable(FUN, eval.args = NULL, Class)
+
+get_call(x)
+
+## updateable wrapper for mgcv::gamm and gamm4::gamm4
+uGamm(formula, random = NULL, ..., lme4 = inherits(random, "formula"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>FUN</code></td>
+<td>
+<p>function to be modified, found <em>via</em> <code>match.fun</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eval.args</code></td>
+<td>
+<p>optionally a character vector of function arguments' names
+to be evaluated in the stored call. See ‘Details’. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Class</code></td>
+<td>
+<p>optional character vector naming class(es) to be set onto the
+result of <code>FUN</code> (not possible with formal S4 objects). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>an object from which the call should be extracted. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula, random, ...</code></td>
+<td>
+<p>arguments to be passed to <code>gamm</code> or <code>gamm4</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lme4</code></td>
+<td>
+<p>if <code>TRUE</code>, <code>gamm4</code> is called, <code>gamm</code> otherwise. </p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Most model fitting functions in <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span> return an object that can be updated or
+re-fitted <em>via</em> <code>update</code>. This is thanks to the <code>call</code>
+stored in the object, which can be used (possibly modified) later on. It is
+also utilised by <code>dredge</code> to generate sub-models. Some functions (such
+as <code>gamm</code> or <code>MCMCglmm</code>) do not provide their result with the
+<code>call</code> element. To work that around, <code>updateable</code> can be used on
+that function to store the call. The resulting “wrapper” should be
+used in exactly the same way as the original function.
+</p>
+<p><code>updateable</code> can also be used to repair an existing <code>call</code> element,
+e.g. if it contains dotted names that prevent re-evaluation
+of such a call.
+</p>
+<p>Argument <code>eval.args</code> specifies names of function arguments that should
+be evaluated in the stored call. This is useful when, for example, the model
+object does not have <code>formula</code> element. The default <code>formula</code> 
+method tries to retrieve formula from the stored <code>call</code>,
+which works unless the formula has been given as a variable and value of
+that variable changed since the model was fitted (the last ‘example’
+demonstrates this).
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>updateable</code> returns a function with the same arguments as <code>FUN</code>, 
+wrapping a call to  <code>FUN</code> and adding an element named <code>call</code> to its
+result if possible, otherwise an attribute <code>"call"</code> (if the returned 
+value is atomic or a formal S4 object).
+</p>
+
+
+<h3>Note</h3>
+
+<p><code>get_call</code> is similar to <code>getCall</code> (defined in package 
+<span class="pkg">stats</span>), but it can also extract the <code>call</code> when it is an 
+<code>attribute</code> (and not an element of the object). Because the
+default <code>getCall</code> method cannot do that, the default <code>update</code> method
+will not work with atomic or S4 objects resulting from <code>updateable</code> 
+wrappers.
+</p>
+<p><code>uGamm</code> sets also an appropriate class onto the result (<code>"gamm4"</code>
+and/or <code>"gamm"</code>), which is needed for some generics defined in <span class="pkg">MuMIn</span>
+to work (note that unlike the functions created by <code>updateable</code> it has no
+formal arguments of the original function). As of version 1.9.2,
+<code>MuMIn::gamm</code> is no longer available.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kamil Bartoń</p>
+
+
+<h3>See Also</h3>
+
+<p><code>update</code>, <code>getCall</code>, <code>getElement</code>,
+<code>attributes</code>
+</p>
+<p><code>gamm</code>, <code>gamm4</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Simple example with cor.test:
+
+# From example(cor.test)
+x &lt;- c(44.4, 45.9, 41.9, 53.3, 44.7, 44.1, 50.7, 45.2, 60.1)
+y &lt;- c( 2.6,  3.1,  2.5,  5.0,  3.6,  4.0,  5.2,  2.8,  3.8)
+
+ct1 &lt;- cor.test(x, y, method = "kendall", alternative = "greater")
+
+uCor.test &lt;- updateable(cor.test)
+
+ct2 &lt;- uCor.test(x, y, method = "kendall", alternative = "greater")
+
+getCall(ct1) # --&gt; NULL
+getCall(ct2)
+
+#update(ct1, method = "pearson") --&gt; Error
+update(ct2, method = "pearson")
+update(ct2, alternative = "two.sided")
+
+
+## predefined wrapper for 'gamm':
+
+set.seed(0)
+dat &lt;- gamSim(6, n = 100, scale = 5, dist = "normal")
+
+fmm1 &lt;- uGamm(y ~s(x0)+ s(x3) + s(x2), family = gaussian, data = dat, 
+    random = list(fac = ~1))
+
+getCall(fmm1)
+class(fmm1)
+
+###
+
+## Not run: 
+library(caper)
+data(shorebird)
+shorebird &lt;- comparative.data(shorebird.tree, shorebird.data, Species)
+
+fm1 &lt;- crunch(Egg.Mass ~ F.Mass * M.Mass, data = shorebird)
+
+uCrunch &lt;- updateable(crunch)
+
+fm2 &lt;- uCrunch(Egg.Mass ~ F.Mass * M.Mass, data = shorebird)
+
+getCall(fm1)
+getCall(fm2)
+update(fm2) # Error with 'fm1'
+dredge(fm2)
+
+## End(Not run)
+
+###
+## Not run: 
+# "lmekin" does not store "formula" element 
+library(coxme)
+uLmekin &lt;- updateable(lmekin, eval.args = "formula")
+
+f &lt;- effort ~ Type + (1|Subject)
+fm1 &lt;- lmekin(f, data = ergoStool)
+fm2 &lt;- uLmekin(f, data = ergoStool)
+
+f &lt;- wrong ~ formula # reassigning "f"
+
+getCall(fm1) # formula is "f"
+getCall(fm2) 
+
+formula(fm1) # returns the current value of "f" 
+formula(fm2)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

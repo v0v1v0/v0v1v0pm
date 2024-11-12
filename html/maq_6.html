@@ -1,0 +1,261 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>maq</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit a Multi-Armed Qini.</h2>
+
+<h3>Description</h3>
+
+<p>Consider <code class="reqn">k = 1, \ldots, K</code> mutually exclusive and costly treatment arms,
+where k = 0 is a zero-cost control arm. Let <code class="reqn">\hat \tau(\cdot)</code> be an <em>estimated</em>
+multi-armed treatment effect function and <code class="reqn">C(\cdot)</code> a known cost function
+(where the k-th element of these vectors measures <code class="reqn">E[Y_i(k) - Y_i(0) | X_i]</code> and
+<code class="reqn">E[C_i(k) - C_i(0) | X_i]</code> where <code class="reqn">Y_i(k)</code> are potential outcomes corresponding
+to the k-th treatment state, <code class="reqn">C_i(k)</code> the cost of assigning unit i the k-th arm,
+and <code class="reqn">X_i</code> a set of covariates). We provide estimates of the Qini curve:
+</p>
+
+<ul><li> <p><code class="reqn">Q(B) = E[\langle \pi_B(X_i), \tau(X_i)\rangle], B \in (0, B_{max}],</code>
+</p>
+</li></ul>
+<p>which is the expected gain, at any budget constraint B, when assigning treatment in accordance
+to <code class="reqn">\pi_B</code>, the treatment policy that optimally selects
+which arm to assign to which unit while incurring a cost less than or equal to B in expectation
+when using the given functions <code class="reqn">\hat \tau(\cdot)</code> and <code class="reqn">C(\cdot)</code>:
+</p>
+
+<ul><li> <p><code class="reqn">\pi_B = argmax_{\pi} \left\{E[\langle \pi(X_i), \hat \tau(X_i) \rangle]: E[\langle \pi(X_i), C(X_i) \rangle] \leq B \right\}.</code>
+</p>
+</li></ul>
+<p>At a budget B, the k-th element of <code class="reqn">\pi_B(X_i)</code> is 1 if assigning the k-th arm
+to the i-th unit is optimal, and 0 otherwise.
+The Qini curve can be used to quantify the value, as measured by the expected gain over
+assigning each unit the control arm when using the estimated function
+<code class="reqn">\hat \tau(\cdot)</code> with cost structure <code class="reqn">C(\cdot)</code> to allocate treatment,
+as we vary the available budget <code class="reqn">B</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">maq(
+  reward,
+  cost,
+  DR.scores,
+  budget = NULL,
+  target.with.covariates = TRUE,
+  R = 0,
+  paired.inference = TRUE,
+  sample.weights = NULL,
+  clusters = NULL,
+  tie.breaker = NULL,
+  num.threads = NULL,
+  seed = 42
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>reward</code></td>
+<td>
+<p>A <code class="reqn">n \cdot K</code> matrix of test set treatment effect estimates <code class="reqn">\hat \tau(X_i)</code>.
+(Note: the estimated function <code class="reqn">\hat \tau(\cdot)</code> should be constructed on a held-out training set)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cost</code></td>
+<td>
+<p>A <code class="reqn">n \cdot K</code> matrix of test set costs <code class="reqn">C(X_i) &gt; 0</code>, where entry (i, k)
+measures the cost of assigning the i-th unit the k-th treatment arm.
+If the costs does not vary by unit, only by arm, this can also be a K-length vector.
+(Note: these costs need not be denominated on the same scale as the treatment effect estimates).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>DR.scores</code></td>
+<td>
+<p>An <code class="reqn">n \cdot K</code> matrix of test set evaluation scores used to form an estimate of
+Q(B). With known treatment propensities <code class="reqn">P[W_i|X_i]</code>,
+these scores can be constructed via inverse-propensity weighting, i.e, with entry (i, k) equal to
+<code class="reqn">\frac{\mathbf{1}(W_i=k)Y_i}{P[W_i=k | X_i]} - \frac{\mathbf{1}(W_i=0)Y_i}{P[W_i=0 | X_i]}</code>.
+In observational settings where <code class="reqn">P[W_i|X_i]</code> has to be estimated, then an alternative is to
+construct these scores via augmented inverse-propensity weighting (AIPW) - yielding a doubly
+robust estimate of the Qini curve (for details, see the paper).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>budget</code></td>
+<td>
+<p>The maximum spend per unit, <code class="reqn">B_{max}</code>, to fit the Qini curve on.
+Setting this to NULL (Default), will fit the path up to a maximum spend per unit
+where each unit that is expected to benefit (that is, <code class="reqn">\hat \tau_k(X_i)&gt;0</code>) is treated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>target.with.covariates</code></td>
+<td>
+<p>If TRUE (Default), then the policy <code class="reqn">\pi_B</code> takes covariates
+<code class="reqn">X_i</code> into account. If FALSE, then the policy only takes the average reward
+<code class="reqn">\bar \tau = E[\hat \tau(X_i)]</code> and average costs <code class="reqn">\bar C = E[C(X_i)]</code> into account when
+allocating treatment. This can be used to construct a baseline Qini curve to assess the value
+of treatment targeting based on covariates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>R</code></td>
+<td>
+<p>Number of bootstrap replicates for computing standard errors. Default is 0
+(only point estimates are computed).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>paired.inference</code></td>
+<td>
+<p>Whether to allow for paired tests with other Qini curves fit on the same
+evaluation data. If TRUE (Default) then the path of bootstrap replicates are stored in order to perform
+paired comparisons that account for the correlation between curves evaluated on the same data. This
+takes memory on the order of <code class="reqn">O(RnK)</code> and requires the comparison objects to be fit with
+the same seed and R values as well as the same number of samples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sample.weights</code></td>
+<td>
+<p>Weights given to an observation in estimation.
+If NULL, each observation is given the same weight. Default is NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>clusters</code></td>
+<td>
+<p>Vector of integers or factors specifying which cluster each observation corresponds to,
+which are used to construct clustered standard errors.
+Default is NULL (ignored).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tie.breaker</code></td>
+<td>
+<p>An optional permutation of the integers 1 to n used to
+break potential ties in the optimal treatment allocation
+(only relevant if the predictions <code class="reqn">\hat \tau(X)</code> are not continuous).
+If NULL, the ties are broken by the lowest sample id (i.e. the sample appearing first in the data).
+Default is NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>num.threads</code></td>
+<td>
+<p>Number of threads used in bootstrap replicates. By default, the number of threads
+is set to the maximum hardware concurrency.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>The seed of the C++ random number generator. Default is 42.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A fit maq object.
+</p>
+
+
+<h3>References</h3>
+
+<p>Sverdrup, Erik, Han Wu, Susan Athey, and Stefan Wager.
+"Qini Curves for Multi-Armed Treatment Rules".
+arXiv preprint arXiv:2306.11979, 2023.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+if (require("grf", quietly = TRUE)) {
+# Fit a CATE estimator on a training sample.
+n &lt;- 3000
+p &lt;- 5
+X &lt;- matrix(runif(n * p), n, p)
+W &lt;- as.factor(sample(c("0", "1", "2"), n, replace = TRUE))
+Y &lt;- X[, 1] + X[, 2] * (W == "1") + 1.5 * X[, 3] * (W == "2") + rnorm(n)
+train &lt;- sample(1:n, n/2)
+
+tau.forest &lt;- grf::multi_arm_causal_forest(X[train, ], Y[train], W[train])
+
+# Predict CATEs on held out evaluation data.
+test &lt;- -train
+tau.hat &lt;- predict(tau.forest, X[test, ], drop = TRUE)$predictions
+
+# Assume costs equal a unit's pre-treatment covariate - the following are a toy example.
+cost &lt;- cbind(X[test, 4] / 4, X[test, 5])
+
+# Fit an evaluation forest to compute doubly robust scores on the test set.
+eval.forest &lt;- grf::multi_arm_causal_forest(X[test, ], Y[test], W[test])
+DR.scores &lt;- grf::get_scores(eval.forest, drop = TRUE)
+
+# Fit a Qini curve on evaluation data, using 200 bootstrap replicates for confidence intervals.
+ma.qini &lt;- maq(tau.hat, cost, DR.scores, R = 200)
+
+# Plot the Qini curve.
+plot(ma.qini)
+legend("topleft", c("All arms", "95% CI"), lty = c(1, 3))
+
+# Get an estimate of gain at a given spend per unit along with standard errors.
+average_gain(ma.qini, spend = 0.2)
+
+# Get the treatment allocation matrix at a given spend per unit.
+pi.mat &lt;- predict(ma.qini, spend = 0.2)
+
+# If the treatment randomization probabilities are known, then an alternative to
+# evaluation via AIPW scores is to use inverse-propensity weighting (IPW).
+W.hat &lt;- rep(1/3, 3)
+IPW.scores &lt;- get_ipw_scores(Y[test], W[test], W.hat)
+mq.ipw &lt;- maq(tau.hat, cost, IPW.scores)
+
+plot(mq.ipw, add = TRUE, col = 2)
+legend("topleft", c("All arms", "95% CI", "All arms (IPW)"), col = c(1, 1, 2), lty = c(1, 3, 1))
+
+# Estimate some baseline policies.
+# a) A policy that ignores covariates and only takes the average reward/cost into account.
+qini.avg &lt;- maq(tau.hat, cost, DR.scores, target.with.covariates = FALSE, R = 200)
+
+# b) A policy that only use arm 1.
+qini.arm1 &lt;- maq(tau.hat[, 1], cost[, 1], DR.scores[, 1], R = 200)
+
+# c) A policy that only use arm 2.
+qini.arm2 &lt;- maq(tau.hat[, 2], cost[, 2], DR.scores[, 2], R = 200)
+
+plot(ma.qini, ci.args = NULL)
+plot(qini.avg, col = 2, add = TRUE, ci.args = NULL)
+plot(qini.arm1, col = 3, add = TRUE, ci.args = NULL)
+plot(qini.arm2, col = 4, add = TRUE, ci.args = NULL)
+legend("topleft", c("All arms (targeting)", "All arms (without targeting)", "Arm 1", "Arm 2"),
+       col = 1:4, lty = 1)
+
+# Estimate the value of employing all arms over a random allocation.
+difference_gain(ma.qini, qini.avg, spend = 0.2)
+
+# Estimate the value of targeting with both arms as opposed to targeting with only arm 1.
+difference_gain(ma.qini, qini.arm1, spend = 0.2)
+
+# Estimate the value of targeting with both arms as opposed to targeting with only arm 2.
+difference_gain(ma.qini, qini.arm2, spend = 0.2)
+
+# Compare targeting strategies over a range of budget values by estimating an area between
+# two curves up to a given spend point.
+integrated_difference(ma.qini, qini.arm1, spend = 0.3)
+}
+
+
+</code></pre>
+
+
+</div>

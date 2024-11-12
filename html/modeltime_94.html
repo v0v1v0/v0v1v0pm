@@ -1,0 +1,102 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modeltime_residuals</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Extract Residuals Information</h2>
+
+<h3>Description</h3>
+
+<p>This is a convenience function to unnest model residuals
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modeltime_residuals(object, new_data = NULL, quiet = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A Modeltime Table</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>new_data</code></td>
+<td>
+<p>A <code>tibble</code> to predict and calculate residuals on.
+If provided, overrides any calibration data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quiet</code></td>
+<td>
+<p>Hide errors (<code>TRUE</code>, the default), or display them as they occur?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Not currently used.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A tibble with residuals.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(dplyr)
+library(lubridate)
+library(timetk)
+library(parsnip)
+library(rsample)
+
+# Data
+m750 &lt;- m4_monthly %&gt;% filter(id == "M750")
+
+# Split Data 80/20
+splits &lt;- initial_time_split(m750, prop = 0.9)
+
+# --- MODELS ---
+
+# Model 1: prophet ----
+model_fit_prophet &lt;- prophet_reg() %&gt;%
+    set_engine(engine = "prophet") %&gt;%
+    fit(value ~ date, data = training(splits))
+
+
+# ---- MODELTIME TABLE ----
+
+models_tbl &lt;- modeltime_table(
+    model_fit_prophet
+)
+
+# ---- RESIDUALS ----
+
+# In-Sample
+models_tbl %&gt;%
+    modeltime_calibrate(new_data = training(splits)) %&gt;%
+    modeltime_residuals() %&gt;%
+    plot_modeltime_residuals(.interactive = FALSE)
+
+# Out-of-Sample
+models_tbl %&gt;%
+    modeltime_calibrate(new_data = testing(splits)) %&gt;%
+    modeltime_residuals() %&gt;%
+    plot_modeltime_residuals(.interactive = FALSE)
+
+
+</code></pre>
+
+
+</div>

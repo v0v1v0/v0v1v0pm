@@ -1,0 +1,340 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>localnulltest</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Local variable selection </h2>
+
+<h3>Description</h3>
+
+<p>Learn whether covariate effects are zero at given coordinates using
+Bayesian model selection or information criteria.
+</p>
+<p>Use <code>coef</code> to extract estimates and posterior
+probabilities for local effects.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">
+localnulltest(y, x, z, x.adjust, localgridsize=100, localgrid,
+nbaseknots=20, nlocalknots=c(5,10,15), basedegree=3, cutdegree=0,
+usecutbasis=TRUE, priorCoef=normalidprior(taustd=1),
+priorGroup=normalidprior(taustd=1), priorDelta=modelbbprior(),
+mc.cores=min(4,length(nlocalknots)), return.mcmc=FALSE, verbose=FALSE,
+...)
+
+localnulltest_fda(y, x, z, x.adjust, function_id,
+Sigma='AR/MA', localgridsize=100, localgrid, nbaseknots=20,
+nlocalknots=c(5,10,15), basedegree=3, cutdegree=0, usecutbasis=TRUE,
+priorCoef=momprior(), priorGroup=groupmomprior(),
+priorDelta=modelbbprior(), mc.cores=min(4,length(nlocalknots)),
+return.mcmc=FALSE, verbose=FALSE, ...)
+
+localnulltest_givenknots(y, x, z, x.adjust, localgridsize=100,
+localgrid, nbaseknots=20, nlocalknots=10, basedegree=3, cutdegree=0,
+usecutbasis=TRUE, priorCoef=normalidprior(taustd=1),
+priorGroup=normalidprior(taustd=1), priorDelta=modelbbprior(),
+verbose=FALSE, ...)
+
+localnulltest_fda_givenknots(y, x, z, x.adjust, function_id,
+Sigma='AR/MA', localgridsize=100, localgrid, nbaseknots=20,
+nlocalknots=10, basedegree=3, cutdegree=0, usecutbasis=TRUE,
+priorCoef=normalidprior(taustd=1), priorGroup=normalidprior(taustd=1),
+priorDelta=modelbbprior(), verbose=FALSE, ...)
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Vector with the outcome variable</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Numerical matrix with covariate values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>z</code></td>
+<td>
+<p>Matrix with d-dimensional coordinates (d&gt;=1$ for each entry in <code>y</code>, and d columns)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x.adjust</code></td>
+<td>
+<p>Optionally, further adjustment covariates to be included
+in the model with no testing being performed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>function_id</code></td>
+<td>
+<p>Function identifier. It is assumed that one observes
+multiple functions over z, this is the identifier of each individual
+function</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Sigma</code></td>
+<td>
+<p>Error covariance. By default 'identity', other options are
+'MA', 'AR' or 'AR/MA' (meaning that BIC is used to choose between MA
+and AR). Alternatively the user can supply a function such that
+<code>Sigma(z[i,],z[j,])</code> returns the within-function <code>cov(y[i,], y[j,])</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>localgridsize</code></td>
+<td>
+<p>Local test probabilities will be returned for a
+grid of <code>z</code> values of size <code>localgridsize</code> for each dimension</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>localgrid</code></td>
+<td>
+<p>Regions at which tests will be performed. Defaults to
+dividing each <code>[min(z[,i]),  max(z[,i])]</code> into 10 equal
+intervals. If provided, <code>localgrid</code> must be a list with one entry
+for each <code>z[,i]</code>, containing a vector with the desired grid for that <code>z[,i]</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nbaseknots</code></td>
+<td>
+<p>Number of knots for the spline approximation to the
+baseline effect of <code>x</code> on <code>y</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nlocalknots</code></td>
+<td>
+<p>Number of knots for the basis capturing the local effects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>basedegree</code></td>
+<td>
+<p>Degree of the spline approximation to the baseline</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cutdegree</code></td>
+<td>
+<p>Degree of the cut spline basis used for testing</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>usecutbasis</code></td>
+<td>
+<p>If <code>FALSE</code>, then the basis is not cut and a
+standard spline basis is returned (not recommended unless you know
+what you're doing)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priorCoef</code></td>
+<td>
+<p>Prior on the coefficients, passed on to
+<code>modelSelection</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priorGroup</code></td>
+<td>
+<p>Prior on grouped coefficients, passed on to
+<code>modelSelection</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priorDelta</code></td>
+<td>
+<p>Prior on the models, passed on to
+<code>modelSelection</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mc.cores</code></td>
+<td>
+<p>If package parallel is available on your system and
+<code>nlocalknots</code> has several entries defining several resolution
+levels, they will be run in parallel on <code>mc.cores</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>return.mcmc</code></td>
+<td>
+<p>Set to <code>TRUE</code> to return the MCMC output from <code>modelSelection</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>If <code>TRUE</code> some progress information is printed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Other arguments to be passed on to <code>modelSelection</code>,
+e.g. <code>family='binomial'</code> for logistic regression</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Local variable selection considers the model
+</p>
+<p style="text-align: center;"><code class="reqn">y_i= \beta_0(z_i) + sum_{j=1}^p \beta_j(z_i, x_i) + e_i</code>
+</p>
+
+<p><code class="reqn">\beta_0(z_i)</code> is the baseline mean
+</p>
+<p><code class="reqn">\beta_j(z_i,x_i)</code> is local effect of covariate j at coordinate z_i
+</p>
+<p><code class="reqn">e_i</code> a Gaussian error term assumed either independent or with a
+covariance structure given by Sigma. If assuming independence it is
+possible to consider alternatives to Gaussianity,
+e.g. set <code>family='binomial'</code> for logistic regression
+or <code>family='poisson'</code> for Poisson regression
+</p>
+<p>Note: a sum-to-zero type constraint is set on <code class="reqn">\beta_1(z_i,x_i)</code> so
+that it defines a deviation from the baseline mean <code class="reqn">\beta_0(z_i)</code>
+</p>
+<p>We model <code class="reqn">\beta_0</code> using B-splines of degree <code>basedegree</code> with
+<code>nbaseknots</code> knots.
+We model <code class="reqn">\beta_j</code> using B-splines of degree <code>cutdegree</code> with
+<code>nlocalknots</code>. Using <code>cutdegree=0</code> runs fastest is usually
+gives similar inference than higher degrees, and is hence recommended
+by default.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Object of class <code>localtest</code>, which extends a list with elements
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>covareffects</code></td>
+<td>
+<p>Estimated local covariate effects at different
+<code>z</code> values, 0.95 posterior intervals and posterior probability
+for the existence of an effect</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pplocalgrid</code></td>
+<td>
+<p>Posterior probabilities for the existence of an
+effect for regions of <code>z</code> values. Do not use these unless you
+know what you're doing</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covareffects.mcmc</code></td>
+<td>
+<p>MCMC output used to build covareffects. Only
+returned if <code>return.mcmc=TRUE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ms</code></td>
+<td>
+<p>Objects of class <code>msfit</code> returned by <code>modelSelection</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pp_localknots</code></td>
+<td>
+<p>Posterior probability for each resolution level
+(value of <code>nlocalknots</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Sigma</code></td>
+<td>
+<p>Input parameter</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nlocalknots</code></td>
+<td>
+<p>Input parameter</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>basedegree</code></td>
+<td>
+<p>Input parameter</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cutdegree</code></td>
+<td>
+<p>Input parameter</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>knots</code></td>
+<td>
+<p>Input parameters</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regionbounds</code></td>
+<td>
+<p>List with region bounds defined by the local testing
+knots at each resolution level</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p> David Rossell </p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+#Simulate outcome and 2 covariates
+#Covariate 1 has local effect for z&gt;0
+#Covariate 2 has no effect for any z
+
+truemean= function(x,z) {
+    ans= double(nrow(x))
+    group1= (x[,1]==1)
+    ans[group1]= ifelse(z[group1] &lt;=0, cos(z[group1]), 1)
+    ans[!group1]= ifelse(z[!group1]&lt;=0, cos(z[!group1]), 1/(z[!group1]+1)^2)
+    return(ans)
+}
+
+n= 1000
+x1= rep(0:1,c(n/2,n/2))
+x2= x1 + rnorm(n)
+x= cbind(x1,x2)
+z= runif(n,-3,3)
+m= truemean(x,z)
+y= truemean(x,z) + rnorm(n, 0, .5)
+
+#Run localnulltest with 10 knots
+fit0= localnulltest(y, x=x, z=z, nlocalknots=10, niter=1000)
+
+#Estimated covariate effects and posterior probabilities
+b= coef(fit0)
+b
+
+</code></pre>
+
+
+</div>

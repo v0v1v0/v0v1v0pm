@@ -1,0 +1,148 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>find_inside</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Find a Point/Parameter Vector Within a Convex Polytope</h2>
+
+<h3>Description</h3>
+
+<p>Finds the center/a random point that is within the convex polytope defined by the
+linear inequalities <code>A*x &lt;= b</code>  or by the convex hull over the vertices in the matrix <code>V</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">find_inside(
+  A,
+  b,
+  V,
+  options = NULL,
+  random = FALSE,
+  probs = TRUE,
+  boundary = 1e-05
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>A</code></td>
+<td>
+<p>a matrix with one row for each linear inequality constraint and one
+column for each of the free parameters. The parameter space is defined
+as all probabilities <code>x</code> that fulfill the order constraints  <code>A*x &lt;= b</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b</code></td>
+<td>
+<p>a vector of the same length as the number of rows of <code>A</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>V</code></td>
+<td>
+<p>a matrix of vertices (one per row) that define the polytope of
+admissible parameters as the convex hull over these points
+(if provided, <code>A</code> and <code>b</code> are ignored).
+Similar as for <code>A</code>, columns of <code>V</code> omit the last value for each
+multinomial condition (e.g., a1,a2,a3,b1,b2 becomes a1,a2,b1).
+Note that this method is comparatively slow since it solves linear-programming problems
+to test whether a point is inside  a polytope (Fukuda, 2004) or to run the Gibbs sampler.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>options</code></td>
+<td>
+<p>optional: number of options per item type (only for <code class="reqn">A x \leq b</code> representation).
+Necessary to account for sum-to-one constraints within multinomial
+distributions (e.g., p_1 + p_2 + p_3 &lt;= 1).
+By default, parameters are assumed to be independent.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random</code></td>
+<td>
+<p>if <code>TRUE</code>, random starting values in the interior are generated.
+If <code>FALSE</code>, the center of the polytope is computed using linear programming.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>probs</code></td>
+<td>
+<p>only for <code>A*x&lt;b</code> representation: whether to add
+inequality constraints that the variables are probabilities (nonnegative and
+sum to 1 within each option)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boundary</code></td>
+<td>
+<p>constant value <code class="reqn">c</code> that is subtracted on the right-hand side
+of the order constraints, <code class="reqn">A x \leq b - c</code>. This ensuresa that the
+resulting point is in the interior of the polytope and
+not at the boundary, which is important for MCMC sampling.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>If vertices <code>V</code> are provided, a convex combination of the vertices is returned.
+If <code>random=TRUE</code>, the weights are drawn uniformly from a Dirichlet distribution.
+</p>
+<p>If inequalities are provided via <code>A</code> and <code>b</code>, linear programming (LP) is used
+to find the Chebyshev center of the polytope (i.e., the center of the largest ball that
+fits into the polytope; the solution may not be unique). If <code>random=TRUE</code>,
+LP is used to find a random point (not uniformly sampled!) in the convex polytope.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># inequality representation (A*x &lt;= b)
+A &lt;- matrix(
+  c(
+    1, -1, 0, 1, 0,
+    0, 0, -1, 0, 1,
+    0, 0, 0, 1, -1,
+    1, 1, 1, 1, 0,
+    1, 1, 1, 0, 0,
+    -1, 0, 0, 0, 0
+  ),
+  ncol = 5, byrow = TRUE
+)
+b &lt;- c(0.5, 0, 0, .7, .4, -.2)
+find_inside(A, b)
+find_inside(A, b, random = TRUE)
+
+
+# vertex representation
+V &lt;- matrix(c(
+  # strict weak orders
+  0, 1, 0, 1, 0, 1, # a &lt; b &lt; c
+  1, 0, 0, 1, 0, 1, # b &lt; a &lt; c
+  0, 1, 0, 1, 1, 0, # a &lt; c &lt; b
+  0, 1, 1, 0, 1, 0, # c &lt; a &lt; b
+  1, 0, 1, 0, 1, 0, # c &lt; b &lt; a
+  1, 0, 1, 0, 0, 1, # b &lt; c &lt; a
+
+  0, 0, 0, 1, 0, 1, # a ~ b &lt; c
+  0, 1, 0, 0, 1, 0, # a ~ c &lt; b
+  1, 0, 1, 0, 0, 0, # c ~ b &lt; a
+  0, 1, 0, 1, 0, 0, # a &lt; b ~ c
+  1, 0, 0, 0, 0, 1, # b &lt; a ~ c
+  0, 0, 1, 0, 1, 0, # c &lt; a ~ b
+
+  0, 0, 0, 0, 0, 0 # a ~ b ~ c
+), byrow = TRUE, ncol = 6)
+find_inside(V = V)
+find_inside(V = V, random = TRUE)
+</code></pre>
+
+
+</div>

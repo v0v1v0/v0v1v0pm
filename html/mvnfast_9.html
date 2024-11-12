@@ -1,0 +1,135 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>rmvn</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fast simulation of multivariate normal random variables</h2>
+
+<h3>Description</h3>
+
+<p>Fast simulation of multivariate normal random variables
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">rmvn(n, mu, sigma, ncores = 1, isChol = FALSE, A = NULL, kpnames = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>number of random vectors to be simulated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu</code></td>
+<td>
+<p>vector of length d, representing the mean.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma</code></td>
+<td>
+<p>covariance matrix (d x d). Alternatively is can be the cholesky decomposition
+of the covariance. In that case <code>isChol</code> should be set to <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+<p>Number of cores used. The parallelization will take place only if OpenMP is supported.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>isChol</code></td>
+<td>
+<p>boolean set to true is <code>sigma</code> is the cholesky decomposition of the covariance matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>A</code></td>
+<td>
+<p>an (optional) numeric matrix of dimension (n x d), which will be used to store the output random variables.
+It is useful when n and d are large and one wants to call <code>rmvn()</code> several times, without reallocating memory
+for the whole matrix each time. NB: the element of <code>A</code> must be of class "numeric".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kpnames</code></td>
+<td>
+<p>if <code>TRUE</code> the dimensions' names are preserved. That is, the i-th column of the output
+has the same name as the i-th entry of <code>mu</code> or the i-th column of <code>sigma</code>. 
+<code>kpnames==FALSE</code> by default.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Notice that this function does not use one of the Random Number Generators (RNGs) provided by R, but one 
+of the parallel cryptographic RNGs described in (Salmon et al., 2011). It is important to point out that this
+RNG can safely be used in parallel, without risk of collisions between parallel sequence of random numbers.
+The initialization of the RNG depends on R's seed, hence the <code>set.seed()</code> function can be used to 
+obtain reproducible results. Notice though that changing <code>ncores</code> causes most of the generated numbers
+to be different even if R's seed is the same (see example below). NB: at the moment the RNG does not work
+properly on Solaris OS when <code>ncores&gt;1</code>. Hence, <code>rmvn()</code> checks if the OS is Solaris and, if this the case, 
+it imposes <code>ncores==1</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>A==NULL</code> (default) the output is an (n x d) matrix where the i-th row is the i-th simulated vector.
+If <code>A!=NULL</code> then the random vector are store in <code>A</code>, which is provided by the user, and the function
+returns <code>NULL</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Matteo Fasiolo &lt;matteo.fasiolo@gmail.com&gt;, C++ RNG engine by Thijs van den Berg &lt;http://sitmo.com/&gt;.
+</p>
+
+
+<h3>References</h3>
+
+<p>John K. Salmon, Mark A. Moraes, Ron O. Dror, and David E. Shaw (2011). Parallel Random Numbers: As Easy as 1, 2, 3.
+D. E. Shaw Research, New York, NY 10036, USA.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">d &lt;- 5
+mu &lt;- 1:d
+
+# Creating covariance matrix
+tmp &lt;- matrix(rnorm(d^2), d, d)
+mcov &lt;- tcrossprod(tmp, tmp)
+
+set.seed(414)
+rmvn(4, 1:d, mcov)
+
+set.seed(414)
+rmvn(4, 1:d, mcov)
+
+set.seed(414)  
+rmvn(4, 1:d, mcov, ncores = 2) # r.v. generated on the second core are different
+
+###### Here we create the matrix that will hold the simulated random variables upfront.
+A &lt;- matrix(NA, 4, d)
+class(A) &lt;- "numeric" # This is important. We need the elements of A to be of class "numeric". 
+
+set.seed(414)
+rmvn(4, 1:d, mcov, ncores = 2, A = A) # This returns NULL ...
+A                                     # ... but the result is here
+
+</code></pre>
+
+
+</div>

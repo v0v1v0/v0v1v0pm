@@ -1,0 +1,105 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict.miss.glm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Prediction on test with missing values for the logistic regression model.</h2>
+
+<h3>Description</h3>
+
+<p>Prediction on test with missing values for the logistic regression model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'miss.glm'
+predict(object, newdata = NULL, seed = NA, method = "map", ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>a fitted object of class inheriting from "miss.glm".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>a data frame in which to look for variables with which to predict. It can contain missing values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>An integer as a seed set for the random generator.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>The name of method to deal with missing values in test set. It can be 'map'(maximum a posteriori) or 'impute' (imputation by conditional expectation). Default is 'map'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments passed to or from other methods.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<table><tr style="vertical-align: top;">
+<td><code>pr.saem</code></td>
+<td>
+<p>The prediction result for logistic regression: the probability of response y=1.</p>
+</td>
+</tr></table>
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Generate dataset
+N &lt;- 100  # number of subjects
+p &lt;- 3     # number of explanatory variables
+mu.star &lt;- rep(0,p)  # mean of the explanatory variables
+Sigma.star &lt;- diag(rep(1,p)) # covariance
+beta.star &lt;- c(1, 1,  0) # coefficients
+beta0.star &lt;- 0 # intercept
+beta.true = c(beta0.star,beta.star)
+X.complete &lt;- matrix(rnorm(N*p), nrow=N)%*%chol(Sigma.star) +
+              matrix(rep(mu.star,N), nrow=N, byrow = TRUE)
+p1 &lt;- 1/(1+exp(-X.complete%*%beta.star-beta0.star))
+y &lt;- as.numeric(runif(N)&lt;p1)
+
+# Generate missingness
+p.miss &lt;- 0.10
+patterns &lt;- runif(N*p)&lt;p.miss #missing completely at random
+X.obs &lt;- X.complete
+X.obs[patterns] &lt;- NA
+
+df.obs = data.frame(y,X.obs)
+
+# SAEM
+miss.list = miss.glm(y~., data=df.obs, print_iter=FALSE,seed=100)
+
+# Generate new dataset for prediction
+Nt &lt;- 20
+Xt &lt;- matrix(rnorm(Nt*p), nrow=Nt)%*%chol(Sigma.star)+
+  matrix(rep(mu.star,Nt), nrow=Nt, byrow = TRUE)
+# Generate missingness in new dataset
+patterns &lt;- runif(Nt*p)&lt;p.miss
+Xt.obs &lt;- Xt
+Xt.obs[patterns] &lt;- NA
+
+# Prediction with missing values
+miss.prob = predict(miss.list, data.frame(Xt.obs), method='map')
+print(miss.prob)
+</code></pre>
+
+
+</div>

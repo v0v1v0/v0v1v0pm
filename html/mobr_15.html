@@ -1,0 +1,206 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>get_delta_stats</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Conduct the MoB tests on drivers of biodiversity across scales.</h2>
+
+<h3>Description</h3>
+
+<p>There are three tests, on effects of 1. the shape of the SAD, 2.
+treatment/group-level density, 3. degree of aggregation. The user can
+specifically to conduct one or more of these tests.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">get_delta_stats(
+  mob_in,
+  env_var,
+  group_var = NULL,
+  ref_level = NULL,
+  tests = c("SAD", "N", "agg"),
+  spat_algo = NULL,
+  type = c("continuous", "discrete"),
+  stats = NULL,
+  inds = NULL,
+  log_scale = FALSE,
+  min_plots = NULL,
+  density_stat = c("mean", "max", "min"),
+  n_perm = 1000,
+  overall_p = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>mob_in</code></td>
+<td>
+<p>an object of class mob_in created by make_mob_in()</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>env_var</code></td>
+<td>
+<p>a character string specifying the environmental variable in
+<code>mob_in$env</code> to be used for explaining the change in richness</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>group_var</code></td>
+<td>
+<p>an optional character string 
+in <code>mob_in$env</code> which defines how samples are pooled. If not provided
+then each unique value of the argument <code>env_var</code> is used define the
+groups.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ref_level</code></td>
+<td>
+<p>a character string used to define the reference level of
+<code>env_var</code> to which all other groups are compared with. Only makes sense
+if <code>env_var</code> is a factor (i.e. <code>type == 'discrete'</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tests</code></td>
+<td>
+<p>specifies which one or more of the three tests ('SAD', N',
+'agg') are to be performed. Default is to include all three tests.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spat_algo</code></td>
+<td>
+<p>character string that can be either: <code>'kNN'</code> or
+<code>'kNCN'</code> for k-nearest neighbor and k-nearest centroid neighbor
+sampling respectively. It defaults to k-nearest neighbor which is a more
+computationally efficient algorithm that closely approximates the
+potentially more correct k-NCN algo (see Details of ?rarefaction).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>"discrete" or "continuous". If "discrete", pair-wise comparisons
+are conducted between all other groups and the reference group. If
+"continuous", a correlation analysis is conducted between the response
+variables and env_var.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stats</code></td>
+<td>
+<p>a vector of character strings that specifies what statistics to
+summarize effect sizes with. Options include: <code>c('betas', 'r2',
+'r2adj', 'f', 'p')</code> for the beta-coefficients, r-squared, adjusted
+r-squared, F-statistic, and p-value respectively. The default value of
+<code>NULL</code> will result in only betas being calculated when <code>type ==
+'discrete'</code> and all possible stats being computed when <code>type ==
+'continuous'</code>. Note that for a discrete analysis all non-betas stats are
+meaningless because the model has zero degrees of freedom in this context.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inds</code></td>
+<td>
+<p>effort size at which the individual-based rarefaction curves are
+to be evaluated, and to which the sample-based rarefaction curves are to be
+interpolated. It can take three types of values, a single integer, a vector
+of integers, and NULL. If <code>inds = NULL</code> (the default), the curves are
+evaluated at every possible effort size, from 1 to the total number of
+individuals within the group (slow). If inds is a single integer, it is
+taken as the number of points at which the curves are evaluated; the
+positions of the points are determined by the "log_scale" argument. If inds
+is a vector of integers, it is taken as the exact points at which the
+curves are evaluated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>log_scale</code></td>
+<td>
+<p>if "inds" is given a single integer, "log_scale" determines
+the position of the points. If log_scale is TRUE, the points are equally
+spaced on logarithmic scale. If it is FALSE (default), the points are
+equally spaced on arithmetic scale.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min_plots</code></td>
+<td>
+<p>minimal number of plots for test 'agg', where plots are
+randomized within groups as null test. If it is given a value, all groups
+with fewer plots than min_plot are removed for this test. If it is NULL
+(default), all groups are kept. Warnings are issued if 1. there is only one
+group left and "type" is discrete, or 2. there are less than three groups
+left and "type" is continuous, or 3. reference group ("ref_group") is
+removed and "type" is discrete. In these three scenarios, the function will
+terminate. A different warning is issued if any of the remaining groups
+have less than five plots (which have less than 120 permutations), but the 
+test will be carried out.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>density_stat</code></td>
+<td>
+<p>reference density used in converting number of plots to
+numbers of individuals, a step in test "N". It can take one of the
+three values: "mean", "max", or "min". If it is "mean", the average
+plot-level abundance across plots (all plots when "type" is "continuous,
+all plots within the two groups for each pair-wise comparison when "type"
+is "discrete") are used. If it is "min" or "max", the minimum/maximum
+plot-level density is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_perm</code></td>
+<td>
+<p>number of iterations to run for null tests, defaults to 1000.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>overall_p</code></td>
+<td>
+<p>Boolean defaults to FALSE specifies if overall across scale 
+p-values for the null tests. This should be interpreted with caution because
+the overall p-values depend on scales of measurement yet do not explicitly 
+reflect significance at any particular scale.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a "mob_out" object with attributes
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Dan McGlinn and Xiao Xiao
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>rarefaction</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(inv_comm)
+data(inv_plot_attr)
+inv_mob_in = make_mob_in(inv_comm, inv_plot_attr, coord_names = c('x', 'y'))
+inv_mob_out = get_delta_stats(inv_mob_in, 'group', ref_level='uninvaded',
+                           type='discrete', log_scale=TRUE, n_perm=3)
+plot(inv_mob_out)
+</code></pre>
+
+
+</div>

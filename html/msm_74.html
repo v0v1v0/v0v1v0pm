@@ -1,0 +1,207 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pmatrix.piecewise.msm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Transition probability matrix for processes with piecewise-constant
+intensities</h2>
+
+<h3>Description</h3>
+
+<p>Extract the estimated transition probability matrix from a fitted
+non-time-homogeneous multi-state model for a given time interval.  This is a
+generalisation of <code>pmatrix.msm</code> to models with time-dependent
+covariates.  Note that <code>pmatrix.msm</code> is sufficient to calculate
+transition probabilities for time-inhomogeneous models fitted using the
+<code>pci</code> argument to <code>msm</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pmatrix.piecewise.msm(
+  x = NULL,
+  t1,
+  t2,
+  times,
+  covariates = NULL,
+  ci = c("none", "normal", "bootstrap"),
+  cl = 0.95,
+  B = 1000,
+  cores = NULL,
+  qlist = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A fitted multi-state model, as returned by <code>msm</code>. This
+should be a non-homogeneous model, whose transition intensity matrix depends
+on a time-dependent covariate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t1</code></td>
+<td>
+<p>The start of the time interval to estimate the transition
+probabilities for.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t2</code></td>
+<td>
+<p>The end of the time interval to estimate the transition
+probabilities for.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>times</code></td>
+<td>
+<p>Cut points at which the transition intensity matrix changes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covariates</code></td>
+<td>
+<p>A list with number of components one greater than the
+length of <code>times</code>.  Each component of the list is specified in the same
+way as the <code>covariates</code> argument to <code>pmatrix.msm</code>.  The
+components correspond to the covariate values in the intervals
+</p>
+<p><code>(t1, times[1]], (times[1], times[2]], ..., (times[length(times)], t2]</code>
+</p>
+<p>(assuming that all elements of <code>times</code> are in the interval <code>(t1,
+t2)</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ci</code></td>
+<td>
+<p>If <code>"normal"</code>, then calculate a confidence interval for the
+transition probabilities by simulating <code>B</code> random vectors from the
+asymptotic multivariate normal distribution implied by the maximum
+likelihood estimates (and covariance matrix) of the log transition
+intensities and covariate effects, then calculating the resulting transition
+probability matrix for each replicate.
+</p>
+<p>If <code>"bootstrap"</code> then calculate a confidence interval by non-parametric
+bootstrap refitting.  This is 1-2 orders of magnitude slower than the
+<code>"normal"</code> method, but is expected to be more accurate. See
+<code>boot.msm</code> for more details of bootstrapping in <span class="pkg">msm</span>.
+</p>
+<p>If <code>"none"</code> (the default) then no confidence interval is calculated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+<p>Width of the symmetric confidence interval, relative to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>B</code></td>
+<td>
+<p>Number of bootstrap replicates, or number of normal simulations
+from the distribution of the MLEs</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cores</code></td>
+<td>
+<p>Number of cores to use for bootstrapping using parallel
+processing. See <code>boot.msm</code> for more details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>qlist</code></td>
+<td>
+<p>A list of transition intensity matrices, of length one greater
+than the length of <code>times</code>.  Either this or a fitted model <code>x</code>
+must be supplied.  No confidence intervals are available if (just)
+<code>qlist</code> is supplied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Optional arguments to be passed to <code>MatrixExp</code> to
+control the method of computing the matrix exponential.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Suppose a multi-state model has been fitted, in which the transition
+intensity matrix <code class="reqn">Q(x(t))</code> is modelled in terms of time-dependent
+covariates <code class="reqn">x(t)</code>.  The transition probability matrix <code class="reqn">P(t_1,
+t_n)</code> for the time interval <code class="reqn">(t_1, </code><code class="reqn">
+t_n)</code> cannot be calculated from the estimated intensity matrix as
+<code class="reqn">\exp((t_n - t_1) Q)</code>, because <code class="reqn">Q</code> varies within
+the interval <code class="reqn">t_1, t_n</code>.  However, if the covariates are
+piecewise-constant, or can be approximated as piecewise-constant, then we
+can calculate <code class="reqn">P(t_1, t_n)</code> by multiplying together
+individual matrices <code class="reqn">P(t_i, </code><code class="reqn"> t_{i+1}) = \exp((t_{i+1} - t_i) Q)</code>, calculated over intervals where Q is constant:
+</p>
+<p style="text-align: center;"><code class="reqn">P(t_1, t_n) = P(t_1, t_2) P(t_2, t_3)\ldots P(t_{n-1}, </code>
+</p>
+<p style="text-align: center;"><code class="reqn"> t_n)</code>
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>The matrix of estimated transition probabilities <code class="reqn">P(t)</code> for the
+time interval <code>[t1, tn]</code>.  That is, the probabilities of occupying
+state <code class="reqn">s</code> at time <code class="reqn">t_n</code> conditionally on occupying state <code class="reqn">r</code>
+at time <code class="reqn">t_1</code>.  Rows correspond to "from-state" and columns to
+"to-state".
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>C. H. Jackson <a href="mailto:chris.jackson@mrc-bsu.cam.ac.uk">chris.jackson@mrc-bsu.cam.ac.uk</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>pmatrix.msm</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+## In a clinical study, suppose patients are given a placebo in the
+## first 5 weeks, then they begin treatment 1 at 5 weeks, and
+## a combination of treatments 1 and 2 from 10 weeks.
+## Suppose a multi-state model x has been fitted for the patients'
+## progress, with treat1 and treat2 as time dependent covariates.
+
+## Cut points for when treatment covariate changes
+times &lt;- c(0, 5, 10)
+
+## Indicators for which treatments are active in the four intervals
+## defined by the three cut points
+covariates &lt;- list( list (treat1=0, treat2=0), list (treat1=0, treat2=0), list(treat1=1, treat2=0),
+list(treat1=1, treat2=1) )
+
+## Calculate transition probabilities from the start of the study to 15 weeks
+pmatrix.piecewise.msm(x, 0, 15, times, covariates)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,333 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvProbit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimation of Multivariate Probit Models</h2>
+
+<h3>Description</h3>
+
+<p>Estimating multivariate probit models by the maximum likelihood method.
+</p>
+<p>WARNING: this function is experimental and extremely
+(perhaps even unusably) slow!
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mvProbit( formula, data, start = NULL, startSigma = NULL, 
+   method = "BHHH", finalHessian = "BHHH", 
+   algorithm = "GHK", nGHK = 1000, 
+   intGrad = TRUE, oneSidedGrad = FALSE, eps = 1e-6, 
+   random.seed = 123, ... )
+
+## S3 method for class 'mvProbit'
+print( x, digits = 4, ... )
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a <code>"formula"</code>:
+a symbolic description of the model
+(currently, all binary outcome variables must have the same regressors).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a <code>data.frame</code> containing the data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p>an optional numeric vector specifying the starting values 
+for the model coefficients; 
+if argument <code>startSigma</code> is not specified,
+this vector can also include the correlation coefficients;
+the order of elements is explained in the section “details”;
+if this argument is not specified,
+coefficients estimated by univariate probit models 
+are used as starting values for the model coefficients.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>startSigma</code></td>
+<td>
+<p>optional starting values for the covariance/correlation matrix 
+of the residuals (must be symmetric and have ones on its diagonal);
+if this argument is not specified
+and the starting values for the correlation coefficients
+are not included in argument <code>start</code>,
+the correlation matrix of the ‘response’ residuals, 
+i.e. y - pnorm( X' beta ),
+is used as starting values for sigma.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>maximisation method / algorithm 
+(see <code>maxLik</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>finalHessian</code></td>
+<td>
+<p>Calculation of the final Hessian:
+either <code>FALSE</code> (no calculation of Hessian), 
+<code>TRUE</code> (finite-distance calculation of Hessian), or 
+<code>"BHHH"</code> (calculation based on information equality approach
+and finite-distance gradients, the default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>algorithm</code></td>
+<td>
+<p>algorithm for computing integrals 
+of the multivariate normal distribution,
+either function <code>GenzBretz()</code>, <code>Miwa()</code>, or <code>TVPACK()</code>
+(see documentation of <code>pmvnorm</code>)
+or character string <code>"GHK"</code> 
+(see documentation of <code>ghkvec</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nGHK</code></td>
+<td>
+<p>numeric value specifying the number of simulation draws 
+of the GHK algorithm for computing integrals 
+of the multivariate normal distribution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intGrad</code></td>
+<td>
+<p>logical. If <code>TRUE</code>, 
+the computation of the gradients
+with respect to the estimated parameters
+is done internally in function <code>mvProbitLogLik</code>
+when it computes the log-likelihood values.
+If the optimization method requires gradients 
+and this argument is <code>FALSE</code>,
+<code>maxLik</code> computes the gradients
+by <code>numericGradient</code>,
+which is usually slower 
+than the calculation in function <code>mvProbitLogLik</code>.
+This argument should be set to <code>FALSE</code>
+if an optimisation algorithm is used that is not based on gradients.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>oneSidedGrad</code></td>
+<td>
+<p>logical. If this argument
+and argument <code>intGrad</code> are both <code>TRUE</code>, 
+the gradients of the log-likelihood function
+with respect to the estimated parameters 
+are obtained by one-sided numeric finit-difference differentiation,
+which is faster but less precise 
+than two-sided numeric finit-difference differentiation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>numeric. The step size for the one-sided numeric
+finit-distance differentiation.
+Unfortunately, it is currently not possible to set the step size
+for the two-sided numeric finit-distance differentiation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random.seed</code></td>
+<td>
+<p>an integer used to seed R's random number generator;
+this is to ensure replicability 
+when computing (cumulative) probabilities of the multivariate normal distribution
+which is required to calculate the log likelihood values;
+<code>set.seed( random.seed )</code> is called each time before
+a (cumulative) probability of the multivariate normal distribution 
+is computed;
+defaults to 123.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>object of class <code>mvProbit</code> (returned by <code>mvProbit</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>positive integer specifiying the minimum number of
+significant digits to be printed
+(see <code>print.default</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments to <code>mvProbit</code> are passed
+to <code>maxLik</code> and <code>pmvnorm</code>;
+additional arguments to <code>print.mvProbit</code> are currently ignored.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>It is possible to specify starting values 
+(a) both for the model coefficients and the correlation coefficients
+(using argument <code>start</code> alone or arguments <code>start</code> and <code>startSigma</code>
+together),
+(b) only for the model coefficients (using argument <code>start</code> alone), or
+(c) only for the correlation coefficients (using argument <code>startSigma</code> alone).
+</p>
+<p>If the model has <code class="reqn">n</code> dependent variables (equations)
+and <code class="reqn">k</code> explanatory variables in each equation,
+the order of the starting values in argument <code>start</code> must be as follows:
+<code class="reqn">b_{1,1}</code>, ..., <code class="reqn">b_{1,k}</code>, 
+<code class="reqn">b_{2,1}</code>, ..., <code class="reqn">b_{2,k}</code>, ...,
+<code class="reqn">b_{n,1}</code>, ..., <code class="reqn">b_{n,k}</code>,
+where <code class="reqn">b_{i,j}</code> is the coefficient
+of the <code class="reqn">j</code>th explanatory variable in the <code class="reqn">i</code>th equation.
+If argument <code>startSigma</code> is not specified,
+argument <code>start</code> can additionally include following elements:
+<code class="reqn">R_{1,2}</code>, <code class="reqn">R_{1,3}</code>, <code class="reqn">R_{1,4}</code>, ..., <code class="reqn">R_{1,n}</code>,
+<code class="reqn">R_{2,3}</code>, <code class="reqn">R_{2,4}</code>, ..., <code class="reqn">R_{2,n}</code>, ...,
+<code class="reqn">R_{n-1,n}</code>,
+where <code class="reqn">R_{i,j}</code> is the correlation coefficient corresponding to
+the <code class="reqn">i</code>th and <code class="reqn">j</code>th equation.
+</p>
+<p>The ‘state’ (or ‘seed’) of R's random number generator 
+is saved at the beginning of the <code>mvProbit</code> function 
+and restored at the end of this function 
+so that this function does <em>not</em> affect the generation 
+of random numbers outside this function
+although the random seed is set to argument <code>random.seed</code>
+and the calculation of the (cumulative) multivariate normal distribution
+uses random numbers.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>mvProbit</code> returns an object of class <code>"mvProbit"</code>
+inheriting from class <code>"maxLik"</code>.
+The returned object contains the same components as objects
+returned by <code>maxLik</code> and additionally
+the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>the matched call.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p>the vector of starting values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nDep</code></td>
+<td>
+<p>the number of dependent variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nReg</code></td>
+<td>
+<p>the number of explanatory variables (regressors).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nObs</code></td>
+<td>
+<p>the number of observations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dummyVars</code></td>
+<td>
+<p>vector of character strings
+indicating the names of explanatory variables
+that contain only zeros and ones or only <code>TRUE</code> and <code>FALSE</code>.
+It is <code>NULL</code>, if no explanatory variable is indentified 
+as a dummy variable.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Arne Henningsen</p>
+
+
+<h3>References</h3>
+
+<p>Greene, W.H. (1996): 
+<em>Marginal Effects in the Bivariate Probit Model</em>,
+NYU Working Paper No. EC-96-11. 
+Available at <a href="https://www.ssrn.com/abstract=1293106">https://www.ssrn.com/abstract=1293106</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mvProbitLogLik</code>,
+<code>mvProbitMargEff</code>,
+<code>probit</code>,
+<code>glm</code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## generate a simulated data set
+set.seed( 123 )
+# number of observations
+nObs &lt;- 50
+
+# generate explanatory variables
+xMat &lt;- cbind( 
+   const = rep( 1, nObs ),
+   x1 = as.numeric( rnorm( nObs ) &gt; 0 ),
+   x2 = rnorm( nObs ) )
+
+# model coefficients
+beta &lt;- cbind( c(  0.8,  1.2, -0.8 ),
+               c( -0.6,  1.0, -1.6 ),
+               c(  0.5, -0.6,  1.2 ) )
+
+# covariance matrix of error terms
+library( miscTools )
+sigma &lt;- symMatrix( c( 1, 0.2, 0.4, 1, -0.1, 1 ) )
+
+# generate dependent variables
+yMatLin &lt;- xMat %*% beta 
+yMat &lt;- ( yMatLin + rmvnorm( nObs, sigma = sigma ) ) &gt; 0
+colnames( yMat ) &lt;- paste( "y", 1:3, sep = "" )
+
+# estimation (BHHH optimizer and GHK algorithm)
+estResult &lt;- mvProbit( cbind( y1, y2, y3 ) ~ x1 + x2,
+   data = as.data.frame( cbind( xMat, yMat ) ), iterlim = 1, nGHK = 50 )
+summary( estResult )
+
+# same estimation with user-defined starting values
+estResultStart &lt;- mvProbit( cbind( y1, y2, y3 ) ~ x1 + x2,
+   start = c( beta ), startSigma = sigma, 
+   data = as.data.frame( cbind( xMat, yMat ) ), iterlim = 1, nGHK = 50 )
+summary( estResultStart )
+</code></pre>
+
+
+</div>

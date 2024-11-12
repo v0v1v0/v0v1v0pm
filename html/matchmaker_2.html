@@ -1,0 +1,210 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>match_df</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Check and clean spelling or codes of multiple variables in a data frame</h2>
+
+<h3>Description</h3>
+
+<p>This function allows you to clean your data according to
+pre-defined rules encapsulated in either a data frame or list of data frames.
+It has application for addressing mis-spellings and recoding variables (e.g.
+from electronic survey data).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">match_df(
+  x = data.frame(),
+  dictionary = list(),
+  from = 1,
+  to = 2,
+  by = 3,
+  order = NULL,
+  warn = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a character or factor vector</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dictionary</code></td>
+<td>
+<p>a data frame or named list of data frames with at least two
+columns defining the word list to be used. If this is a data frame, a third
+column must be present to split the dictionary by column in <code>x</code> (see
+<code>by</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>from</code></td>
+<td>
+<p>a column name or position defining words or keys to be replaced</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>to</code></td>
+<td>
+<p>a column name or position defining replacement values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>character or integer. If <code>dictionary</code> is a data frame,
+then this column in defines the columns in <code>x</code> corresponding to each
+section of the <code>dictionary</code> data frame. This defaults to <code>3</code>, indicating the
+third column is to be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>order</code></td>
+<td>
+<p>a character the column to be used for sorting the values in
+each data frame. If the incoming variables are factors, this determines how
+the resulting factors will be sorted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>warn</code></td>
+<td>
+<p>if <code>TRUE</code>, warnings and errors from <code>match_vec()</code> will be
+shown as a single warning. Defaults to <code>FALSE</code>, which shows nothing.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>By default, this applies the function <code>match_vec()</code> to all
+columns specified by the column names listed in <code>by</code>, or, if a
+global dictionary is used, this includes all <code>character</code> and <code>factor</code>
+columns as well.
+</p>
+
+
+<h4>
+<code>by</code> column</h4>
+
+<p>Spelling variables within <code>dictionary</code> represent keys that you want to match
+to column names in <code>x</code> (the data set). These are expected to match exactly
+with the exception of two reserved keywords that starts with a full stop:
+</p>
+
+<ul>
+<li> <p><code>.regex [pattern]</code>: any column whose name is matched by <code style="white-space: pre;">⁠[pattern]⁠</code>. The
+<code style="white-space: pre;">⁠[pattern]⁠</code> should be an unquoted, valid, PERL-flavored regular expression.
+</p>
+</li>
+<li> <p><code>.global</code>: any column (see Section <em>Global dictionary</em>)
+</p>
+</li>
+</ul>
+<h4>Global dictionary</h4>
+
+<p>A global dictionary is a set of definitions applied to all valid columns of
+<code>x</code> indiscriminantly.
+</p>
+
+<ul>
+<li> <p><strong>.global keyword in <code>by</code></strong>: If you want to apply a set of definitions to
+all valid columns in addition to specified columns, then you can include a
+<code>.global</code> group in the <code>by</code> column of your <code>dictionary</code> data frame. This is
+useful for setting up a dictionary of common spelling errors. <em>NOTE:
+specific variable definitions will override global defintions.</em> For
+example: if you have a column for cardinal directions and a definiton for
+<code>N = North</code>, then the global variable <code>N = no</code> will not override that. See
+Example.
+</p>
+</li>
+<li> <p><strong><code>by = NULL</code></strong>: If you want your data frame to be applied to
+all character/factor columns indiscriminantly, then setting
+<code>by = NULL</code> will use that dictionary globally.
+</p>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>a data frame with re-defined data based on the dictionary
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Zhian N. Kamvar
+</p>
+<p>Patrick Barks
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>match_vec()</code>, which this function wraps.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Read in dictionary and coded date examples --------------------
+
+dict &lt;- read.csv(matchmaker_example("spelling-dictionary.csv"),
+  stringsAsFactors = FALSE)
+dat &lt;- read.csv(matchmaker_example("coded-data.csv"),
+  stringsAsFactors = FALSE)
+dat$date &lt;- as.Date(dat$date)
+
+# Clean spelling based on dictionary -----------------------------
+
+dict # show the dict
+head(dat) # show the data
+
+res1 &lt;- match_df(dat,
+  dictionary = dict,
+  from = "options",
+  to = "values",
+  by = "grp")
+head(res1)
+
+# Show warnings/errors from each column --------------------------
+# Internally, the `match_vec()` function can be quite noisy with warnings for
+# various reasons. Thus, by default, the `match_df()` function will keep
+# these quiet, but you can have them printed to your console if you use the
+# warn = TRUE option:
+
+res1 &lt;- match_df(dat,
+  dictionary = dict,
+  from = "options",
+  to = "values",
+  by = "grp",
+  warn = TRUE)
+head(res1)
+
+
+# You can ensure the order of the factors are correct by specifying
+# a column that defines order.
+
+dat[] &lt;- lapply(dat, as.factor)
+as.list(head(dat))
+res2 &lt;- match_df(dat,
+  dictionary = dict,
+  from = "options",
+  to = "values",
+  by = "grp",
+  order = "orders")
+head(res2)
+as.list(head(res2))
+</code></pre>
+
+
+</div>

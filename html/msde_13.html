@@ -1,0 +1,157 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sde.sim</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Simulation of multivariate SDE trajectories.</h2>
+
+<h3>Description</h3>
+
+<p>Simulates a discretized Euler-Maruyama approximation to the true SDE trajectory.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">sde.sim(
+  model,
+  x0,
+  theta,
+  dt,
+  dt.sim,
+  nobs,
+  burn = 0,
+  nreps = 1,
+  max.bad.draws = 5000,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>An <code>sde.model</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x0</code></td>
+<td>
+<p>A vector or a matrix of size <code style="white-space: pre;">⁠nreps x ndims⁠</code> of the SDE values at time 0.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>theta</code></td>
+<td>
+<p>A vector or matrix of size <code style="white-space: pre;">⁠nreps x nparams⁠</code> of SDE parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dt</code></td>
+<td>
+<p>Scalar interobservation time.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dt.sim</code></td>
+<td>
+<p>Scalar interobservation time for simulation.  That is, interally the interobservation time is <code>dt.sim</code> but only one out of every <code>dt/dt.sim</code> simulation steps is kept in the output.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nobs</code></td>
+<td>
+<p>The number of SDE observations per trajectory to generate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burn</code></td>
+<td>
+<p>Scalar burn-in value.  Either an integer giving the number of burn-in steps, or a value between 0 and 1 giving the fraction of burn-in relative to <code>nobs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nreps</code></td>
+<td>
+<p>The number of SDE trajectories to generate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max.bad.draws</code></td>
+<td>
+<p>The maximum number of times that invalid forward steps are proposed.  See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Whether or not to display information on the simulation.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The simulation algorithm is a Markov process with <code class="reqn">Y_0 = x_0</code> and
+</p>
+<p style="text-align: center;"><code class="reqn">
+Y_{t+1} \sim \mathcal{N}(Y_t + \mathrm{dr}(Y_t, \theta) dt_{\mathrm{sim}}, \mathrm{df}(Y_t, \theta) dt_{\mathrm{sim}}),
+</code>
+</p>
+
+<p>where <code class="reqn">\mathrm{dr}(y, \theta)</code> is the SDE drift function and <code class="reqn">\mathrm{df}(y, \theta)</code> is the diffusion function on the <strong>variance</strong> scale.  At each step, a while-loop is used until a valid SDE draw is produced.  The simulation algorithm terminates after <code>nreps</code> trajectories are drawn or once a total of <code>max.bad.draws</code> are reached.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with elements:
+</p>
+
+<dl>
+<dt><code>data</code></dt>
+<dd>
+<p>An array of size <code style="white-space: pre;">⁠nobs x ndims x nreps⁠</code> containing the simulated SDE trajectories.</p>
+</dd>
+<dt><code>params</code></dt>
+<dd>
+<p>The vector or matrix of parameter values used to generate the data.</p>
+</dd>
+<dt><code style="white-space: pre;">⁠dt, dt.sim⁠</code></dt>
+<dd>
+<p>The actual and internal interobservation times.</p>
+</dd>
+<dt><code>nbad</code></dt>
+<dd>
+<p>The total number of bad draws.</p>
+</dd>
+</dl>
+<h3>Examples</h3>
+
+<pre><code class="language-R"># load pre-compiled model
+hmod &lt;- sde.examples("hest")
+
+# initial values
+x0 &lt;- c(X = log(1000), Z = 0.1)
+theta &lt;- c(alpha = 0.1, gamma = 1, beta = 0.8, sigma = 0.6, rho = -0.8)
+
+# simulate data
+dT &lt;- 1/252
+nobs &lt;- 2000
+burn &lt;- 500
+hsim &lt;- sde.sim(model = hmod, x0 = x0, theta = theta,
+                dt = dT, dt.sim = dT/10,
+                nobs = nobs, burn = burn)
+
+par(mfrow = c(1,2))
+plot(hsim$data[,"X"], type = "l", xlab = "Time", ylab = "",
+     main = expression(X[t]))
+plot(hsim$data[,"Z"], type = "l", xlab = "Time", ylab = "",
+     main = expression(Z[t]))
+</code></pre>
+
+
+</div>

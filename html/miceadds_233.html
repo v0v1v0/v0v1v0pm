@@ -1,0 +1,267 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>lm.cluster</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Cluster Robust Standard Errors for Linear Models and General Linear Models
+</h2>
+
+<h3>Description</h3>
+
+<p>Computes cluster robust standard errors for linear models
+(<code>stats::lm</code>) and general linear models
+(<code>stats::glm</code>) using the
+<code>multiwayvcov::vcovCL</code>
+function in the <span class="pkg">sandwich</span> package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">lm.cluster(data, formula, cluster, weights=NULL, subset=NULL )
+
+glm.cluster(data, formula, cluster, weights=NULL, subset=NULL, family="gaussian" )
+
+## S3 method for class 'lm.cluster'
+summary(object,...)
+## S3 method for class 'glm.cluster'
+summary(object,...)
+
+## S3 method for class 'lm.cluster'
+coef(object,...)
+## S3 method for class 'glm.cluster'
+coef(object,...)
+
+## S3 method for class 'lm.cluster'
+vcov(object,...)
+## S3 method for class 'glm.cluster'
+vcov(object,...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>Data frame
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+
+<p>An <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span> formula
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cluster</code></td>
+<td>
+
+<p>Variable name for cluster variable contained in <code>data</code> or a vector
+with cluster identifiers
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>Optional vector specifying a subset of observations to be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>Optional vector of weights to be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>Description of the error distribution and link function to be used in
+the model, see <code>stats::glm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Further arguments to be passed to <code>stats::lm</code> and
+<code>stats::glm</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+
+<p>Object of class <code>lm.cluster</code> or <code>glm.cluster</code>
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>List with following entries
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>lm_res</code></td>
+<td>
+<p>Value of <code>stats::lm</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>glm_res</code></td>
+<td>
+<p>Value of <code>stats::glm</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vcov</code></td>
+<td>
+<p>Covariance matrix of parameter estimates</p>
+</td>
+</tr>
+</table>
+<h3>See Also</h3>
+
+<p><code>stats::lm</code>, <code>stats::glm</code>,
+<code>sandwich::vcovCL</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+
+#############################################################################
+# EXAMPLE 1: Cluster robust standard errors data.ma01
+#############################################################################
+
+data(data.ma01)
+dat &lt;- data.ma01
+
+#*** Model 1: Linear regression
+mod1 &lt;- miceadds::lm.cluster( data=dat, formula=read ~ hisei + female,
+               cluster="idschool" )
+coef(mod1)
+vcov(mod1)
+summary(mod1)
+
+# estimate Model 1, but cluster is provided as a vector
+mod1b &lt;- miceadds::lm.cluster( data=dat, formula=read ~ hisei + female,
+                 cluster=dat$idschool)
+summary(mod1b)
+
+#*** Model 2: Logistic regression
+dat$highmath &lt;- 1 * ( dat$math &gt; 600 )   # create dummy variable
+mod2 &lt;- miceadds::glm.cluster( data=dat, formula=highmath ~ hisei + female,
+                cluster="idschool", family="binomial")
+coef(mod2)
+vcov(mod2)
+summary(mod2)
+
+#############################################################################
+# EXAMPLE 2: Cluster robust standard errors for multiply imputed datasets
+#############################################################################
+
+library(mitools)
+data(data.ma05)
+dat &lt;- data.ma05
+
+# imputation of the dataset: use six imputations
+resp &lt;- dat[, - c(1:2) ]
+imp &lt;- mice::mice( resp, method="norm", maxit=3, m=6 )
+datlist &lt;- miceadds::mids2datlist( imp )
+
+# linear regression with cluster robust standard errors
+mod &lt;- lapply(  datlist, FUN=function(data){
+            miceadds::lm.cluster( data=data, formula=denote ~ migrant+ misei,
+                    cluster=dat$idclass )
+            }  )
+# extract parameters and covariance matrix
+betas &lt;- lapply( mod, FUN=function(rr){ coef(rr) } )
+vars &lt;- lapply( mod, FUN=function(rr){ vcov(rr) } )
+# conduct statistical inference
+summary( miceadds::pool_mi( qhat=betas, u=vars ) )
+
+#------ compute global F-test for hypothesis that all predictors have zero coefficient values
+library(mitml)
+Nimp &lt;- 6 # number of imputations
+np &lt;- length(betas[[1]])   # number of parameters
+beta_names &lt;- names(betas[[1]])
+# define vector of parameters for which constraints should be tested
+constraints &lt;- beta_names[-1]
+# create input for mitml::testConstraints function
+qhat &lt;- matrix( unlist(betas), ncol=Nimp)
+rownames(qhat) &lt;- beta_names
+uhat &lt;- array( unlist(vars), dim=c(np,np,Nimp))
+dimnames(uhat) &lt;- list( beta_names, beta_names, NULL )
+# compute global F-test
+Ftest &lt;- mitml::testConstraints( qhat=betas, uhat=vars, constraints=constraints )
+print(Ftest)
+
+#############################################################################
+# EXAMPLE 3: Comparing miceadds::lm.cluster() and lme4::lmer()
+#############################################################################
+
+data(data.ma01, package="miceadds")
+dat &lt;- na.omit(data.ma01)
+
+# center hisei variable
+dat$hisei &lt;- dat$hisei - mean(dat$hisei)
+
+# define school mean hisei
+dat$hisei_gm &lt;- miceadds::GroupMean(dat$hisei, dat$idschool, extend=TRUE)[,2]
+dat$cluster_size &lt;- miceadds::GroupSum(1+0*dat$hisei, dat$idschool, extend=TRUE)[,2]
+dat$hisei_wc &lt;- dat$hisei - dat$hisei_gm
+
+
+
+#*** Model 1a: lm, hisei with clustering
+mod1a &lt;- miceadds::lm.cluster( data=dat, formula=read~hisei, cluster="idschool" )
+
+#*** Model 1b: lmer, hisei
+mod1b &lt;- lme4::lmer( data=dat, formula=read~hisei+(1|idschool) )
+
+cbind( coef(mod1a), fixef(mod1b))
+ ##  &gt; cbind( coef(mod1a), fixef(mod1b))
+ ##                    [,1]        [,2]
+ ##  (Intercept) 509.181691 507.8684752
+ ##  hisei         1.524776   0.8161745
+
+# variance explanation
+vmod1b &lt;- r2mlm::r2mlm(mod1b)
+vmod1b$Decompositions
+
+#*** Model 2a: lm, hisei and hisei_gm with clustering
+mod2a &lt;- miceadds::lm.cluster( data=dat, formula=read~hisei_wc+hisei_gm,
+                                   cluster="idschool" )
+
+#*** Model 2b: lmer, multilevel model
+mod2b &lt;- lme4::lmer( data=dat, formula=read~hisei_wc+hisei_gm + (1|idschool) )
+
+# variance explanation
+vmod2b &lt;- r2mlm::r2mlm(mod2b)
+vmod2b$Decompositions
+
+cbind( coef(mod2a), fixef(mod2b))
+ ##  &gt; cbind( coef(mod2a), fixef(mod2b))
+ ##                     [,1]        [,2]
+ ##  (Intercept) 509.1816911 508.0478629
+ ##  hisei_wc      0.7503773   0.7503773
+ ##  hisei_gm      5.8424012   5.5681941
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

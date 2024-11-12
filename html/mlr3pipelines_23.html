@@ -1,0 +1,242 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Graph</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Graph Base Class</h2>
+
+<h3>Description</h3>
+
+<p>A <code>Graph</code> is a representation of a machine learning pipeline graph. It can be <em>trained</em>, and subsequently used for <em>prediction</em>.
+</p>
+<p>A <code>Graph</code> is most useful when used together with <code>Learner</code> objects encapsulated as <code>PipeOpLearner</code>. In this case,
+the <code>Graph</code> produces <code>Prediction</code> data during its <code style="white-space: pre;">⁠$predict()⁠</code> phase and can be used as a <code>Learner</code>
+itself (using the <code>GraphLearner</code> wrapper). However, the <code>Graph</code> can also be used without <code>Learner</code> objects to simply
+perform preprocessing of data, and, in principle, does not even need to handle data at all but can be used for general processes with
+dependency structure (although the <code>PipeOp</code>s for this would need to be written).
+</p>
+
+
+<h3>Format</h3>
+
+<p><code>R6Class</code>.
+</p>
+
+
+<h3>Construction</h3>
+
+<div class="sourceCode"><pre>Graph$new()
+</pre></div>
+
+
+<h3>Internals</h3>
+
+<p>A <code>Graph</code> is made up of a list of <code>PipeOp</code>s, and a <code>data.table</code> of edges. Both for training and prediction, the <code>Graph</code>
+performs topological sorting of the <code>PipeOp</code>s and executes their respective <code style="white-space: pre;">⁠$train()⁠</code> or <code style="white-space: pre;">⁠$predict()⁠</code> functions in order, moving
+the <code>PipeOp</code> results along the edges as input to other <code>PipeOp</code>s.
+</p>
+
+
+<h3>Fields</h3>
+
+
+<ul>
+<li> <p><code>pipeops</code> :: named <code>list</code> of <code>PipeOp</code> <br>
+Contains all <code>PipeOp</code>s in the <code>Graph</code>, named by the <code>PipeOp</code>'s <code style="white-space: pre;">⁠$id⁠</code>s.
+</p>
+</li>
+<li> <p><code>edges</code> :: <code>data.table</code>  with columns <code>src_id</code> (<code>character</code>), <code>src_channel</code> (<code>character</code>), <code>dst_id</code> (<code>character</code>), <code>dst_channel</code> (<code>character</code>)<br>
+Table of connections between the <code>PipeOp</code>s. A <code>data.table</code>. <code>src_id</code> and <code>dst_id</code> are <code style="white-space: pre;">⁠$id⁠</code>s of <code>PipeOp</code>s that must be present in
+the <code style="white-space: pre;">⁠$pipeops⁠</code> list. <code>src_channel</code> and <code>dst_channel</code> must respectively be <code style="white-space: pre;">⁠$output⁠</code> and <code style="white-space: pre;">⁠$input⁠</code> channel names of the
+respective <code>PipeOp</code>s.
+</p>
+</li>
+<li> <p><code>is_trained</code> :: <code>logical(1)</code> <br>
+Is the <code>Graph</code>, i.e. are all of its <code>PipeOp</code>s, trained, and can the <code>Graph</code> be used for prediction?
+</p>
+</li>
+<li> <p><code>lhs</code> :: <code>character</code> <br>
+Ids of the 'left-hand-side' <code>PipeOp</code>s that have some unconnected input channels and therefore act as <code>Graph</code> input layer.
+</p>
+</li>
+<li> <p><code>rhs</code> :: <code>character</code> <br>
+Ids of the 'right-hand-side' <code>PipeOp</code>s that have some unconnected output channels and therefore act as <code>Graph</code> output layer.
+</p>
+</li>
+<li> <p><code>input</code> :: <code>data.table</code> with columns <code>name</code> (<code>character</code>), <code>train</code> (<code>character</code>), <code>predict</code> (<code>character</code>), <code>op.id</code> (<code>character</code>), <code>channel.name</code> (<code>character</code>)<br>
+Input channels of the <code>Graph</code>. For each channel lists the name, input type during training, input type during prediction,
+<code>PipeOp</code> <code style="white-space: pre;">⁠$id⁠</code> of the <code>PipeOp</code> the channel pertains to, and channel name as the <code>PipeOp</code> knows it.
+</p>
+</li>
+<li> <p><code>output</code> :: <code>data.table</code> with columns <code>name</code> (<code>character</code>), <code>train</code> (<code>character</code>), <code>predict</code> (<code>character</code>), <code>op.id</code> (<code>character</code>), <code>channel.name</code> (<code>character</code>)<br>
+Output channels of the <code>Graph</code>. For each channel lists the name, output type during training, output type during prediction,
+<code>PipeOp</code> <code style="white-space: pre;">⁠$id⁠</code> of the <code>PipeOp</code> the channel pertains to, and channel name as the <code>PipeOp</code> knows it.
+</p>
+</li>
+<li> <p><code>packages</code> :: <code>character</code><br>
+Set of all required packages for the various methods in the <code>Graph</code>, a set union of all required packages of all contained
+<code>PipeOp</code> objects.
+</p>
+</li>
+<li> <p><code>state</code> :: named <code>list</code><br>
+Get / Set the <code style="white-space: pre;">⁠$state⁠</code> of each of the members of <code>PipeOp</code>.
+</p>
+</li>
+<li> <p><code>param_set</code> :: <code>ParamSet</code><br>
+Parameters and parameter constraints. Parameter values are in <code style="white-space: pre;">⁠$param_set$values⁠</code>. These are the union of <code style="white-space: pre;">⁠$param_set⁠</code>s
+of all <code>PipeOp</code>s in the <code>Graph</code>. Parameter names
+as seen by the <code>Graph</code> have the naming scheme <code style="white-space: pre;">⁠&lt;PipeOp$id&gt;.&lt;PipeOp original parameter name&gt;⁠</code>.
+Changing <code style="white-space: pre;">⁠$param_set$values⁠</code> also propagates the changes directly to the contained
+<code>PipeOp</code>s and is an alternative to changing a <code>PipeOp</code>s <code style="white-space: pre;">⁠$param_set$values⁠</code> directly.
+</p>
+</li>
+<li> <p><code>hash</code> :: <code>character(1)</code> <br>
+Stores a checksum calculated on the <code>Graph</code> configuration, which includes all <code>PipeOp</code> hashes
+(and therefore their <code style="white-space: pre;">⁠$param_set$values⁠</code>) and a hash of <code style="white-space: pre;">⁠$edges⁠</code>.
+</p>
+</li>
+<li> <p><code>phash</code> :: <code>character(1)</code> <br>
+Stores a checksum calculated on the <code>Graph</code> configuration, which includes all <code>PipeOp</code> hashes
+<em>except</em> their <code style="white-space: pre;">⁠$param_set$values⁠</code>, and a hash of <code style="white-space: pre;">⁠$edges⁠</code>.
+</p>
+</li>
+<li> <p><code>keep_results</code> :: <code>logical(1)</code><br>
+Whether to store intermediate results in the <code>PipeOp</code>'s <code style="white-space: pre;">⁠$.result⁠</code> slot, mostly for debugging purposes. Default <code>FALSE</code>.
+</p>
+</li>
+<li> <p><code>man</code> :: <code>character(1)</code><br>
+Identifying string of the help page that shows with <code>help()</code>.
+</p>
+</li>
+</ul>
+<h3>Methods</h3>
+
+
+<ul>
+<li> <p><code>ids(sorted = FALSE)</code> <br>
+(<code>logical(1)</code>) -&gt; <code>character</code> <br>
+Get IDs of all <code>PipeOp</code>s. This is in order that <code>PipeOp</code>s were added if
+<code>sorted</code> is <code>FALSE</code>, and topologically sorted if <code>sorted</code> is <code>TRUE</code>.
+</p>
+</li>
+<li> <p><code>add_pipeop(op, clone = TRUE)</code> <br>
+(<code>PipeOp</code> | <code>Learner</code> | <code>Filter</code> | <code>...</code>, <code>logical(1)</code>) -&gt; <code>self</code> <br>
+Mutates <code>Graph</code> by adding a <code>PipeOp</code> to the <code>Graph</code>. This does not add any edges, so the new <code>PipeOp</code>
+will not be connected within the <code>Graph</code> at first.<br>
+Instead of supplying a <code>PipeOp</code> directly, an object that can naturally be converted to a <code>PipeOp</code> can also
+be supplied, e.g. a <code>Learner</code> or a <code>Filter</code>; see <code>as_pipeop()</code>.
+The argument given as <code>op</code> is cloned if <code>clone</code> is <code>TRUE</code> (default); to access a <code>Graph</code>'s <code>PipeOp</code>s
+by-reference, use <code style="white-space: pre;">⁠$pipeops⁠</code>.<br>
+Note that <code style="white-space: pre;">⁠$add_pipeop()⁠</code> is a relatively low-level operation, it is recommended to build graphs using <code>%&gt;&gt;%</code>.
+</p>
+</li>
+<li> <p><code>add_edge(src_id, dst_id, src_channel = NULL, dst_channel = NULL)</code> <br>
+(<code>character(1)</code>, <code>character(1)</code>,
+<code>character(1)</code> | <code>numeric(1)</code> | <code>NULL</code>,
+<code>character(1)</code> | <code>numeric(1)</code> | <code>NULL</code>) -&gt; <code>self</code> <br>
+Add an edge from <code>PipeOp</code> <code>src_id</code>, and its channel <code>src_channel</code>
+(identified by its name or number as listed in the <code>PipeOp</code>'s <code style="white-space: pre;">⁠$output⁠</code>), to <code>PipeOp</code> <code>dst_id</code>'s
+channel <code>dst_channel</code> (identified by its name or number as listed in the <code>PipeOp</code>'s <code style="white-space: pre;">⁠$input⁠</code>).
+If source or destination <code>PipeOp</code> have only one input / output channel and <code>src_channel</code> / <code>dst_channel</code>
+are therefore unambiguous, they can be omitted (i.e. left as <code>NULL</code>).
+</p>
+</li>
+<li> <p><code>chain(gs, clone = TRUE)</code> <br>
+(<code>list</code> of <code>Graph</code>s, <code>logical(1)</code>) -&gt; <code>self</code> <br>
+Takes a list of <code>Graph</code>s or <code>PipeOp</code>s (or objects that can be automatically converted into <code>Graph</code>s or <code>PipeOp</code>s,
+see <code>as_graph()</code> and <code>as_pipeop()</code>) as inputs and joins them in a serial <code>Graph</code> coming after <code>self</code>, as if
+connecting them using <code>%&gt;&gt;%</code>.
+</p>
+</li>
+<li> <p><code>plot(html)</code> <br>
+(<code>logical(1)</code>) -&gt; <code>NULL</code> <br>
+Plot the <code>Graph</code>, using either the <span class="pkg">igraph</span> package (for <code>html = FALSE</code>, default) or
+the <code>visNetwork</code> package for <code>html = TRUE</code> producing a <code>htmlWidget</code>.
+The <code>htmlWidget</code> can be rescaled using <code>visOptions</code>.
+</p>
+</li>
+<li> <p><code>print(dot = FALSE, dotname = "dot", fontsize = 24L)</code> <br>
+(<code>logical(1)</code>, <code>character(1)</code>, <code>integer(1)</code>) -&gt; <code>NULL</code> <br>
+Print a representation of the <code>Graph</code> on the console. If <code>dot</code> is <code>FALSE</code>, output is a table with one row for each contained <code>PipeOp</code> and
+columns <code>ID</code> (<code style="white-space: pre;">⁠$id⁠</code> of <code>PipeOp</code>), <code>State</code> (short representation of <code style="white-space: pre;">⁠$state⁠</code> of <code>PipeOp</code>), <code>sccssors</code> (<code>PipeOp</code>s that
+take their input directly from the <code>PipeOp</code> on this line), and <code>prdcssors</code> (the <code>PipeOp</code>s that produce the data
+that is read as input by the <code>PipeOp</code> on this line). If <code>dot</code> is <code>TRUE</code>, print a DOT representation of the <code>Graph</code> on the console.
+The DOT output can be named via the argument <code>dotname</code> and the <code>fontsize</code> can also be specified.
+</p>
+</li>
+<li> <p><code>set_names(old, new)</code> <br>
+(<code>character</code>, <code>character</code>) -&gt; <code>self</code> <br>
+Rename <code>PipeOp</code>s: Change ID of each <code>PipeOp</code> as identified by <code>old</code> to the corresponding item in <code>new</code>. This should be used
+instead of changing a <code>PipeOp</code>'s <code style="white-space: pre;">⁠$id⁠</code> value directly!
+</p>
+</li>
+<li> <p><code>update_ids(prefix = "", postfix = "")</code> <br>
+(<code>character</code>, <code>character</code>) -&gt; <code>self</code> <br>
+Pre- or postfix <code>PipeOp</code>'s existing ids. Both <code>prefix</code> and <code>postfix</code> default to <code>""</code>, i.e. no changes.
+</p>
+</li>
+<li> <p><code>train(input, single_input = TRUE)</code> <br>
+(<code>any</code>, <code>logical(1)</code>) -&gt; named <code>list</code><br>
+Train <code>Graph</code> by traversing the <code>Graph</code>s' edges and calling all the <code>PipeOp</code>'s <code style="white-space: pre;">⁠$train⁠</code> methods in turn.
+Return a named <code>list</code> of outputs for each unconnected
+<code>PipeOp</code> out-channel, named according to the <code>Graph</code>'s <code style="white-space: pre;">⁠$output⁠</code> <code>name</code> column. During training, the <code style="white-space: pre;">⁠$state⁠</code>
+member of each <code>PipeOp</code>s will be set and the <code style="white-space: pre;">⁠$is_trained⁠</code> slot of the <code>Graph</code> (and each individual <code>PipeOp</code>) will
+consequently be set to <code>TRUE</code>.<br>
+If <code>single_input</code> is <code>TRUE</code>, the <code>input</code> value will be sent to each unconnected <code>PipeOp</code>'s input channel
+(as listed in the <code>Graph</code>'s <code style="white-space: pre;">⁠$input⁠</code>). Typically, <code>input</code> should be a <code>Task</code>, although this is dependent
+on the <code>PipeOp</code>s in the <code>Graph</code>. If <code>single_input</code> is <code>FALSE</code>, then
+<code>input</code> should be a <code>list</code> with the same length as the <code>Graph</code>'s <code style="white-space: pre;">⁠$input⁠</code> table has rows; each list item will be sent
+to a corresponding input channel of the <code>Graph</code>. If <code>input</code> is a named <code>list</code>, names must correspond to input channel
+names (<code style="white-space: pre;">⁠$input$name⁠</code>) and inputs will be sent to the channels by name; otherwise they will be sent to the channels
+in order in which they are listed in <code style="white-space: pre;">⁠$input⁠</code>.
+</p>
+</li>
+<li> <p><code>predict(input, single_input = TRUE)</code> <br>
+(<code>any</code>, <code>logical(1)</code>) -&gt; <code>list</code> of <code>any</code> <br>
+Predict with the <code>Graph</code> by calling all the <code>PipeOp</code>'s <code style="white-space: pre;">⁠$train⁠</code> methods. Input and output, as well as the function
+of the <code>single_input</code> argument, are analogous to <code style="white-space: pre;">⁠$train()⁠</code>.
+</p>
+</li>
+<li> <p><code>help(help_type)</code> <br>
+(<code>character(1)</code>) -&gt; help file<br>
+Displays the help file of the concrete <code>PipeOp</code> instance. <code>help_type</code> is one of <code>"text"</code>, <code>"html"</code>, <code>"pdf"</code> and behaves
+as the <code>help_type</code> argument of R's <code>help()</code>.
+</p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+<p>Other mlr3pipelines backend related: 
+<code>PipeOp</code>,
+<code>PipeOpTargetTrafo</code>,
+<code>PipeOpTaskPreproc</code>,
+<code>PipeOpTaskPreprocSimple</code>,
+<code>mlr_graphs</code>,
+<code>mlr_pipeops</code>,
+<code>mlr_pipeops_updatetarget</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library("mlr3")
+
+g = Graph$new()$
+  add_pipeop(PipeOpScale$new(id = "scale"))$
+  add_pipeop(PipeOpPCA$new(id = "pca"))$
+  add_edge("scale", "pca")
+g$input
+g$output
+
+task = tsk("iris")
+trained = g$train(task)
+trained[[1]]$data()
+
+task$filter(1:10)
+predicted = g$predict(task)
+predicted[[1]]$data()
+</code></pre>
+
+
+</div>

@@ -1,0 +1,123 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Cooke16</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Correlation Matrices from Cooke et al. (2016)</h2>
+
+<h3>Description</h3>
+
+<p>The data set includes correlation matrices on using the theory of planned
+behavior to predict alcohol consumption reported by Cooke et al. (2016). 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">data(Cooke16)</code></pre>
+
+
+<h3>Details</h3>
+
+<p>A list of data with the following structure:
+</p>
+
+<dl>
+<dt>data</dt>
+<dd>
+<p>A list of correlation matrices. The variables are
+<em>SN</em> (subjective norm), <em>ATT</em> (attitude), <em>PBC</em>
+(perceived behavior control), <em>BI</em> (behavioral intention), and
+<em>BEH</em> (behavior).</p>
+</dd>
+<dt>n</dt>
+<dd>
+<p>A vector of sample sizes.</p>
+</dd>
+<dt>MeanAge</dt>
+<dd>
+<p>Mean age of the participants except for <code>Ajzen and
+	Sheikh (2013)</code>, which is the median age, and <code>Glassman, et
+	al. (2010a)</code> to <code>Glassman, et al. (2010d)</code>, which are based on
+the range of 18 to 24.</p>
+</dd>
+<dt>Female</dt>
+<dd>
+<p>Percentage of female participants.</p>
+</dd>
+</dl>
+<h3>Source</h3>
+
+<p>Cooke, R., Dahdah, M., Norman, P., &amp; French, D. P. (2016). How well does the theory of planned behaviour predict alcohol consumption? A systematic review and meta-analysis. <em>Health Psychology Review</em>, <b>10</b>(2), 148-167.
+</p>
+
+
+<h3>References</h3>
+
+<p>Cheung, M. W.-L., &amp; Hong, R. Y. (2017). Applications of meta-analytic structural equation modeling in health psychology: Examples, issues, and recommendations. <em>Health Psychology Review</em>, <b>11</b>, 265-279. 
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Check whether the correlation matrices are valid (positive definite)
+Cooke16$data[is.pd(Cooke16$data)==FALSE]
+
+## Since the correlation matrix in Study 3 is not positive definite,
+## we exclude it in the following analyses
+my.data &lt;- Cooke16$data[-3]
+my.n &lt;- Cooke16$n[-3]
+
+## Show the no. of studies per correlation
+pattern.na(my.data, show.na = FALSE)
+
+## Show the total sample sizes per correlation
+pattern.n(my.data, my.n)
+
+## Stage 1 analysis
+## Random-effects model
+random1 &lt;- tssem1(my.data, my.n, method="REM", RE.type="Diag", acov="weighted")
+summary(random1)
+
+A1 &lt;- create.mxMatrix(c(0,0,0,0,0,
+                        0,0,0,0,0,
+                        0,0,0,0,0,
+                        "0.2*SN2BI","0.2*ATT2BI","0.2*PBC2BI",0,0,
+                        0,0,"0.2*PBC2BEH","0.2*BI2BEH",0),
+                        type="Full", ncol=5, nrow=5,
+                        byrow=TRUE, as.mxMatrix=FALSE)
+
+## This step is not necessary but it is useful for inspecting the model.
+dimnames(A1)[[1]] &lt;- dimnames(A1)[[2]] &lt;- colnames(Cooke16$data[[1]])
+
+## Display A1
+A1
+
+S1 &lt;- create.mxMatrix(c(1,
+                        "0.1*ATT_SN", 1,
+                        "0.1*PBC_SN", "0.1*PBC_ATT", 1,
+                        0, 0, 0, "0.5*VarBI",
+                        0, 0, 0, 0, "0.5*VarBEH"),
+                      type = "Symm", ncol=5, nrow=5,
+                      byrow=TRUE, as.mxMatrix=FALSE)
+
+dimnames(S1)[[1]] &lt;- dimnames(S1)[[2]] &lt;- colnames(Cooke16$data[[1]])
+S1
+
+## Stage 2 analysis
+random2 &lt;- tssem2(random1, Amatrix=A1, Smatrix=S1, diag.constraints=FALSE,
+                  intervals.type="LB")
+summary(random2)
+
+## Display the model
+plot(random2, what="path")    
+    
+## Display the model with the parameter estimates
+plot(random2, color="yellow")
+
+</code></pre>
+
+
+</div>

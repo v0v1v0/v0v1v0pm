@@ -1,0 +1,135 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>dbs</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Deep-Brain Stimulation for Patients with Parkinson's Disease </h2>
+
+<h3>Description</h3>
+
+<p>The dataset contains the data on 46 studies published between 1980 and 2004 that assessed the effect of deep-brain stimulation on the relief of symptoms of Parkinson's disease. The outcome is reported as a score motor function, defined with the Unified Parkinson's Disease Rating Scale (UPDRS-part III), with lower values indicating better prognosis. Changes in the score were measured at 3, 6, 12 months and long-term after the implantation of the stimulator.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">dbs</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 68 observations on the following 12 variables:
+</p>
+
+<ul>
+<li>
+<p><code>author</code>: label identifying the study.
+</p>
+</li>
+<li>
+<p><code>year</code>: year of publication.
+</p>
+</li>
+<li>
+<p><code>eff_month3,  var_month3</code>: point estimate and variance of the change in the score at 3 months.
+</p>
+</li>
+<li>
+<p><code>eff_month6,  var_month6</code>: point estimate and variance of the change in the score at 6 months.
+</p>
+</li>
+<li>
+<p><code>eff_month12,  var_month12</code>: point estimate and variance of the change in the score at 12 months.
+</p>
+</li>
+<li>
+<p><code>eff_long,  var_long</code>: point estimate and variance of the change in the score in the long term.
+</p>
+</li>
+<li>
+<p><code>duration</code>: average disease duration (years).
+</p>
+</li>
+<li>
+<p><code>baseline</code>: average baseline score of the patients.
+</p>
+</li>
+</ul>
+<h3>Details</h3>
+
+<p>The data are stored in a <em>wide</em> format, with each record belonging to a single study and different variables providing estimates of the outcome at different times. Each study report results at one or multiple times, with the remaining times set to missing. See the dataset gliomas for an example of similar dataset stored in <em>long</em> format.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The data provide an example of application of longitudinal meta-analysis, with repeated measurements of the effect size taken at various time point within each study. This requires a modelling structure that accounts for both within and between-study correlations of repeated measurements. In this case, the analysis is performed in the wide-format dataset using a multivariate meta-analysis. However, a long format is better suited for longitudinal meta-analysis, as it is applicable even when estimates are reported at different times in each study (see the examples in the help page of the dataset <code>gliomas</code>). Results can be compared with those reported Ishak and colleagues (2007).
+</p>
+
+
+<h3>Source</h3>
+
+<p>Ishak KJ, et al (2007). Meta-analysis of effect sizes reported at multiple time points using general linear mixed model. <em>Clinical Trials</em>. <b>4</b>(5):525–39.
+</p>
+<p>Sera F, Armstrong B, Blangiardo M, Gasparrini A (2019). An extended mixed-effects framework for meta-analysis.<em>Statistics in Medicine</em>. 2019;38(29):5429-5444. [Freely available <a href="http://www.ag-myresearch.com/2019_sera_statmed.html"><b>here</b></a>].
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">### REPRODUCE THE RESULTS IN ISHAK ET AL (2007), TABLES 1 AND 2
+
+# CREATE THE OUTCOME AND WITHIN-STUDY MATRICES (THE LATTER WITHOUT CORRELATION)
+y &lt;- as.matrix(dbs[1:4*2+1])
+S &lt;- as.matrix(dbs[1:4*2+2])
+
+# INDEPENDENT RANDOM EFFECTS (TABLE 1, FIRST MODEL)
+mv1 &lt;- mixmeta(y ~ 1, S, bscov="diag", data=dbs)
+print(summary(mv1), digits=1, report="var")
+
+# HETEROGENEOUS AR1 RANDOM-EFFECTS (TABLE 1, THIRD MODEL)
+mv3 &lt;- mixmeta(y ~ 1, S, bscov="har1", data=dbs)
+print(summary(mv3), digits=1, report="var")
+
+# BUILD THE LIST HETEROGENEOUS AR1 WITHIN-STUDY ERRORS (CORRELATION AT 0.97)
+cormat &lt;- 0.97^abs(col(matrix(1,4,4)) - row(col(matrix(1,4,4))))
+addS &lt;- lapply(seq(nrow(S)), function(i) inputcov(sqrt(S[i,]), cormat))
+addS &lt;- lapply(addS, function(x) x[apply(!is.na(x),1,any), apply(!is.na(x),2,any)])
+
+# ADD HAR1 WITHIN-STUDY ERRORS (TABLE 1, FOURTH MODEL) USING addSlist
+## Not run: 
+mv4 &lt;- mixmeta(y ~ 1, bscov="har1", data=dbs, control=list(addSlist=addS))
+print(summary(mv4), digits=1, report="var")
+## End(Not run)
+
+## Not run: 
+### USE A LONG FORMAT, AS MORE FLEXIBLE AND ALLOWS MORE COMPLEX MODELS
+
+# RESHAPE THE DATASET
+long &lt;- reshape(dbs, direction="long", idvar="author", v.names=c("eff","var"),
+  varying=list(1:4*2+1, 1:4*2+2))
+
+# RE-RUN THE LAST (FOURTH) MODEL
+mv4b &lt;- mixmeta(eff ~ factor(time) - 1, random = ~ factor(time) -1 | author,
+  bscov="har1", data=long, control=list(addSlist=addS))
+print(summary(mv4b), digits=1, report="var")
+
+# COMMON RANDOM EFFECTS (TABLE 1, SECOND MODEL)
+mv2 &lt;- mixmeta(eff ~ factor(time) - 1, var, random = ~ factor(time) -1 | author,
+  bscov="id", data=long)
+print(summary(mv2), digits=1, report="var")
+
+# FOURTH MODEL WITH ADDITIONAL CENTERED META-PREDICTORS (TABLE 2)
+mv4plus &lt;- mixmeta(eff ~ factor(time) - 1 + I(duration-14) + I(baseline-52),
+  random = ~ factor(time) -1 | author, bscov="har1", data=long,
+  control=list(addSlist=addS))
+print(summary(mv4plus), digits=1, report="var")
+## End(Not run)
+
+
+### SEE help(gliomas) FOR A COMPLEMENTARY EXAMPLE
+</code></pre>
+
+
+</div>

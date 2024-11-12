@@ -1,0 +1,427 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MARSS</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Fit a MARSS Model via Maximum-Likelihood Estimation </h2>
+
+<h3>Description</h3>
+
+<p>This is the main function for fitting multivariate autoregressive state-space (MARSS) models with linear constraints.  Scroll down to the bottom to see some short examples.  To open a guide to show you how to get started quickly, type <code>RShowDoc("Quick_Start",package="MARSS")</code>.  To open the MARSS User Guide from the command line, type <code>RShowDoc("UserGuide",package="MARSS")</code>. To get an overview of the package and all its main functions and how to get output (parameter estimates, fitted values, residuals, Kalmin filter or smoother output, or plots), go to <code>MARSS-package</code>. If <code>MARSS()</code> is throwing errors or warnings that you don't understand, try the Troubleshooting section of the user guide or type <code>MARSSinfo()</code> at the command line.
+</p>
+<p>The default MARSS model form is "marxss", which is Multivariate Auto-Regressive(1) eXogenous inputs State-Space model:
+</p>
+<p style="text-align: center;"><code class="reqn">\mathbf{x}_{t} = \mathbf{B}_t \mathbf{x}_{t-1} + \mathbf{u}_t + \mathbf{C}_t \mathbf{c}_t + \mathbf{G}_t \mathbf{w}_t, \textrm{ where } \mathbf{W}_t \sim \textrm{MVN}(0,\mathbf{Q}_t)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\mathbf{y}_t = \mathbf{Z}_t \mathbf{x}_t + \mathbf{a}_t + \mathbf{D}_t \mathbf{d}_t + \mathbf{H}_t \mathbf{v}_t, \textrm{ where } \mathbf{V}_t \sim \textrm{MVN}(0,\mathbf{R}_t)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\mathbf{X}_1 \sim \textrm{MVN}(\mathbf{x0}, \mathbf{V0}) \textrm{ or } \mathbf{X}_0 \sim \textrm{MVN}(\mathbf{x0}, \mathbf{V0}) </code>
+</p>
+
+<p>The parameters are everything except <code class="reqn">\mathbf{x}</code>, <code class="reqn">\mathbf{y}</code>, <code class="reqn">\mathbf{v}</code>, <code class="reqn">\mathbf{w}</code>, <code class="reqn">\mathbf{c}</code> and <code class="reqn">\mathbf{d}</code>. <code class="reqn">\mathbf{y}</code> are data (missing values allowed). <code class="reqn">\mathbf{c}</code> and <code class="reqn">\mathbf{d}</code> are inputs (no missing values allowed). All parameters (except <code class="reqn">\mathbf{x0}</code> and <code class="reqn">\mathbf{V0}</code>) can be time-varying but by default, all are time-constant (and the MARSS equation is generally written without the <code class="reqn">t</code> subscripts on the parameter matrices). All parameters can be zero, including the variance matrices. 
+</p>
+<p>The parameter matrices can have fixed values and linear constraints. This is an example of a 3x3 matrix with linear constraints. All matrix elements can be written as a linear function of <code class="reqn">a</code>, <code class="reqn">b</code>, and <code class="reqn">c</code>:
+</p>
+<p style="text-align: center;"><code class="reqn">\left[\begin{array}{c c c} a+2b &amp; 1 &amp; a\\ 1+3a+b &amp; 0 &amp; b \\ 0 &amp; -2 &amp; c\end{array}\right]</code>
+</p>
+
+<p>Values such as <code class="reqn">a b</code> or <code class="reqn">a^2</code> or <code class="reqn">log(a)</code> are not linear constraints.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MARSS(y, 
+    model = NULL, 
+    inits = NULL, 
+    miss.value = as.numeric(NA), 
+    method = c("kem", "BFGS", "TMB", "BFGS_TMB", "nlminb_TMB"), 
+    form = c("marxss", "dfa", "marss"), 
+    fit = TRUE, 
+    silent = FALSE, 
+    control = NULL, 
+    fun.kf = c("MARSSkfas", "MARSSkfss"), 
+    ...) 
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<p>The default settings for the optional arguments are set in <code>MARSSsettings.R</code> and are given below in the details section. For form specific defaults see the form help file (e.g. <code>MARSS.marxss</code> or <code>MARSS.dfa</code>).
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p> A n x T matrix of n time series over T time steps. Only y is required for the function. A ts object (univariate or multivariate) can be used and this will be converted to a matrix with time in the columns. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inits</code></td>
+<td>
+<p> A list with the same form as the list outputted by <code>coef(fit)</code> that specifies initial values for the parameters.  See also <code>MARSS.marxss</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p> Model specification using a list of parameter matrix text shortcuts or matrices. See Details and <code>MARSS.marxss</code> for the default form. Or better yet open the Quick Start Guide <code>RShowDoc("Quick_Start",package="MARSS")</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>miss.value</code></td>
+<td>
+<p> Deprecated.  Denote missing values by NAs in your data. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p> Estimation method. MARSS provides an EM algorithm (<code>method="kem"</code>) (see <code>MARSSkem</code>) and the BFGS algorithm (<code>method="BFGS"</code>) (see <code>MARSSoptim</code>). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>form</code></td>
+<td>
+<p> The equation form used in the <code>MARSS()</code> call.  The default is "marxss". See <code>MARSS.marxss</code> or <code>MARSS.dfa</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fit</code></td>
+<td>
+<p> TRUE/FALSE Whether to fit the model to the data. If FALSE, a <code>marssMLE</code> object with only the model is returned. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>silent</code></td>
+<td>
+<p> Setting to TRUE(1) suppresses printing of full error messages, warnings, progress bars and convergence information. Setting to FALSE(0) produces error output. Setting silent=2 will produce more verbose error messages and progress information. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun.kf</code></td>
+<td>
+<p>   What Kalman filter function to use.  MARSS has two: <code>MARSSkfas()</code> which is based on the Kalman filter in the <a href="https://cran.r-project.org/package=KFAS">KFAS</a> package based on Koopman and Durbin and <code>MARSSkfss()</code> which is a native R implementation of the Kalman filter and smoother in Shumway and Stoffer. The KFAS filter is much faster.  <code>MARSSkfas()</code> modifies the input and output in order to output the lag-one covariance smoother needed for the EM algorithm (per page 321 in Shumway and Stoffer (2000).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p> Estimation options for the maximization algorithm. The typically used control options for method="kem" are below but see  <code>marssMLE</code> for the full list of control options.  Note many of these are not allowed if method="BFGS"; see  <code>MARSSoptim</code> for the allowed control options for this method.
+</p>
+
+<dl>
+<dt><code>minit</code></dt>
+<dd>
+<p>   The minimum number of iterations to do in the maximization routine (if needed by method). If <code>method="kem"</code>, this is an easy way to up the iterations and see how your estimates are converging. (positive integer)</p>
+</dd> 
+<dt><code>maxit</code></dt>
+<dd>
+<p>   Maximum number of iterations to be used in the maximization routine (if needed by method) (positive integer). </p>
+</dd>
+<dt><code>min.iter.conv.test</code></dt>
+<dd>
+<p> Minimum iterations to run before testing convergence via the slope of the log parameter versus log iterations.</p>
+</dd> 
+<dt><code>conv.test.deltaT=9</code></dt>
+<dd>
+<p> Number of iterations to use for the testing convergence via the slope of the log parameter versus log iterations. </p>
+</dd>
+<dt><code>conv.test.slope.tol</code></dt>
+<dd>
+<p> The slope of the log parameter versus log iteration to use as the cut-off for convergence.  The default is 0.5 which is a bit high.  For final analyses, this should be set lower.  If you want to only use abstol as your convergence test, then to something very large, for example <code>conv.test.slope.tol=1000</code>.  Type <code>MARSSinfo(11)</code> to see some comments on when you might want to do this.</p>
+</dd>
+<dt><code>abstol</code></dt>
+<dd>
+<p> The logLik.(iter-1)-logLik.(iter) convergence tolerance for the maximization routine. To meet convergence both the abstol and slope tests must be passed.</p>
+</dd> 
+<dt><code>allow.degen</code></dt>
+<dd>
+<p> Whether to try setting <code class="reqn">\mathbf{Q}</code> or <code class="reqn">\mathbf{R}</code> elements to zero if they appear to be going to zero. </p>
+</dd>
+<dt><code>trace</code></dt>
+<dd>
+<p> An integer specifying the level of information recorded and error-checking run during the algorithms.  <code>trace=0</code>, specifies basic error-checking and brief error-messages; <code>trace&gt;0</code> will print full error messages. In addition if trace&gt;0, the Kalman filter output will be added to the outputted <code>marssMLE</code> object.  Additional information recorded depends on the method of maximization. For the EM algorithm, a record of each parameter estimate for each EM iteration will be added.   See <code>optim</code> for trace output details for the BFGS method.   <code>trace=-1</code> will turn off most internal error-checking and most error messages.  The internal error checks are time expensive so this can speed up model fitting.  This is particularly useful for bootstrapping and simulation studies. It is also useful if you get an error saying that <code>MARSS()</code> stops in <code>MARSSkfss()</code> due to a <code>chol()</code> call. <code>MARSSkfss()</code> uses matrix inversions and for some models these are unstable (high condition value). <code>MARSSkfss()</code> is used for error-checks and does not need to be called normally. </p>
+</dd>
+<dt><code>safe</code></dt>
+<dd>
+<p>  Setting <code>safe=TRUE</code> runs the Kalman smoother after each parameter update rather than running the smoother only once after updated all parameters.  The latter is faster but is not a strictly correct EM algorithm.  In most cases, <code>safe=FALSE</code> (default) will not change the fits.  If this setting does cause problems, you will know because you will see an error regarding the log-likelihood dropping and it will direct you to set <code>safe=TRUE</code>.    </p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p> Optional arguments passed to function specified by form. </p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <code>model</code> argument specifies the structure of your model. There is a one-to-one correspondence between how you would write your model in matrix form on the whiteboard and how you specify the model for <code>MARSS()</code>.  Many different types of multivariate time-series models can be converted to the MARSS form. See the <a href="https://cran.r-project.org/package=MARSS/vignettes/UserGuide.pdf">User Guide</a> and <a href="https://cran.r-project.org/package=MARSS/vignettes/Quick_Start.html">Quick Start Guide</a> for examples. 
+</p>
+<p>The MARSS package has two forms for standard users: marxss and dfa.
+</p>
+
+<dl>
+<dt><code>MARSS.marxss</code></dt>
+<dd>
+<p>This is the default form. This is a MARSS model with (optional) inputs <code class="reqn">\mathbf{c}_t</code> or <code class="reqn">\mathbf{d}_t</code>. Most users will want this help page.</p>
+</dd>
+<dt><code>MARSS.dfa</code></dt>
+<dd>
+<p>This is a model form to allow easier specification of models for Dynamic Factor Analysis. The <code class="reqn">\mathbf{Z}</code> parameters has a specific form and the <code class="reqn">\mathbf{Q}</code> is set at i.i.d (diagonal) with variance of 1.</p>
+</dd>
+</dl>
+<p>Those looking to modify or understand the base code, should look at <code>MARSS.marss</code> and 
+<code>MARSS.vectorized</code>. These describe the forms used by the base functions. The EM algorithm uses the MARSS model written in vectorized form. This form is what allows linear constraints. 
+</p>
+<p>The likelihood surface for MARSS models can be  multimodal or with strong ridges.  It is  recommended that for final analyses the estimates are checked by using a Monte Carlo initial conditions search; see the chapter on initial conditions searches in the User Guide.  This requires more computation time, but reduces the chance of the algorithm terminating at a local maximum and not reaching the true MLEs.  Also it is wise to check the EM results against the BFGS results (if possible) if there are strong ridges in the likelihood.  Such ridges seems to slow down the EM algorithm considerably and can cause the algorithm to report convergence far from the maximum-likelihood values.  EM steps up the likelihood and the convergence test is based on the rate of change of the log-likelihood in each step. Once on a strong ridge, the steps can slow dramatically.  You can force the algorithm to keep working by setting <code>minit</code>.  BFGS seems less hindered by the ridges but can be prodigiously slow for some multivariate problems.  BFGS tends to work better if you give it good initial conditions (see Examples below for how to do this).
+</p>
+<p>If you are working with models with time-varying parameters, it is important to notice the time-index for the parameters in the process equation (the <code class="reqn">\mathbf{x}</code> equation).  In some formulations (e.g. in <code>KFAS</code>), the process equation is <code class="reqn">\mathbf{x}_t=\mathbf{B}_{t-1}\mathbf{x}_{t-1}+\mathbf{w}_{t-1}</code> so <code class="reqn">\mathbf{B}_{t-1}</code> goes with <code class="reqn">\mathbf{x}_t</code> not <code class="reqn">\mathbf{B}_t</code>. Thus one needs to be careful to line up the time indices when passing in time-varying parameters to <code>MARSS()</code>.  See the User Guide for examples.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>marssMLE</code>.  The structure of this object is discussed below, but if you want to know how to get specific output (like residuals, coefficients, smoothed states, confidence intervals, etc), see <code>print.marssMLE()</code>, <code>tidy.marssMLE()</code>, <code>MARSSresiduals()</code> and <code>plot.marssMLE()</code>.  
+</p>
+<p>The outputted <code>marssMLE</code> object has the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p> MARSS model specification. It is a <code>marssMODEL</code> object in the form specified by the user in the <code>MARSS()</code> call.  This is used by print functions so that the user sees the expected form.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>marss</code></td>
+<td>
+<p> The <code>marssMODEL</code> object in marss form. This form is needed for all the internal algorithms, thus is a required part of a <code>marssMLE</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p> All the information passed in in the <code>MARSS()</code> call. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p> List with specifying initial values that were used for each parameter matrix. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p> A list of estimation options, as specified by arguments <code>control</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p> Estimation method. </p>
+</td>
+</tr>
+</table>
+<p>If <code>fit=TRUE</code>, the following are also added to the <code>marssMLE</code> object.
+If <code>fit=FALSE</code>, a <code>marssMLE</code> object ready for fitting via the specified <code>method</code> is returned.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>par</code></td>
+<td>
+<p> A list of estimated parameter values in marss form. Use <code>print()</code>, <code>tidy()</code> or <code>coef()</code> for outputing the model estimates in the <code>MARSS()</code> call (e.g. the default "marxss" form).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>states</code></td>
+<td>
+<p> The expected value of <code class="reqn">\mathbf{X}</code> conditioned on all the data, i.e. smoothed states. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>states.se</code></td>
+<td>
+<p> The standard errors of the expected value of <code class="reqn">\mathbf{X}</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ytT</code></td>
+<td>
+<p> The expected value of <code class="reqn">\mathbf{Y}</code> conditioned on all the data.  Note this is just <code class="reqn">y</code> for those <code class="reqn">y</code> that are not missing. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ytT.se</code></td>
+<td>
+<p> The standard errors of the expected value of <code class="reqn">\mathbf{Y}</code>. Note this is 0 for any non-missing <code class="reqn">y</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>numIter</code></td>
+<td>
+<p> Number of iterations required for convergence. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convergence</code></td>
+<td>
+<p> Convergence status. 0 means converged successfully, 3 means all parameters were fixed (so model did not need to be fit) and -1 means call was made with <code>fit=FALSE</code> and parameters were not fixed (thus no <code>$par</code> element and Kalman filter/smoother cannot be run).  Anything else is a warning or error. 2 means the <code>marssMLE</code> object has an error; the object is returned so you can debug it.  The other numbers are errors during fitting.  The error code depends on the fitting method.  See <code>MARSSkem</code> and <code>MARSSoptim</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logLik</code></td>
+<td>
+<p> Log-likelihood. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>AIC</code></td>
+<td>
+<p> Akaike's Information Criterion. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>AICc</code></td>
+<td>
+<p> Sample size corrected AIC. </p>
+</td>
+</tr>
+</table>
+<p>If <code>control$trace</code> is set to 1 or greater, the following are also added to the <code>marssMLE</code> object.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>kf</code></td>
+<td>
+<p> A list containing Kalman filter/smoother output from <code>MARSSkf()</code>.  This is not normally added to a <code>marssMLE</code> object since it is verbose, but can be added using <code>MARSSkf()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Ey</code></td>
+<td>
+<p> A list containing output from <code>MARSShatyt</code>. This isn't normally added to a <code>marssMLE</code> object since it is verbose, but can be computed using <code>MARSShatyt()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+ 
+<p>Eli Holmes, Eric Ward and Kellie Wills, NOAA, Seattle, USA.  
+</p>
+
+
+<h3>References</h3>
+
+ 
+<p>The MARSS User Guide:  Holmes, E. E., E. J. Ward, and M. D. Scheuerell (2012) Analysis of multivariate time-series using the MARSS package. NOAA Fisheries, Northwest Fisheries Science
+Center, 2725 Montlake Blvd E., Seattle, WA 98112   Type <code>RShowDoc("UserGuide",package="MARSS")</code> to open a copy.          
+</p>
+<p>Holmes, E. E. (2012).  Derivation of the EM algorithm for constrained and unconstrained multivariate autoregressive state-space (MARSS) models.  Technical Report. arXiv:1302.3919 [stat.ME]
+</p>
+<p>Holmes, E. E., E. J. Ward and K. Wills. (2012) MARSS: Multivariate autoregressive state-space models for analyzing time-series data. R Journal 4: 11-19.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>marssMLE</code>, <code>MARSSkem()</code>, <code>MARSSoptim()</code>, <code>MARSSkf()</code>, <code>MARSS-package</code>, <code>print.marssMLE()</code>, <code>plot.marssMLE()</code>, <code>print.marssMODEL()</code>, <code>MARSS.marxss()</code>, <code>MARSS.dfa()</code>,  <code>fitted()</code>, <code>residuals()</code>, <code>MARSSresiduals()</code>, <code>predict()</code>, <code>tsSmooth()</code>,
+<code>tidy()</code>, <code>coef()</code> 
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">dat &lt;- t(harborSealWA)
+dat &lt;- dat[2:4, ] # remove the year row
+# fit a model with 1 hidden state and 3 observation time series
+kemfit &lt;- MARSS(dat, model = list(
+  Z = matrix(1, 3, 1),
+  R = "diagonal and equal"
+))
+kemfit$model # This gives a description of the model
+print(kemfit$model) # same as kemfit$model
+summary(kemfit$model) # This shows the model structure
+
+# add CIs to a marssMLE object
+# default uses an estimated Hessian matrix
+kem.with.hess.CIs &lt;- MARSSparamCIs(kemfit)
+kem.with.hess.CIs
+
+# fit a model with 3 hidden states (default)
+kemfit &lt;- MARSS(dat, silent = TRUE) # suppress printing
+kemfit
+
+# Fit the above model with BFGS using a short EM fit as initial conditions
+kemfit &lt;- MARSS(dat, control=list(minit=5, maxit=5))
+bffit &lt;- MARSS(dat, method="BFGS", inits=kemfit)
+
+# fit a model with 3 correlated hidden states
+# with one variance and one  covariance
+# maxit set low to speed up example, but more iters are needed for convergence
+kemfit &lt;- MARSS(dat, model = list(Q = "equalvarcov"), control = list(maxit = 50))
+# use Q="unconstrained" to allow different variances and covariances
+
+# fit a model with 3 independent hidden states
+# where each observation time series is independent
+# the hidden trajectories 2-3 share their U parameter
+kemfit &lt;- MARSS(dat, model = list(U = matrix(c("N", "S", "S"), 3, 1)))
+
+# same model, but with fixed independent observation errors
+# and the 3rd x processes are forced to have a U=0
+# Notice how a list matrix is used to combine fixed and estimated elements
+# all parameters can be specified in this way using list matrices
+kemfit &lt;- MARSS(dat, model = list(U = matrix(list("N", "N", 0), 3, 1), R = diag(0.01, 3)))
+
+# fit a model with 2 hidden states (north and south)
+# where observation time series 1-2 are north and 3 is south
+# Make the hidden state process independent with same process var
+# Make the observation errors different but independent
+# Make the growth parameters (U) the same
+# Create a Z matrix as a design matrix that assigns the "N" state to the first 2 rows of dat
+# and the "S" state to the 3rd row of data
+Z &lt;- matrix(c(1, 1, 0, 0, 0, 1), 3, 2)
+# You can use factor is a shortcut making the above design matrix for Z
+# Z &lt;- factor(c("N","N","S"))
+# name the state vectors
+colnames(Z) &lt;- c("N", "S")
+kemfit &lt;- MARSS(dat, model = list(
+  Z = Z,
+  Q = "diagonal and equal", R = "diagonal and unequal", U = "equal"
+))
+
+# print the model followed by the marssMLE object
+kemfit$model
+
+## Not run: 
+# simulate some new data from our fitted model
+sim.data &lt;- MARSSsimulate(kemfit, nsim = 10, tSteps = 10)
+
+# Compute bootstrap AIC for the model; this takes a long, long time
+kemfit.with.AICb &lt;- MARSSaic(kemfit, output = "AICbp")
+kemfit.with.AICb
+
+## End(Not run)
+
+## Not run: 
+# Many more short examples can be found in the
+# Quick Examples chapter in the User Guide
+RShowDoc("UserGuide", package = "MARSS")
+
+# You can find the R scripts from the chapters by
+# going to the index page
+RShowDoc("index", package = "MARSS")
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

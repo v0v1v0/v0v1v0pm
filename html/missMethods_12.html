@@ -1,0 +1,195 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>evaluate_imputation_parameters</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Evaluate estimated parameters after imputation</h2>
+
+<h3>Description</h3>
+
+<p>Compares estimated parameters after imputation to true parameters or
+estimates based on the original dataset
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">evaluate_imputation_parameters(
+  ds_imp,
+  ds_orig = NULL,
+  pars_true = NULL,
+  parameter = "mean",
+  criterion = "RMSE",
+  cols_which = seq_len(ncol(ds_imp)),
+  tolerance = sqrt(.Machine$double.eps),
+  ...,
+  imp_ds,
+  true_pars,
+  which_cols
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>ds_imp</code></td>
+<td>
+<p>A data frame or matrix with imputed values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ds_orig</code></td>
+<td>
+<p>A data frame or matrix with original (true) values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pars_true</code></td>
+<td>
+<p>True parameters, normally a vector or a matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parameter</code></td>
+<td>
+<p>A string specifying the estimated parameters for comparison.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>criterion</code></td>
+<td>
+<p>A string specifying the used criterion for comparing the
+imputed and original values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cols_which</code></td>
+<td>
+<p>Indices or names of columns used for evaluation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tolerance</code></td>
+<td>
+<p>Numeric, only used for <code>criterion = "precision"</code>:
+numeric differences smaller than tolerance are treated as zero/equal.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments passed to the function for parameter estimation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>imp_ds</code></td>
+<td>
+<p>Deprecated, renamed to <code>ds_imp</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>true_pars</code></td>
+<td>
+<p>Deprecated, renamed to <code>pars_true</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>which_cols</code></td>
+<td>
+<p>Deprecated, renamed to <code>cols_which</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Either <code>ds_orig</code> or <code>pars_true</code> must be supplied and the
+other one must be <code>NULL</code> (default: both are <code>NULL</code>, just supply
+one, see examples). The following <code>parameter</code>s are implemented:
+"mean", "median", "var", "sd", "quantile", "cov", "cov_only", cor", "cor_only".
+Some details follow:
+</p>
+
+<ul>
+<li>
+<p>"var", "cov" and "cov_only": For "var" only the variances of the
+columns (the diagonal elements of the covariance matrix) are compared. For
+"cov" the whole covariance matrix is compared. For "cov_only" only the upper
+triangle (excluding the diagonal) of the covariance matrix is compared.
+</p>
+</li>
+<li>
+<p>"cor", "cor_only": For "cor" the whole correlation matrix is compared.
+For "cor_only" only the upper triangle (excluding the diagonal) of the
+correlation matrix is compared.
+</p>
+</li>
+<li>
+<p>"quantile": the quantiles can be set via the additional
+argument <code>probs</code> (see examples). Otherwise, the default quantiles from
+<code>quantile</code> will be used.
+</p>
+</li>
+</ul>
+<p>The argument <code>cols_which</code> allows the selection of columns for comparison
+(see examples). If <code>pars_true</code> is used, it is assumed that only relevant
+parameters are supplied (see examples).
+</p>
+<p>Possible choices for the argument <code>criterion</code> are documented in
+<code>evaluate_imputed_values</code>
+</p>
+
+
+<h3>Value</h3>
+
+<p>A numeric vector of length one.
+</p>
+
+
+<h3>References</h3>
+
+<p>Cetin-Berber, D. D., Sari, H. I., &amp; Huggins-Manley, A. C. (2019).
+Imputation Methods to Deal With Missing Responses in Computerized Adaptive
+Multistage Testing. <em>Educational and psychological measurement</em>,
+79(3), 495-511.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other evaluation functions: 
+<code>evaluate_imputed_values()</code>,
+<code>evaluate_parameters()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># only ds_orig known
+ds_orig &lt;- data.frame(X = 1:10, Y = 101:101)
+ds_imp &lt;- impute_mean(delete_MCAR(ds_orig, 0.4))
+evaluate_imputation_parameters(ds_imp, ds_orig = ds_orig)
+
+# true parameters known
+ds_orig &lt;- data.frame(X = rnorm(100), Y = rnorm(100, mean = 10))
+ds_imp &lt;- impute_mean(delete_MCAR(ds_orig, 0.3))
+evaluate_imputation_parameters(ds_imp, pars_true = c(0, 10), parameter = "mean")
+evaluate_imputation_parameters(ds_imp, pars_true = c(1, 1), parameter = "var")
+
+# set quantiles
+evaluate_imputation_parameters(ds_imp,
+  pars_true = c(qnorm(0.3), qnorm(0.3, mean = 10)),
+  parameter = "quantile", probs = 0.3
+)
+
+# compare only column Y
+evaluate_imputation_parameters(ds_imp,
+  pars_true = c(Y = 10), parameter = "mean",
+  cols_which = "Y"
+)
+</code></pre>
+
+
+</div>

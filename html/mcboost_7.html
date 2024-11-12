@@ -1,0 +1,579 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MCBoost</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multi-Calibration Boosting</h2>
+
+<h3>Description</h3>
+
+<p>Implements Multi-Calibration Boosting by Hebert-Johnson et al. (2018) and
+Multi-Accuracy Boosting by Kim et al. (2019) for the multi-calibration of a
+machine learning model's prediction.
+Multi-Calibration works best in scenarios where the underlying data &amp; labels are unbiased
+but a bias is introduced within the algorithm's fitting procedure. This is often the case,
+e.g. when an algorithm fits a majority population while ignoring or under-fitting minority
+populations.<br>
+Expects initial models that fit binary outcomes or continuous outcomes with
+predictions that are in (or scaled to) the 0-1 range.
+The method defaults to <code style="white-space: pre;">⁠Multi-Accuracy Boosting⁠</code> as described in Kim et al. (2019).
+In order to obtain behaviour as described in Hebert-Johnson et al. (2018) set
+<code>multiplicative=FALSE</code> and <code>num_buckets</code> to 10.
+</p>
+
+<p>For additional details, please refer to the relevant publications:
+</p>
+<ul>
+<li>
+<p>Hebert-Johnson et al., 2018. Multicalibration: Calibration for the (Computationally-Identifiable) Masses.
+Proceedings of the 35th International Conference on Machine Learning, PMLR 80:1939-1948.
+https://proceedings.mlr.press/v80/hebert-johnson18a.html.
+</p>
+</li>
+<li>
+<p>Kim et al., 2019. Multiaccuracy: Black-Box Post-Processing for Fairness in Classification.
+Proceedings of the 2019 AAAI/ACM Conference on AI, Ethics, and Society (AIES '19).
+Association for Computing Machinery, New York, NY, USA, 247–254.
+https://dl.acm.org/doi/10.1145/3306618.3314287
+</p>
+</li>
+</ul>
+<h3>Public fields</h3>
+
+<div class="r6-fields">
+
+<dl>
+<dt><code>max_iter</code></dt>
+<dd>
+<p><code>integer</code> <br>
+The maximum number of iterations of the multi-calibration/multi-accuracy method.</p>
+</dd>
+<dt><code>alpha</code></dt>
+<dd>
+<p><code>numeric</code> <br>
+Accuracy parameter that determines the stopping condition.</p>
+</dd>
+<dt><code>eta</code></dt>
+<dd>
+<p><code>numeric</code> <br>
+Parameter for multiplicative weight update (step size).</p>
+</dd>
+<dt><code>num_buckets</code></dt>
+<dd>
+<p><code>integer</code> <br>
+The number of buckets to split into in addition to using the whole sample.</p>
+</dd>
+<dt><code>bucket_strategy</code></dt>
+<dd>
+<p><code>character</code> <br>
+Currently only supports "simple", even split along probabilities.
+Only relevant for <code>num_buckets</code> &gt; 1.</p>
+</dd>
+<dt><code>rebucket</code></dt>
+<dd>
+<p><code>logical</code> <br>
+Should buckets be re-calculated at each iteration?</p>
+</dd>
+<dt><code>eval_fulldata</code></dt>
+<dd>
+<p><code>logical</code> <br>
+Should auditor be evaluated on the full data?</p>
+</dd>
+<dt><code>partition</code></dt>
+<dd>
+<p><code>logical</code> <br>
+True/False flag for whether to split up predictions by their "partition"
+(e.g., predictions less than 0.5 and predictions greater than 0.5).</p>
+</dd>
+<dt><code>multiplicative</code></dt>
+<dd>
+<p><code>logical</code> <br>
+Specifies the strategy for updating the weights (multiplicative weight vs additive).</p>
+</dd>
+<dt><code>iter_sampling</code></dt>
+<dd>
+<p><code>character</code> <br>
+Specifies the strategy to sample the validation data for each iteration.</p>
+</dd>
+<dt><code>auditor_fitter</code></dt>
+<dd>
+<p><code>AuditorFitter</code> <br>
+Specifies the type of model used to fit the residuals.</p>
+</dd>
+<dt><code>predictor</code></dt>
+<dd>
+<p><code>function</code> <br>
+Initial predictor function.</p>
+</dd>
+<dt><code>iter_models</code></dt>
+<dd>
+<p><code>list</code> <br>
+Cumulative list of fitted models.</p>
+</dd>
+<dt><code>iter_partitions</code></dt>
+<dd>
+<p><code>list</code> <br>
+Cumulative list of data partitions for models.</p>
+</dd>
+<dt><code>iter_corr</code></dt>
+<dd>
+<p><code>list</code> <br>
+Auditor correlation in each iteration.</p>
+</dd>
+<dt><code>auditor_effects</code></dt>
+<dd>
+<p><code>list</code> <br>
+Auditor effect in each iteration.</p>
+</dd>
+<dt><code>bucket_strategies</code></dt>
+<dd>
+<p><code>character</code> <br>
+Possible bucket_strategies.</p>
+</dd>
+<dt><code>weight_degree</code></dt>
+<dd>
+<p><code>integer</code> <br>
+Weighting degree for low-degree multi-calibration.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-MCBoost-new"><code>MCBoost$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-MCBoost-multicalibrate"><code>MCBoost$multicalibrate()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-MCBoost-predict_probs"><code>MCBoost$predict_probs()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-MCBoost-auditor_effect"><code>MCBoost$auditor_effect()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-MCBoost-print"><code>MCBoost$print()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-MCBoost-clone"><code>MCBoost$clone()</code></a>
+</p>
+</li>
+</ul>
+<hr>
+<a id="method-MCBoost-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Initialize a multi-calibration instance.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>MCBoost$new(
+  max_iter = 5,
+  alpha = 1e-04,
+  eta = 1,
+  num_buckets = 2,
+  partition = ifelse(num_buckets &gt; 1, TRUE, FALSE),
+  bucket_strategy = "simple",
+  rebucket = FALSE,
+  eval_fulldata = FALSE,
+  multiplicative = TRUE,
+  auditor_fitter = NULL,
+  subpops = NULL,
+  default_model_class = ConstantPredictor,
+  init_predictor = NULL,
+  iter_sampling = "none",
+  weight_degree = 1L
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>max_iter</code></dt>
+<dd>
+<p><code>integer</code> <br>
+The maximum number of iterations of the multi-calibration/multi-accuracy method.
+Default <code>5L</code>.</p>
+</dd>
+<dt><code>alpha</code></dt>
+<dd>
+<p><code>numeric</code> <br>
+Accuracy parameter that determines the stopping condition. Default <code>1e-4</code>.</p>
+</dd>
+<dt><code>eta</code></dt>
+<dd>
+<p><code>numeric</code> <br>
+Parameter for multiplicative weight update (step size). Default <code>1.0</code>.</p>
+</dd>
+<dt><code>num_buckets</code></dt>
+<dd>
+<p><code>integer</code> <br>
+The number of buckets to split into in addition to using the whole sample. Default <code>2L</code>.</p>
+</dd>
+<dt><code>partition</code></dt>
+<dd>
+<p><code>logical</code> <br>
+True/False flag for whether to split up predictions by their "partition"
+(e.g., predictions less than 0.5 and predictions greater than 0.5).
+Defaults to <code>TRUE</code> (multi-accuracy boosting).</p>
+</dd>
+<dt><code>bucket_strategy</code></dt>
+<dd>
+<p><code>character</code> <br>
+Currently only supports "simple", even split along probabilities.
+Only taken into account for <code>num_buckets</code> &gt; 1.</p>
+</dd>
+<dt><code>rebucket</code></dt>
+<dd>
+<p><code>logical</code> <br>
+Should buckets be re-done at each iteration? Default <code>FALSE</code>.</p>
+</dd>
+<dt><code>eval_fulldata</code></dt>
+<dd>
+<p><code>logical</code> <br>
+Should the auditor be evaluated on the full data or on the respective bucket for determining
+the stopping criterion? Default <code>FALSE</code>, auditor is only evaluated on the bucket.
+This setting keeps the implementation closer to the Algorithm proposed in the corresponding
+multi-accuracy paper (Kim et al., 2019) where auditor effects are computed across the full
+sample (i.e. eval_fulldata = TRUE).</p>
+</dd>
+<dt><code>multiplicative</code></dt>
+<dd>
+<p><code>logical</code> <br>
+Specifies the strategy for updating the weights (multiplicative weight vs additive).
+Defaults to <code>TRUE</code> (multi-accuracy boosting). Set to <code>FALSE</code> for multi-calibration.</p>
+</dd>
+<dt><code>auditor_fitter</code></dt>
+<dd>
+<p><code>AuditorFitter</code>|<code>character</code>|<code>mlr3::Learner</code> <br>
+Specifies the type of model used to fit the
+residuals. The default is <code>RidgeAuditorFitter</code>.
+Can be a <code>character</code>, the name of a <code>AuditorFitter</code>, a <code>mlr3::Learner</code> that is then
+auto-converted into a <code>LearnerAuditorFitter</code> or a custom <code>AuditorFitter</code>.</p>
+</dd>
+<dt><code>subpops</code></dt>
+<dd>
+<p><code>list</code> <br>
+Specifies a collection of characteristic attributes
+and the values they take to define subpopulations
+e.g. list(age = c('20-29','30-39','40+'), nJobs = c(0,1,2,'3+'), ,..).</p>
+</dd>
+<dt><code>default_model_class</code></dt>
+<dd>
+<p><code>Predictor</code> <br>
+The class of the model that should be used as the init predictor model if
+<code>init_predictor</code> is not specified. Defaults to <code>ConstantPredictor</code> which
+predicts a constant value.</p>
+</dd>
+<dt><code>init_predictor</code></dt>
+<dd>
+<p><code>function</code>|<code>mlr3::Learner</code> <br>
+The initial predictor function to use (i.e., if the user has a pretrained model).
+If a <code>mlr3</code> <code>Learner</code> is passed, it will be autoconverted using <code>mlr3_init_predictor</code>.
+This requires the <code>mlr3::Learner</code> to be trained.</p>
+</dd>
+<dt><code>iter_sampling</code></dt>
+<dd>
+<p><code>character</code> <br>
+How to sample the validation data for each iteration?
+Can be <code>bootstrap</code>, <code>split</code> or <code>none</code>.<br>
+"split" splits the data into <code>max_iter</code> parts and validates on each sample in each iteration.<br>
+"bootstrap" uses a new bootstrap sample in each iteration.<br>
+"none" uses the same dataset in each iteration.</p>
+</dd>
+<dt><code>weight_degree</code></dt>
+<dd>
+<p><code>character</code> <br>
+Weighting degree for low-degree multi-calibration. Initialized to 1, which applies constant weighting with 1.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-MCBoost-multicalibrate"></a>
+
+
+
+<h4>Method <code>multicalibrate()</code>
+</h4>
+
+<p>Run multi-calibration.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>MCBoost$multicalibrate(data, labels, predictor_args = NULL, audit = FALSE, ...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>data</code></dt>
+<dd>
+<p><code>data.table</code><br>
+Features.</p>
+</dd>
+<dt><code>labels</code></dt>
+<dd>
+<p><code>numeric</code><br>
+One-hot encoded labels (of same length as data).</p>
+</dd>
+<dt><code>predictor_args</code></dt>
+<dd>
+<p><code>any</code> <br>
+Arguments passed on to <code>init_predictor</code>. Defaults to <code>NULL</code>.</p>
+</dd>
+<dt><code>audit</code></dt>
+<dd>
+<p><code>logical</code> <br>
+Perform auditing? Initialized to <code>TRUE</code>.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p><code>any</code> <br>
+Params passed on to other methods.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>NULL</code>
+</p>
+
+
+<hr>
+<a id="method-MCBoost-predict_probs"></a>
+
+
+
+<h4>Method <code>predict_probs()</code>
+</h4>
+
+<p>Predict a dataset with multi-calibrated predictions
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>MCBoost$predict_probs(x, t = Inf, predictor_args = NULL, audit = FALSE, ...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>x</code></dt>
+<dd>
+<p><code>data.table</code> <br>
+Prediction data.</p>
+</dd>
+<dt><code>t</code></dt>
+<dd>
+<p><code>integer</code> <br>
+Number of multi-calibration steps to predict. Default: <code>Inf</code> (all).</p>
+</dd>
+<dt><code>predictor_args</code></dt>
+<dd>
+<p><code>any</code> <br>
+Arguments passed on to <code>init_predictor</code>. Defaults to <code>NULL</code>.</p>
+</dd>
+<dt><code>audit</code></dt>
+<dd>
+<p><code>logical</code> <br>
+Should audit weights be stored? Default <code>FALSE</code>.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p><code>any</code> <br>
+Params passed on to the residual prediction model's predict method.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>numeric</code><br>
+Numeric vector of multi-calibrated predictions.
+</p>
+
+
+<hr>
+<a id="method-MCBoost-auditor_effect"></a>
+
+
+
+<h4>Method <code>auditor_effect()</code>
+</h4>
+
+<p>Compute the auditor effect for each instance which are the cumulative
+absolute predictions of the auditor. It indicates "how much"
+each observation was affected by multi-calibration on average across iterations.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>MCBoost$auditor_effect(
+  x,
+  aggregate = TRUE,
+  t = Inf,
+  predictor_args = NULL,
+  ...
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>x</code></dt>
+<dd>
+<p><code>data.table</code> <br>
+Prediction data.</p>
+</dd>
+<dt><code>aggregate</code></dt>
+<dd>
+<p><code>logical</code> <br>
+Should the auditor effect be aggregated across iterations? Defaults to <code>TRUE</code>.</p>
+</dd>
+<dt><code>t</code></dt>
+<dd>
+<p><code>integer</code> <br>
+Number of multi-calibration steps to predict. Defaults to <code>Inf</code> (all).</p>
+</dd>
+<dt><code>predictor_args</code></dt>
+<dd>
+<p><code>any</code> <br>
+Arguments passed on to <code>init_predictor</code>. Defaults to <code>NULL</code>.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p><code>any</code> <br>
+Params passed on to the residual prediction model's predict method.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>numeric</code> <br>
+Numeric vector of auditor effects for each row in <code>x</code>.
+</p>
+
+
+<hr>
+<a id="method-MCBoost-print"></a>
+
+
+
+<h4>Method <code>print()</code>
+</h4>
+
+<p>Prints information about multi-calibration.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>MCBoost$print(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p><code>any</code><br>
+Not used.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-MCBoost-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>MCBoost$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># See vignette for more examples.
+# Instantiate the object
+## Not run: 
+mc = MCBoost$new()
+# Run multi-calibration on training dataset.
+mc$multicalibrate(iris[1:100, 1:4], factor(sample(c("A", "B"), 100, TRUE)))
+# Predict on test set
+mc$predict_probs(iris[101:150, 1:4])
+# Get auditor effect
+mc$auditor_effect(iris[101:150, 1:4])
+
+## End(Not run)
+</code></pre>
+
+
+</div>

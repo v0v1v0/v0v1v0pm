@@ -1,0 +1,134 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>getSuff</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Obtain 'suffStat' for conditional independence testing</h2>
+
+<h3>Description</h3>
+
+<p>A convenience function for transforming a multiply imputed data set into the 'suffStat' required
+by <code>pcalg::gaussCItest()</code>, <code>pcalg::disCItest()</code>, <code>mixCItest()</code>, <code>flexCItest()</code>, <code>gaussMItest()</code>,
+<code>disMItest()</code>, <code>mixMItest()</code> and <code>flexMItest()</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">getSuff(
+  X,
+  test = c("gaussCItest", "gaussMItest", "disCItest", "disMItest", "disCItwd",
+    "mixCItest", "mixMItest", "flexMItest", "flexCItest"),
+  adaptDF = NULL,
+  nlev = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>For 'test=xxxCItest': a data.frame or matrix;
+for 'test=xxxMItest': an object of class <code>mice::mids</code>,
+or a list of data.frames containing the multiply imputed data sets.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>test</code></td>
+<td>
+<p>one of <code>gaussCItest()</code>, <code>gaussMItest()</code>, <code>disCItest()</code>,
+<code>disMItest()</code>, <code>mixCItest()</code>, <code>mixMItest()</code>, <code>flexCItest()</code>,
+<code>flexMItest()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>adaptDF</code></td>
+<td>
+<p>for discrete variables: logical specifying if the degrees of freedom
+should be lowered by one for each zero count. The value for the degrees of freedom
+cannot go below 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nlev</code></td>
+<td>
+<p>(Optional) for discrete variables: vector with numbers of levels for each
+variable in the data.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An R object that can be used as input to the specified conditional independence test:
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Example 1: continuous variables, no missing values =====================
+data(windspeed)
+dat1 &lt;- as.matrix(windspeed)
+
+## analyse data
+gaussCItest(1, 2, NULL, suffStat = getSuff(windspeed, test = "gaussCItest"))
+mixCItest(1, 2, NULL, suffStat = windspeed)
+
+## Example 2: continuous variables, multiple imputation ===================
+dat2 &lt;- mice::ampute(windspeed)$amp
+
+## delete some observations
+set.seed(123)
+
+## Impute missing values under normal model
+imp2 &lt;- mice(dat2, method = "norm", printFlag = FALSE)
+
+## analyse imputed data
+gaussMItest(1, 2, c(4,5), suffStat = getSuff(imp2, test="gaussMItest"))
+mixMItest(1, 2, c(4,5), suffStat = getSuff(imp2, test="mixMItest"))
+mixMItest(1, 2, c(4,5), suffStat = mice::complete(imp2, action="all"))
+flexMItest(1, 2, c(4,5), suffStat = getSuff(imp2, test="flexMItest"))
+
+## Example 3: discrete variables, multiple imputation =====================
+## simulate factor variables
+n &lt;- 200
+set.seed(789)
+x &lt;- factor(sample(0:2, n, TRUE)) # factor, 3 levels
+y &lt;- factor(sample(0:3, n, TRUE)) # factor, 4 levels
+z &lt;- factor(sample(0:1, n, TRUE)) # factor, 2 levels
+dat3 &lt;- data.frame(x,y,z)
+
+## delete some observations of z
+dat3[sample(1:n, 40), 3] &lt;- NA
+
+## impute missing values under saturated model
+form &lt;- make.formulas.saturated(dat3)
+imp3 &lt;- mice::mice(dat3, method = "logreg", formulas = form, printFlag = FALSE)
+
+## analyse imputed data
+disMItest(1, 3, 2, suffStat = getSuff(imp3, test="disMItest"))
+disMItest(1, 3, 2, suffStat = mice::complete(imp3, action = "all"))
+mixMItest(1, 3, 2, suffStat = getSuff(imp3, test="mixMItest"))
+mixMItest(1, 3, 2, suffStat = mice::complete(imp3, action = "all"))
+flexMItest(1, 3, 2, suffStat = getSuff(imp3, test="flexMItest"))
+
+# Example 4: mixed variables, multiple imputation =========================
+dat4 &lt;- toenail2[1:400, ]
+set.seed(123)
+dat4[sample(400, 20), 2] &lt;- NA
+dat4[sample(400, 30), 4] &lt;- NA
+
+## impute missing values using random forests
+imp4 &lt;- mice(dat4, method="rf", m = 3, printFlag = FALSE)
+mixMItest(2, 3, 5, suffStat = getSuff(imp4, test="mixMItest"))
+mixMItest(2, 3, 5, suffStat = mice::complete(imp4, action="all"))
+flexMItest(2, 3, 5, suffStat = getSuff(imp4, test="flexMItest"))
+
+</code></pre>
+
+
+</div>

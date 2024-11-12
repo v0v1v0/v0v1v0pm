@@ -1,0 +1,106 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>averageMI</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Collapse values from multiple imputation draws</h2>
+
+<h3>Description</h3>
+
+<p>This function computes updated parameter and standard error estimates using multiple
+imputation methodology. Given a set of parameter estimates and their associated standard
+errors the function returns the weighted average of the overall between and within
+variability due to the multiple imputations according to Rubin's (1987) methodology.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">averageMI(par, SEpar, as.data.frame = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>par</code></td>
+<td>
+<p>a list containing parameter estimates which were computed the imputed datasets</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SEpar</code></td>
+<td>
+<p>a list containing standard errors associated with <code>par</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>as.data.frame</code></td>
+<td>
+<p>logical; return a data.frame instead of a list? Default is TRUE</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>returns a list or data.frame containing the updated averaged parameter estimates,
+standard errors, and t-values with the associated degrees of freedom and two tailed p-values
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Phil Chalmers <a href="mailto:rphilip.chalmers@gmail.com">rphilip.chalmers@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Chalmers, R., P. (2012). mirt: A Multidimensional Item Response Theory
+Package for the R Environment. <em>Journal of Statistical Software, 48</em>(6), 1-29.
+<a href="https://doi.org/10.18637/jss.v048.i06">doi:10.18637/jss.v048.i06</a>
+</p>
+<p>Rubin, D.B. (1987) Multiple Imputation for Nonresponse in Surveys. Wiley &amp; Sons, New York.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+
+# simulate data
+set.seed(1234)
+N &lt;- 1000
+
+# covariates
+X1 &lt;- rnorm(N); X2 &lt;- rnorm(N)
+covdata &lt;- data.frame(X1, X2)
+Theta &lt;- matrix(0.5 * X1 + -1 * X2 + rnorm(N, sd = 0.5))
+
+# items and response data
+a &lt;- matrix(1, 20); d &lt;- matrix(rnorm(20))
+dat &lt;- simdata(a, d, 1000, itemtype = '2PL', Theta=Theta)
+
+mod1 &lt;- mirt(dat, 1, 'Rasch', covdata=covdata, formula = ~ X1 + X2)
+coef(mod1, simplify=TRUE)
+
+# draw plausible values for secondary analyses
+pv &lt;- fscores(mod1, plausible.draws = 10)
+pvmods &lt;- lapply(pv, function(x, covdata) lm(x ~ covdata$X1 + covdata$X2),
+                 covdata=covdata)
+
+# compute Rubin's multiple imputation average
+so &lt;- lapply(pvmods, summary)
+par &lt;- lapply(so, function(x) x$coefficients[, 'Estimate'])
+SEpar &lt;- lapply(so, function(x) x$coefficients[, 'Std. Error'])
+averageMI(par, SEpar)
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

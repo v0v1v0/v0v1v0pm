@@ -1,0 +1,124 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mt_is_track_id_cleaved</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Functions for asserting properties of a <code>move2</code> object</h2>
+
+<h3>Description</h3>
+
+
+<ul>
+<li> <p><code>mt_is_track_id_cleaved()</code> asserts all tracks are grouped in the data set, they occur consecutively.
+</p>
+</li>
+<li> <p><code>mt_is_time_ordered()</code> checks if all tracks are groups and if timestamps within a track are ascending (i.e. the
+time differences between successive locations are equal or above 0).
+</p>
+</li>
+<li> <p><code>mt_has_unique_location_time_records()</code> checks if all records with a location have a unique timestamp (i.e. checks
+for duplicated timestamps within a track).
+</p>
+</li>
+<li> <p><code>mt_is_time_ordered_non_empty_points()</code> this assertion combines the <code>mt_is_time_ordered()</code> and
+<code>mt_has_no_empty_points()</code> assertions and thus ensures that each record has a location and timestamps are ordered.
+</p>
+</li>
+<li> <p><code>mt_has_no_empty_points()</code> asserts all geometries are points and that there are no empty points.
+</p>
+</li>
+<li> <p><code>mt_is_move2()</code> asserts <code>x</code> inherits the class <code>move2</code>
+</p>
+</li>
+</ul>
+<h3>Usage</h3>
+
+<pre><code class="language-R">mt_is_track_id_cleaved(x)
+
+mt_is_time_ordered(x, non_zero = FALSE)
+
+mt_has_unique_location_time_records(x)
+
+mt_is_time_ordered_non_empty_points(x, non_zero = FALSE)
+
+mt_has_no_empty_points(x)
+
+mt_is_move2(x)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a <code>move2</code> object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>non_zero</code></td>
+<td>
+<p>If <code>TRUE</code> only intervals longer than 0 are considered ordered (i.e. no coinciding timestamps),
+if <code>FALSE</code> also 0 intervals are considered ordered</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For these functions an <code>on_failure</code> error
+function is defined. This results in meaningful error messages when the
+function is used in combination with <code>assert_that</code>. These functions can also be used in
+normal logical operations as <code>TRUE</code> or <code>FALSE</code> is returned.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a logical value if the asserted property is <code>TRUE</code> or <code>FALSE</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## examples of what to do if assertion if FALSE
+n &lt;- 8
+data &lt;- data.frame(
+  x = cumsum(rnorm(n)), y = cumsum(rnorm(n)),
+  time = seq(n), track = sample(c("a", "b"), size = n, replace = TRUE)
+)
+data &lt;- rbind(data, data[sample(nrow(data), 2), ]) # adding duplicate timestamps
+mv &lt;- mt_as_move2(data,
+  coords = c("x", "y"),
+  time_column = "time",
+  track_id_column = "track"
+)
+mv$geometry[c(1, 3)] &lt;- sf::st_point() # adding empty locations
+
+mt_is_track_id_cleaved(mv)
+mv &lt;- dplyr::arrange(mv, mt_track_id(mv))
+
+mt_is_time_ordered(mv)
+mv &lt;- dplyr::arrange(mv, mt_track_id(mv), mt_time(mv))
+
+mt_has_unique_location_time_records(mv)
+mv &lt;- mt_filter_unique(mv)
+
+mt_has_no_empty_points(mv)
+mv &lt;- dplyr::filter(mv, !sf::st_is_empty(mv))
+
+## example of using the assertions with assertthat
+if (requireNamespace("assertthat")) {
+  m &lt;- mt_sim_brownian_motion(t = 1:2, tracks = 2)
+  assertthat::see_if(mt_is_track_id_cleaved(m))
+  assertthat::see_if(mt_is_track_id_cleaved(m[c(3, 1, 2, 4), ]))
+  assertthat::see_if(mt_is_time_ordered(m[c(2:1, 3, 4), ]))
+  assertthat::see_if(mt_has_unique_location_time_records(m[c(1, 1, 2, 3, 4), ]))
+  assertthat::see_if(mt_is_move2(m$time))
+}
+
+</code></pre>
+
+
+</div>

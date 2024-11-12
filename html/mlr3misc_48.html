@@ -1,0 +1,141 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>encapsulate</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Encapsulate Function Calls for Logging</h2>
+
+<h3>Description</h3>
+
+<p>Evaluates a function while both recording an output log and measuring the elapsed time.
+There are currently three different modes implemented to encapsulate a function call:
+</p>
+
+<ul>
+<li> <p><code>"none"</code>: Just runs the call in the current session and measures the elapsed time.
+Does not keep a log, output is printed directly to the console.
+Works well together with <code>traceback()</code>.
+</p>
+</li>
+<li> <p><code>"try"</code>: Similar to <code>"none"</code>, but catches error. Output is printed to the console and
+not logged.
+</p>
+</li>
+<li> <p><code>"evaluate"</code>: Uses the package <a href="https://CRAN.R-project.org/package=evaluate"><span class="pkg">evaluate</span></a> to call the function, measure time and do the logging.
+</p>
+</li>
+<li> <p><code>"callr"</code>: Uses the package <a href="https://CRAN.R-project.org/package=callr"><span class="pkg">callr</span></a> to call the function, measure time and do the logging.
+This encapsulation spawns a separate R session in which the function is called.
+While this comes with a considerable overhead, it also guards your session from being teared down by segfaults.
+</p>
+</li>
+</ul>
+<h3>Usage</h3>
+
+<pre><code class="language-R">encapsulate(
+  method,
+  .f,
+  .args = list(),
+  .opts = list(),
+  .pkgs = character(),
+  .seed = NA_integer_,
+  .timeout = Inf
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>(<code>character(1)</code>)<br>
+One of <code>"none"</code>, <code>"evaluate"</code> or <code>"callr"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.f</code></td>
+<td>
+<p>(<code style="white-space: pre;">⁠function()⁠</code>)<br>
+Function to call.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.args</code></td>
+<td>
+<p>(<code>list()</code>)<br>
+Arguments passed to <code>.f</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.opts</code></td>
+<td>
+<p>(named <code>list()</code>)<br>
+Options to set for the function call. Options get reset on exit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.pkgs</code></td>
+<td>
+<p>(<code>character()</code>)<br>
+Packages to load (not attach).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.seed</code></td>
+<td>
+<p>(<code>integer(1)</code>)<br>
+Random seed to set before invoking the function call.
+Gets reset to the previous seed on exit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.timeout</code></td>
+<td>
+<p>(<code>numeric(1)</code>)<br>
+Timeout in seconds. Uses <code>setTimeLimit()</code> for <code>"none"</code> and <code>"evaluate"</code> encapsulation.
+For <code>"callr"</code> encapsulation, the timeout is passed to <code>callr::r()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>(named <code>list()</code>) with three fields:
+</p>
+
+<ul>
+<li> <p><code>"result"</code>: the return value of <code>.f</code>
+</p>
+</li>
+<li> <p><code>"elapsed"</code>: elapsed time in seconds. Measured as <code>proc.time()</code> difference before/after the function call.
+</p>
+</li>
+<li> <p><code>"log"</code>: <code>data.table()</code> with columns <code>"class"</code> (ordered factor with levels <code>"output"</code>, <code>"warning"</code> and <code>"error"</code>) and <code>"message"</code> (<code>character()</code>).
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">f = function(n) {
+  message("hi from f")
+  if (n &gt; 5) {
+    stop("n must be &lt;= 5")
+  }
+  runif(n)
+}
+
+encapsulate("none", f, list(n = 1), .seed = 1)
+
+if (requireNamespace("evaluate", quietly = TRUE)) {
+  encapsulate("evaluate", f, list(n = 1), .seed = 1)
+}
+
+if (requireNamespace("callr", quietly = TRUE)) {
+  encapsulate("callr", f, list(n = 1), .seed = 1)
+}
+</code></pre>
+
+
+</div>

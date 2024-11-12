@@ -1,0 +1,167 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>miRNAss</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MiRNAss: Genome-wide pre-miRNA discovery from few labeled examples</h2>
+
+<h3>Description</h3>
+
+<p>This is the main function of the miRNAss package and implements the miRNA
+prediction method, It takes as main parameters a matrix with numerical
+features extracted from RNA hairpins and an incomplent vector of labels
+where the positive number represents known miRNAs, the negative are
+not-miRNA hairpins and te zero values are unknown sequences (those that
+will be classified). As a results it returns a complete label vector.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">miRNAss(sequenceFeatures = NULL, sequenceLabels, AdjMatrix = NULL,
+  nNearestNeighbor = 10, missPenalization = 1, scallingMethod = "relief",
+  thresholdObjective = "Gm", neg2label = 0.05, positiveProp = NULL,
+  eigenVectors = NULL, nEigenVectors = min(400,
+  round(length(sequenceLabels)/5)), threadNumber = NA)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>sequenceFeatures</code></td>
+<td>
+<p>Data frame with features extracted from stem-loop
+sequences. It is not required if the adjacency matrix is provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sequenceLabels</code></td>
+<td>
+<p>Vector of labels of the stem-loop sequences. It must
+have -1 for negative examples, 1 for known miRNAs and zero for the unknown
+sequences (the ones that would be classificated).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>AdjMatrix</code></td>
+<td>
+<p>Sparse adjacency matrix representeing the graph.
+If sequence features are provided it is ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nNearestNeighbor</code></td>
+<td>
+<p>Number of nearest neighbors in the KNN graph. The
+default value is 10.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>missPenalization</code></td>
+<td>
+<p>Penalization of the missclassification of known
+examples. The default value is 1. If the examples are not very confident,
+this value can be diminished.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scallingMethod</code></td>
+<td>
+<p>Method used for normalization and scalling of the
+features. The options are 'none', 'whitening' and 'relief' (the default
+option). The first option does nothing, the second calls the built-in
+function 'scale' and the last one uses the ReliefFexpRank algorithm from
+the coreLearn package.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thresholdObjective</code></td>
+<td>
+<p>Performance measure that would be optimized when
+estimating the threshold. The options are 'Gm' (geometric mean of the SE and
+the SP), 'G' (geometric mean of the SE and the precision), 'F1' (harmonic
+mean between SE and the precision) and 'none' (do not calculate any
+threshold). The default value is 'Gm'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>neg2label</code></td>
+<td>
+<p>Proportion of unlabeled stem-loops that would be labeled as
+negative with the automatic method to start the classification algorithm.
+The default is 0.05.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>positiveProp</code></td>
+<td>
+<p>Expected proportion of positive sequences. If it is not
+provided by the user, is estimated as sum(y &gt; 0) / sum(y != 0) when there
+are negative examples or as 2 * sum(y &gt; 0) / sum(y == 0) when not.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eigenVectors</code></td>
+<td>
+<p>Eigen decomposition of the Laplacian matrix, as returned
+by the function eigenDecomposition. If is not provided is calculated
+internally (this parameter allows to calculate the eigen vectors once and then
+run several times miRNAss with the same eigen vectors).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nEigenVectors</code></td>
+<td>
+<p>Number of eigen vectors used to aproximate the solution
+of the optimization problem. If the number is too low, smoother topographic
+solutions are founded, probabily losing SP but achieving a better SE.
+Generally, 400 are enought.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threadNumber</code></td>
+<td>
+<p>Number of threads used for the calculations. If it is NA
+leave OpenMP decide the number (may vary across different platforms).</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Returns a vector with the same size of the input vector y with the
+prediction scores for all sequences (even the labelled examples). If a
+threshold Objective different from 'none' was set, the threshold is
+estimated and subtracted from the scores, therefore the new threshold that
+divide the classes is zero. Also, the positive scores are divided by the max
+positive score, and the negative scores are divided by the magnitud of the
+minimum negative score.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># First construct the label vector with the CLASS column
+y = as.numeric(celegans$CLASS)*2 - 1
+
+# Remove some labels to make a test
+y[sample(which(y&gt;0),200)] = 0
+y[sample(which(y&lt;0),700)] = 0
+
+# Take all the features but remove the label column
+x = subset(celegans, select = -CLASS)
+
+# Call miRNAss with default parameters
+p = miRNAss(x,y)
+
+# Calculate some performance measures
+SE = mean(p[ celegans$CLASS &amp; y==0] &gt; 0)
+SP = mean(p[!celegans$CLASS &amp; y==0] &lt; 0)
+cat("Sensitivity: ", SE, "\nSpecificity: ", SP, "\n")
+
+</code></pre>
+
+
+</div>

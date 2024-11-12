@@ -1,0 +1,157 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mice.impute.2lonly.function</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Imputation at Level 2 (in <span class="pkg">miceadds</span>)</h2>
+
+<h3>Description</h3>
+
+<p>The imputation method <code>mice.impute.2lonly.function</code> is a general
+imputation function for level 2 imputation which allow any
+defined imputation function at level 1 in <span class="pkg">mice</span>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mice.impute.2lonly.function(y, ry, x, wy=NULL, type, imputationFunction,
+     cluster_var, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Incomplete data vector of length <code>n</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ry</code></td>
+<td>
+<p>Vector of missing data pattern
+(<code>FALSE</code>=missing, <code>TRUE</code>=observed)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Matrix (<code>n</code> x <code>p</code>) of complete
+covariates. Only numeric variables are permitted for
+usage of this function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wy</code></td>
+<td>
+<p>Logical vector of <code>length(y)</code> indicating at which positions
+imputations should be conducted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>Cluster identifier can be specified by <code>-2</code> for aggregation. However,
+we recommend to use the argument <code>cluster_var</code> for specifying the cluster variable
+at Level 2. Predictors must be specified by <code>1</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>imputationFunction</code></td>
+<td>
+<p>Imputation function for <span class="pkg">mice</span>. Any
+imputation method which is defined at level 1 can be used
+for level 2 imputation.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cluster_var</code></td>
+<td>
+<p>Cluster identifier for Level 2 units</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Other named arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A vector of length <code>nmis</code> with imputations.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See <code>mice::mice.impute.2lonly.norm</code> and
+the <code>mice::mice.impute.2lonly.pmm</code>
+function.
+</p>
+<p>See also the <span class="pkg">jomo</span> package (<code>jomo::jomo2</code>)
+for joint multilevel imputation of level 1 and
+level 2 variables.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+#############################################################################
+# EXAMPLE 1: Imputation of level 2 variables
+#############################################################################
+
+#**** Simulate some data
+# x,y ... level 1 variables
+# v,w ... level 2 variables
+
+set.seed(987)
+G &lt;- 250            # number of groups
+n &lt;- 20             # number of persons
+beta &lt;- .3          # regression coefficient
+rho &lt;- .30          # residual intraclass correlation
+rho.miss &lt;- .10     # correlation with missing response
+missrate &lt;- .50     # missing proportion
+y1 &lt;- rep( stats::rnorm( G, sd=sqrt(rho)), each=n ) + stats::rnorm(G*n, sd=sqrt(1-rho))
+w &lt;- rep( round( stats::rnorm(G ), 2 ), each=n )
+v &lt;- rep( round( stats::runif( G, 0, 3 ) ), each=n )
+x &lt;-  stats::rnorm( G*n )
+y &lt;- y1 + beta  * x + .2 * w + .1 * v
+dfr0 &lt;- dfr &lt;- data.frame( "group"=rep(1:G, each=n ), "x"=x, "y"=y,
+        "w"=w, "v"=v )
+dfr[ rho.miss * x + stats::rnorm( G*n, sd=sqrt( 1 - rho.miss ) ) &lt;
+                stats::qnorm(missrate), "y" ] &lt;- NA
+dfr[ rep( stats::rnorm(G), each=n ) &lt; stats::qnorm(missrate), "w" ] &lt;- NA
+dfr[ rep( stats::rnorm(G), each=n ) &lt; stats::qnorm(missrate), "v" ] &lt;- NA
+
+#* initial predictor matrix and imputation methods
+predM &lt;- mice::make.predictorMatrix(data=dfr)
+impM &lt;- mice::make.method(data=dfr)
+
+#...
+# multilevel imputation
+predM1 &lt;- predM
+predM1[c("w","v","y"),"group"] &lt;- c(0,0,-2)
+predM1["y","x"] &lt;- 1        # fixed x effects imputation
+impM1 &lt;- impM
+impM1[c("y","w","v")] &lt;- c("2l.continuous", "2lonly.function", "2lonly.function" )
+# define imputation functions
+imputationFunction &lt;- list( "w"="sample", "v"="pmm5" )
+# define cluster variable
+cluster_var &lt;- list( "w"="group", "v"="group" )
+
+# impute
+imp1 &lt;- mice::mice( as.matrix(dfr), m=1, predictorMatrix=predM1, method=impM1, maxit=5,
+            imputationFunction=imputationFunction, cluster_var=cluster_var )
+
+## End(Not run)
+</code></pre>
+
+
+</div>

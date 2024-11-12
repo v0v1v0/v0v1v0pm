@@ -1,0 +1,206 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>scale_datlist</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Adding a Standardized Variable to a List of Multiply Imputed Datasets or a
+Single Datasets
+</h2>
+
+<h3>Description</h3>
+
+<p>Adds a standardized variable to a list of multiply imputed datasets or
+a single dataset. This function extends <code>base::scale</code>
+for a data frame to a list of multiply imputed datasets.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">scale_datlist(datlist, orig_var, trafo_var, weights=NULL, M=0, SD=1,
+    digits=NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>datlist</code></td>
+<td>
+
+<p>A data frame, a list of multiply imputed datasets of one of the classes
+<code>datlist</code> or <code>imputationList</code> or a list of nested multiply
+imputed datasets of one of the classes <code>nested_datlist</code> or
+<code>NestedImputationList</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>orig_var</code></td>
+<td>
+
+<p>Vector with names of the variables to be transformed
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trafo_var</code></td>
+<td>
+
+<p>Vector with names of the standardized variables
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+
+<p>Optional vector of sample weights. Alternatively, the <code>weights</code>
+can also be a string indicating the variable used from
+<code>datlist</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M</code></td>
+<td>
+
+<p>Mean of the transformed variable
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SD</code></td>
+<td>
+
+<p>Standard deviation of the transformed variable
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+
+<p>Number of digits used for rounding the standardized variable
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A vector or a matrix
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>base::scale</code>, <code>ma.scale2</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+#############################################################################
+# EXAMPLE 1: Standardized variables in list of multiply imputed datasets
+#############################################################################
+
+data(data.ma02)
+datlist &lt;- data.ma02
+
+#--- object of class 'datlist'
+datlist &lt;- miceadds::datlist_create( datlist )
+
+# mean and SD of variable hisei
+miceadds::ma.wtd.meanNA(data=datlist, weights=datlist[[1]]$studwgt, vars="hisei" )
+mean( unlist( lapply( datlist, FUN=function(data){
+        stats::weighted.mean( data$hisei, data$studwgt )  } ) ) )
+miceadds::ma.wtd.sdNA(data=datlist, weights=datlist[[1]]$studwgt, vars="hisei" )
+mean( unlist( lapply( datlist, FUN=function(data){
+        sqrt( Hmisc::wtd.var( data$hisei, data$studwgt ) ) } ) ) )
+
+# standardize variable hisei to M=100 and SD=15
+datlist1a &lt;- miceadds::scale_datlist( datlist=datlist, orig_var="hisei",
+               trafo_var="hisei100", weights=datlist[[1]]$studwgt, M=100, SD=15 )
+
+# check mean and SD
+miceadds::ma.wtd.meanNA(data=datlist1a, weights=datlist[[1]]$studwgt, vars="hisei100")
+miceadds::ma.wtd.sdNA(data=datlist1a, weights=datlist[[1]]$studwgt, vars="hisei100")
+
+#--- do standardization for unweighted sample with books &lt;=3
+# -&gt; define a weighting variable at first
+datlist0 &lt;- mitools::imputationList( datlist )
+datlist2a &lt;- miceadds::within.imputationList( datlist0, {
+             # define weighting variable
+                 wgt_books &lt;- 1 * ( books &lt;=3 )
+                    } )
+
+# standardize variable hisei to M=100 and SD=15 with respect to weighting variable
+datlist2b &lt;- miceadds::scale_datlist( datlist=datlist2a, orig_var="hisei", trafo_var="hisei100",
+         weights="wgt_books", M=100, SD=15 )
+
+# check mean and SD (groupwise)
+miceadds::ma.wtd.meanNA(data=datlist1a, weights=datlist[[1]]$studwgt, vars="hisei100")
+miceadds::ma.wtd.sdNA(data=datlist1a, weights=datlist[[1]]$studwgt, vars="hisei100")
+
+#--- transformation for a single dataset
+dat0 &lt;- datlist[[1]]
+dat0a &lt;- miceadds::scale_datlist( datlist=dat0, orig_var="hisei", trafo_var="hisei100",
+                    weights=dat0$studwgt, M=100, SD=15 )
+stats::weighted.mean( dat0a[,"hisei"],  w=dat0a$studwgt )
+stats::weighted.mean( dat0a[,"hisei100"],  w=dat0a$studwgt )
+sqrt( Hmisc::wtd.var( dat0a[,"hisei100"],  weights=dat0a$studwgt ) )
+
+#--- Standardizations for objects of class imputationList
+datlist2 &lt;- mitools::imputationList(datlist)   # object class conversion
+datlist2a &lt;- miceadds::scale_datlist( datlist=datlist2, orig_var="hisei",
+                 trafo_var="hisei100", weights=datlist[[1]]$studwgt, M=100, SD=15 )
+
+#############################################################################
+# EXAMPLE 2: Standardized variables in list of nested multiply imputed datasets
+#############################################################################
+
+# nested multiply imputed dataset in BIFIEsurvey package
+data(data.timss4, package="BIFIEsurvey")
+datlist &lt;- data.timss4
+wgt &lt;- datlist[[1]][[1]]$TOTWGT
+
+# class nested.datlist
+imp1 &lt;- miceadds::nested.datlist_create( datlist )
+# class NestedImputationList
+imp2 &lt;- miceadds::NestedImputationList( datlist )
+
+# standardize variable scsci
+imp1a &lt;- miceadds::scale_datlist( datlist=imp1, orig_var="scsci", trafo_var="zscsci", weights=wgt)
+# check descriptives
+miceadds::ma.wtd.meanNA( imp1a, weights=wgt, vars=c("scsci", "zscsci" ) )
+miceadds::ma.wtd.sdNA( imp1a, weights=wgt, vars=c("scsci", "zscsci" ) )
+
+#############################################################################
+# EXAMPLE 3: Standardization of variables for imputed data in mice package
+#############################################################################
+
+data(nhanes, package="mice")
+set.seed(76)
+
+#--- impute nhanes data
+imp &lt;- mice::mice(nhanes)
+#--- convert into datlist
+datlist &lt;- miceadds::mids2datlist(imp)
+#--- scale datlist (all variables)
+vars &lt;- colnames(nhanes)
+sdatlist &lt;- miceadds::scale_datlist(datlist, orig_var=vars, trafo_var=paste0("z",vars) )
+#--- reconvert to mids object
+imp2 &lt;- miceadds::datlist2mids(sdatlist)
+#*** compare descriptive statistics of objects
+round( miceadds::mean0( mice::complete(imp, action=1) ), 2 )
+round( miceadds::mean0( mice::complete(imp2, action=1) ), 2 )
+
+## End(Not run)
+</code></pre>
+
+
+</div>

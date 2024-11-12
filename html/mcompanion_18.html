@@ -1,0 +1,197 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>jordan</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Utilities for Jordan matrices </h2>
+
+<h3>Description</h3>
+
+<p>Utility functions for work with the Jordan decompositions of matrices:
+create a block diagonal matrix of Jordan blocks,
+restore a matrix from its Jordan decomposition,
+locate specific chains.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">Jordan_matrix(eigval, len.block)
+from_Jordan(x, jmat, ...)
+chain_ind(chainno, len.block)
+chains_to_list(vectors, heights)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>eigval</code></td>
+<td>
+<p> eigenvalues, a numeric or complex vector. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>len.block</code></td>
+<td>
+
+<p>lengths of Jordan chains, a vector of positive integers.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+
+<p>generalised eigenvectors, a matrix with one column for each
+(generalised) eigenvector.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>jmat</code></td>
+<td>
+<p> a Jordan matrix. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chainno</code></td>
+<td>
+
+<p>a vector of positive integers between 1 and <code>length(eigval)</code>
+specifying which Jordan chains to locate, see Details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments to pass on to <code>solve</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vectors</code></td>
+<td>
+<p>a matrix of generalised eigenvectors of a matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>heights</code></td>
+<td>
+
+<p>a vector of chain lengths, <code>heights[i]</code> is the length of the
+i-th chain.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>Jordan_matrix</code> creates a Jordan matrix (block-diagonal matrix
+with Jordan blocks on the diagonal) whose i-th diagonal block
+corresponds to <code>eigval[i]</code> and is of size <code>len.block[i]</code>.
+If <code>len.block</code> is missing, <code>Jordan_matrix</code> returns
+<code>diag(eigenvalues)</code>.
+</p>
+<p><code>from_Jordan</code> computes the matrix whose Jordan decomposition is
+represented by arguments <code>X</code> (chains) and <code>J</code> (Jordan
+matrix). Conceptually, the result is equivalent to <code class="reqn">XJX^{-1}</code> but
+without explicitly inverting matrices (currently the result is the
+transpose of <code>solve(t(x), t(x %*% jmat), ...)</code>).
+</p>
+<p><code>chain_ind</code> computes the columns of specified Jordan chains in a
+matrix of generalised eigenvectors. It is mostly internal function.
+If <code>x</code> is a matrix whose columns are generalised eigenvectors and
+the i-th Jordan chain is of length <code>len.block[i]</code>, then this
+function gives the column numbers of <code>x</code> containing the specified
+chains.
+Note that <code>chain_ind</code> is not able to deduce the total number of
+eigenvalues. It is therefore an error to omit argument
+<code>len.block</code> when calling it.
+</p>
+<p><code>chains_to_list</code> converts the matrix <code>vectors</code> into a list
+of matrices. The i-th element of this list is a matrix whose columns
+are the vectors in the i-th chain.
+</p>
+
+
+<h3>Value</h3>
+
+<p>for <code>Jordan_matrix</code>, a matrix with the specified Jordan blocks on
+its diagonal.
+</p>
+<p>for <code>from_Jordan</code>, the matrix with the specified Jordan
+decomposition.
+</p>
+<p>for <code>chain_ind</code>, a vector of positive integers giving the columns
+of the requested chains.
+</p>
+<p>for <code>chains_to_list</code>, a list of matrices.
+</p>
+
+
+<h3>Level</h3>
+
+<p>0</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Georgi N. Boshnakov</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## single Jordan blocks
+Jordan_matrix(4, 2) 
+Jordan_matrix(5, 3)
+Jordan_matrix(6, 1)
+## a matrix with the above 3 blocks
+Jordan_matrix(c(4, 5, 6), c(2, 3, 1))
+
+## a matrix with a 2x2 Jordan block for eval 1 and two simple 0 eval's
+m &lt;- make_mcmatrix(eigval = c(1), co = cbind(c(1,1,1,1), c(0,1,0,0)),
+                     dim = 4, len.block = c(2))
+m
+m.X &lt;- cbind(c(1,1,1,1), c(0,1,0,0), c(0,0,1,0), c(0,0,0,1))
+m.X
+m.J &lt;- cbind(c(1,0,0,0), c(1,1,0,0), rep(0,4), rep(0,4))
+m.J
+
+from_Jordan(m.X, m.J)          # == m
+m.X %*% m.J %*% solve(m.X) # == m
+all(m == from_Jordan(m.X, m.J)) &amp;&amp; all(m == m.X %*% m.J %*% solve(m.X))
+## TRUE
+
+## which column(s) in m.X correspond to 1st Jordan block?
+chain_ind(1, c(2,1,1)) # c(1, 2) since 2x2 Jordan block
+    
+## which column(s) in m.X correspond to 2nd Jordan block?
+chain_ind(2, c(2,1,1)) # 3, simple eval
+
+## which column(s) in m.X correspond to 1st and 2nd Jordan blocks?
+chain_ind(c(1, 2), c(2,1,1)) # c(1,2,3)
+## non-contiguous subset are ok:
+chain_ind(c(1, 3), c(2,1,1)) # c(1,2,4)
+
+## split the chains into a list of matrices
+chains_to_list(m.X, c(2,1,1))
+    
+m.X %*% m.J
+m %*% m.X    # same
+all(m.X %*% m.J == m %*% m.X)    # TRUE
+        
+m %*% c(1,1,1,1)    # = c(1,1,1,1),  evec for eigenvalue 1
+m %*% c(0,1,0,0)    # gen.e.v. for eigenvalue 1
+## indeed:
+all( m %*% c(0,1,0,0) == c(0,1,0,0) + c(1,1,1,1) ) # TRUE    
+
+## m X = X jordan.block
+cbind(c(1,1,1,1), c(0,1,0,0)) %*% cbind(c(1,0), c(1,1))
+m %*% cbind(c(1,1,1,1), c(0,1,0,0))
+</code></pre>
+
+
+</div>

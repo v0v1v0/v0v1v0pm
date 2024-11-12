@@ -1,0 +1,222 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>AltReg</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate in a method comparison model with replicates</h2>
+
+<h3>Description</h3>
+
+<p>Estimates in the general model for method comparison studies with replicate
+measurements by each method, allowing for a linear relationship between
+methods, using the method of alternating regressions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">AltReg(
+  data,
+  linked = FALSE,
+  IxR = linked,
+  MxI = TRUE,
+  varMxI = FALSE,
+  eps = 0.001,
+  maxiter = 50,
+  trace = FALSE,
+  sd.lim = 0.01,
+  Transform = NULL,
+  trans.tol = 1e-06
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Data frame with the data in long format, (or a
+<code>Meth</code> object) i.e. it must have columns <code>meth</code>,
+<code>item</code>, <code>repl</code> and <code>y</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>linked</code></td>
+<td>
+<p>Logical. Are the replicates linked across methods? If true, a
+random <code>item</code> by <code>repl</code> is included in the model, otherwise not.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>IxR</code></td>
+<td>
+<p>Logical, alias for linked.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MxI</code></td>
+<td>
+<p>Logical, should the method by item effect (matrix effect) be in
+the model?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>varMxI</code></td>
+<td>
+<p>Logical, should the method by item effect have method-specific
+variances. Ignored if only two methods are compared. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>Convergence criterion, the test is the max of the relative change
+since last iteration in both mean and variance parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>Maximal number of iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trace</code></td>
+<td>
+<p>Should a trace of the iterations be printed? If <code>TRUE</code>
+iteration number, convergence criterion and current estimates of means and
+sds are printed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sd.lim</code></td>
+<td>
+<p>Estimated standard deviations below <code>sd.lim</code> are
+disregarded in the evaluation of convergence. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Transform</code></td>
+<td>
+<p>A character string, or a list of two functions, each
+other's inverse. The measurements are transformed by this before analysis.
+Possibilities are: "exp", "log", "logit", "pctlogit" (transforms percentages
+by the logit), "sqrt", "sq" (square), "cll" (complementary log-minus-log),
+"ll" (log-minus-log). For further details see <code>choose.trans</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trans.tol</code></td>
+<td>
+<p>The tolerance used to check whether the supplied
+transformation and its inverse combine to the identity.  Only used if
+<code>Transform</code> is a list of two functions.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>When fitting a model with both IxR and MxI interactions it may become very
+unstable to have different variances of the MxI random effects for each
+method, and hence the default option is to have a constant MxI variance
+across methods. On the other hand it may be grossly inadequate to assume
+these variances to be identical.
+</p>
+<p>If only two methods are compared, it is not possible to separate different
+variances of the MxI effect, and hence the <code>varMxI</code> is ignored in this
+case.
+</p>
+<p>The model fitted is formulated as: </p>
+<p style="text-align: center;"><code class="reqn">y_{mir} = \alpha_m +
+\beta_m(\mu_i+a_{ir} + c_{mi}) + </code>
+</p>
+<p style="text-align: center;"><code class="reqn"> e_{mir}</code>
+</p>
+<p> and the relevant parameters to report are
+the estimates sds of <code class="reqn">a_{ir}</code> and <code class="reqn">c_{mi}</code>
+multiplied with the corresonidng <code class="reqn">\beta_m</code>. Therefore, different
+values of the variances for MxI and IxR are reported also when
+<code>varMxI==FALSE</code>. Note that <code>varMxI==FALSE</code> is the default and that
+this is the opposite of the default in <code>BA.est</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>c("MethComp","AltReg")</code>, which is a list
+with three elements: </p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Conv</code></td>
+<td>
+<p>A 3-way array with the 2 first dimensions
+named "To:" and "From:", with methods as levels. The third dimension is
+classifed by the linear parameters "alpha", "beta", and "sd".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>VarComp</code></td>
+<td>
+<p>A matrix with methods as rows and variance components as
+columns. Entries are the estimated standard deviations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>The
+original data used in the analysis, with untransformed measurements
+(<code>y</code>s). This is needed for plotting purposes.</p>
+</td>
+</tr>
+</table>
+<p> Moreover, if a
+transformation was applied before analysis, an attribute "Transform" is
+present; a list with two elements <code>trans</code> and <code>inv</code>, both of which
+are functions, the first the transform, the last the inverse.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Bendix Carstensen, Steno Diabetes Center, <a href="mailto:bendix.carstensen@regionh.dk">bendix.carstensen@regionh.dk</a>,
+<a href="http://BendixCarstensen.com">http://BendixCarstensen.com</a>.
+</p>
+
+
+<h3>References</h3>
+
+<p>B Carstensen: Comparing and predicting between several methods
+of measurement. Biostatistics (2004), 5, 3, pp. 399–413.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>BA.est</code>, <code>DA.reg</code>, <code>Meth.sim</code>,
+<code>MethComp</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data( ox )
+ox &lt;- Meth( ox )
+## Not run: 
+ox.AR &lt;- AltReg( ox, linked=TRUE, trace=TRUE, Transform="pctlogit" )
+str( ox.AR )
+ox.AR
+# plot the resulting conversion between methods
+plot(ox.AR,pl.type="conv",axlim=c(20,100),points=TRUE,xaxs="i",yaxs="i",pch=16)
+# - or the rotated plot
+plot(ox.AR,pl.type="BA",axlim=c(20,100),points=TRUE,xaxs="i",yaxs="i",pch=16) 
+## End(Not run)
+
+</code></pre>
+
+
+</div>

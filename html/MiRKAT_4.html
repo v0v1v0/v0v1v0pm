@@ -1,0 +1,185 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>GLMMMiRKAT</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>The Microbiome Regression-based Kernel Association Test Based on the Generalized Linear Mixed Model</h2>
+
+<h3>Description</h3>
+
+<p>GLMMMiRKAT utilizes a generalized linear mixed model to allow dependence among samples.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">GLMMMiRKAT(
+  y,
+  X = NULL,
+  Ks,
+  id = NULL,
+  time.pt = NULL,
+  model,
+  method = "perm",
+  slope = FALSE,
+  omnibus = "perm",
+  nperm = 5000
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>A numeric vector of Gaussian (e.g., body mass index), Binomial (e.g., disease status, treatment/placebo) or 
+Poisson (e.g., number of tumors/treatments) traits.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>A vector or matrix of numeric covariates, if applicable (default = NULL).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Ks</code></td>
+<td>
+<p>A list of n-by-n OTU kernel matrices or one singular n-by-n OTU kernel matrix, where n is sample size.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>A vector of cluster (e.g., family or subject including repeated measurements) IDs. Defaults to NULL since it is 
+unnecessary for the CSKAT call.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>time.pt</code></td>
+<td>
+<p>A vector of time points for the longitudinal studies. 'time.pt' is not required (i.e., 'time.pt = NULL') 
+for the random intercept model. Default is time.pt = NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>A string declaring which model ("gaussian", "binomial" or "poisson") is to be used; should align with whether a 
+Gaussian, Binomial, or Poisson trait is being inputted for the y argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>A string declaring which method ("perm" or "davies) will be used to calculate the p-value. Davies is only 
+available for Gaussian traits. Defaults to "perm".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>slope</code></td>
+<td>
+<p>An indicator to include random slopes in the model (slope = TRUE) or not (slope = FALSE). 'slope = FALSE' is for 
+the random intercept model. 'slope = TRUE' is for the random slope model. For the random slope model (slope = TRUE), 'time.pt' 
+is required.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>omnibus</code></td>
+<td>
+<p>A string equal to either "Cauchy" or "permutation" (or nonambiguous abbreviations thereof), specifying whether 
+to use the Cauchy combination test or residual permutation to generate the omnibus p-value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nperm</code></td>
+<td>
+<p>The number of permutations used to calculate the p-values and omnibus p-value. Defaults to 5000.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Missing data is not permitted. Please remove all individuals with missing y, X, and Ks prior to input for analysis.
+</p>
+<p>y and X (if not NULL) should be numerical matrices or vectors with the same number of rows. 
+</p>
+<p>Ks should either be a list of n by n kernel matrices (where n is sample size) or a single kernel matrix. If you have distance
+matrices from metagenomic data, each kernel can be constructed through function D2K. Each kernel can also be constructed 
+through other mathematical approaches.
+</p>
+<p>If model="gaussian" and method="davies", CSKAT is called. CSKAT utilizes the same omnibus test as GLMMMiRKAT. See ?CSKAT for more details.
+</p>
+<p>The "method" argument only determines kernel-specific p-values are generated. When Ks is a list of multiple kernels,
+an omnibus p-value is computed via permutation.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns a p-value for each inputted kernel matrix, as well as an overall omnibus p-value if more than one kernel matrix
+is inputted
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>p_values</code></td>
+<td>
+<p>p-value for each individual kernel matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>omnibus_p</code></td>
+<td>
+<p>overall omnibus p-value calculated by permutation for the adaptive GLMMMiRKAT analysis</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Hyunwook Koh
+</p>
+
+
+<h3>References</h3>
+
+<p>Koh H, Li Y, Zhan X, Chen J, Zhao N. (2019) A distance-based kernel association test based on the generalized linear mixed 
+model for correlated microbiome studies. Front. Genet. 458(10), 1-14.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+## Example with Gaussian (e.g., body mass index) traits
+## For non-Gaussian traits, see vignette. 
+
+# Import example microbiome data with Gaussian traits
+data(nordata)
+otu.tab &lt;- nordata$nor.otu.tab
+meta &lt;- nordata$nor.meta
+
+# Create kernel matrices and run analysis 
+if (requireNamespace("vegan")) {
+ library(vegan)
+ D_BC = as.matrix(vegdist(otu.tab, 'bray'))
+ K_BC = D2K(D_BC)
+ GLMMMiRKAT(y = meta$y, X = cbind(meta$x1, meta$x2), id = meta$id, 
+          Ks = K_BC, model = "gaussian", nperm = 500)
+} else {
+# Computation time is longer for phylogenetic kernels 
+ tree &lt;- nordata$nor.tree
+ unifracs &lt;- GUniFrac::GUniFrac(otu.tab, tree, alpha=c(1))$unifracs
+ D_W &lt;- unifracs[,,"d_1"] 
+ K_W = D2K(D_W)
+ GLMMMiRKAT(y = meta$y, X = cbind(meta$x1, meta$x2), id = meta$id, 
+          Ks = K_W, model = "gaussian", nperm = 500)
+}
+
+</code></pre>
+
+
+</div>

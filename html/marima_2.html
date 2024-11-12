@@ -1,0 +1,165 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>arma.forecast</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>arma.forecast</h2>
+
+<h3>Description</h3>
+
+<p>Forecasting of (multivariate) time series of
+using marima type model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">arma.forecast(series = NULL, marima = NULL, nstart = NULL, nstep = 1,
+  dif.poly = NULL, check = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>series</code></td>
+<td>
+<p>matrix holding the kvar-variate timeseries.
+The series is assumed to have the same format
+as the timeseries analysed by marima BEFORE differencing (if
+differencing was used via define.dif)
+(the length, though, does not need to be the same but can be shorter
+or longer). Results
+from estimating the model (for the differenced data, if used) are assumed
+to be saved in the input-object 'marima' (see 'usage') by marima.
+</p>
+<p>The series is assumed to have the total length=(nstart+nstep) (but it
+may be longer. In any case the forecasting is starting from nstart
+continuing to nstart+nstep. Future values already present or initialised,
+for example, as NAs are overwritten with the forecasted values.)
+</p>
+<p>An example of a series prepared for forcasting is in the marima library:
+'data(austr)': (see below, the example).
+</p>
+<p>If future (independent) x-values for the forecasting are to be used
+these values must be supplied in 'series' at the proper places before
+calling 'arma.forecast(...)' (that is except the x-value(s)
+corresponding to the last prediction).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>marima</code></td>
+<td>
+<p>the object holding the marima results to be used for
+the forecasting, that is an output object created by marima.
+</p>
+<p>If the ar- and/or the ma-model do not include a leading unity matrix
+this is automatically taken care of in the function (in that case the
+dimensions of the model arrays used will be, respectively,
+(kvar, kvar, p+1) and (kvar, kvar, q+1)) after inserting the leading
+unity matrix (if the object 'marima' was produced by marima, this
+will automatically be OK.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nstart</code></td>
+<td>
+<p>starting point for forecasting (1st forecast values
+will be for time point t = nstart+1).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nstep</code></td>
+<td>
+<p>length of forecast (forecasts will be for time points
+nstart+1,...,nstart+nstep).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dif.poly</code></td>
+<td>
+<p>(most often) output from the function define.dif holding
+the ar-representation of the differencing polynomial
+(define.dif$dif.poly).
+If a differenced timeseries was analysed by marima
+the forecast-variance/covariance matrices are calculated for the
+aggregated (original) timeseries if 'dif.poly' is specified. If not,
+the forecast-variance/covariance matrices are calculated for the
+differenced time series. If forecasting is wanted for the original
+(not differenced) time series the 'dif.poly' created by define.dif
+must be specified.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>check</code></td>
+<td>
+<p>If check=TRUE (default) various checks and
+printouts are carried out.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>forecasts = forecasted values following the nstart first values
+of the input series (at time points 'nstart+1,...,nstart+nstep').
+The forecasted values will be (over-) written in the input series at
+the proper future positions (if relevant).
+</p>
+<p>residuals = corresponding residuals for input series followed by
+nstep future residuals (all=0).
+</p>
+<p>prediction.variances = (kvar, kvar, nstep) array containing
+prediction covariance matrices corresponding to the nstep forecasts.
+</p>
+<p>nstart = starting point for prediction (1st prediction at point
+nstart+1).
+</p>
+<p>nstep = length of forecast
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(marima)
+data(austr)
+series&lt;-austr
+Model5 &lt;- define.model(kvar=7, ar=1, ma=1, rem.var=1, reg.var=6:7)
+Marima5 &lt;- marima(ts(series[1:90, ]), Model5$ar.pattern, Model5$ma.pattern, 
+penalty=1)
+
+nstart  &lt;- 90
+nstep   &lt;- 10
+cat("Calling arma.forecast.\n")
+cat("In the example the input series is dim(length,kvar).\n")
+cat("and of type ts() (timeseries) for illustration. \n")
+Forecasts &lt;- arma.forecast(series=ts(series), marima=Marima5, 
+               nstart=nstart, nstep=nstep )
+Year&lt;-series[91:100,1]
+One.step &lt;- Forecasts$forecasts[, (nstart+1)]
+One.step
+Predict  &lt;- Forecasts$forecasts[ 2, 91:100]
+Predict
+stdv&lt;-sqrt(Forecasts$pred.var[2, 2, ])
+upper.lim=Predict+stdv*1.645
+lower.lim=Predict-stdv*1.645
+Out&lt;-rbind(Year, Predict, upper.lim, lower.lim)
+print(Out)
+# plot results:
+plot(series[1:100, 1], Forecasts$forecasts[2, ], type='l', xlab='Year', 
+ylab='Rate of armed suicides', main='Prediction of suicides by firearms', 
+ylim=c(0.0, 4.1))
+lines(series[1:90, 1], series[1:90, 2], type='p')
+grid(lty=2, lwd=1, col='black')
+Years&lt;-2005:2014
+lines(Years, Predict, type='l')
+lines(Years, upper.lim, type='l')
+lines(Years, lower.lim, type='l')
+lines(c(2004.5, 2004.5), c(0.0, 2.0), lty = 2)
+
+</code></pre>
+
+
+</div>

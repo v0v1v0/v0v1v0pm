@@ -1,0 +1,332 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MGBT</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Multiple Grubbs–Beck Test (MGBT) for Low Outliers </h2>
+
+<h3>Description</h3>
+
+<p>Perform the Multiple Grubbs–Beck Test (MGBT; Cohn and others, 2013) for low outliers (LOTs, low-outlier threshold; potentially influential low floods, PILFs) that is implemented in the USGS-PeakFQ software (USGS, 2014; Veilleux and others, 2014) for implementation of Bulletin 17C (B17C) (England and others, 2018). The test internally transforms the data to logarithms (base-10) and thus is oriented for positively distributed data but accommodates zeros in the dataset.
+</p>
+<p>The essence of the MGBT, given the order statistics <code class="reqn">x_{[1:n]} \le x_{[2:n]} \le \cdots \le x_{[(n-1):n]} \le x_{[n:n]}</code>, is the statistic
+</p>
+<p style="text-align: center;"><code class="reqn">GB_r = \omega_r =
+\frac{ x_{[r:n]} - \mathrm{mean}\{x_{[(r+1)\rightarrow n:n]}\} }
+     {\sqrt{\mathrm{var}\{x_{[(r+1)\rightarrow n:n]}\}}}\mbox{,}
+</code>
+</p>
+
+<p>which is can be computed by <code>MGBTcohn2011</code> that is a port a function of TAC's used in a testing script that is reproduced in the <b>Examples</b> of <code>RSlo</code>. Variations of this pseudo-standardization scheme are shown for <code>BLlo</code> and <code>RSlo</code>. Also, <code class="reqn">GB_r</code> is the canonical form of the variable <code>eta</code> in TAC sources and <code>peta</code>=<code>peta</code> will be its associated probability.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MGBT(...) # A wrapper on MGBT17C()---This is THE function for end users.
+
+     MGBT17c(x, alphaout=0.005, alphain=0, alphazeroin=0.10,
+                n2=floor(length(x)/2), napv.zero=TRUE, offset=0, min.obs=0)
+MGBT17c.verb(x, alphaout=0.005, alphain=0, alphazeroin=0.10,
+                n2=floor(length(x)/2), napv.zero=TRUE, offset=0, min.obs=0)
+
+MGBTcohn2016(x, alphaout=0.005, alphazeroin=0.10, n2=floor(length(x)/2),
+                napv.zero=TRUE, offset=0)
+MGBTcohn2013(x, alphaout=0.005, alphazeroin=0.10, n2=floor(length(x)/2),
+                napv.zero=TRUE, offset=0)
+      MGBTnb(x, alphaout=0.005, alphazeroin=0.10, n2=floor(length(x)/2),
+                napv.zero=TRUE, offset=0)
+
+MGBTcohn2011(x, r=NULL, n=length(x)) # only computes the GB_r, not a test
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Arguments to pass to the MGBT family of functions;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>The data values and note that base-10 logarithms of these are computed internally except for the operation of the <code>MGBTcohn2011</code> function, which does not (see <b>Examples</b> for <code>RSlo</code>). Also protection from zero or negative values is made by the <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span> function <code>pmax</code>, and these values are replaced with a “small” value of <code>1e-8</code> and tacitly TAC has assumed that p-values for these will be significantly small and truncated away;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alphaout</code></td>
+<td>
+<p>Literally the <code class="reqn">\alpha_\mathrm{out}</code> of Bulletin 17C. This is the significance level of the “sweep out” portion of MGBT;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alphain</code></td>
+<td>
+<p>This is the significance level of the “sweep in” portion of MGBT but starts at one plus the order statistic identified by <code>alphaout</code>;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alphazeroin</code></td>
+<td>
+<p>Literally the <code class="reqn">\alpha_\mathrm{in}</code> of Bulletin 17C. This is the significance level of the “sweep in” portion of MGBT;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>napv.zero</code></td>
+<td>
+<p>A logical switch to reset a returned <code>NA</code> from <code>RthOrderPValueOrthoT</code> to zero. This is a unique extension by WHA based on large-scale batch testing of the USGS peak-values database (see <b>Note</b>). This being said, the fall-back to Monte Carlo integration if the numerical integration fails, seems to mostly make this argument superfluous;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offset</code></td>
+<td>
+<p>The offset, if not <code>NA</code>, is added from the threshold unless the threshold itself is already zero. In practical application, this offset, if set, would likely be a negative quantity. This argument is a unique extension by WHA;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min.obs</code></td>
+<td>
+<p>The minimum number of observations. This option is provided to streamline larger applications, but the underlying logic in <code>MGBT17C</code> is robust and on failures because of small sizes return a threshold of <code>0</code> anyway;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n2</code></td>
+<td>
+<p>The number of <code>n2</code>-smallest values to be evaluated in the MGBT;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>r</code></td>
+<td>
+<p>The number of truncated observations, which can be though of the rth order statistic and below; and</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>The number of observations. It is not clear that TAC intended <code>n</code> to be not equal to the sample size but TAC chose to not keep the length of <code>x</code> as determined internally to the function but to have it also available as an argument. Functions <code>BLlo</code> and <code>RSlo</code> also were designed similarly.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The MGBT results as an <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span> <code>list</code>:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>index</code></td>
+<td>
+<p>The sample size <code class="reqn">n</code>, the value for <code>n2</code>, and the three indices of the “sweep out,” “sweep in,” and “sweep in from zero” processing (only for <code>MGBT17c</code> as this is an extension from TAC);</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>omegas</code></td>
+<td>
+<p>The <code class="reqn">GB_r = \omega_r</code> statistics for which the p-values in <code>pvalues</code> are shown. These are mostly returned for aid in debugging and verification of the algorithms;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>The <code>n2</code>-smallest values in increasing order (only for <code>MGBT17c</code> as this is an extension from TAC);</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pvalues</code></td>
+<td>
+<p>The p-values of the <code>n2</code>-smallest values of the sample (not available for <code>MGBT17c</code> because of algorithm design for speed);</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>klow</code></td>
+<td>
+<p>The number of low outliers detected;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>LOThresh</code></td>
+<td>
+<p>The low-outlier threshold for the <code>klow+1</code> index of the sample (and possibly adjusted by the <code>offset</code>) or simply zero; and</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>message</code></td>
+<td>
+<p>Possibly message in event of some internal difficulty.</p>
+</td>
+</tr>
+</table>
+<p>The inclusion of <code>x</code> in the returned value is to add symmetry because the p-values are present. The inclusion of <code class="reqn">n</code> and <code>n2</code> might make percentage computations of inward and outward sweep indices useful in exploratory analyses. Finally, the inclusion of the sweep indices is important as it was through inspection of these that the problems in TAC sources were discovered.
+</p>
+
+
+<h3>Note</h3>
+
+<p><b>Porting from TAC sources</b>—TAC used MGBT for flood-frequency computations by a call
+</p>
+<pre>
+  oMGBT &lt;- MGBT(Q=o_in@qu[o_in@typeSystematic])
+</pre>
+<p>in file <code>P3_089(R).txt</code>, and note the named argument <code>Q=</code> but consider in the definition <code>Q</code> is not defined as a named argument. For the <span class="pkg">MGBT</span> package, the <code>Q</code> has been converted to a more generic variable <code>x</code>. Development of TAC's B17C version through the <code>P3_089(R).txt</code> or similar sources will simply require <code>Q=</code> to be removed from the <code>MGBT</code> call.
+</p>
+<p>The original MGBT algorithms in <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span> by TAC will throw some errors and warnings that required testing elsewhere for completeness (non-<code>NULL</code>) in algorithms “up the chain.” These errors appear to matter materially in pratical application in large-scale batch processing of USGS Texas peak-values data by WHA and GRH. For package <span class="pkg">MGBT</span>, the TAC computations have been modified to wrap a <code>try()</code> around the numerical integration within <code>RthOrderPValueOrthoT</code> of <code>peta</code>, and insert a <code>NA</code> when the integration fails if and only if a second integration (fall-back) attempt using Monte Carlo integration fails as well.
+</p>
+<p>The following real-world data were discovered to trigger the error/warning messages. These example data crash TAC's MGBT and the data point of 25 cubic feet per second (cfs) is the culpret. If a failure is detected, Monte Carlo integration is attempted as a fall-back procedure using defaults of <code>RthOrderPValueOrthoT</code>, and if that integration succeeds, <code>MGBT</code>, which is not aware, simply receives the p-value. If Monte Carlo integration also fails, then for the implementation in package <span class="pkg">MGBT</span>, the p-value is either a <code>NA</code> (<code>napv.zero=FALSE</code>) or set to zero if <code>napv.zero=TRUE</code>. Evidence suggests that numerical difficulties are encountered when small p-values are involved.
+</p>
+<pre>
+  # Peak streamflows for 08385600 (1952--2015, systematic record only)
+  #https://nwis.waterdata.usgs.gov/nwis/peak?site_no=08385600&amp;format=hn2
+  Data  &lt;- c(  8100, 3300,  680, 14800,  25.0, 7310, 2150, 1110, 5200, 900, 1150,
+   1050,  880, 2100, 2280, 2620,   830,  4900,  970,  560,  790, 1900, 830,  255,
+   2900, 2100,    0,  550, 1200,  1300,   246,  700,  870, 4350,  870, 435, 3000,
+    880, 2650,  185,  620, 1650,   680, 22900, 3290,  584, 7290, 1690, 2220, 217,
+   4110,  853,  275, 1780, 1330,  3170,  7070, 2660) # cubic feet per second (cfs)
+  MGBT17c(     Data, napv.zero=TRUE)$LOThres    # [1] 185
+  MGBT17c.verb(Data, napv.zero=TRUE)$LOThres    # [1] 185
+  MGBTcohn2016(Data, napv.zero=TRUE)$LOThres    # [1] 185
+  MGBTcohn2013(Data, napv.zero=TRUE)$LOThres    # [1] 185
+  MGBTnb(      Data, napv.zero=TRUE)$LOThres    # [1] 185
+</pre>
+<p>Without having the fall-back Monte Carlo integration in <code>RthOrderPValueOrthoT</code>, if <code>napv.zero=</code> <code>FALSE</code>, then the low-outlier threshold is 25 cfs, but if <code>napv.zero=TRUE</code>, then the low-outlier threshold is 185 cfs, which is the value matching USGS-PeakFQ (v7.1) (FORTRAN code base). Hence, the recommendation that <code>napv.zero=TRUE</code> for the default, though such a setting will for this example will still result in 185 cfs because Monte Carlo integration can not be turned off for the implementation here.
+</p>
+<p>Noting that USGS-PeakFQ (7.1) reports the p-value for the 25 cfs as 0.0002, a test of the <span class="pkg">MGBT</span> implementation with the backup Monte Carlo integration in <code>RthOrderPValueOrthoT</code> shows a p-value of 1.748946e-04 for 25 cfs, which is congruent with the 0.0002 of USGS-PeakFQ (v7.1). Another Monte Carlo integration produced a p-value of 1.990057e-04 for 25 cfs, and thus another result congruent with USGS-PeakFQ (v7.1) is evident.
+</p>
+<p>Using original TAC sources, here are the general errors that can be seen:
+</p>
+<pre>
+   Error in integrate(peta, lower = 1e-07, upper = 1 - 1e-07, n = n, r = r, :
+   the integral is probably divergent In addition:
+   In pt(q, df = df, ncp = ncp, lower.tail = TRUE) :
+     full precision may not have been achieved in 'pnt[final]'
+</pre>
+<p>For both the internal implementations of <code>RthOrderPValueOrthoT</code> and <code>peta</code> error trapping is present to return a <code>NA</code>. It is not fully known whether the integral appears divergent when <code>pt()</code> (probability of the t-distribution) reaches an end point in apparent accuracy or not—although, this is suspected. For this package, a <code>suppressWarnings()</code> has been wrapped around the call to <code>pt()</code> in <code>peta</code> as well as in one other computation that at least in small samples can result in a square root of a negative number (see <b>Note</b> under <code>peta</code>).
+</p>
+<p>There is another error to trap for this package. If all the data values are identical, a low-outlier threshold set at that value leaks back. This is the motivation for a test added by WHA using <code>length(unique(x)) == 1</code> in the internals of <code>MGBTcohn2016</code>, <code>MGBTcohn2013</code>, and <code>MGBTnb</code>.
+</p>
+<p>A known warning message might be seen at least in microsamples:
+</p>
+<pre>
+   MGBT(c( 1, 26300))       # throws    warnings, zero is the threshold
+     # In EMS(n, r, qmin) : value out of range in 'lgamma'
+   MGBT(c( 1, 26300, 2600)) # throws no warnings, zero is the threshold
+</pre>
+<p>The author wraps a <code>suppressWarnings()</code> on the line in <code>EMS</code> requiring <code>lgamma()</code>. This warning appears restricted to nearly a degenerate situation anyway and failure will result in <code>peta</code> and therein the situation results in a p-value of unity and hence no risk of identifying a threshold.
+</p>
+<p>Regarding <code>n=length(x)</code> for <code>MGBTcohn2011</code>, it is not clear whether TAC intended <code>n</code> to be not equal to the sample size. TAC chose to not determine the length of <code>x</code> internally to the function but to have it available as an argument. Also <code>BLlo</code> and <code>RSlo</code> were designed similarly.
+</p>
+<p><b>(1) Lingering Issue of Inquiry</b>—TAC used a <code>j1</code> index in <code>MGBTcohn2016</code>, <code>MGBTcohn2013</code>, and <code>MGBTnb</code>, and this index is used as part of <code>alphaout</code>. The <code>j1</code> and is not involved in the returned content of the MGBT approach. This seems to imply a problem with the “sweep out” approach but TAC inadvertantly seems to make “sweep out” work in <code>MGBTnb</code> but therein creates a “sweep in” problem. The “sweep in” appears fully operational in <code>MGBTcohn2016</code> and <code>MGBTcohn2013</code>. Within the source for <code>MGBTcohn2016</code> and <code>MGBTcohn2013</code>, a fix can be made with just one line after the <code>n2</code> values have been processed. Here is the WHA commentary within the sources, and it is important to note that the fix is not turned on because <b>use of <code>MGBT17c</code> via the wrapper <code>MGBT</code> is the recommended interface</b>:
+</p>
+<pre>
+   # ---***--------------***--- TAC CRITICAL BUG ---***--------------***---
+   # j2 &lt;- min(c(j1,j2)) # WHA tentative completion of the 17C alogrithm!?!
+   # HOWEVER MAJOR WARNING. WHA is using a minimum and not a maximum!!!!!!!
+   # See MGBT17C() below. In that if the line a few lines above that reads
+   # if((pvalueW[i] &lt; alpha1 )) { j1 &lt;- i; j2 &lt;- i }
+   # is replaced with if((pvalueW[i] &lt; alpha1 )) j1 &lt;- i
+   # then maximum and not the minimum becomes applicable.
+   # ---***--------------***--- TAC CRITICAL BUG ---***--------------***---
+</pre>
+<p><b>(2) Lingering Issue of Inquiry</b>—TAC used recursion in <code>MGBTcohn2013</code> and <code>MGBTnb</code> for a condition <code>j2 == n2</code>. This recursion does not exist in <code>MGBTcohn2016</code>. TAC seems to have explored the idea of a modification to the <code>n2</code> to be related to an idea of setting a limit of at least five retained observations below half the sample (default <code>n2</code>) when up to half the sample is truncated away. Also in the recursion, TAC resets the two alpha's with <code>alphaout=0.01</code> from the default of <code>alpha1=0.005</code> and <code>alphazeroin=0.10</code>. This reset means that had TAC hardwired these inside <code>MGBTcohn2013</code>, which partially defeats the purpose of having them as arguments in the first place.
+</p>
+<p><b>(3) Lingering Issue of Inquiry</b>—TAC used recursion in <code>MGBTcohn2013</code> and <code>MGBTnb</code> for a condition <code>j2 == n2</code> but the recursion calls <code>MGBTcohn2013</code>. Other comments about the recursion in Inquiry (2) about the alpha's are applicable here as well. More curious about <code>MGBTnb</code> is that the <code>alphazeroin</code> is restricted to a test on only the p-value for the smallest observation and is made outside the loop through the data. The test is <code>if(pvalueW[1] &lt;</code> <code>alphazeroin &amp;</code> <code>j2 == 0)</code> <code>j2 &lt;- 1</code>, which is a logic flow that differs from that in <code>MGBTcohn2013</code> and <code>MGBTcohn2016</code>.
+</p>
+<p><b>On the Offset Argument</b>—The MGBT approach identifies the threshold as the first order statistic (<code class="reqn">x_{[r+1:n]}</code>) above that largest “outlying” order statistic <code class="reqn">x_{[r:n]}</code> with the requisite small p-value (see the example in the <b>Examples</b> section herein). There is a practical application in which a nudge on the MGBT-returned low-outlier threshold could be useful. Consider that the optional <code>offset</code> argument is added to the threshold unless the threshold itself is already zero. The offset should be small, and as an example <code class="reqn">{-}0.001</code> would be a magnitude below the resolution of the USGS peak-values database.
+</p>
+<p>Why? If algorithms other than USGS-PeakFQ are involved in frequency analyses, the concept of “in” or “out” of analyses, respectively, could be of the form <code>xin &lt;-</code> <code>x[x &gt; threshold]</code> and <code>xlo &lt;-</code> <code>x[x &lt;= threshold]</code>. Note the “less than or equal to” and its assocation with those data to be truncated away, which might be more consistent with the idea of truncation level of left-tail censored data in other datasets for which the MGBT approach might be used. For example, the <code>x2xlo()</code> function of the <span class="pkg">lmomco</span> package by Asquith (2019) uses such logic in its implementation of conditional probability adjustment for the presence of low outliers. This logic naturally supports a default truncation for zeros.
+</p>
+<p>Perhaps one reason for the difference in how a threshold is implemented is based on two primary considerations. First, if restricted to choosing a threshold to the sample order statistics, then the <code>MGBT</code> approach, by returning the first (earliest) order statistics that is not statistically significant, requires <code>x[x &lt; threshold]</code> for the values to leave out. TAC clearly intended this form. Second, TAC seems to approach the zero problem with <code>MGBT</code> by replacing all zeros with <code>1e-8</code> as in
+</p>
+<pre>
+  log10(pmax(1e-8,x))
+</pre>
+<p>immediately before the logarithmic transformation. This might be a potential weak link in <code>MGBT</code>. It assumes that <code>1e-8</code> is small, which it certainly is for the problem of flood-frequency analysis using peaks in cubic feet per second. TAC has hardwired this value. Reasonable enough.
+</p>
+<p>But such logic thus requires the <code>MGBT</code> to identify these pseudo-zeros (now <code>1e-8</code>) in all circumstances as low outliers. Do the algorithms otherwise do this? This approach is attractive for B17C because one does not have to track a subsample of those values greater than zero because the low-outlier test will capture them. An implementation such as Asquith (2019) automatically removes zero without the need to use a low-outlier identification method; hence, Asquith's choice of <code>x[x &lt;= threshold]</code> with <code>threshold=0</code> by default for the values to leave out. The inclusion of <code>offset</code> permits cross compatibility for <span class="pkg">MGBT</span> package purposes trancending Bulletin 17C.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p> W.H. Asquith</p>
+
+
+<h3>Source</h3>
+
+<p><code>LowOutliers_jfe(R).txt</code>, <code>LowOutliers_wha(R).txt</code>, <code>P3_089(R).txt</code>—Named <code>MGBT</code> + <code>MGBTnb</code>
+</p>
+
+
+<h3>References</h3>
+
+<p>Asquith, W.H., 2019, lmomco—L-moments, trimmed L-moments, L-comoments, censored <br> L-moments, and many distributions: R package version 2.3.2 (September 20, 2018), accessed March 30, 2019, at <a href="https://cran.r-project.org/package=lmomco">https://cran.r-project.org/package=lmomco</a>.
+</p>
+<p>Cohn, T.A., 2013–2016, Personal communication of original R source code: U.S. Geological Survey, Reston, Va.
+</p>
+<p>Cohn, T.A., England, J.F., Berenbrock, C.E., Mason, R.R., Stedinger, J.R., and Lamontagne, J.R., 2013, A generalized Grubbs-Beck test statistic for detecting multiple potentially influential low outliers in flood series: Water Resources Research, v. 49, no. 8, pp. 5047–5058.
+</p>
+<p>England, J.F., Cohn, T.A., Faber, B.A., Stedinger, J.R., Thomas Jr., W.O., Veilleux, A.G., Kiang, J.E., and Mason, R.R., 2018, Guidelines for determining flood flow frequency Bulletin 17C: U.S. Geological Survey Techniques and Methods, book 4, chap. 5.B, 148 p., doi: <a href="https://doi.org/10.3133/tm4B5">10.3133/tm4B5</a>
+</p>
+<p>U.S. Geological Survey (USGS), 2018, PeakFQ—Flood frequency analysis based on Bulletin 17B and recommendations of the Advisory Committee on Water Information (ACWI) Subcommittee on Hydrology (SOH) Hydrologic Frequency Analysis Work Group (HFAWG), version 7.2: Accessed November 29, 2018, at <a href="https://water.usgs.gov/software/PeakFQ/">https://water.usgs.gov/software/PeakFQ/</a>.
+</p>
+<p>Veilleux, A.G., Cohn, T.A., Flynn, K.M., Mason, R.R., Jr., and Hummel, P.R., 2014, Estimating magnitude and frequency of floods using the PeakFQ 7.0 program: U.S. Geological Survey Fact Sheet 2013–3108, 2 p., doi: <a href="https://doi.org/10.3133/fs20133108">10.3133/fs20133108</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>RthOrderPValueOrthoT</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# USGS 08066300 (1966--2016) # cubic feet per second (cfs)
+#https://nwis.waterdata.usgs.gov/nwis/peak?site_no=08066300&amp;format=hn2
+Values &lt;- c(3530, 284, 1810, 9660,  489,  292, 1000,  2640, 2910, 1900,  1120, 1020,
+   632, 7160, 1750,  2730,  1630, 8210, 4270, 1730, 13200, 2550,  915, 11000, 2370,
+  2230, 4650, 2750,  1860, 13700, 2290, 3390, 5160, 13200,  410, 1890,  4120, 3930,
+  4290, 1890, 1480, 10300,  1190, 2320, 2480, 55.0,  7480,  351,  738,  2430, 6700)
+MGBT(Values) # Results LOT=284 cfs leaving 55.0 cfs (p-value=0.0119) censored.
+#$index
+#      n      n2    ix_alphaout     ix_alphain   ix_alphazeroin
+#     51      25              0              0                1
+#$omegas
+# [1] -3.781980 -2.268554 -2.393569 -2.341027 -2.309990 -2.237571
+# [7] -2.028614 -1.928391 -1.720404 -1.673523 -1.727138 -1.671534
+#[13] -1.661346 -1.391819 -1.293324 -1.246974 -1.276485 -1.272878
+#[19] -1.280917 -1.310286 -1.372402 -1.434898 -1.226588 -1.237743
+#[25] -1.276794
+#$x
+# [1]   55  284  292  351  410  489  632  738  915 1000 1020 1120 1190 1480 1630 1730
+#[17] 1750 1810 1860 1890 1890 1900 2230 2290 2320
+#$pvalues
+# [1] 0.01192184 0.30337879 0.08198836 0.04903091 0.02949836 0.02700114 0.07802324
+# [8] 0.11185553 0.31531749 0.34257170 0.21560086 0.25950150 0.24113157 0.72747052
+#[15] 0.86190920 0.89914152 0.84072131 0.82381908 0.78750571 0.70840262 0.55379730
+#[22] 0.40255392 0.79430336 0.75515103 0.66031442
+#$LOThresh
+#[1] 284
+
+# The USGS-PeakFQ (v7.1) software reports:
+#   EMA003I-PILFS (LOS) WERE DETECTED USING MULTIPLE GRUBBS-BECK TEST   1     284.0
+#      THE FOLLOWING PEAKS (WITH CORRESPONDING P-VALUES) WERE CENSORED:
+#            55.0    (0.0123)
+# As a curiosity, see Examples under ASlo().#
+
+
+# MGBTnb() has a sweep in problem.
+SweepIn &lt;- c(1, 1, 3200, 5270, 26300, 38400, 8710, 23200, 39300, 27800, 21000,
+  21000, 21500, 57000, 53700, 5720, 10700, 4050, 4890, 10500, 26300, 16600, 20900,
+  21400, 10800, 8910, 6360)  # sweep in and out both identify index 2.
+MGBT17c(SweepIn, alphaout=0)$LOThres # LOT = 3200 # force no sweep outs
+MGBTnb(SweepIn)$LOThres              # LOT = 3200 # because sweep out is the same!
+MGBTnb(SweepIn, alphaout=0) # LOT = 1  # force no sweep outs, it fails.
+</code></pre>
+
+
+</div>

@@ -1,0 +1,269 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>anova.manyany</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Analysis of Deviance for Many Univariate Models Fitted to Multivariate Abundance Data</h2>
+
+<h3>Description</h3>
+
+<p>Compute an analysis of deviance table for many univariate model fits. Slowly!</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'manyany'
+anova(object, ..., nBoot=99, p.uni="none", block=object1$block, nCores=1,
+       bootID=NULL, replace=TRUE) 
+
+## S3 method for class 'anova.manyany'
+print(x, ...) 
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>of class <code>manyany</code> under the null hypothesis, typically the result of a call to <code>manyany</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other generic <code>anova</code> methods. NEEDS TO INCLUDE A SECOND <code>manyany</code> object for the alternative hypothesis to be tested.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nBoot</code></td>
+<td>
+<p>the number of Bootstrap iterations, default is <code>nBoot=99</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.uni</code></td>
+<td>
+<p>whether to calculate univariate test statistics and their P-values.<br>
+"none" = No univariate P-values (default) <br>
+"unadjusted" = A test statistic and (ordinary unadjusted) P-value are reported
+for each response variable. If the <code>manyany</code> object is compositional (<code>composition=TRUE</code>), this option is unavailable as yet.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>block</code></td>
+<td>
+<p>a factor specifying the sampling level to be resampled. Default is resampling rows (if
+composition=TRUE in the manyany command, this means resampling rows of data as originally sent to manyany).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nCores</code></td>
+<td>
+<p>Number of cores to use for computations (for parallel computing).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bootID</code></td>
+<td>
+<p>A user-entered matrix of indices for which observations to use in which resample. Bootstrap
+resamples in rows, observations in columns. When specified, overwrites <code>nBoot</code> and <code>block</code>. Default is NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>replace</code></td>
+<td>
+<p>whether to sample with or without replacement, as in the <code>sample</code> function.
+<code>= FALSE</code> for PIT-permutation, <code> = TRUE</code> for PIT-trap.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p><code>anova.manyany</code> object to be printed.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <code>anova.manyany</code> function returns a table summarising the statistical significance
+of a fitted manyany model under the alternative hypothesis (<code>object2</code>) as compared
+to a fit under the null hypothesis (<code>object</code>). Typically the alternative model
+is nested in the null although it doesn't need to be (but consider seriously if what
+you are doing makes sense if they are not nested).
+</p>
+<p>This function is quite computationally intensive, and a little fussy - it is an early
+version we hope to improve on. Feedback welcome!
+</p>
+<p>This function behaves a lot like <code>anova.manyglm</code>, the most conspicuous differences
+being in flexibility and computation time. Since this function is based on <code>manyany</code>,
+it offers much greater flexibility in terms of types of models that can be fitted (most
+fixed effects model with <code>predict</code> and <code>family</code> arguments could be accommodated).
+For information on the different types of data that can be modelled using manyany, see
+<code>manyany</code>.
+</p>
+<p>However this flexibility comes at considerable cost in terms of computation time, and the
+default <code>nBoot</code> has been set to 99 to reflect this (although rerunning at 999 is
+recommended). Other more cosmetic differences from <code>anova.manyglm</code> are that
+two and only two models can be supplied as input here; adjusted univariate P-values
+are not yet implemented; and the range of test statistics and resampling algorithms is
+more limited. All test statistics constructed here are sum-of-likelihood ratio statistics
+as in Warton et al (2012), and the resampling method used here is the PIT-trap (short
+for 'probability integral transform residual bootstrap', Warton et al 2017).
+</p>
+<p>To check model assumptions, use <code>plot.manyany</code>.
+</p>
+<p>The <code>block</code> argument allows for block resampling, such that valid inferences can
+be made across independent blocks of correlated sets of observations.
+For example, if data have multiple rows of records for each site, e.g. multi-species
+data with entries for different species on different rows, you can use your site ID
+variable as the block argument to resample sites, for valid cross-site inferences despite
+within-site species correlation. Well, valid assuming sites are independent. You could
+do similarly for a repeated measures design to make inferences robust to temporal autocorrelation.
+Note that <code>block</code> needs to be balanced, e.g. equal number of species entries for
+each site (i.e. include rows for zero abundances too). 
+</p>
+<p>The <code>anova.manyany</code> function is designed specifically for high-dimensional data
+(that, is when the number of variables p is not small compared to the number of observations
+N). In such instances a correlation matrix is computationally intensive to estimate
+and is numerically unstable, so by default the test statistic is calculated assuming
+independence of variables. Note however that the resampling scheme used ensures that
+the P-values are approximately correct even when the independence assumption is not
+satisfied. 
+</p>
+<p>Rather than stopping after testing for multivariate effects, it is often of interest
+to find out which response variables express significant effects. Univariate statistics
+are required to answer this question, and these are reported if requested. Setting <code>p.uni="unadjusted"</code>
+returns resampling-based univariate P-values for all effects as well as the multivariate
+P-values, if <code>composition=FALSE</code>. There are currently no univariate P-value options
+when <code>composition=TRUE</code> (it's not entirely clear how such P-values should be obtained)
+and if univariate P's are of interest why not rerun the model with <code>composition=FALSE</code>.
+</p>
+<p>A current limitation of the function is that <code>composition</code> needs to be set to
+the same value in each manyany object being compared - it is not currently possible
+to compare models with and without a compositional term in them.
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>stat</code></td>
+<td>
+<p>the observed value of the test statistic.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>the P-value as estimated from <code>nBoot</code> resamples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stat.i</code></td>
+<td>
+<p>the values of the test statistic in each of the <code>nBoot</code> resamples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.i</code></td>
+<td>
+<p>the P-value in each of the <code>nBoot</code> resamples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.uni</code></td>
+<td>
+<p>the <code>p.uni</code> argument supplied.</p>
+</td>
+</tr>
+</table>
+<p>If <code>p.uni="unadjusted"</code> the output list also contains<br></p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>uni.test</code></td>
+<td>
+<p>a table showing the test statistics of the univariate tests.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>uni.p</code></td>
+<td>
+<p>a table showing the p-values of the univariate tests.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>statj.i</code></td>
+<td>
+<p>a matrix of values of the univariate test statistics in each of the <code>nBoot</code> resamples.</p>
+</td>
+</tr>
+</table>
+<h3>Warning</h3>
+
+<p>The comparison between two or more models by <code>anova.manyglm</code> will only be valid if they are fitted to the same dataset. This may be a problem if there are missing values and R's default of <code>na.action = na.omit</code> is used. 
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>David Warton &lt;David.Warton@unsw.edu.au&gt;.
+</p>
+
+
+<h3>References</h3>
+
+<p>Warton D. I., Wright S., and Wang, Y. (2012). Distance-based multivariate analyses confound location and dispersion effects. <em>Methods in Ecology and Evolution</em>, 3(1), 89-101.
+</p>
+<p>Warton D. I., Thibaut L., Wang Y. A.  (2017). The PIT-trap - A "model-free" bootstrap procedure for inference about regression models with discrete, multivariate responses. <em>PLoS One</em>, 12(7), e0181790.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>manyany</code>, <code>anova.manyglm</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Try fitting Tikus Islands data with Tweedie models with power parameter 1.5,
+## to test for compositional effect:
+data(tikus)
+coral &lt;- as.matrix(tikus$abund[1:20,])
+sumSpp = apply(coral&gt;0,2,sum)
+
+coral &lt;- coral[,sumSpp&gt;6] ## cutting to just species with seven(!) or more presences to cut
+## computation time.  Maybe rerun with less (e.g. 4 or more presences) if curious and patient.
+coralX &lt;- tikus$x[1:20,]
+
+require(tweedie)
+require(statmod)
+
+ftTimeRep &lt;- manyany(coral ~ time+rep, "glm", data=coralX, 
+  family=tweedie(var.power=1.5, link.power=0), var.power=1.5, composition=TRUE)
+
+ftRep &lt;- manyany(coral ~ rep, "glm", data=coralX, 
+  family=tweedie(var.power=1.5, link.power=0), var.power=1.5, composition=TRUE)
+anova(ftRep,ftTimeRep,nBoot=9) #this takes a few seconds to run even for just 9 resamples
+## This should be rerun for nBoot=999, which could a few minutes...
+
+## Not run: library(ordinal)
+## First construct an ordinal dataset:
+## Not run: spidOrd = spider$abund
+## Not run: spidOrd[spider$abund&gt;1 &amp; spider$abund&lt;=10]=2
+## Not run: spidOrd[spider$abund&gt;10]=3
+## Now fit a model using the clm function:
+## Not run: manyOrd=manyany(spidOrd~bare.sand+fallen.leaves,"clm",data=spider$x)
+## Test to see if fallen.leaves needs to be there:
+## Not run: manyOrd0=manyany(spidOrd~bare.sand,"clm",data=spider$x)
+## Not run: anova(manyOrd0,manyOrd,nBoot=19)
+
+</code></pre>
+
+
+</div>

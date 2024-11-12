@@ -1,0 +1,236 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>hdepth</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Halfspace depth of points relative to a dataset</h2>
+
+<h3>Description</h3>
+
+<p>Computes the halfspace depth of <code class="reqn">p</code>-dimensional points <code>z</code> relative to a <code class="reqn">p</code>-dimensional dataset <code>x</code>. Computation is exact for <code class="reqn">p \le 3</code> and approximate when <code class="reqn">p &gt; 3</code>. For the approximate algorithm  the halfspace depth is computed as the minimal univariate halfspace depth over many directions. To obtain the univariate halfspace depth in the direction <code class="reqn">v</code>, the dataset <code>x</code> is projected on <code class="reqn">v</code>, and the univariate location depth of the points of <code class="reqn">v'z_i</code> to <code class="reqn">xv</code> is computed.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">hdepth(x, z = NULL, options = list())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>An <code class="reqn">n</code> by <code class="reqn">p</code> data matrix with observations in the rows and variables in the columns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>z</code></td>
+<td>
+<p>An optional <code class="reqn">m</code> by <code class="reqn">p</code> matrix containing
+rowwise the points <code class="reqn">z_i</code> for which to compute
+the halfspace depth. If <code>z</code> is not specified,
+it is set equal to <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>options</code></td>
+<td>
+<p> A list of available options:
+</p>
+
+<ul>
+<li> <p><code>type</code> <br>
+Determines the desired type of invariance for the approximate algorithm and should be
+one of <code>"Affine"</code>, <code>"Rotation"</code> or <code>"Shift"</code>.
+When the option <code>"Affine"</code> is used,  the directions
+<code class="reqn">v</code> are orthogonal to hyperplanes spanned by <code class="reqn">p</code>
+observations from <code>x</code>. When the option <code>"Rotation"</code>
+is used, the directions pass by two randomly selected
+observations from <code>x</code>. With the option <code>"Shift"</code>,
+directions are randomly generated.<br>
+Defaults to <code>"Affine"</code>.
+</p>
+</li>
+<li> <p><code>ndir</code> <br>
+Determines the number of directions <code class="reqn">v</code> by setting
+<code>ndir</code> to a specific number or to <code>"all"</code>.
+In the latter case, an exhaustive search over all possible
+directions (according to <code>type</code>) is performed.
+If <code>ndir</code> is larger than the number of possible directions,
+the algorithm will automatically use this setting. <br>
+Defaults to
+<code class="reqn">250p</code> when <code>type="Affine"</code>, to 5000 when
+<code>type="Rotation"</code> and to 12500 when <code>type="Shift"</code>.
+</p>
+</li>
+<li> <p><code>approx</code> <br>
+The user may force approximate calculation in two or three
+dimensions by setting this option to <code>TRUE</code>. <br>
+Defaults to <code>FALSE</code>.
+</p>
+</li>
+<li> <p><code>seed</code>  <br>
+A strictly positive integer specifying the seed to be used
+by the <code>C++</code> code.<br>
+Defaults to <code class="reqn">10</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Halfspace depth has been introduced by Tukey (1975). The halfspace depth of a point <code class="reqn">z_i</code> is defined as the minimal number of observations from <code>x</code> that are contained in any closed halfspace with boundary through <code class="reqn">z_i</code>.
+</p>
+<p>In dimensions <code class="reqn">p=2</code> and <code class="reqn">p=3</code> the computations are by default carried out exactly using the algorithms described in Rousseeuw and Ruts (1996) and Rousseeuw and Struyf (1998). This yields an affine invariant measure of depth.
+Approximate algorithms are also implemented which are affine, rotation or shift invariant, depending on the value chosen for <code>type</code>. They can be used in any dimension. The shift invariant algorithm coincides with the random Tukey depth (Cuesta-Albertos and Nieto-Reyes, 2008).
+</p>
+<p>The resulting halfspace depth values are invariant to affine transformations when the exact algorithm is used and invariant to affine transformations, rotations and shifts depending on the choice for <code>type</code>, provided that the <code>seed</code> is kept fixed at different runs of the algorithm. Note that the halfspace depth values values are guaranteed to decrease when more directions are considered, provided the seed is kept fixed, as this ensures that the random directions are generated in a fixed order.
+</p>
+<p>If the halfspace depth needs to be computed for <code class="reqn">m</code> points <code class="reqn">z_i</code>, it is recommended to apply the function once with the matrix <code class="reqn">z</code> as input, instead of applying it <code class="reqn">m</code> times with input vectors <code class="reqn">z_i</code>, as numerous computations can be saved. The approximate algorithms automatically then also compute the depth values of the observations in <code>x</code>.
+When only the halfspace depth of the observations in <code>x</code> is required, the call to the function should be <code>hdepth(x)</code> or equivalently <code>hdepth(x,x)</code>. In that case the depth values will be stored in the 'depthZ' output field. For bivariate data these will be the exact values by default.
+</p>
+<p>To visualize the depth of bivariate data one can apply the <code>mrainbowplot</code> function. It plots the data colored according to their depth.
+</p>
+<p>It is first checked whether the data lie in a subspace of dimension smaller than <code class="reqn">p</code>. If so, a warning is given, as well as the dimension of the subspace and a direction which is orthogonal to it.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A  list with components: <br></p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>depthX</code></td>
+<td>
+<p>Vector of length <code class="reqn">n</code> giving the halfspace depth of the observations in <code>x</code>.<br>
+By default exact if <code class="reqn">p \le 3</code> and approximate if <code class="reqn">p &gt; 3</code> or the option <code>approx</code> is set to <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>depthZ</code></td>
+<td>
+<p>Vector of length <code class="reqn">m</code> giving the halfspace depth of the points in <code>z</code> relative to <code>x</code>. <br>
+By default exact if <code class="reqn">p \le 3</code> and approximate if <code class="reqn">p &gt; 3</code> or the option <code>approx</code> is set to <code>TRUE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>singularSubsets</code></td>
+<td>
+<p>When the input parameter type is equal to <code>"Affine"</code>,
+the number of <code class="reqn">p</code>-subsets that span a subspace of
+dimension smaller than <code class="reqn">p-1</code>. In that case the orthogonal
+direction can not be uniquely determined. This is an indication
+that the data are not in general position.
+When the input parameter type is equal to <code>"Rotation"</code> it
+is possible that two randomly selected points of the data coincide
+due to ties in the data. In this case this value signals how many
+times this happens.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dimension</code></td>
+<td>
+<p>When the data <code>x</code> are lying in a lower dimensional subspace,
+the dimension of this subspace.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hyperplane</code></td>
+<td>
+<p>When the data <code>x</code> are lying in a lower dimensional subspace,
+a direction orthogonal to this subspace.
+</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>P. Segaert based on Fortran code by P.J. Rousseeuw, I. Ruts and A. Struyf, and <code>C++</code> code by P. Segaert and K. Vakili.</p>
+
+
+<h3>References</h3>
+
+<p>Tukey J. (1975). Mathematics and the picturing of data. <em>Proceedings of the International Congress of Mathematicians,</em> <b>2</b>, 523–531, Vancouver.
+</p>
+<p>Rousseeuw P.J., Ruts I. (1996). AS 307: Bivariate location depth. <em>Journal of the Royal Statistical Society: Series C</em>, <b>45</b>, 516–526.
+</p>
+<p>Rousseeuw P.J., Struyf A. (1998). Computing location depth and regression depth in higher dimensions. <em>Statistics and  Computing</em>, <b>8</b>, 193–203.
+</p>
+<p>Cuesta-Albertos J., Nieto-Reyes A. (2008). The random Tukey depth. <em>Computational Statistics &amp; Data Analysis</em>, <b>52</b>, 4979–4988.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>hdepthmedian</code>, <code>mrainbowplot</code>, <code>bagdistance</code>, <code>bagplot</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Compute the halfspace depth of a simple
+# two-dimensional dataset. 
+data(cardata90)
+Result &lt;- hdepth(x = cardata90)
+mrainbowplot(cardata90, depths = Result$depthZ)
+
+# In two dimensions we may also opt to use the
+# approximate algorithm. The number of directions
+# may be specified through the option list.
+options &lt;- list(type = "Rotation",
+                ndir = 750,
+                approx = TRUE)
+Result &lt;- hdepth(x = cardata90, options = options)
+# The resulting halfspace depth is monotone decreasing 
+# in the number of directions.
+options &lt;- list(type = "Rotation",
+                ndir = 10,
+                approx = TRUE)
+Result1 &lt;- hdepth(x = cardata90, options = options)
+options &lt;- list(type = "Rotation",
+                ndir = 500,
+                approx = TRUE)
+Result2 &lt;- hdepth(x = cardata90, options = options)
+which(Result1$depthZ - Result2$depthZ &lt; 0)
+# This is however not the case when the seed is changed
+options &lt;- list(type = "Rotation",
+                ndir = 10,
+                approx = TRUE)
+Result1 &lt;- hdepth(x = cardata90, options = options)
+options &lt;- list(type = "Rotation",
+                ndir = 50,
+                approx = TRUE,
+                seed = 897)
+Result2 &lt;- hdepth(x = cardata90, options = options)
+which(Result1$depthZ - Result2$depthZ &lt; 0)
+plot(Result1$depthZ - Result2$depthZ,
+     xlab = "Index", ylab = "Difference in halfspace depth")
+
+# We can also consider directions through two data
+# points. If the sample is small enough one may opt
+# to search over all choose(n,2) directions.
+# Note that the computational load increases substantially
+# as n becomes larger.
+options &lt;- list(type = "Rotation",
+                ndir = "all",
+                approx = TRUE)
+Result1 &lt;- hdepth(x = cardata90, options = options)
+
+# Alternatively one may consider randomly generated directions.
+options &lt;- list(type = "Shift",
+                ndir = 250,
+                approx = TRUE)
+Result1 &lt;- hdepth(x = cardata90, options = options)
+</code></pre>
+
+
+</div>

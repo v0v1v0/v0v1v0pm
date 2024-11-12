@@ -1,0 +1,234 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>primersearch_raw</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Use EMBOSS primersearch for in silico PCR</h2>
+
+<h3>Description</h3>
+
+<p>A pair of primers are aligned against a set of sequences.
+The location of the best hits, quality of match, and predicted amplicons are returned.
+Requires the EMBOSS tool kit (<a href="https://emboss.sourceforge.net/">https://emboss.sourceforge.net/</a>) to be installed.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">primersearch_raw(input = NULL, file = NULL, forward, reverse, mismatch = 5)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>input</code></td>
+<td>
+<p>(<code>character</code>) One of the following: 
+</p>
+
+<dl>
+<dt>A character vector of sequences</dt>
+<dd>
+<p>See the example below for what this
+looks like. The parser <code>read_fasta</code> produces output like this.</p>
+</dd>
+<dt>A list of character vectors</dt>
+<dd>
+<p>Each vector should have one base per element.</p>
+</dd>
+<dt>A "DNAbin" object</dt>
+<dd>
+<p>This is the result of parsers like
+<code>read.FASTA</code>.</p>
+</dd>
+<dt>A list of "SeqFastadna" objects</dt>
+<dd>
+<p>This is the result of parsers like
+<code>read.fasta</code>.</p>
+</dd>
+</dl>
+<p>Either "input" or "file" must be supplied but not both.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>file</code></td>
+<td>
+<p>The path to a FASTA file containing sequences to use. Either
+"input" or "file" must be supplied but not both.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>forward</code></td>
+<td>
+<p>(<code>character</code> of length 1) The forward primer sequence</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reverse</code></td>
+<td>
+<p>(<code>character</code> of length 1) The reverse primer sequence</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mismatch</code></td>
+<td>
+<p>An integer vector of length 1. The percentage of mismatches allowed.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>It can be confusing how the primer sequence relates to the binding sites on a
+reference database sequence. A simplified diagram can help. For example, if
+the top strand below (5' -&gt; 3') is the database sequence, the forward primer
+has the same sequence as the target region, since it will bind to the other
+strand (3' -&gt; 5') during PCR and extend on the 3' end. However, the reverse
+primer must bind to the database strand, so it will have to be the complement
+of the reference sequence. It also has to be reversed to make it in the
+standard 5' -&gt; 3' orientation. Therefore, the reverse primer must be the
+reverse complement of its binding site on the reference sequence.
+</p>
+<pre>
+Primer 1: 5' AAGTACCTTAACGGAATTATAG 3'
+Primer 2: 5' GCTCCACCTACGAAACGAAT   3'
+ 
+                               &lt;- TAAGCAAAGCATCCACCTCG 5'
+5' ...AAGTACCTTAACGGAATTATAG......ATTCGTTTCGTAGGTGGAGC... 3'
+
+3' ...TTCATGGAATTGCCTTAATATC......TAAGCAAAGCATCCACCTCG... 5'
+   5' AAGTACCTTAACGGAATTATAG -&gt;
+</pre>
+<p>However, a database might have either the top or the bottom strand as a
+reference sequence. Since one implies the sequence of the other, either is
+valid, but this is another source of confusion. If we take the diagram above
+and rotate it 180 degrees, it would mean the same thing, but which primer we would
+want to call "forward" and which we would want to call "reverse" would
+change. Databases of a single locus (e.g. Greengenes) will likely have a
+convention for which strand will be present, so relative to this convention,
+there is a distinct "forward" and "reverse". However, computers dont know
+about this convention, so the "forward" primer is whichever primer has the
+same sequence as its binding region in the database (as opposed to the
+reverse complement). For this reason, primersearch will redefine which primer
+is "forward" and which is "reverse" based on how it binds the reference
+sequence. See the example code for a demonstration of this.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A table with one row per predicted amplicon with the following info:
+</p>
+<pre>
+           (f_primer)
+   5' AAGTACCTTAACGGAATTATAG -&gt;        (r_primer)
+                               &lt;- TAAGCAAAGCATCCACCTCG 5'
+5' ...AAGTACCTTAACGGAATTATAG......ATTCGTTTCGTAGGTGGAGC... 3'
+      ^                    ^      ^                  ^
+   f_start              f_end   r_rtart             r_end
+     
+      |--------------------||----||------------------|
+             f_match       amplicon       r_match  
+      |----------------------------------------------|
+                           product
+                           
+  
+f_mismatch: The number of mismatches on the forward primer
+r_mismatch: The number of mismatches on the reverse primer
+input: The index of the input sequence
+</pre>
+
+
+<h3>Installing EMBOSS</h3>
+
+<p>The command-line tool "primersearch" from the EMBOSS tool kit is needed to use this function.
+How you install EMBOSS will depend on your operating system:
+</p>
+<p><strong>Linux:</strong>
+</p>
+<p>Open up a terminal and type:
+</p>
+<p><code>sudo apt-get install emboss</code>
+</p>
+<p><strong>Mac OSX:</strong>
+</p>
+<p>The easiest way to install EMBOSS on OSX is to use <a href="https://brew.sh/">homebrew</a>.
+After installing homebrew, open up a terminal and type:
+</p>
+<p><code>brew install homebrew/science/emboss</code>
+</p>
+<p><strong>Windows:</strong>
+</p>
+<p>There is an installer for Windows here:
+</p>
+<p>ftp://emboss.open-bio.org/pub/EMBOSS/windows/mEMBOSS-6.5.0.0-setup.exe
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+
+### Dummy test data set ###
+
+primer_1_site &lt;- "AAGTACCTTAACGGAATTATAG"
+primer_2_site &lt;- "ATTCGTTTCGTAGGTGGAGC"
+amplicon &lt;- "NNNAGTGGATAGATAGGGGTTCTGTGGCGTTTGGGAATTAAAGATTAGAGANNN"
+seq_1 &lt;- paste0("AA", primer_1_site, amplicon, primer_2_site, "AAAA")
+seq_2 &lt;- rev_comp(seq_1)
+f_primer &lt;- "ACGTACCTTAACGGAATTATAG" # Note the "C" mismatch at position 2
+r_primer &lt;- rev_comp(primer_2_site)
+seqs &lt;- c(a = seq_1, b = seq_2)
+
+result &lt;- primersearch_raw(seqs, forward = f_primer, reverse = r_primer)
+
+
+### Real data set ###
+
+# Get example FASTA file
+fasta_path &lt;- system.file(file.path("extdata", "silva_subset.fa"),
+                          package = "metacoder")
+
+# Parse the FASTA file as a taxmap object
+obj &lt;- parse_silva_fasta(file = fasta_path)
+
+# Simulate PCR with primersearch
+pcr_result &lt;- primersearch_raw(obj$data$tax_data$silva_seq, 
+                               forward = c("U519F" = "CAGYMGCCRCGGKAAHACC"),
+                               reverse = c("Arch806R" = "GGACTACNSGGGTMTCTAAT"),
+                               mismatch = 10)
+
+# Add result to input table 
+#  NOTE: We want to add a function to handle running pcr on a
+#        taxmap object directly, but we are still trying to figure out
+#        the best way to implement it. For now, do the following:
+obj$data$pcr &lt;- pcr_result
+obj$data$pcr$taxon_id &lt;- obj$data$tax_data$taxon_id[pcr_result$input]
+
+# Visualize which taxa were amplified
+#  This work because only amplicons are returned by `primersearch`
+n_amplified &lt;- unlist(obj$obs_apply("pcr",
+                                    function(x) length(unique(x)),
+                                    value = "input"))
+prop_amped &lt;- n_amplified / obj$n_obs()
+heat_tree(obj,
+          node_label = taxon_names, 
+          node_color = prop_amped, 
+          node_color_range = c("grey", "red", "purple", "green"),
+          node_color_trans = "linear",
+          node_color_axis_label = "Proportion amplified",
+          node_size = n_obs,
+          node_size_axis_label = "Number of sequences",
+          layout = "da", 
+          initial_layout = "re")
+
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

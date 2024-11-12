@@ -1,0 +1,275 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mt_cluster_k</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate optimal number of clusters.</h2>
+
+<h3>Description</h3>
+
+<p>Estimates the optimal number of clusters (<code>k</code>) using various methods.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mt_cluster_k(
+  data,
+  use = "ln_trajectories",
+  dimensions = c("xpos", "ypos"),
+  kseq = 2:15,
+  compute = c("stability", "gap", "jump", "slope"),
+  method = "hclust",
+  weights = rep(1, length(dimensions)),
+  pointwise = TRUE,
+  minkowski_p = 2,
+  hclust_method = "ward.D",
+  kmeans_nstart = 10,
+  n_bootstrap = 10,
+  model_based = FALSE,
+  n_gap = 10,
+  na_rm = FALSE,
+  verbose = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a mousetrap data object created using one of the mt_import
+functions (see mt_example for details). Alternatively, a trajectory
+array can be provided directly (in this case <code>use</code> will be ignored).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use</code></td>
+<td>
+<p>a character string specifying which trajectory data should be
+used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dimensions</code></td>
+<td>
+<p>a character vector specifying which trajectory variables
+should be used. Can be of length 2 or 3, for two-dimensional or
+three-dimensional trajectories respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kseq</code></td>
+<td>
+<p>a numeric vector specifying set of candidates for k. Defaults to
+2:15, implying that all values of k within that range are compared using
+the metrics specified in <code>compute</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>compute</code></td>
+<td>
+<p>character vector specifying the to be computed measures. Can
+be any subset of <code>c("stability","gap","jump","slope")</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>character string specifying the type of clustering procedure
+for the stability-based method. Either <code>hclust</code> or <code>kmeans</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>numeric vector specifying the relative importance of the
+variables specified in <code>dimensions</code>. Defaults to a vector of 1s
+implying equal importance. Technically, each variable is rescaled so that
+the standard deviation matches the corresponding value in <code>weights</code>.
+To use the original variables, set <code>weights = NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pointwise</code></td>
+<td>
+<p>boolean specifying the way in which dissimilarity between
+the trajectories is measured. If <code>TRUE</code> (the default),
+<code>mt_distmat</code> measures the average dissimilarity and then sums the
+results. If <code>FALSE</code>, <code>mt_distmat</code>  measures dissimilarity once
+(by treating the various points as independent dimensions). This is only
+relevant if <code>method</code> is "hclust". See mt_distmat for further
+details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>minkowski_p</code></td>
+<td>
+<p>an integer specifying the distance metric for the cluster
+solution. <code>minkowski_p = 1</code> computes the city-block distance,
+<code>minkowski_p = 2</code> (the default) computes the Euclidian distance,
+<code>minkowski_p = 3</code> the cubic distance, etc. Only relevant if
+<code>method</code> is "hclust". See mt_distmat for further details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hclust_method</code></td>
+<td>
+<p>character string specifying the linkage criterion used.
+Passed on to the <code>method</code> argument of hclust. Default is
+set to <code>ward.D</code>. Only relevant if <code>method</code> is "hclust".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kmeans_nstart</code></td>
+<td>
+<p>integer specifying the number of reruns of the kmeans
+procedure. Larger numbers minimize the risk of finding local minima. Passed
+on to the <code>nstart</code> argument of kmeans. Only relevant if
+<code>method</code> is "kmeans".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_bootstrap</code></td>
+<td>
+<p>an integer specifying the number of bootstrap comparisons
+used by <code>stability</code>. See cStability.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model_based</code></td>
+<td>
+<p>boolean specifying whether the model-based or the
+model-free should be used by <code>stability</code>, when method is
+<code>kmeans</code>. See cStability and Haslbeck &amp; Wulff (2020).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_gap</code></td>
+<td>
+<p>integer specifying the number of simulated datasets used by
+<code>gap</code>. See Tibshirani et al. (2001).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na_rm</code></td>
+<td>
+<p>logical specifying whether trajectory points containing NAs
+should be removed. Removal is done column-wise. That is, if any trajectory
+has a missing value at, e.g., the 10th recorded position, the 10th position
+is removed for all trajectories. This is necessary to compute distance
+between trajectories.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>logical indicating whether function should report its
+progress.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>mt_cluster_k</code> estimates the number of clusters (<code>k</code>) using four
+commonly used k-selection methods (specified via <code>compute</code>): cluster
+stability (<code>stability</code>), the gap statistic (<code>gap</code>), the jump
+statistic (<code>jump</code>), and the slope statistic (<code>slope</code>).
+</p>
+<p>Cluster stability methods select <code>k</code> as the number of clusters for which
+the assignment of objects to clusters is most stable across bootstrap
+samples. This function implements the model-based and model-free methods
+described by Haslbeck &amp; Wulff (2020). See references.
+</p>
+<p>The remaining three methods select <code>k</code> as the value that optimizes the
+gap statistic (Tibshirani, Walther, &amp; Hastie, 2001), the jump statistic
+(Sugar &amp; James, 2013), and the slope statistic (Fujita, Takahashi, &amp;
+Patriota, 2014), respectively.
+</p>
+<p>For clustering trajectories, it is often useful that the endpoints of all
+trajectories share the same direction, e.g., that all trajectories end in the
+top-left corner of the coordinate system (mt_remap_symmetric or
+mt_align can be used to achieve this). Furthermore, it is recommended
+to use length normalized trajectories (see mt_length_normalize; Wulff
+et al., 2019).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing two lists that store the results of the different
+methods. <code>kopt</code> contains the estimated <code>k</code> for each of the
+methods specified in <code>compute</code>. <code>paths</code> contains the values for
+each <code>k</code> in <code>kseq</code> as computed by each of the methods specified
+in <code>compute</code>. The values in <code>kopt</code> are optima for each of the
+vectors in <code>paths</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Dirk U. Wulff
+</p>
+<p>Jonas M. B. Haslbeck
+</p>
+
+
+<h3>References</h3>
+
+<p>Haslbeck, J. M. B., &amp; Wulff, D. U. (2020). Estimating the Number
+of Clusters via a Corrected Clustering Instability. <em>Computational
+Statistics, 35</em>, 1879–1894.
+</p>
+<p>Wulff, D. U., Haslbeck, J. M. B., Kieslich, P. J., Henninger, F., &amp;
+Schulte-Mecklenbeck, M. (2019). Mouse-tracking: Detecting types in movement
+trajectories. In M. Schulte-Mecklenbeck, A. Kühberger, &amp; J. G. Johnson
+(Eds.), <em>A Handbook of Process Tracing Methods</em> (pp. 131-145). New
+York, NY: Routledge.
+</p>
+<p>Tibshirani, R., Walther, G., &amp; Hastie, T. (2001). Estimating the number of
+clusters in a data set via the gap statistic. <em>Journal of the Royal
+Statistical Society: Series B (Statistical Methodology), 63</em>(2), 411-423.
+</p>
+<p>Sugar, C. A., &amp; James, G. M. (2013). Finding the number of clusters in a
+dataset. <em>Journal of the American Statistical Association, 98</em>(463),
+750-763.
+</p>
+<p>Fujita, A., Takahashi, D. Y., &amp; Patriota, A. G. (2014). A non-parametric
+method to estimate the number of clusters. <em>Computational Statistics &amp;
+Data Analysis, 73</em>, 27-39.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>mt_distmat for more information about how the distance matrix
+is computed when the hclust method is used.
+</p>
+<p>mt_cluster for performing trajectory clustering with a specified
+number of clusters.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+# Length normalize trajectories
+KH2017 &lt;- mt_length_normalize(KH2017)
+
+# Find k
+results &lt;- mt_cluster_k(KH2017, use="ln_trajectories")
+
+# Retrieve results
+results$kopt
+results$paths
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

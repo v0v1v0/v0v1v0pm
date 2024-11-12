@@ -1,0 +1,518 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>dredge</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Automated model selection</h2>
+
+<h3>Description</h3>
+
+<p>Generate a model selection table of models with combinations (subsets) of fixed 
+effect terms in the global model, with optional model inclusion rules.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">dredge(global.model, beta = c("none", "sd", "partial.sd"), evaluate = TRUE,
+  rank = "AICc", fixed = NULL, m.lim = NULL, m.min, m.max, subset,
+  trace = FALSE, varying, extra, ct.args = NULL, deps = attr(allTerms0, "deps"),
+  cluster = NULL,
+  ...)
+
+## S3 method for class 'model.selection'
+print(x, abbrev.names = TRUE, warnings = getOption("warn") != -1L, ...)
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>global.model</code></td>
+<td>
+<p>a fitted ‘global’ model object. See
+‘Details’ for a list of supported types. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta</code></td>
+<td>
+<p>indicates whether and how the coefficients are standardized, and 
+must be one of <code>"none"</code>, <code>"sd"</code> or <code>"partial.sd"</code>. You can 
+specify just the initial letter. <code>"none"</code> corresponds to unstandardized
+coefficients, <code>"sd"</code> and <code>"partial.sd"</code> to coefficients 
+standardized by <abbr><span class="acronym">SD</span></abbr> and Partial <abbr><span class="acronym">SD</span></abbr>, respectively. For 
+backwards compatibility, logical value is also accepted, <code>TRUE</code> is 
+equivalent to <code>"sd"</code> and <code>FALSE</code> to <code>"none"</code>. 
+See <code>std.coef</code>.	</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>evaluate</code></td>
+<td>
+<p>whether to evaluate and rank the models. If <code>FALSE</code>, a
+list of unevaluated <code>call</code>s is returned. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rank</code></td>
+<td>
+<p>optionally, the rank function returning a sort of an information
+criterion, to be used instead <code>AICc</code>, e.g. <code>AIC</code>, <code>QAIC</code> or
+<code>BIC</code>.
+See ‘Details’. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixed</code></td>
+<td>
+<p>optional, either a single-sided formula or a character vector
+giving names of terms to be included in all models. Not to be confused with
+fixed effects. See ‘Subsetting’. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>m.lim, m.max, m.min</code></td>
+<td>
+<p>optionally, the limits <code>c(lower, upper)</code>
+for the number of terms in a single model (excluding the intercept). An
+<code>NA</code> means no limit. See ‘Subsetting’.
+Specifying limits as <code>m.min</code> and <code>m.max</code> is allowed for backward
+compatibility. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>logical expression or a <code>matrix</code> describing models to 
+be kept in the resulting set. <code>NULL</code> or <code>TRUE</code> 
+disables subsetting. For details, see ‘Subsetting’. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trace</code></td>
+<td>
+<p>if <code>TRUE</code> or <code>1</code>, all calls to the fitting function
+are printed before actual fitting takes place. If <code>trace &gt; 1</code>, a progress bar
+is displayed. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>varying</code></td>
+<td>
+<p> optionally, a named list describing the additional arguments
+to vary between the generated models. Item names correspond to the
+arguments, and each item provides a list of choices (i.e. <code>list(arg1 =
+	list(choice1, choice2, ...), ...)</code>). Complex elements in the choice list
+(such as <code>family</code> objects) should be either named (uniquely) or quoted
+(unevaluated, e.g. using <code>alist</code>, see <code>quote</code>),
+otherwise the result may be visually unpleasant. See example in
+<code>Beetle</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>extra</code></td>
+<td>
+<p> optional additional statistics to be included in the result,
+provided as functions, function names or a list of such (preferably named
+or quoted). As with the <code>rank</code> argument, each function must accept as 
+an argument a fitted model object and return (a value coercible to) a
+numeric vector.
+This could be, for instance, additional information criteria or goodness-of-fit
+statistics. The character strings <code>"R^2"</code> and <code>"adjR^2"</code> are
+treated in a special way and add a likelihood-ratio based <code class="reqn">R^{2}</code> and
+modified-<code class="reqn">R^{2}</code> to the result, respectively (this is more efficient than using
+<code>r.squaredLR</code> directly). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p> a <code>model.selection</code> object, returned by <code>dredge</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>abbrev.names</code></td>
+<td>
+<p> Should term names in the table header be abbreviated when
+printed? This is the default. If full names are required, use <code>print()</code> 
+explicitly with this argument set to <code>FALSE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>warnings</code></td>
+<td>
+<p> if <code>TRUE</code>, errors and warnings issued during the model
+fitting are printed below the table (only with <code>pdredge</code>).
+To permanently remove the warnings, set the object's attribute
+<code>"warnings"</code> to <code>NULL</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ct.args</code></td>
+<td>
+<p> optional list of arguments to be passed to
+<code>coefTable</code> (e.g. <code>dispersion</code> parameter for <code>glm</code>
+affecting standard errors used in subsequent
+<code>model averaging</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>deps</code></td>
+<td>
+<p>a “dependency matrix” as returned by <code>getAllTerms</code>, 
+attribute <code>"deps"</code>. Can be used to fine-tune marginality 
+exceptions. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cluster</code></td>
+<td>
+<p> if a valid <code>"cluster"</code> object is given, it is used for
+parallel execution. If <code>NULL</code> or omitted, execution is 
+single-threaded.
+</p>
+<p>With parallel calculation, an extra argument <code>check</code> is accepted.
+</p>
+<p>See <code>pdredge</code> for details and examples.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p> optional arguments for the <code>rank</code> function. Any can be
+an unevaluated expression, in which case any <code>x</code> within it will be 
+substituted with the current model. </p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Models are fitted through repeated evaluation of the modified call extracted from
+the <code>global.model</code> (in a similar fashion to <code>update</code>). This
+approach, while having the advantage that it can be applied to most model types through the
+usual formula interface, can have a considerable computational overhead.
+</p>
+<p>Note that the number of combinations grows exponentially with the number of
+predictors (<code class="reqn">2^{N}</code>, less when
+interactions are present, see below).
+</p>
+<p>The fitted model objects are not stored in the result. To get (a subset of)
+the models, use <code>get.models</code> on the object returned by <code>dredge</code>.
+Another way to get all the models is to run 
+<code>lapply(dredge(..., evaluate = FALSE), eval)</code>, 
+which avoids fitting models twice.
+</p>
+<p>For a list of model types that can be used as a <code>global.model</code> see
+the list of supported models. Modelling functions that 
+do not store a <code>call</code> in their result should be evaluated <em>via</em> a wrapper function
+created by <code>updateable</code>.
+</p>
+
+
+<h4>Information criterion</h4>
+
+<p><code>rank</code> is found by a call to <code>match.fun</code> and may be specified as a
+function, a symbol, or as a character string specifying a function to be searched 
+for from the environment of the call to <code>dredge</code>. It can be also a 
+one-element named list, where the first element is taken as the rank function.
+The function <code>rank</code> must accept a model object as its first argument and
+always return a scalar.
+</p>
+
+
+
+<h4>Interactions</h4>
+
+<p>By default, marginality constraints are respected, so “all possible
+combinations” include only those containing interactions with their
+respective main effects and all lower-order terms.
+However, if <code>global.model</code> makes an exception to this principle (e.g. due
+to a nested design such as <code>a / (b + d)</code>), this will be reflected in the
+subset models.
+</p>
+
+
+
+<h4>Subsetting</h4>
+
+<p>There are three ways to constrain the resulting set of models: setting limits to
+the number of terms in a model with <code>m.lim</code>, binding 
+term(s) to all models using <code>fixed</code>, and the <code>subset</code> argument can be 
+used for more complex rules. For a model to be included in the selection table, its 
+formulation must satisfy all these conditions.
+</p>
+
+
+<p><code>subset</code> may be an <em>expression</em> or a <em>matrix</em>.
+The latter should be a lower triangular matrix with logical values, where the 
+columns and rows correspond to <code>global.model</code> terms. Value
+<code>subset["a", "b"] == FALSE</code> will exclude any model containing both 
+<var>a</var> and <var>b</var> terms. <br><code>demo(dredge.subset)</code> has examples of using the <code>subset</code> matrix in 
+conjunction with correlation matrices to exclude models containing collinear 
+predictors.
+</p>
+<p>In the form of <code>expression</code>, the argument <code>subset</code> acts in a similar
+fashion to that in the function <code>subset</code> for <code>data.frames</code>: model
+terms can be referred to by name as variables in the expression, with the
+difference being that are interpreted as logical values (i.e. equal to
+<code>TRUE</code> if the term exists in the model).
+</p>
+<p>The expression can contain any of the <code>global.model</code> term names, as well as
+names of the <code>varying</code> list items. <code>global.model</code> term names take
+precedence when identical to names of <code>varying</code>, so to avoid ambiguity
+<code>varying</code> variables in <code>subset</code> expression should be enclosed in
+<code>V()</code> (e.g. <code>V(family) == "Gamma"</code>) assuming that
+<code>varying</code> is something like <code>list(family =</code> <code>c("Gamma", ...))</code>).
+</p>
+<p>If item names in <code>varying</code> are missing, the items themselves are coerced to
+names. Call and symbol elements are represented as character values (<em>via</em>
+<code>deparse</code>), and anything other than numeric, logical, character and
+<code>NULL</code> values is replaced by item numbers (e.g. <code>varying =</code>
+<code>list(family =</code> <code>list(gaussian, Gamma)</code> should be referred to as
+<code>subset = V(family) == 2</code>. This can quickly become confusing, so it
+is recommended to use named lists. Examples can be found in <code>demo(dredge.varying)</code>.
+</p>
+<p>Term names appearing in <code>fixed</code> and <code>subset</code> must be given exactly 
+as they are returned by <code>getAllTerms(global.model)</code>, which may differ
+from the original term names (e.g. the interaction term components are ordered
+alphabetically).
+</p>
+<p>The <code>with(x)</code> and <code>with(+x)</code> notation indicates, respectively, any and
+all interactions including the main effect term <code>x</code>. This is only effective
+with marginality exceptions. The extended form <code>with(x, order)</code> allows to
+specify the order of interaction of terms of which <code>x</code> is a part. For
+instance, <code>with(b, 2:3)</code> selects models with at least one second- or
+third-order interaction of variable <code>b</code>. The second (positional)
+argument is coerced to an integer vector. The “dot” notation <code>.(x)</code> is
+an alias for <code>with</code>.
+</p>
+<p>The special variable <code>`*nvar*`</code> 
+(backtick-quoted), in the <code>subset</code> expression is equal to the number of 
+terms in the model (<b>not</b> the number of estimated parameters).
+</p>
+<p>To make the inclusion of a model term conditional on the presence of another one,
+the function <code>dc</code> (“<b>d</b>ependency <b>c</b>hain”) can be used in
+the <code>subset</code> expression. <code>dc</code> takes any number of term names as
+arguments, and allows a term to be included only if all preceding ones
+are also present (e.g. <code>subset = dc(a, b, c)</code> allows for models <code>a</code>,
+<code>a+b</code> and <code>a+b+c</code> but not <code>b</code>, <code>c</code>, <code>b+c</code> or
+<code>a+c</code>).
+</p>
+<p><code>subset</code> expression can have a form of an unevaluated <code>call</code>,
+<code>expression</code> object, or a one-sided <code>formula</code>. See ‘Examples’.
+</p>
+<p>Compound model terms (such as interactions, ‘as-is’ expressions within
+<code>I()</code> or smooths in <code>gam</code>) should be enclosed within curly brackets
+(e.g. <code>{s(x,k=2)}</code>), or backticks (like non-syntactic
+names, e.g. 
+<code>`s(x, k = 2)`</code>
+), except when they are arguments to <code>with</code> or <code>dc</code>.
+Backticks-quoted names must match exactly (including whitespace) the term names
+as returned by <code>getAllTerms</code>.
+</p>
+
+
+<h5>
+<code>subset</code> expression syntax summary</h5>
+
+
+<dl>
+<dt><code>a &amp; b</code></dt>
+<dd>
+<p> indicates that model terms <var>a</var> and <var>b</var> must be
+present (see Logical Operators) </p>
+</dd>
+<dt>
+<code>{log(x,2)}</code> or <code style="white-space: pre;">⁠`⁠</code><code>log(x, 2)</code><code style="white-space: pre;">⁠`⁠</code>
+</dt>
+<dd>
+<p> represent a complex
+model term <code>log(x, 2)</code></p>
+</dd>
+<dt><code>V(x)</code></dt>
+<dd>
+<p> represents a <code>varying</code> item <var>x</var> </p>
+</dd>
+<dt><code>with(x)</code></dt>
+<dd>
+<p> indicates that at least one term containing the main 
+effect term <var>x</var> must be present </p>
+</dd>
+<dt><code>with(+x)</code></dt>
+<dd>
+<p> indicates that all the terms containing the main 
+effect term <var>x</var> must be present </p>
+</dd>
+<dt><code>with(x, n:m)</code></dt>
+<dd>
+<p> indicates that at least one term containing an 
+<var>n</var>-th to <var>m</var>-th order interaction term of <var>x</var> must be present </p>
+</dd>
+<dt><code>dc(a, b, c,...)</code></dt>
+<dd> <p>‘dependency chain’: <var>b</var> is allowed only
+if <var>a</var> is present, and <var>c</var> only if both <var>a</var> and <var>b</var> are
+present, etc. </p>
+</dd>
+<dt><code>`*nvar*`</code></dt>
+<dd>
+<p> the number of terms in the model. </p>
+</dd>
+</dl>
+<p>To simply keep certain terms in all models, use of argument <code>fixed</code> is much
+more efficient. The <code>fixed</code> formula is interpreted in the same manner
+as model formula and so the terms must not be quoted.
+</p>
+
+
+
+<h4>Missing values</h4>
+
+<p>Use of <code>na.action = "na.omit"</code> (<span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span>'s default) or <code>"na.exclude"</code>  in
+<code>global.model</code> must be avoided, as it results with sub-models fitted to
+different data sets if there are missing values. An error is thrown if it is
+detected.
+</p>
+<p>It is a common mistake to give <code>na.action</code> as an argument in the call
+to <code>dredge</code> (typically resulting in an error from the <code>rank</code>
+function to which the argument is passed through ‘...’), while the 
+correct way
+is either to pass <code>na.action</code> in the call to the global model or to set
+it as a global option.
+</p>
+
+
+
+<h4>Intercept</h4>
+
+ 
+<p>If present in the <code>global.model</code>, the intercept will be included in all 
+sub-models.
+</p>
+
+
+
+<h4>Methods</h4>
+
+<p>There are <code>subset</code> and
+<code>plot</code> methods, the latter creates a
+graphical representation of model weights and per-model term sum of weights.
+Coefficients can be extracted with <code>coef</code> or <code>coefTable</code>.
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>c("model.selection", "data.frame")</code>, being a
+<code>data.frame</code>, where each row represents one model.
+See <code>model.selection.object</code> for its structure.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Users should keep in mind the hazards that a “thoughtless approach”
+of evaluating all possible models poses. Although this procedure is in certain
+cases useful and justified, it may result in selecting a spurious “best”
+model, due to the model selection bias.
+</p>
+<p><em>“Let the computer find out” is a poor strategy and usually reflects
+the fact that the researcher did not bother to think clearly about the problem
+of interest and its scientific setting</em> (Burnham and Anderson, 2002).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kamil Bartoń</p>
+
+
+<h3>See Also</h3>
+
+<p><code>get.models</code>, <code>model.avg</code>. <code>model.sel</code> for
+manual model selection tables.
+</p>
+<p>Possible alternatives: <code>glmulti</code> in package <span class="pkg">glmulti</span>
+and <code>bestglm</code> (<span class="pkg">bestglm</span>).
+
+<code>regsubsets</code> in package <span class="pkg">leaps</span> also performs all-subsets
+regression.
+</p>
+<p>Variable selection through regularization provided by various packages, e.g. <span class="pkg">glmnet</span>,
+<span class="pkg">lars</span> or <span class="pkg">glmmLasso</span>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Example from Burnham and Anderson (2002), page 100:
+
+#  prevent fitting sub-models to different datasets
+
+options(na.action = "na.fail")
+
+fm1 &lt;- lm(y ~ ., data = Cement)
+dd &lt;- dredge(fm1)
+subset(dd, delta &lt; 4)
+
+# Visualize the model selection table:
+
+par(mar = c(3,5,6,4))
+plot(dd, labAsExpr = TRUE)
+
+
+# Model average models with delta AICc &lt; 4
+model.avg(dd, subset = delta &lt; 4)
+
+#or as a 95% confidence set:
+model.avg(dd, subset = cumsum(weight) &lt;= .95) # get averaged coefficients
+
+#'Best' model
+summary(get.models(dd, 1)[[1]])
+
+## Not run: 
+# Examples of using 'subset':
+# keep only models containing X3
+dredge(fm1, subset = ~ X3) # subset as a formula
+dredge(fm1, subset = expression(X3)) # subset as expression object
+# the same, but more effective:
+dredge(fm1, fixed = "X3")
+# exclude models containing both X1 and X2 at the same time
+dredge(fm1, subset = !(X1 &amp;&amp; X2))
+# Fit only models containing either X3 or X4 (but not both);
+# include X3 only if X2 is present, and X2 only if X1 is present.
+dredge(fm1, subset = dc(X1, X2, X3) &amp;&amp; xor(X3, X4))
+# the same as above, without "dc"
+dredge(fm1, subset = (X1 | !X2) &amp;&amp; (X2 | !X3) &amp;&amp; xor(X3, X4))
+
+# Include only models with up to 2 terms (and intercept)
+dredge(fm1, m.lim = c(0, 2))
+
+## End(Not run)
+
+# Add R^2 and F-statistics, use the 'extra' argument
+dredge(fm1, m.lim = c(NA, 1), extra = c("R^2", F = function(x)
+    summary(x)$fstatistic[[1]]))
+
+# with summary statistics:
+dredge(fm1, m.lim = c(NA, 1), extra = list(
+    "R^2", "*" = function(x) {
+        s &lt;- summary(x)
+        c(Rsq = s$r.squared, adjRsq = s$adj.r.squared,
+            F = s$fstatistic[[1]])
+    })
+)
+
+# Add other information criteria (but rank with AICc):
+dredge(fm1, m.lim = c(NA, 1), extra = alist(AIC, BIC, ICOMP, Cp))
+
+</code></pre>
+
+
+</div>

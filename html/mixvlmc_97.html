@@ -1,0 +1,204 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>tune_covlmc</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit an optimal Variable Length Markov Chain with Covariates (coVLMC)</h2>
+
+<h3>Description</h3>
+
+<p>This function fits a Variable Length Markov Chain with Covariates (coVLMC) to
+a discrete time series coupled with a time series of covariates by optimizing
+an information criterion (BIC or AIC).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">tune_covlmc(
+  x,
+  covariate,
+  criterion = c("BIC", "AIC"),
+  initial = c("truncated", "specific", "extended"),
+  alpha_init = NULL,
+  min_size = 5,
+  max_depth = 100,
+  verbose = 0,
+  save = c("best", "initial", "all"),
+  trimming = c("full", "partial", "none"),
+  best_trimming = c("none", "partial", "full")
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a discrete time series; can be numeric, character, factor and
+logical.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covariate</code></td>
+<td>
+<p>a data frame of covariates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>criterion</code></td>
+<td>
+<p>criterion used to select the best model. Either <code>"BIC"</code>
+(default) or <code>"AIC"</code> (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial</code></td>
+<td>
+<p>specifies the likelihood function, more precisely the way the
+first few observations for which contexts cannot be calculated are
+integrated in the likelihood. See <code>loglikelihood()</code> for details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha_init</code></td>
+<td>
+<p>if non <code>NULL</code> used as the initial cut off parameter (in
+quantile scale) to build the initial VLMC</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min_size</code></td>
+<td>
+<p>integer &gt;= 1 (default: 5). Tune the minimum number of
+observations for a context in the growing phase of the context tree (see
+<code>covlmc()</code> for details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_depth</code></td>
+<td>
+<p>integer &gt;= 1 (default: 100). Longest context considered in
+growing phase of the initial context tree (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>integer &gt;= 0 (default: 0). Verbosity level of the pruning
+process.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>save</code></td>
+<td>
+<p>specify which BIC models are saved during the pruning process.
+The default value <code>"best"</code> asks the function to keep only the best model
+according to the <code>criterion</code>. When <code>save="initial"</code> the function keeps <em>in
+addition</em> the initial (complex) model which is then pruned during the
+selection process. When <code>save="all"</code>, the function returns all the models
+considered during the selection process. See details for memory occupation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trimming</code></td>
+<td>
+<p>specify the type of trimming used when saving the
+intermediate models, see details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>best_trimming</code></td>
+<td>
+<p>specify the type of trimming used when saving the best
+model and the initial one (see details).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function automates the process of fitting a large coVLMC to a discrete
+time series with <code>covlmc()</code> and of pruning the tree (with <code>cutoff()</code> and
+<code>prune()</code>) to get an optimal with respect to an information criterion. To
+avoid missing long term dependencies, the function uses the <code>max_depth</code>
+parameter as an initial guess but then relies on an automatic increase of the
+value to make sure the initial context tree is only limited by the <code>min_size</code>
+parameter. The initial value of the <code>alpha</code> parameter of <code>covlmc()</code> is also
+set to a conservative value (0.5) to avoid prior simplification of the
+context tree. This can be overridden by setting the <code>alpha_init</code> parameter to
+a more adapted value.
+</p>
+<p>Once the initial coVLMC is obtained, the <code>cutoff()</code> and <code>prune()</code> functions
+are used to build all the coVLMC models that could be generated using smaller
+values of the alpha parameter. The best model is selected from this
+collection, including the initial complex tree, as the one that minimizes the
+chosen information criterion.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list with the following components:
+</p>
+
+<ul>
+<li> <p><code>best_model</code>: the optimal COVLMC
+</p>
+</li>
+<li> <p><code>criterion</code>: the criterion used to select the optimal VLMC
+</p>
+</li>
+<li> <p><code>initial</code>: the likelihood function used to select the optimal VLMC
+</p>
+</li>
+<li> <p><code>results</code>: a data frame with details about the pruning process
+</p>
+</li>
+<li> <p><code>saved_models</code>: a list of intermediate COVLMCs if <code>save="initial"</code> or
+<code>save="all"</code>. It contains an <code>initial</code> component with the large coVLMC
+obtained first and an <code>all</code> component with a list of all the <em>other</em> coVLMC
+obtained by pruning the initial one.
+</p>
+</li>
+</ul>
+<h3>Memory occupation</h3>
+
+<p><code>covlmc</code> objects tend to be large and saving all the models during the
+search for the optimal model can lead to an unreasonable use of memory. To
+avoid this problem, models are kept in trimmed form only using
+<code>trim.covlmc()</code> with <code>keep_model=FALSE</code>. Both the initial model and the
+best one are saved untrimmed. This default behaviour corresponds to
+<code>trimming="full"</code>. Setting <code>trimming="partial"</code> asks the function to use
+<code>keep_model=TRUE</code> in <code>trim.covlmc()</code> for intermediate models. Finally,
+<code>trimming="none"</code> turns off trimming, which is discouraged expected for
+small data sets.
+</p>
+<p>In parallel processing contexts (e.g. using foreach::%dopar%), the memory
+occupation of the results can become very large as models tend to keep
+environments attached to the formulas. In this situation, it is highly
+recommended to trim all saved models, including the best one and the
+initial one. This can be done via the <code>best_trimming</code> parameter whose
+possible values are identical to the ones of <code>trimming</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>covlmc()</code>, <code>cutoff()</code> and <code>prune()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">pc &lt;- powerconsumption[powerconsumption$week %in% 6:7, ]
+dts &lt;- cut(pc$active_power, breaks = c(0, quantile(pc$active_power, probs = c(0.5, 1))))
+dts_cov &lt;- data.frame(day_night = (pc$hour &gt;= 7 &amp; pc$hour &lt;= 17))
+dts_best_model_tune &lt;- tune_covlmc(dts, dts_cov)
+draw(as_covlmc(dts_best_model_tune))
+</code></pre>
+
+
+</div>

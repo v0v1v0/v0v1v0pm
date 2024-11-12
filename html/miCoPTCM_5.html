@@ -1,0 +1,203 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>PTCMestimBF</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Corrected score approach
+</h2>
+
+<h3>Description</h3>
+
+<p>Fits a Semiparametric Promotion Time Cure Model, taking into account (using a corrected score approach) or not the measurement error in the covariates, using a backfitting approach to maximize the likelihood. Both methods were introduced in Ma and Yin (2008).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## Default S3 method:
+PTCMestimBF(x, y, varCov, init, nBack=10000, eps=1e-8, multMaxTime=2,...)
+## S3 method for class 'formula'
+PTCMestimBF(formula, data=list(), ...)
+## S3 method for class 'PTCMestimBF'
+print(x,...)
+## S3 method for class 'PTCMestimBF'
+summary(object,...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p> a numerical matrix containing the explanatory variables as columns (without a column of 1s for the intercept).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p> the response, a survival object returned by the <code>Surv</code> function. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>varCov</code></td>
+<td>
+<p> the square variance-covariance matrix of measurement error, with as many rows as regression parameters (including the intercept).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+<p> a numerical vector of initial values for the regression parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nBack</code></td>
+<td>
+<p> an integer specifying the maximal number of iterations in the backfitting procedure. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p> convergence criterion. Convergence is declared if the euclidian norm of the vector of changes in the estimated parameters and the euclidian norm of the  score equations evaluated at these values are smaller than <code>eps</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>multMaxTime</code></td>
+<td>
+<p> a positive number controlling the time allowed, in one iteration of the backfitting procedure, to function <code>nleqslv</code> (used to solve the score equations) to converge.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a formula object, in which the response is a survival object returned by the <code>Surv</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a dataframe containing the variables appearing in the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p> an object of class <code>"PTCMestimBF"</code>, i.e., a fitted model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p> not used. </p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This method assumes normally distributed measurement error. The diagonal elements of the matrix <code>varCov</code> corresponding to covariates without error (as is the case for the intercept) have to be set to 0.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>PTCMestimBF</code>, i.e. a list including the following elements:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>coefficients </code></td>
+<td>
+<p>The estimated values of the regression parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimCDF </code></td>
+<td>
+<p>The estimated baseline cumulative distribution function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vcov</code></td>
+<td>
+<p>The estimated variance-covariance matrix of the estimated regression parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>classObs</code></td>
+<td>
+<p>An integer vector of length 3: the number of censored individuals not considered as cured for the estimation, the number of events, and the number of individuals considered as cured for the estimation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>flag</code></td>
+<td>
+<p>Termination code: 1 if converged, 2 otherwise.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>endK</code></td>
+<td>
+<p>Number of iterations performed in the backfitting procedure.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Bertrand A., Legrand C., Carroll R.J., De Meester C., Van Keilegom I. (2015) Inference in a Survival Cure Model with Mismeasured Covariates using a SIMEX Approach. Submitted.
+</p>
+<p>Ma, Y., Yin, G. (2008) Cure rate models with mismeasured covariates under transformation. Journal of the American Statistical Association, 103, 743-756. DOI: 10.1198/016214508000000319
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library("survival")
+## Data generation
+set.seed(123)
+n &lt;- 200
+varCov &lt;- matrix(nrow=3,ncol=3,0)
+varCov[2,2] &lt;- 0.1^1
+X1 &lt;- (runif(n)-.5)/sqrt(1/12) 
+V &lt;- round(X1 + rnorm(n,rep(0,3),varCov[2,2]),7)# covariate with measurement error
+Xc &lt;- round(as.numeric(runif(n)&lt;0.5),7) # covariate without measurement error
+
+ # censoring times: truncated exponential distribution
+C &lt;- round(rexp(n,1/5),5) 
+Cbin &lt;- (C&gt;30)
+while(sum(Cbin)&gt;0)
+{
+	C[Cbin] &lt;- round(rexp(sum(Cbin),1/5),5)
+	Cbin &lt;- (C&gt;30)
+}
+
+expb &lt;- exp(0.5+X1-0.5*Xc) 
+cure &lt;- exp(-expb) # cure probabilities
+
+ # event times with baseline cdf of a truncated exponential 
+U &lt;- runif(n)
+d &lt;- rep(NA,n)
+T &lt;- round(-6*log( 1+ (1-exp(-20/6))*log(1-(1-cure)*U)/expb ),5) 
+T[(runif(n)&lt;cure)] &lt;- 99999 # cured subjects
+
+Tobs &lt;- rep(NA,n)
+Tobs &lt;- pmin(C,T) # observed times
+Tmax &lt;- max(Tobs[Tobs==T])
+d &lt;- (Tobs==T) # censoring indicator
+	
+Dat &lt;- data.frame(Tobs,d,V,Xc)
+#colnames(Dat) &lt;- c("Tobs","d","V","Xc")
+
+
+## Model estimation
+fm &lt;- formula(Surv(Tobs,d) ~ V + Xc)
+resMY &lt;- PTCMestimBF(fm, Dat, varCov=varCov, init=rnorm(3))
+resMY
+summary(resMY)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,303 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>vstBioCond</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Apply a Variance-Stabilizing Transformation to a <code>bioCond</code>
+</h2>
+
+<h3>Description</h3>
+
+<p>Given a <code>bioCond</code> object with which a mean-variance curve is
+associated, <code>vstBioCond</code> deduces a variance-stabilizing transformation
+(VST) based on the curve, and applies it to the signal intensities of
+samples contained in the <code>bioCond</code>, so that variances of individual
+genomic intervals are comparable between each other.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">vstBioCond(x, min.var = 0, integrate.func = integrate, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A <code>bioCond</code> object with which a mean-variance curve
+has been associated (see also <code>fitMeanVarCurve</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min.var</code></td>
+<td>
+<p>Lower bound of variances read from the mean-variance
+curve. Any variance read from the curve less than <code>min.var</code> will be
+adjusted to this value. It's primarily used for safely reading positive
+values from the curve and taking into account the practical significance
+of a signal variation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>integrate.func</code></td>
+<td>
+<p>A function for quadrature of functions of one
+variable. Any function passed to this argument must mimic the behavior
+of <code>integrate</code> (the default argument). See "Details".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments to <code>integrate.func</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>vstBioCond</code> deduces the VST by applying the standard delta method to
+the mean-variance curve associated with the <code>bioCond</code> object. To
+be noted, applying the VST to the <code>bioCond</code> retains its structure
+matrices. More specifically, the transformed signal intensities of each
+genomic interval will have a covariance matrix
+approximately proportional to its
+structure matrix in the <code>bioCond</code>. See <code>setWeight</code> for a
+detailed description of structure matrix.
+</p>
+<p>Technically, applying the VST requires the quadrature of a one-variable
+function, which in <code>vstBioCond</code> is achieved numerically. One can
+specify the numerical integration routine used by <code>vstBioCond</code> via the
+argument <code>integrate.func</code>, as long as the provided function mimics the
+behavior of <code>integrate</code>. Specifically, supposing the
+first three arguments to the function are <code>f</code>, <code>a</code> and <code>b</code>,
+then <code>ret$value</code> should be the integral of <code>f</code> from <code>a</code> to
+<code>b</code>, where <code>ret</code> is the object returned from the function. See
+<code>integrate</code> for details.
+</p>
+<p>One of the applications of applying a VST to a <code>bioCond</code> is for
+clustering the samples contained in it. Since variances of transformed
+signals are comparable across genomic intervals,
+performing a clustering analysis
+on the transformed data is expected to give more reliable results than those
+from the original signals. Notably, to apply a clustering analysis to the
+VSTed signals, one typically passes the returned object from
+<code>vstBioCond</code> to <code>distBioCond</code> setting the <code>method</code>
+argument to <code>"none"</code>, by which you can get a <code>dist</code>
+object recording the distance between each pair of samples of the
+<code>bioCond</code>. This procedure is specifically designed to handle VSTed
+<code>bioCond</code>s and has considered the possibility that different genomic
+intervals may be associated with different structure matrices (see
+<code>distBioCond</code> for details). The resulting
+<code>dist</code> object can then be passed to
+<code>hclust</code> to perform a hierarchical clustering (see
+also "Examples").
+</p>
+<p>From this perspective, <code>vstBioCond</code> could also be used to cluster a set
+of <code>bioCond</code> objects, by first combining them into a single
+<code>bioCond</code> and fitting a mean-variance curve for it (see "Examples"
+below and also <code>cmbBioCond</code>).
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>vstBioCond</code> returns a <code>bioCond</code> object with an
+extra attribute named <code>"vst.func"</code>, which represents the VST
+applied to <code>x</code>. Signal intensities contained in the returned
+<code>bioCond</code> are obtained by applying the VST to the signal
+intensities in <code>x</code>.
+</p>
+<p>The returned <code>bioCond</code> has the same biological condition name and
+occupancy states of genomic intervals as <code>x</code>. Besides, the
+structure matrix of each interval
+in the returned <code>bioCond</code> inherits
+from <code>x</code> as well, since performing the designed VST approximately
+retains the original structure matrices (see "Details").
+</p>
+<p>The <code>vst.func</code> attribute is a function that accepts a vector of
+signal intensities and returns the VSTed signals. To be noted,
+<code>vst.func</code> has been scaled so that the resulting transformed
+signals in the returned <code>bioCond</code> have a similar numerical range
+and variation level to the signal intensities in <code>x</code>.
+More specifically, the <code>sample.mean</code> and <code>sample.var</code> fields
+of the returned <code>bioCond</code> have the same arithmetic mean and
+geometric mean as <code>x$sample.mean</code> and <code>x$sample.var</code>,
+respectively. See <code>bioCond</code> for a detailed description
+of these fields.
+</p>
+<p>Note also that, in principle, applying the <code>vst.func</code> to any
+<code>bioCond</code> object that is associated with the same mean-variance
+curve as is <code>x</code> (i.e., has the same <code>mvcID</code> as that of
+<code>x</code>; see also <code>fitMeanVarCurve</code>) effectively stabilizes
+the variances of its signal intensities across genomic intervals.
+For future reference, the <code>vst.func</code> itself has an
+attribute named <code>"mvcID"</code> recording the <code>mvcID</code> of <code>x</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>bioCond</code> for creating a <code>bioCond</code> object;
+<code>fitMeanVarCurve</code> for fitting a mean-variance curve;
+<code>integrate</code> for a numerical integration routine;
+<code>setWeight</code> for a detailed description of structure matrix;
+<code>cmbBioCond</code> for combining a set of <code>bioCond</code> objects
+into a single one; <code>distBioCond</code> for robustly measuring the
+distances between samples in a <code>bioCond</code>;
+<code>hclust</code> for performing a hierarchical clustering on
+a <code>dist</code> object.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(H3K27Ac, package = "MAnorm2")
+attr(H3K27Ac, "metaInfo")
+
+## Cluster a set of ChIP-seq samples from different cell lines (i.e.,
+## individuals).
+
+# Perform MA normalization and construct a bioCond.
+norm &lt;- normalize(H3K27Ac, 4:8, 9:13)
+cond &lt;- bioCond(norm[4:8], norm[9:13], name = "all")
+
+# Fit a mean-variance curve.
+cond &lt;- fitMeanVarCurve(list(cond), method = "local",
+                        occupy.only = FALSE)[[1]]
+plotMeanVarCurve(list(cond), subset = "all")
+
+# Apply a variance-stabilizing transformation and associate a constant
+# function with the resulting bioCond as its mean-variance curve.
+vst_cond &lt;- vstBioCond(cond)
+vst_cond &lt;- setMeanVarCurve(list(vst_cond), function(x)
+                            rep_len(1, length(x)), occupy.only = FALSE,
+                            method = "constant prior")[[1]]
+plotMeanVarCurve(list(vst_cond), subset = "all")
+
+# Measure the distance between each pair of samples and accordingly perform
+# a hierarchical clustering. Note that biological replicates of each cell
+# line are clustered together.
+d1 &lt;- distBioCond(vst_cond, method = "none")
+plot(hclust(d1, method = "average"), hang = -1)
+
+# Measure the distances using only hypervariable genomic intervals. Note the
+# change of scale of the distances.
+res &lt;- varTestBioCond(vst_cond)
+f &lt;- res$fold.change &gt; 1 &amp; res$pval &lt; 0.05
+d2 &lt;- distBioCond(vst_cond, subset = f, method = "none")
+plot(hclust(d2, method = "average"), hang = -1)
+
+## Cluster a set of individuals.
+
+# Perform MA normalization and construct bioConds to represent individuals.
+norm &lt;- normalize(H3K27Ac, 4, 9)
+norm &lt;- normalize(norm, 5:6, 10:11)
+norm &lt;- normalize(norm, 7:8, 12:13)
+conds &lt;- list(GM12890 = bioCond(norm[4], norm[9], name = "GM12890"),
+              GM12891 = bioCond(norm[5:6], norm[10:11], name = "GM12891"),
+              GM12892 = bioCond(norm[7:8], norm[12:13], name = "GM12892"))
+conds &lt;- normBioCond(conds)
+
+# Group the individuals into a single bioCond and fit a mean-variance curve
+# for it.
+cond &lt;- cmbBioCond(conds, name = "all")
+cond &lt;- fitMeanVarCurve(list(cond), method = "local",
+                        occupy.only = FALSE)[[1]]
+plotMeanVarCurve(list(cond), subset = "all")
+
+# Apply a variance-stabilizing transformation and associate a constant
+# function with the resulting bioCond as its mean-variance curve.
+vst_cond &lt;- vstBioCond(cond)
+vst_cond &lt;- setMeanVarCurve(list(vst_cond), function(x)
+                            rep_len(1, length(x)), occupy.only = FALSE,
+                            method = "constant prior")[[1]]
+plotMeanVarCurve(list(vst_cond), subset = "all")
+
+# Measure the distance between each pair of individuals and accordingly
+# perform a hierarchical clustering. Note that GM12891 and GM12892 are
+# actually a couple and they are clustered together.
+d1 &lt;- distBioCond(vst_cond, method = "none")
+plot(hclust(d1, method = "average"), hang = -1)
+
+# Measure the distances using only hypervariable genomic intervals. Note the
+# change of scale of the distances.
+res &lt;- varTestBioCond(vst_cond)
+f &lt;- res$fold.change &gt; 1 &amp; res$pval &lt; 0.05
+d2 &lt;- distBioCond(vst_cond, subset = f, method = "none")
+plot(hclust(d2, method = "average"), hang = -1)
+
+## Perform differential analysis on bioConds that have gone through a
+## variance-stabilizing transformation.
+
+# Perform MA normalization and construct bioConds to represent cell lines
+# (i.e., individuals).
+norm &lt;- normalize(H3K27Ac, 4, 9)
+norm &lt;- normalize(norm, 5:6, 10:11)
+norm &lt;- normalize(norm, 7:8, 12:13)
+conds &lt;- list(GM12890 = bioCond(norm[4], norm[9], name = "GM12890"),
+              GM12891 = bioCond(norm[5:6], norm[10:11], name = "GM12891"),
+              GM12892 = bioCond(norm[7:8], norm[12:13], name = "GM12892"))
+autosome &lt;- !(H3K27Ac$chrom %in% c("chrX", "chrY"))
+conds &lt;- normBioCond(conds, common.peak.regions = autosome)
+
+# Fit a mean-variance curve.
+conds &lt;- fitMeanVarCurve(conds, method = "parametric", occupy.only = TRUE)
+plotMeanVarCurve(conds, subset = "occupied")
+
+# Apply a variance-stabilizing transformation.
+vst_conds &lt;- list(GM12890 = vstBioCond(conds$GM12890))
+vst.func &lt;- attr(vst_conds$GM12890, "vst.func")
+temp &lt;- matrix(vst.func(as.numeric(conds$GM12891$norm.signal)),
+               nrow = nrow(norm))
+vst_conds$GM12891 &lt;- bioCond(temp, norm[10:11], name = "GM12891")
+temp &lt;- matrix(vst.func(as.numeric(conds$GM12892$norm.signal)),
+               nrow = nrow(norm))
+vst_conds$GM12892 &lt;- bioCond(temp, norm[12:13], name = "GM12892")
+
+# Associate a constant function with the resulting bioConds as their
+# mean-variance curve.
+vst_conds &lt;- setMeanVarCurve(vst_conds, function(x) rep_len(1, length(x)),
+                             occupy.only = TRUE, method = "constant prior")
+plotMeanVarCurve(vst_conds, subset = "occupied")
+
+# Make a comparison between GM12891 and GM12892.
+res1 &lt;- diffTest(conds$GM12891, conds$GM12892)
+res2 &lt;- diffTest(vst_conds$GM12891, vst_conds$GM12892)
+
+# Examine the consistency of analysis results between using ordinary and
+# VSTed signal intensities. Here we map p-values together with observed
+# directions of signal changes to the standard normal distribution.
+z1 &lt;- qnorm(res1$pval / 2)
+z1[res1$Mval &gt; 0] &lt;- -z1[res1$Mval &gt; 0]
+z2 &lt;- qnorm(res2$pval / 2)
+z2[res2$Mval &gt; 0] &lt;- -z2[res2$Mval &gt; 0]
+plot(z1, z2, xlab = "Ordinary", ylab = "VSTed")
+abline(a = 0, b = 1, lwd = 2, lty = 5, col = "red")
+cor(z1, z2)
+cor(z1, z2, method = "sp")
+
+# Simultaneously compare GM12890, GM12891 and GM12892 cell lines.
+res1 &lt;- aovBioCond(conds)
+res2 &lt;- aovBioCond(vst_conds)
+
+# Examine the consistency of analysis results between using ordinary and
+# VSTed signal intensities by mapping p-values to the standard normal
+# distribution.
+z1 &lt;- qnorm(res1$pval, lower.tail = FALSE)
+z1[z1 == Inf] &lt;- 39
+z2 &lt;- qnorm(res2$pval, lower.tail = FALSE)
+z2[z2 == Inf] &lt;- 39
+plot(z1, z2, xlab = "Ordinary", ylab = "VSTed")
+abline(a = 0, b = 1, lwd = 2, lty = 5, col = "red")
+cor(z1, z2)
+cor(z1, z2, method = "sp")
+
+</code></pre>
+
+
+</div>

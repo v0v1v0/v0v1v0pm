@@ -1,0 +1,420 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>PipeOp</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>PipeOp Base Class</h2>
+
+<h3>Description</h3>
+
+<p>A <code>PipeOp</code> represents a transformation of a given "input" into a given "output", with two stages: "training"
+and "prediction". It can be understood as a generalized function that not only has multiple inputs, but
+also multiple outputs (as well as two stages). The "training" stage is used when training a machine learning pipeline or
+fitting a statistical model, and the "predicting" stage is then used for making predictions
+on new data.
+</p>
+<p>To perform training, the <code style="white-space: pre;">⁠$train()⁠</code> function is called which takes inputs and transforms them, while simultaneously storing information
+in its <code style="white-space: pre;">⁠$state⁠</code> slot. For prediction, the <code style="white-space: pre;">⁠$predict()⁠</code> function is called, where the <code style="white-space: pre;">⁠$state⁠</code> information can be used to influence the transformation
+of the new data.
+</p>
+<p>A <code>PipeOp</code> is usually used in a <code>Graph</code> object, a representation of a computational graph. It can have
+multiple <strong>input channels</strong>—think of these as multiple arguments to a function, for example when averaging
+different models—, and multiple <strong>output channels</strong>—a transformation may
+return different objects, for example different subsets of a <code>Task</code>. The purpose of the <code>Graph</code> is to
+connect different outputs of some <code>PipeOp</code>s to inputs of other <code>PipeOp</code>s.
+</p>
+<p>Input and output channel information of a <code>PipeOp</code> is defined in the <code style="white-space: pre;">⁠$input⁠</code> and <code style="white-space: pre;">⁠$output⁠</code> slots; each channel has a <em>name</em>, a required
+type during training, and a required type during prediction. The <code style="white-space: pre;">⁠$train()⁠</code> and <code style="white-space: pre;">⁠$predict()⁠</code> function are called with a <code>list</code> argument
+that has one entry for each declared channel (with one exception, see next paragraph). The <code>list</code> is automatically type-checked
+for each channel against <code style="white-space: pre;">⁠$input⁠</code> and then passed on to the <code>private$.train()</code> or <code>private$.predict()</code> functions. There the data is processed and
+a result <code>list</code> is created. This <code>list</code> is again type-checked for declared output types of each channel. The length and types of the result
+<code>list</code> is as declared in <code style="white-space: pre;">⁠$output⁠</code>.
+</p>
+<p>A special input channel name is <code>"..."</code>, which creates a <em>vararg</em> channel that takes arbitrarily many arguments, all of the same type. If the <code style="white-space: pre;">⁠$input⁠</code>
+table contains an <code>"..."</code>-entry, then the input given to <code style="white-space: pre;">⁠$train()⁠</code> and <code style="white-space: pre;">⁠$predict()⁠</code> may be longer than the number of declared input channels.
+</p>
+<p>This class is an abstract base class that all <code>PipeOp</code>s being used in a <code>Graph</code> should inherit from,  and
+is not intended to be instantiated.
+</p>
+
+
+<h3>Format</h3>
+
+<p>Abstract <code>R6Class</code>.
+</p>
+
+
+<h3>Construction</h3>
+
+<div class="sourceCode"><pre>PipeOp$new(id, param_set = ps(), param_vals = list(), input, output, packages = character(0), tags = character(0))
+</pre></div>
+
+<ul>
+<li> <p><code>id</code> :: <code>character(1)</code><br>
+Identifier of resulting object. See <code style="white-space: pre;">⁠$id⁠</code> slot.
+</p>
+</li>
+<li> <p><code>param_set</code> :: <code>ParamSet</code> | <code>list</code> of <code>expression</code><br>
+Parameter space description. This should be created by the subclass and given to <code>super$initialize()</code>.
+If this is a <code>ParamSet</code>, it is used as the <code>PipeOp</code>'s <code>ParamSet</code>
+directly. Otherwise it must be a <code>list</code> of expressions e.g. created by <code>alist()</code> that evaluate to <code>ParamSet</code>s.
+These <code>ParamSet</code> are combined using a <code>ParamSetCollection</code>.
+</p>
+</li>
+<li> <p><code>param_vals</code> :: named <code>list</code><br>
+List of hyperparameter settings, overwriting the hyperparameter settings given in <code>param_set</code>. The
+subclass should have its own <code>param_vals</code> parameter and pass it on to <code>super$initialize()</code>. Default <code>list()</code>.
+</p>
+</li>
+<li>
+<p> input :: <code>data.table</code> with columns <code>name</code> (<code>character</code>), <code>train</code> (<code>character</code>), <code>predict</code> (<code>character</code>)<br>
+Sets the <code style="white-space: pre;">⁠$input⁠</code> slot of the resulting object; see description there.
+</p>
+</li>
+<li>
+<p> output :: <code>data.table</code> with columns <code>name</code> (<code>character</code>), <code>train</code> (<code>character</code>), <code>predict</code> (<code>character</code>)<br>
+Sets the <code style="white-space: pre;">⁠$output⁠</code> slot of the resulting object; see description there.
+</p>
+</li>
+<li>
+<p> packages :: <code>character</code><br>
+Set of all required packages for the <code>PipeOp</code>'s <code style="white-space: pre;">⁠$train⁠</code> and <code style="white-space: pre;">⁠$predict⁠</code> methods. See <code style="white-space: pre;">⁠$packages⁠</code> slot.
+Default is <code>character(0)</code>.
+</p>
+</li>
+<li> <p><code>tags</code> ::<code>character</code><br>
+A set of tags associated with the <code>PipeOp</code>. Tags describe a PipeOp's purpose.
+Can be used to filter <code>as.data.table(mlr_pipeops)</code>. Default is <code>"abstract"</code>, indicating an abstract <code>PipeOp</code>.
+</p>
+</li>
+</ul>
+<h3>Internals</h3>
+
+<p><code>PipeOp</code> is an abstract class with abstract functions <code>private$.train()</code> and <code>private$.predict()</code>. To create a functional
+<code>PipeOp</code> class, these two methods must be implemented. Each of these functions receives a named <code>list</code> according to
+the <code>PipeOp</code>'s input channels, and must return a <code>list</code> (names are ignored) with values in the order of output
+channels in <code style="white-space: pre;">⁠$output⁠</code>. The <code>private$.train()</code> and <code>private$.predict()</code> function should not be called by the user;
+instead, a <code style="white-space: pre;">⁠$train()⁠</code> and <code style="white-space: pre;">⁠$predict()⁠</code> should be used. The most convenient usage is to add the <code>PipeOp</code>
+to a <code>Graph</code> (possibly as singleton in that <code>Graph</code>), and using the <code>Graph</code>'s <code style="white-space: pre;">⁠$train()⁠</code> / <code style="white-space: pre;">⁠$predict()⁠</code> methods.
+</p>
+<p><code>private$.train()</code> and <code>private$.predict()</code> should treat their inputs as read-only. If they are <code>R6</code> objects,
+they should be cloned before being manipulated in-place. Objects, or parts of objects, that are not changed, do
+not need to be cloned, and it is legal to return the same identical-by-reference objects to multiple outputs.
+</p>
+
+
+<h3>Fields</h3>
+
+
+<ul>
+<li> <p><code>id</code> :: <code>character</code><br>
+ID of the <code>PipeOp</code>. IDs are user-configurable, and IDs of <code>PipeOp</code>s must be unique within a <code>Graph</code>. IDs of
+<code>PipeOp</code>s must not be changed once they are part of a <code>Graph</code>, instead the <code>Graph</code>'s <code style="white-space: pre;">⁠$set_names()⁠</code> method
+should be used.
+</p>
+</li>
+<li> <p><code>packages</code> :: <code>character</code><br>
+Packages required for the <code>PipeOp</code>. Functions that are not in base R should still be called using <code>::</code>
+(or explicitly attached using <code>require()</code>) in <code>private$.train()</code> <em>and</em> <code>private$.predict()</code>, but
+packages declared here are checked before any (possibly expensive) processing has started within a <code>Graph</code>.
+</p>
+</li>
+<li> <p><code>param_set</code> :: <code>ParamSet</code><br>
+Parameters and parameter constraints. Parameter values that influence the functioning of <code style="white-space: pre;">⁠$train⁠</code> and / or <code style="white-space: pre;">⁠$predict⁠</code> are
+in the <code style="white-space: pre;">⁠$param_set$values⁠</code> slot; these are automatically checked against parameter constraints in <code style="white-space: pre;">⁠$param_set⁠</code>.
+</p>
+</li>
+<li> <p><code>state</code> :: <code>any</code> | <code>NULL</code><br>
+Method-dependent state obtained during training step, and usually required for the prediction step. This is <code>NULL</code>
+if and only if the <code>PipeOp</code> has not been trained. The <code style="white-space: pre;">⁠$state⁠</code> is the <em>only</em> slot that can be reliably modified during
+<code style="white-space: pre;">⁠$train()⁠</code>, because <code>private$.train()</code> may theoretically be executed in a different <code>R</code>-session (e.g. for parallelization).
+<code style="white-space: pre;">⁠$state⁠</code> should furthermore always be set to something with copy-semantics, since it is never cloned. This is a limitation
+not of <code>PipeOp</code> or <code>mlr3pipelines</code>, but of the way the system as a whole works, together with <code>GraphLearner</code> and <code>mlr3</code>.
+</p>
+</li>
+<li>
+<p> input :: <code>data.table</code> with columns <code>name</code> (<code>character</code>), <code>train</code> (<code>character</code>), <code>predict</code> (<code>character</code>)<br>
+Input channels of <code>PipeOp</code>. Column <code>name</code> gives the names (and order) of values in the list given to
+<code style="white-space: pre;">⁠$train()⁠</code> and <code style="white-space: pre;">⁠$predict()⁠</code>. Column <code>train</code> is the (S3) class that an input object must conform to during
+training, column <code>predict</code> is the (S3) class that an input object must conform to during prediction. Types
+are checked by the <code>PipeOp</code> itself and do not need to be checked by <code>private$.train()</code> / <code>private$.predict()</code> code.<br>
+A special name is <code>"..."</code>, which creates a <em>vararg</em> input channel that accepts a variable number of inputs.<br>
+If a row has both <code>train</code> and <code>predict</code> values enclosed by square brackets ("<code>[</code>", "<code style="white-space: pre;">⁠]⁠</code>), then this channel is
+<code>Multiplicity</code>-aware. If the <code>PipeOp</code> receives a <code>Multiplicity</code> value on these channels, this <code>Multiplicity</code>
+is given to the <code>.train()</code> and <code>.predict()</code> functions directly. Otherwise, the <code>Multiplicity</code> is transparently
+unpacked and the <code>.train()</code> and <code>.predict()</code> functions are called multiple times, once for each <code>Multiplicity</code> element.
+The type enclosed by square brackets indicates that only a <code>Multiplicity</code> containing values of this type are accepted.
+See <code>Multiplicity</code> for more information.
+</p>
+</li>
+<li>
+<p> output :: <code>data.table</code> with columns <code>name</code> (<code>character</code>), <code>train</code> (<code>character</code>), <code>predict</code> (<code>character</code>)<br>
+Output channels of <code>PipeOp</code>, in the order in which they will be given in the list returned by <code style="white-space: pre;">⁠$train⁠</code> and
+<code style="white-space: pre;">⁠$predict⁠</code> functions. Column <code>train</code> is the (S3) class that an output object must conform to during training,
+column <code>predict</code> is the (S3) class that an output object must conform to during prediction. The <code>PipeOp</code> checks
+values returned by <code>private$.train()</code> and <code>private$.predict()</code> against these types specifications.<br>
+If a row has both <code>train</code> and <code>predict</code> values enclosed by square brackets ("<code>[</code>", "<code style="white-space: pre;">⁠]⁠</code>), then this signals that the channel
+emits a <code>Multiplicity</code> of the indicated type. See <code>Multiplicity</code> for more information.
+</p>
+</li>
+<li> <p><code>innum</code> :: <code>numeric(1)</code> <br>
+Number of input channels. This equals <code style="white-space: pre;">⁠nrow($input)⁠</code>.
+</p>
+</li>
+<li> <p><code>outnum</code> :: <code>numeric(1)</code> <br>
+Number of output channels. This equals <code style="white-space: pre;">⁠nrow($output)⁠</code>.
+</p>
+</li>
+<li> <p><code>is_trained</code> :: <code>logical(1)</code> <br>
+Indicate whether the <code>PipeOp</code> was already trained and can therefore be used for prediction.
+</p>
+</li>
+<li> <p><code>tags</code> ::<code>character</code><br>
+A set of tags associated with the <code>PipeOp</code>. Tags describe a PipeOp's purpose.
+Can be used to filter <code>as.data.table(mlr_pipeops)</code>.
+PipeOp tags are inherited and child classes can introduce additional tags.
+</p>
+</li>
+<li> <p><code>hash</code> :: <code>character(1)</code> <br>
+Checksum calculated on the <code>PipeOp</code>, depending on the <code>PipeOp</code>'s <code>class</code> and the slots <code style="white-space: pre;">⁠$id⁠</code> and <code style="white-space: pre;">⁠$param_set$values⁠</code>. If a
+<code>PipeOp</code>'s functionality may change depending on more than these values, it should inherit the <code style="white-space: pre;">⁠$hash⁠</code> active
+binding and calculate the hash as <code style="white-space: pre;">⁠digest(list(super$hash, &lt;OTHER THINGS&gt;), algo = "xxhash64")⁠</code>.
+</p>
+</li>
+<li> <p><code>phash</code> :: <code>character(1)</code> <br>
+Checksum calculated on the <code>PipeOp</code>, depending on the <code>PipeOp</code>'s <code>class</code> and the slots <code style="white-space: pre;">⁠$id⁠</code> but ignoring <code style="white-space: pre;">⁠$param_set$values⁠</code>. If a
+<code>PipeOp</code>'s functionality may change depending on more than these values, it should inherit the <code style="white-space: pre;">⁠$hash⁠</code> active
+binding and calculate the hash as <code style="white-space: pre;">⁠digest(list(super$hash, &lt;OTHER THINGS&gt;), algo = "xxhash64")⁠</code>.
+</p>
+</li>
+<li> <p><code>.result</code> :: <code>list</code> <br>
+If the <code>Graph</code>'s <code style="white-space: pre;">⁠$keep_results⁠</code> flag is set to <code>TRUE</code>, then the intermediate Results of <code style="white-space: pre;">⁠$train()⁠</code> and <code style="white-space: pre;">⁠$predict()⁠</code>
+are saved to this slot, exactly as they are returned by these functions. This is mainly for debugging purposes
+and done, if requested, by the <code>Graph</code> backend itself; it should <em>not</em> be done explicitly by <code>private$.train()</code> or <code>private$.predict()</code>.
+</p>
+</li>
+<li> <p><code>man</code> :: <code>character(1)</code><br>
+Identifying string of the help page that shows with <code>help()</code>.
+</p>
+</li>
+<li> <p><code>properties</code> :: <code>character()</code><br>
+The properties of the pipeop.
+Currently supported values are:
+</p>
+
+<ul>
+<li> <p><code>"validation"</code>: the <code>PipeOp</code> can make use of the <code style="white-space: pre;">⁠$internal_valid_task⁠</code> of an <code>mlr3::Task</code>.
+This is for example used for <code>PipeOpLearner</code>s that wrap a <code>Learner</code> with this property, see <code>mlr3::Learner</code>.
+<code>PipeOp</code>s that have this property, also have a <code style="white-space: pre;">⁠$validate⁠</code> field, which controls whether to use the validation task,
+as well as a <code style="white-space: pre;">⁠$internal_valid_scores⁠</code> field, which allows to access the internal validation scores after training.
+</p>
+</li>
+<li> <p><code>"internal_tuning"</code>: the <code>PipeOp</code> is able to internally optimize hyperparameters.
+This works analogously to the internal tuning implementation for <code>mlr3::Learner</code>.
+<code>PipeOp</code>s with that property also implement the standardized accessor <code style="white-space: pre;">⁠$internal_tuned_values⁠</code> and have at least one
+parameter tagged with <code>"internal_tuning"</code>.
+An example for such a <code>PipeOp</code> is a <code>PipeOpLearner</code> that wraps a <code>Learner</code> with the <code>"internal_tuning"</code> property.
+</p>
+</li>
+</ul>
+<p>Programatic access to all available properties is possible via <code>mlr_reflections$pipeops$properties</code>.
+</p>
+</li>
+</ul>
+<h3>Methods</h3>
+
+
+<ul>
+<li> <p><code>train(input)</code><br>
+(<code>list</code>) -&gt; named <code>list</code><br>
+Train <code>PipeOp</code> on <code>inputs</code>, transform it to output and store the learned <code style="white-space: pre;">⁠$state⁠</code>. If the PipeOp is already
+trained, already present <code style="white-space: pre;">⁠$state⁠</code> is overwritten. Input list is typechecked against the <code style="white-space: pre;">⁠$input⁠</code> <code>train</code> column.
+Return value is a list with as many entries as <code style="white-space: pre;">⁠$output⁠</code> has
+rows, with each entry named after the <code style="white-space: pre;">⁠$output⁠</code> <code>name</code> column and class according to the <code style="white-space: pre;">⁠$output⁠</code> <code>train</code> column.
+The workhorse function for training each <code>PipeOp</code> is the private
+<code>.train(input)</code><br>: (named <code>list</code>) -&gt; <code>list</code><br> function.
+It's an Abstract function that must be implemented by concrete subclasses. <code>private$.train()</code> is called by <code style="white-space: pre;">⁠$train()⁠</code> after
+typechecking. It must change the <code style="white-space: pre;">⁠$state⁠</code> value to something non-<code>NULL</code> and return a list of transformed data according to
+the <code style="white-space: pre;">⁠$output⁠</code> <code>train</code> column. Names of the returned list are ignored.<br>
+The <code>private$.train()</code> method should not be called by a user; instead, the <code style="white-space: pre;">⁠$train()⁠</code> method should be used which does some
+checking and possibly type conversion.
+</p>
+</li>
+<li> <p><code>predict(input)</code> <br>
+(<code>list</code>) -&gt; named <code>list</code><br>
+Predict on new data in <code>input</code>, possibly using the stored <code style="white-space: pre;">⁠$state⁠</code>. Input and output are specified by <code style="white-space: pre;">⁠$input⁠</code> and <code style="white-space: pre;">⁠$output⁠</code>
+in the same way as for <code style="white-space: pre;">⁠$train()⁠</code>, except that
+the <code>predict</code> column is used for type checking.
+The workhorse function for predicting in each using each <code>PipeOp</code> is
+<code>.predict(input)</code><br> (named <code>list</code>) -&gt; <code>list</code><br>
+Abstract function that must be implemented by concrete subclasses. <code>private$.predict()</code> is called by <code style="white-space: pre;">⁠$predict()⁠</code> after
+typechecking and works analogously to <code>private$.train()</code>. Unlike <code>private$.train()</code>, <code>private$.predict()</code> should not modify
+the <code>PipeOp</code> in any way.<br>
+Just as <code>private$.train()</code>, <code>private$.predict()</code> should not be called by a user; instead, the <code style="white-space: pre;">⁠$predict()⁠</code> method should be used.
+</p>
+</li>
+<li> <p><code>print()</code> <br>
+() -&gt; <code>NULL</code> <br>
+Prints the <code>PipeOp</code>s most salient information: <code style="white-space: pre;">⁠$id⁠</code>, <code style="white-space: pre;">⁠$is_trained⁠</code>, <code style="white-space: pre;">⁠$param_set$values⁠</code>, <code style="white-space: pre;">⁠$input⁠</code> and <code style="white-space: pre;">⁠$output⁠</code>.
+</p>
+</li>
+<li> <p><code>help(help_type)</code> <br>
+(<code>character(1)</code>) -&gt; help file<br>
+Displays the help file of the concrete <code>PipeOp</code> instance. <code>help_type</code> is one of <code>"text"</code>, <code>"html"</code>, <code>"pdf"</code> and behaves
+as the <code>help_type</code> argument of R's <code>help()</code>.
+</p>
+</li>
+</ul>
+<h3>Inheriting</h3>
+
+<p>To create your own <code>PipeOp</code>, you need to overload the <code>private$.train()</code> and <code>private$.test()</code> functions.
+It is most likely also necessary to overload the <code style="white-space: pre;">⁠$initialize()⁠</code> function to do additional initialization.
+The <code style="white-space: pre;">⁠$initialize()⁠</code> method should have at least the arguments <code>id</code> and <code>param_vals</code>, which should be passed on to <code>super$initialize()</code> unchanged.
+<code>id</code> should have a useful default value, and <code>param_vals</code> should have the default value <code>list()</code>, meaning no initialization of hyperparameters.
+</p>
+<p>If the <code style="white-space: pre;">⁠$initialize()⁠</code> method has more arguments, then it is necessary to also overload the <code>private$.additional_phash_input()</code> function.
+This function should return either all objects, or a hash of all objects, that can change the function or behavior of the <code>PipeOp</code> and are independent
+of the class, the id, the <code style="white-space: pre;">⁠$state⁠</code>, and the <code style="white-space: pre;">⁠$param_set$values⁠</code>. The last point is particularly important: changing the <code style="white-space: pre;">⁠$param_set$values⁠</code> should
+<em>not</em> change the return value of <code>private$.additional_phash_input()</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>https://mlr-org.com/pipeops.html
+</p>
+<p>Other mlr3pipelines backend related: 
+<code>Graph</code>,
+<code>PipeOpTargetTrafo</code>,
+<code>PipeOpTaskPreproc</code>,
+<code>PipeOpTaskPreprocSimple</code>,
+<code>mlr_graphs</code>,
+<code>mlr_pipeops</code>,
+<code>mlr_pipeops_updatetarget</code>
+</p>
+<p>Other PipeOps: 
+<code>PipeOpEnsemble</code>,
+<code>PipeOpImpute</code>,
+<code>PipeOpTargetTrafo</code>,
+<code>PipeOpTaskPreproc</code>,
+<code>PipeOpTaskPreprocSimple</code>,
+<code>mlr_pipeops</code>,
+<code>mlr_pipeops_adas</code>,
+<code>mlr_pipeops_blsmote</code>,
+<code>mlr_pipeops_boxcox</code>,
+<code>mlr_pipeops_branch</code>,
+<code>mlr_pipeops_chunk</code>,
+<code>mlr_pipeops_classbalancing</code>,
+<code>mlr_pipeops_classifavg</code>,
+<code>mlr_pipeops_classweights</code>,
+<code>mlr_pipeops_colapply</code>,
+<code>mlr_pipeops_collapsefactors</code>,
+<code>mlr_pipeops_colroles</code>,
+<code>mlr_pipeops_copy</code>,
+<code>mlr_pipeops_datefeatures</code>,
+<code>mlr_pipeops_encode</code>,
+<code>mlr_pipeops_encodeimpact</code>,
+<code>mlr_pipeops_encodelmer</code>,
+<code>mlr_pipeops_featureunion</code>,
+<code>mlr_pipeops_filter</code>,
+<code>mlr_pipeops_fixfactors</code>,
+<code>mlr_pipeops_histbin</code>,
+<code>mlr_pipeops_ica</code>,
+<code>mlr_pipeops_imputeconstant</code>,
+<code>mlr_pipeops_imputehist</code>,
+<code>mlr_pipeops_imputelearner</code>,
+<code>mlr_pipeops_imputemean</code>,
+<code>mlr_pipeops_imputemedian</code>,
+<code>mlr_pipeops_imputemode</code>,
+<code>mlr_pipeops_imputeoor</code>,
+<code>mlr_pipeops_imputesample</code>,
+<code>mlr_pipeops_kernelpca</code>,
+<code>mlr_pipeops_learner</code>,
+<code>mlr_pipeops_missind</code>,
+<code>mlr_pipeops_modelmatrix</code>,
+<code>mlr_pipeops_multiplicityexply</code>,
+<code>mlr_pipeops_multiplicityimply</code>,
+<code>mlr_pipeops_mutate</code>,
+<code>mlr_pipeops_nmf</code>,
+<code>mlr_pipeops_nop</code>,
+<code>mlr_pipeops_ovrsplit</code>,
+<code>mlr_pipeops_ovrunite</code>,
+<code>mlr_pipeops_pca</code>,
+<code>mlr_pipeops_proxy</code>,
+<code>mlr_pipeops_quantilebin</code>,
+<code>mlr_pipeops_randomprojection</code>,
+<code>mlr_pipeops_randomresponse</code>,
+<code>mlr_pipeops_regravg</code>,
+<code>mlr_pipeops_removeconstants</code>,
+<code>mlr_pipeops_renamecolumns</code>,
+<code>mlr_pipeops_replicate</code>,
+<code>mlr_pipeops_rowapply</code>,
+<code>mlr_pipeops_scale</code>,
+<code>mlr_pipeops_scalemaxabs</code>,
+<code>mlr_pipeops_scalerange</code>,
+<code>mlr_pipeops_select</code>,
+<code>mlr_pipeops_smote</code>,
+<code>mlr_pipeops_smotenc</code>,
+<code>mlr_pipeops_spatialsign</code>,
+<code>mlr_pipeops_subsample</code>,
+<code>mlr_pipeops_targetinvert</code>,
+<code>mlr_pipeops_targetmutate</code>,
+<code>mlr_pipeops_targettrafoscalerange</code>,
+<code>mlr_pipeops_textvectorizer</code>,
+<code>mlr_pipeops_threshold</code>,
+<code>mlr_pipeops_tunethreshold</code>,
+<code>mlr_pipeops_unbranch</code>,
+<code>mlr_pipeops_updatetarget</code>,
+<code>mlr_pipeops_vtreat</code>,
+<code>mlr_pipeops_yeojohnson</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># example (bogus) PipeOp that returns the sum of two numbers during $train()
+# as well as a letter of the alphabet corresponding to that sum during $predict().
+
+PipeOpSumLetter = R6::R6Class("sumletter",
+  inherit = PipeOp,  # inherit from PipeOp
+  public = list(
+    initialize = function(id = "posum", param_vals = list()) {
+      super$initialize(id, param_vals = param_vals,
+        # declare "input" and "output" during construction here
+        # training takes two 'numeric' and returns a 'numeric';
+        # prediction takes 'NULL' and returns a 'character'.
+        input = data.table::data.table(name = c("input1", "input2"),
+          train = "numeric", predict = "NULL"),
+        output = data.table::data.table(name = "output",
+          train = "numeric", predict = "character")
+      )
+    }
+  ),
+  private = list(
+    # PipeOp deriving classes must implement .train and
+    # .predict; each taking an input list and returning
+    # a list as output.
+    .train = function(input) {
+      sum = input[[1]] + input[[2]]
+      self$state = sum
+      list(sum)
+    },
+    .predict = function(input) {
+      list(letters[self$state])
+    }
+  )
+)
+posum = PipeOpSumLetter$new()
+
+print(posum)
+
+posum$train(list(1, 2))
+# note the name 'output' is the name of the output channel specified
+# in the $output data.table.
+
+posum$predict(list(NULL, NULL))
+</code></pre>
+
+
+</div>

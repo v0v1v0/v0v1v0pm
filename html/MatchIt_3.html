@@ -1,0 +1,359 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>distance</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Propensity scores and other distance measures</h2>
+
+<h3>Description</h3>
+
+<p>Several matching methods require or can involve the distance between treated
+and control units. Options include the Mahalanobis distance, propensity
+score distance, or distance between user-supplied values. Propensity scores
+are also used for common support via the <code>discard</code> options and for
+defining calipers. This page documents the options that can be supplied to
+the <code>distance</code> argument to <code>matchit()</code>.
+</p>
+
+
+<h3>Allowable options</h3>
+
+<p>There are four ways to specify the <code>distance</code> argument: 1) as a string containing the name of a method for
+estimating propensity scores, 2) as a string containing the name of a method
+for computing pairwise distances from the covariates, 3) as a vector of
+values whose pairwise differences define the distance between units, or 4)
+as a distance matrix containing all pairwise distances. The options are
+detailed below.
+</p>
+
+
+<h4>Propensity score estimation methods</h4>
+
+<p>When <code>distance</code> is specified as the name of a method for estimating propensity scores
+(described below), a propensity score is estimated using the variables in
+<code>formula</code> and the method corresponding to the given argument. This
+propensity score can be used to compute the distance between units as the
+absolute difference between the propensity scores of pairs of units.
+Propensity scores can also be used to create calipers and common support
+restrictions, whether or not they are used in the actual distance measure
+used in the matching, if any.
+</p>
+<p>In addition to the <code>distance</code> argument, two other arguments can be
+specified that relate to the estimation and manipulation of the propensity
+scores. The <code>link</code> argument allows for different links to be used in
+models that require them such as generalized linear models, for which the
+logit and probit links are allowed, among others. In addition to specifying
+the link, the <code>link</code> argument can be used to specify whether the
+propensity score or the linearized version of the propensity score should be
+used; by specifying <code>link = "linear.{link}"</code>, the linearized version
+will be used.
+</p>
+<p>The <code>distance.options</code> argument can also be specified, which should be
+a list of values passed to the propensity score-estimating function, for
+example, to choose specific options or tuning parameters for the estimation
+method. If <code>formula</code>, <code>data</code>, or <code>verbose</code> are not supplied
+to <code>distance.options</code>, the corresponding arguments from
+<code>matchit()</code> will be automatically supplied. See the Examples for
+demonstrations of the uses of <code>link</code> and <code>distance.options</code>. When
+<code>s.weights</code> is supplied in the call to <code>matchit()</code>, it will
+automatically be passed to the propensity score-estimating function as the
+<code>weights</code> argument unless otherwise described below.
+</p>
+<p>The following methods for estimating propensity scores are allowed:
+</p>
+
+<dl>
+<dt><code>"glm"</code></dt>
+<dd>
+<p> The propensity scores are estimated using
+a generalized linear model (e.g., logistic regression). The <code>formula</code>
+supplied to <code>matchit()</code> is passed directly to <code>glm()</code>, and
+<code>predict.glm()</code> is used to compute the propensity scores. The <code>link</code>
+argument can be specified as a link function supplied to <code>binomial()</code>, e.g.,
+<code>"logit"</code>, which is the default. When <code>link</code> is prepended by
+<code>"linear."</code>, the linear predictor is used instead of the predicted
+probabilities. <code>distance = "glm"</code> with <code>link = "logit"</code> (logistic
+regression) is the default in <code>matchit()</code>. (This used to be able to be requested as <code>distance = "ps"</code>, which still works.)</p>
+</dd>
+<dt><code>"gam"</code></dt>
+<dd>
+<p>The propensity scores are estimated using a generalized additive model. The
+<code>formula</code> supplied to <code>matchit()</code> is passed directly to
+<code>mgcv::gam()</code>, and <code>mgcv::predict.gam()</code> is used to compute the propensity
+scores. The <code>link</code> argument can be specified as a link function
+supplied to <code>binomial()</code>, e.g., <code>"logit"</code>, which is the default. When
+<code>link</code> is prepended by <code>"linear."</code>, the linear predictor is used
+instead of the predicted probabilities. Note that unless the smoothing
+functions <code>mgcv::s()</code>, <code>mgcv::te()</code>, <code>mgcv::ti()</code>, or <code>mgcv::t2()</code> are
+used in <code>formula</code>, a generalized additive model is identical to a
+generalized linear model and will estimate the same propensity scores as
+<code>glm()</code>. See the documentation for <code>mgcv::gam()</code>,
+<code>mgcv::formula.gam()</code>, and <code>mgcv::gam.models()</code> for more information on
+how to specify these models. Also note that the formula returned in the
+<code>matchit()</code> output object will be a simplified version of the supplied
+formula with smoothing terms removed (but all named variables present). </p>
+</dd>
+<dt><code>"gbm"</code></dt>
+<dd>
+<p> The propensity scores are estimated using a
+generalized boosted model. The <code>formula</code> supplied to <code>matchit()</code>
+is passed directly to <code>gbm::gbm()</code>, and <code>gbm::predict.gbm()</code> is used to
+compute the propensity scores. The optimal tree is chosen using 5-fold
+cross-validation by default, and this can be changed by supplying an
+argument to <code>method</code> to <code>distance.options</code>; see <code>gbm::gbm.perf()</code>
+for details. The <code>link</code> argument can be specified as <code>"linear"</code> to
+use the linear predictor instead of the predicted probabilities. No other
+links are allowed. The tuning parameter defaults differ from
+<code>gbm::gbm()</code>; they are as follows: <code>n.trees = 1e4</code>,
+<code>interaction.depth = 3</code>, <code>shrinkage = .01</code>, <code>bag.fraction = 1</code>, <code>cv.folds = 5</code>, <code>keep.data = FALSE</code>. These are the same
+defaults as used in <em>WeightIt</em> and <em>twang</em>, except for
+<code>cv.folds</code> and <code>keep.data</code>. Note this is not the same use of
+generalized boosted modeling as in <em>twang</em>; here, the number of trees is
+chosen based on cross-validation or out-of-bag error, rather than based on
+optimizing balance. <span class="pkg">twang</span> should not be cited when using this method
+to estimate propensity scores. </p>
+</dd>
+<dt>
+<code>"lasso"</code>, <code>"ridge"</code>, <code>"elasticnet"</code>
+</dt>
+<dd>
+<p> The propensity
+scores are estimated using a lasso, ridge, or elastic net model,
+respectively. The <code>formula</code> supplied to <code>matchit()</code> is processed
+with <code>model.matrix()</code> and passed to <code>glmnet::cv.glmnet()</code>, and
+<code>glmnet::predict.cv.glmnet()</code> is used to compute the propensity scores. The
+<code>link</code> argument can be specified as a link function supplied to
+<code>binomial()</code>, e.g., <code>"logit"</code>, which is the default. When <code>link</code>
+is prepended by <code>"linear."</code>, the linear predictor is used instead of
+the predicted probabilities. When <code>link = "log"</code>, a Poisson model is
+used. For <code>distance = "elasticnet"</code>, the <code>alpha</code> argument, which
+controls how to prioritize the lasso and ridge penalties in the elastic net,
+is set to .5 by default and can be changed by supplying an argument to
+<code>alpha</code> in <code>distance.options</code>. For <code>"lasso"</code> and
+<code>"ridge"</code>, <code>alpha</code> is set to 1 and 0, respectively, and cannot be
+changed. The <code>cv.glmnet()</code> defaults are used to select the tuning
+parameters and generate predictions and can be modified using
+<code>distance.options</code>. If the <code>s</code> argument is passed to
+<code>distance.options</code>, it will be passed to <code>predict.cv.glmnet()</code>.
+Note that because there is a random component to choosing the tuning
+parameter, results will vary across runs unless a seed is
+set. </p>
+</dd>
+<dt><code>"rpart"</code></dt>
+<dd>
+<p> The propensity scores are estimated using a
+classification tree. The <code>formula</code> supplied to <code>matchit()</code> is
+passed directly to <code>rpart::rpart()</code>, and <code>rpart::predict.rpart()</code> is used
+to compute the propensity scores. The <code>link</code> argument is ignored, and
+predicted probabilities are always returned as the distance measure. </p>
+</dd>
+<dt><code>"randomforest"</code></dt>
+<dd>
+<p> The propensity scores are estimated using a
+random forest. The <code>formula</code> supplied to <code>matchit()</code> is passed
+directly to <code>randomForest::randomForest()</code>, and
+<code>randomForest::predict.randomForest()</code> is used to compute the propensity
+scores. The <code>link</code> argument is ignored, and predicted probabilities are
+always returned as the distance measure.</p>
+</dd>
+<dt><code>"nnet"</code></dt>
+<dd>
+<p> The
+propensity scores are estimated using a single-hidden-layer neural network.
+The <code>formula</code> supplied to <code>matchit()</code> is passed directly to
+<code>nnet::nnet()</code>, and <code>fitted()</code> is used to compute the propensity scores.
+The <code>link</code> argument is ignored, and predicted probabilities are always
+returned as the distance measure. An argument to <code>size</code> must be
+supplied to <code>distance.options</code> when using <code>method = "nnet"</code>. </p>
+</dd>
+<dt><code>"cbps"</code></dt>
+<dd>
+<p> The propensity scores are estimated using the
+covariate balancing propensity score (CBPS) algorithm, which is a form of
+logistic regression where balance constraints are incorporated to a
+generalized method of moments estimation of of the model coefficients. The
+<code>formula</code> supplied to <code>matchit()</code> is passed directly to
+<code>CBPS::CBPS()</code>, and <code>fitted()</code> is used to compute the propensity
+scores. The <code>link</code> argument can be specified as <code>"linear"</code> to use
+the linear predictor instead of the predicted probabilities. No other links
+are allowed. The <code>estimand</code> argument supplied to <code>matchit()</code> will
+be used to select the appropriate estimand for use in defining the balance
+constraints, so no argument needs to be supplied to <code>ATT</code> in
+<code>CBPS</code>. </p>
+</dd>
+<dt><code>"bart"</code></dt>
+<dd>
+<p> The propensity scores are estimated
+using Bayesian additive regression trees (BART). The <code>formula</code> supplied
+to <code>matchit()</code> is passed directly to <code>dbarts::bart2()</code>,
+and <code>dbarts::fitted.bart()</code> is used to compute the propensity
+scores. The <code>link</code> argument can be specified as <code>"linear"</code> to use
+the linear predictor instead of the predicted probabilities. When
+<code>s.weights</code> is supplied to <code>matchit()</code>, it will not be passed to
+<code>bart2</code> because the <code>weights</code> argument in <code>bart2</code> does not
+correspond to sampling weights. </p>
+</dd>
+</dl>
+<h4>Methods for computing distances from covariates</h4>
+
+<p>The following methods involve computing a distance matrix from the covariates themselves
+without estimating a propensity score. Calipers on the distance measure and
+common support restrictions cannot be used, and the <code>distance</code>
+component of the output object will be empty because no propensity scores
+are estimated. The <code>link</code> and <code>distance.options</code> arguments are
+ignored with these methods. See the individual matching methods pages for
+whether these distances are allowed and how they are used. Each of these
+distance measures can also be calculated outside <code>matchit()</code> using its
+corresponding function.
+</p>
+
+<dl>
+<dt><code>"euclidean"</code></dt>
+<dd>
+<p> The Euclidean distance is the raw
+distance between units, computed as </p>
+<p style="text-align: center;"><code class="reqn">d_{ij} = \sqrt{(x_i - x_j)(x_i -
+x_j)'}</code>
+</p>
+<p> It is sensitive to the scale of the covariates, so covariates with
+larger scales will take higher priority. </p>
+</dd>
+<dt><code>"scaled_euclidean"</code></dt>
+<dd>
+<p> The scaled Euclidean distance is the
+Euclidean distance computed on the scaled (i.e., standardized) covariates.
+This ensures the covariates are on the same scale. The covariates are
+standardized using the pooled within-group standard deviations, computed by
+treatment group-mean centering each covariate before computing the standard
+deviation in the full sample. </p>
+</dd>
+<dt><code>"mahalanobis"</code></dt>
+<dd>
+<p> The
+Mahalanobis distance is computed as </p>
+<p style="text-align: center;"><code class="reqn">d_{ij} = \sqrt{(x_i -
+x_j)\Sigma^{-1}(x_i - x_j)'}</code>
+</p>
+<p> where <code class="reqn">\Sigma</code> is the pooled within-group
+covariance matrix of the covariates, computed by treatment group-mean
+centering each covariate before computing the covariance in the full sample.
+This ensures the variables are on the same scale and accounts for the
+correlation between covariates. </p>
+</dd>
+<dt><code>"robust_mahalanobis"</code></dt>
+<dd>
+<p> The
+robust rank-based Mahalanobis distance is the Mahalanobis distance computed
+on the ranks of the covariates with an adjustment for ties. It is described
+in Rosenbaum (2010, ch. 8) as an alternative to the Mahalanobis distance
+that handles outliers and rare categories better than the standard
+Mahalanobis distance but is not affinely invariant. </p>
+</dd>
+</dl>
+<p>To perform Mahalanobis distance matching <em>and</em> estimate propensity
+scores to be used for a purpose other than matching, the <code>mahvars</code>
+argument should be used along with a different specification to
+<code>distance</code>. See the individual matching method pages for details on how
+to use <code>mahvars</code>.
+</p>
+
+
+
+<h4>Distances supplied as a numeric vector or matrix</h4>
+
+<p><code>distance</code> can also be supplied as a numeric vector whose values will be taken to
+function like propensity scores; their pairwise difference will define the
+distance between units. This might be useful for supplying propensity scores
+computed outside <code>matchit()</code> or resupplying <code>matchit()</code> with
+propensity scores estimated previously without having to recompute them.
+</p>
+<p><code>distance</code> can also be supplied as a matrix whose values represent the
+pairwise distances between units. The matrix should either be a square, with
+a row and column for each unit (e.g., as the output of a call to
+<code style="white-space: pre;">⁠as.matrix(⁠</code><code>dist</code><code style="white-space: pre;">⁠(.))⁠</code>), or have as many rows as there are treated
+units and as many columns as there are control units (e.g., as the output of
+a call to <code>mahalanobis_dist()</code> or <code>optmatch::match_on()</code>). Distance values
+of <code>Inf</code> will disallow the corresponding units to be matched. When
+<code>distance</code> is a supplied as a numeric vector or matrix, <code>link</code> and
+<code>distance.options</code> are ignored.
+</p>
+
+
+
+<h3>Note</h3>
+
+<p>In versions of <em>MatchIt</em> prior to 4.0.0, <code>distance</code> was
+specified in a slightly different way. When specifying arguments using the
+old syntax, they will automatically be converted to the corresponding method
+in the new syntax but a warning will be thrown. <code>distance = "logit"</code>,
+the old default, will still work in the new syntax, though <code style="white-space: pre;">⁠distance = "glm", link = "logit"⁠</code> is preferred (note that these are the default
+settings and don't need to be made explicit).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data("lalonde")
+
+# Linearized probit regression PS:
+m.out1 &lt;- matchit(treat ~ age + educ + race + married +
+                    nodegree + re74 + re75, data = lalonde,
+                  distance = "glm", link = "linear.probit")
+
+# GAM logistic PS with smoothing splines (s()):
+m.out2 &lt;- matchit(treat ~ s(age) + s(educ) + race + married +
+                    nodegree + re74 + re75, data = lalonde,
+                  distance = "gam")
+summary(m.out2$model)
+
+
+# CBPS for ATC matching w/replacement, using the just-
+# identified version of CBPS (setting method = "exact"):
+m.out3 &lt;- matchit(treat ~ age + educ + race + married +
+                    nodegree + re74 + re75, data = lalonde,
+                  distance = "cbps", estimand = "ATC",
+                  distance.options = list(method = "exact"),
+                  replace = TRUE)
+
+# Mahalanobis distance matching - no PS estimated
+m.out4 &lt;- matchit(treat ~ age + educ + race + married +
+                    nodegree + re74 + re75, data = lalonde,
+                  distance = "mahalanobis")
+
+m.out4$distance #NULL
+
+# Mahalanobis distance matching with PS estimated
+# for use in a caliper; matching done on mahvars
+m.out5 &lt;- matchit(treat ~ age + educ + race + married +
+                    nodegree + re74 + re75, data = lalonde,
+                  distance = "glm", caliper = .1,
+                  mahvars = ~ age + educ + race + married +
+                                nodegree + re74 + re75)
+
+summary(m.out5)
+
+# User-supplied propensity scores
+p.score &lt;- fitted(glm(treat ~ age + educ + race + married +
+                        nodegree + re74 + re75, data = lalonde,
+                      family = binomial))
+
+m.out6 &lt;- matchit(treat ~ age + educ + race + married +
+                    nodegree + re74 + re75, data = lalonde,
+                  distance = p.score)
+
+# User-supplied distance matrix using optmatch::match_on()
+
+dist_mat &lt;- optmatch::match_on(
+              treat ~ age + educ + race + nodegree +
+                married + re74 + re75, data = lalonde,
+              method = "rank_mahalanobis")
+
+m.out7 &lt;- matchit(treat ~ age + educ + race + nodegree +
+                    married + re74 + re75, data = lalonde,
+                  distance = dist_mat)
+
+</code></pre>
+
+
+</div>

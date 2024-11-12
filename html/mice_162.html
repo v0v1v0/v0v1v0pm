@@ -1,0 +1,278 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mice.impute.pmm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Imputation by predictive mean matching</h2>
+
+<h3>Description</h3>
+
+<p>Imputation by predictive mean matching
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mice.impute.pmm(
+  y,
+  ry,
+  x,
+  wy = NULL,
+  donors = 5L,
+  matchtype = 1L,
+  exclude = -99999999,
+  ridge = 1e-05,
+  use.matcher = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Vector to be imputed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ry</code></td>
+<td>
+<p>Logical vector of length <code>length(y)</code> indicating the
+the subset <code>y[ry]</code> of elements in <code>y</code> to which the imputation
+model is fitted. The <code>ry</code> generally distinguishes the observed
+(<code>TRUE</code>) and missing values (<code>FALSE</code>) in <code>y</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Numeric design matrix with <code>length(y)</code> rows with predictors for
+<code>y</code>. Matrix <code>x</code> may have no missing values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wy</code></td>
+<td>
+<p>Logical vector of length <code>length(y)</code>. A <code>TRUE</code> value
+indicates locations in <code>y</code> for which imputations are created.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>donors</code></td>
+<td>
+<p>The size of the donor pool among which a draw is made.
+The default is <code>donors = 5L</code>. Setting <code>donors = 1L</code> always selects
+the closest match, but is not recommended. Values between 3L and 10L
+provide the best results in most cases (Morris et al, 2015).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>matchtype</code></td>
+<td>
+<p>Type of matching distance. The default choice
+(<code>matchtype = 1L</code>) calculates the distance between
+the <em>predicted</em> value of <code>yobs</code> and
+the <em>drawn</em> values of <code>ymis</code> (called type-1 matching).
+Other choices are <code>matchtype = 0L</code>
+(distance between predicted values) and <code>matchtype = 2L</code>
+(distance between drawn values).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exclude</code></td>
+<td>
+<p>Value or vector of values to exclude from the imputation donor pool in <code>y</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ridge</code></td>
+<td>
+<p>The ridge penalty used in <code>.norm.draw()</code> to prevent
+problems with multicollinearity. The default is <code>ridge = 1e-05</code>,
+which means that 0.01 percent of the diagonal is added to the cross-product.
+Larger ridges may result in more biased estimates. For highly noisy data
+(e.g. many junk variables), set <code>ridge = 1e-06</code> or even lower to
+reduce bias. For highly collinear data, set <code>ridge = 1e-04</code> or higher.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use.matcher</code></td>
+<td>
+<p>Logical. Set <code>use.matcher = TRUE</code> to specify
+the C function <code>matcher()</code>, the now deprecated matching function that
+was default in versions
+<code>2.22</code> (June 2014) to <code>3.11.7</code> (Oct 2020). Since version <code>3.12.0</code>
+<code>mice()</code> uses the much faster <code>matchindex</code> C function. Use
+the deprecated <code>matcher</code> function only for exact reproduction.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Other named arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Imputation of <code>y</code> by predictive mean matching, based on
+van Buuren (2012, p. 73). The procedure is as follows:
+</p>
+
+<ol>
+<li>
+<p>Calculate the cross-product matrix <code class="reqn">S=X_{obs}'X_{obs}</code>.
+</p>
+</li>
+<li>
+<p>Calculate <code class="reqn">V = (S+{diag}(S)\kappa)^{-1}</code>, with some small ridge
+parameter <code class="reqn">\kappa</code>.
+</p>
+</li>
+<li>
+<p>Calculate regression weights <code class="reqn">\hat\beta = VX_{obs}'y_{obs}.</code>
+</p>
+</li>
+<li>
+<p>Draw <code class="reqn">q</code> independent <code class="reqn">N(0,1)</code> variates in vector <code class="reqn">\dot z_1</code>.
+</p>
+</li>
+<li>
+<p>Calculate <code class="reqn">V^{1/2}</code> by Cholesky decomposition.
+</p>
+</li>
+<li>
+<p>Calculate <code class="reqn">\dot\beta = \hat\beta + \dot\sigma\dot z_1 V^{1/2}</code>.
+</p>
+</li>
+<li>
+<p>Calculate <code class="reqn">\dot\eta(i,j)=|X_{{obs},[i]|}\hat\beta-X_{{mis},[j]}\dot\beta</code>
+with <code class="reqn">i=1,\dots,n_1</code> and <code class="reqn">j=1,\dots,n_0</code>.
+</p>
+</li>
+<li>
+<p>Construct <code class="reqn">n_0</code> sets <code class="reqn">Z_j</code>, each containing <code class="reqn">d</code> candidate donors, from Y_obs such that <code class="reqn">\sum_d\dot\eta(i,j)</code> is minimum for all <code class="reqn">j=1,\dots,n_0</code>. Break ties randomly.
+</p>
+</li>
+<li>
+<p>Draw one donor <code class="reqn">i_j</code> from <code class="reqn">Z_j</code> randomly for <code class="reqn">j=1,\dots,n_0</code>.
+</p>
+</li>
+<li>
+<p>Calculate imputations <code class="reqn">\dot y_j = y_{i_j}</code> for <code class="reqn">j=1,\dots,n_0</code>.
+</p>
+</li>
+</ol>
+<p>The name <em>predictive mean matching</em> was proposed by Little (1988).
+</p>
+
+
+<h3>Value</h3>
+
+<p>Vector with imputed data, same type as <code>y</code>, and of length
+<code>sum(wy)</code>
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Gerko Vink, Stef van Buuren, Karin Groothuis-Oudshoorn
+</p>
+
+
+<h3>References</h3>
+
+<p>Little, R.J.A. (1988), Missing data adjustments in large surveys
+(with discussion), Journal of Business Economics and Statistics, 6, 287–301.
+</p>
+<p>Morris TP, White IR, Royston P (2015). Tuning multiple imputation by predictive
+mean matching and local residual draws. BMC Med Res Methodol. ;14:75.
+</p>
+<p>Van Buuren, S. (2018).
+<a href="https://stefvanbuuren.name/fimd/sec-pmm.html"><em>Flexible Imputation of Missing Data. Second Edition.</em></a>
+Chapman &amp; Hall/CRC. Boca Raton, FL.
+</p>
+<p>Van Buuren, S., Groothuis-Oudshoorn, K. (2011). <code>mice</code>: Multivariate
+Imputation by Chained Equations in <code>R</code>. <em>Journal of Statistical
+Software</em>, <b>45</b>(3), 1-67. <a href="https://doi.org/10.18637/jss.v045.i03">doi:10.18637/jss.v045.i03</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other univariate imputation functions: 
+<code>mice.impute.cart()</code>,
+<code>mice.impute.lasso.logreg()</code>,
+<code>mice.impute.lasso.norm()</code>,
+<code>mice.impute.lasso.select.logreg()</code>,
+<code>mice.impute.lasso.select.norm()</code>,
+<code>mice.impute.lda()</code>,
+<code>mice.impute.logreg.boot()</code>,
+<code>mice.impute.logreg()</code>,
+<code>mice.impute.mean()</code>,
+<code>mice.impute.midastouch()</code>,
+<code>mice.impute.mnar.logreg()</code>,
+<code>mice.impute.mpmm()</code>,
+<code>mice.impute.norm.boot()</code>,
+<code>mice.impute.norm.nob()</code>,
+<code>mice.impute.norm.predict()</code>,
+<code>mice.impute.norm()</code>,
+<code>mice.impute.polr()</code>,
+<code>mice.impute.polyreg()</code>,
+<code>mice.impute.quadratic()</code>,
+<code>mice.impute.rf()</code>,
+<code>mice.impute.ri()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># We normally call mice.impute.pmm() from within mice()
+# But we may call it directly as follows (not recommended)
+
+set.seed(53177)
+xname &lt;- c("age", "hgt", "wgt")
+r &lt;- stats::complete.cases(boys[, xname])
+x &lt;- boys[r, xname]
+y &lt;- boys[r, "tv"]
+ry &lt;- !is.na(y)
+table(ry)
+
+# percentage of missing data in tv
+sum(!ry) / length(ry)
+
+# Impute missing tv data
+yimp &lt;- mice.impute.pmm(y, ry, x)
+length(yimp)
+hist(yimp, xlab = "Imputed missing tv")
+
+# Impute all tv data
+yimp &lt;- mice.impute.pmm(y, ry, x, wy = rep(TRUE, length(y)))
+length(yimp)
+hist(yimp, xlab = "Imputed missing and observed tv")
+plot(jitter(y), jitter(yimp),
+  main = "Predictive mean matching on age, height and weight",
+  xlab = "Observed tv (n = 224)",
+  ylab = "Imputed tv (n = 224)"
+)
+abline(0, 1)
+cor(y, yimp, use = "pair")
+
+# Use blots to exclude different values per column
+# Create blots object
+blots &lt;- make.blots(boys)
+# Exclude ml 1 through 5 from tv donor pool
+blots$tv$exclude &lt;- c(1:5)
+# Exclude 100 random observed heights from tv donor pool
+blots$hgt$exclude &lt;- sample(unique(boys$hgt), 100)
+imp &lt;- mice(boys, method = "pmm", print = FALSE, blots = blots, seed=123)
+blots$hgt$exclude %in% unlist(c(imp$imp$hgt)) # MUST be all FALSE
+blots$tv$exclude %in% unlist(c(imp$imp$tv)) # MUST be all FALSE
+</code></pre>
+
+
+</div>

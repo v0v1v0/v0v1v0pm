@@ -1,0 +1,163 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mies_step_fidelity</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Re-Evaluate Existing Configurations with Higher Fidelity</h2>
+
+<h3>Description</h3>
+
+<p>As part of the "rolling-tide" multifidelity-setup, do reevaluation of configurations with
+higher fidelity that have survived lower-fidelity selection. The evaluations are done as part of the
+<em>current</em> generation, so the <code>dob</code> value is not increased.
+</p>
+<p>This function should only be called when doing rolling-tide multifidelity, and should not be part of the
+MIES cycle otherwise.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mies_step_fidelity(
+  inst,
+  budget_id,
+  fidelity,
+  current_gen_only = FALSE,
+  fidelity_monotonic = TRUE,
+  additional_components = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>inst</code></td>
+<td>
+<p>(<code>OptimInstance</code>)<br>
+Optimization instance to evaluate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>budget_id</code></td>
+<td>
+<p>(<code>character(1)</code>)<br>
+Budget component that is set to the <code>fidelity</code> value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fidelity</code></td>
+<td>
+<p>(<code>atomic(1)</code>)<br>
+Atomic scalar indicating the value to be assigned to the <code>budget_id</code> component of offspring.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>current_gen_only</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether to only re-evaluate survivors individuals generated in the latest generation (<code>TRUE</code>), or re-evaluate all currently alive
+individuals (<code>FALSE</code>). In any case, only individuals that were not already evaluated with the chosen fidelity are evaluated,
+so this will usually only have an effect when the fidelity of surviving individuals changed between generations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fidelity_monotonic</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether to only re-evaluate configurations for which the fidelity would increase. Default <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>additional_components</code></td>
+<td>
+<p>(<code>ParamSet</code> | <code>NULL</code>)<br>
+Additional components to optimize over, not included in <code>search_space</code>, but possibly used for self-adaption. This must be the <code>ParamSet</code>
+of <code>mies_init_population()</code>'s <code>additional_component_sampler</code> argument.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>invisible <code>data.table</code>: the performance values returned when evaluating the <code>offspring</code> values
+through <code>eval_batch</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other mies building blocks: 
+<code>mies_evaluate_offspring()</code>,
+<code>mies_generate_offspring()</code>,
+<code>mies_get_fitnesses()</code>,
+<code>mies_init_population()</code>,
+<code>mies_select_from_archive()</code>,
+<code>mies_survival_comma()</code>,
+<code>mies_survival_plus()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library("bbotk")
+lgr::threshold("warn")
+
+# Define the objective to optimize
+objective &lt;- ObjectiveRFun$new(
+  fun = function(xs) {
+    z &lt;- exp(-xs$x^2 - xs$y^2) + 2 * exp(-(2 - xs$x)^2 - (2 - xs$y)^2)
+    list(Obj = z)
+  },
+  domain = ps(x = p_dbl(-2, 4), y = p_dbl(-2, 4)),
+  codomain = ps(Obj = p_dbl(tags = "maximize"))
+)
+
+# Get a new OptimInstance
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 100)
+)
+
+budget_id = "y"
+
+# Create an initial population with fidelity ("y") value 1
+mies_init_population(oi, mu = 2, budget_id = budget_id, fidelity = 1)
+
+oi$archive
+
+# Re-evaluate these individuals with higher fidelity
+mies_step_fidelity(oi, budget_id = budget_id, fidelity = 2)
+
+oi$archive
+
+# The following creates a new generation without killing the initial
+# generation
+offspring = data.frame(x = 0:1)
+mies_evaluate_offspring(oi, offspring = offspring, budget_id = budget_id,
+  fidelity = 3)
+
+oi$archive
+
+# Re-evaluate only individuals from last generation by setting current_gen_only
+mies_step_fidelity(oi, budget_id = budget_id, fidelity = 4,
+  current_gen_only = TRUE)
+
+oi$archive
+
+# Default: Re-evaluate all that *increase* fidelity: Only the initial
+# population is re-evaluated here.
+mies_step_fidelity(oi, budget_id = budget_id, fidelity = 3)
+
+oi$archive
+
+# To also re-evaluate individuals with *higher* fidelity, use
+# 'fidelity_monotonic = FALSE'. This does not re-evaluate the points that already have
+# the requested fidelity, however.
+mies_step_fidelity(oi, budget_id = budget_id, fidelity = 3, fidelity_monotonic = FALSE)
+
+oi$archive
+</code></pre>
+
+
+</div>

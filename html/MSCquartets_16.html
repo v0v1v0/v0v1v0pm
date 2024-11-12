@@ -1,0 +1,214 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>NANUQ</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Apply NANUQ network inference algorithm to gene tree data</h2>
+
+<h3>Description</h3>
+
+<p>Apply the NANUQ algorithm of Allman et al. (2019) to infer a hybridization network from a collection of gene trees,
+under the level-1 network multispecies coalescent (NMSC) model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">NANUQ(
+  genedata,
+  outfile = "NANUQdist",
+  omit = FALSE,
+  epsilon = 0,
+  alpha = 0.05,
+  beta = 0.95,
+  taxanames = NULL,
+  plot = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>genedata</code></td>
+<td>
+<p>gene tree data that may be supplied in any of 3 forms:
+</p>
+
+<ol>
+<li>
+<p> as a character string giving the name of a file containing Newick gene trees,
+</p>
+</li>
+<li>
+<p> as a multiPhylo object containing the gene trees, or
+</p>
+</li>
+<li>
+<p> as a table of quartets on the gene trees, as produced by a previous call to
+<code>NANUQ</code> or <code>quartetTableResolved</code>, which has columns only for taxa, resolved quartet counts,
+and possibly p_T3 and p_star
+</p>
+</li>
+</ol>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outfile</code></td>
+<td>
+<p>a character string giving an output file name stub for
+saving a <code>NANUQ</code> distance matrix in nexus format; to the stub <code>outfile</code>
+will be appended an <code>alpha</code> and <code>beta</code> value and ".nex";
+if <code>NULL</code> then then no file is written</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>omit</code></td>
+<td>
+<p><code>FALSE</code> to treat unresolved quartets as 1/3 of each resolution;
+<code>TRUE</code> to discard unresolved quartet data; ignored if gene tree data given as quartet table</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>epsilon</code></td>
+<td>
+<p>minimum for branch lengths to be treated as non-zero; ignored if gene tree data given as quartet table</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>a value or vector of significance levels for judging p-values
+testing a null hypothesis of no hybridization vs. an alternative of hybridization, for each quartet;  a smaller value applies
+a less conservative test for a tree (more trees), hence a stricter requirement for desciding in favor of hybridization (fewer reticulations)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta</code></td>
+<td>
+<p>a value or vector of significance levels for judging p-values testing
+a null hypothesis of a star tree (polytomy) for each quartet vs. an alternative of anything else; a smaller value applies a less conservative
+test for a star tree (more polytomies), hence a stricter requirement for deciding in favor of a resolved tree or network;
+if vectors, <code>alpha</code> and <code>beta</code> must have the same length</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>taxanames</code></td>
+<td>
+<p>if <code>genedata</code> is a file or a multiPhylo object, a vector of a subset
+of the taxa names on the gene trees
+to be analyzed, if <code>NULL</code> all taxa on the first gene tree are used; if <code>genedata</code>
+is a quartet table, this argument is ignored and all taxa in the table are used</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot</code></td>
+<td>
+<p><code>TRUE</code> produces simplex plots of hypothesis test results, <code>FALSE</code> omits plots</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function
+</p>
+
+<ol>
+<li>
+<p> counts displayed quartets across gene trees to form quartet count concordance factors (qcCFs),
+</p>
+</li>
+<li>
+<p> applies appropriate hypothesis tests to judge qcCFs as representing putative hybridization,
+resolved trees, or unresolved (star) trees using <code>alpha</code> and <code>beta</code> as significance levels,
+</p>
+</li>
+<li>
+<p> produces a simplex plot showing results of the hypothesis tests for all qcCFs
+</p>
+</li>
+<li>
+<p> computes the appropriate NANUQ distance table, writing it to a file.
+</p>
+</li>
+</ol>
+<p>The distance table file
+can then be opened in the external software SplitsTree (Huson and Bryant 2006) (recommended) or within R using the package <code>phangorn</code> to
+obtain a circular split system under the Neighbor-Net algorithm, which is then depicted as a splits graph.
+The splits graph should be interpreted via
+the theory of Allman et al. (2019) to infer the level-1 species network, or to conclude the data does
+not arise from the NMSC on such a network.
+</p>
+<p>If <code>alpha</code> and <code>beta</code> are vectors, they must have the same length k. Then the i-th entries are paired to
+produce k plots and k output files. This is equivalent to k calls to <code>NANUQ</code> with scalar values of <code>alpha</code> and <code>beta</code>.
+</p>
+<p>A call of <code>NANUQ</code> with <code>genedata</code> given as a table previously output from <code>NANUQ</code> is
+equivalent to a call of <code>NANUQdist</code>. If <code>genedata</code> is a table previously output from <code>quartetTableResolved</code>
+which lacks columns of p-values for hypothesis tests, these will be appended to the table output by <code>NANUQ</code>.
+</p>
+<p>If plots are produced, each point represents an empirical quartet concordance factor,
+color-coded to represent test results.
+</p>
+<p>In general, <code>alpha</code> should be chosen to be small and <code>beta</code>
+to be large so that most quartets are interpreted as resolved trees.
+</p>
+<p>Usually, an initial call to <code>NANUQ</code> will not give a good analysis, as values
+of <code>alpha</code> and <code>beta</code> are likely to need some adjustment based on inspecting the data. Saving the returned
+table from <code>NANUQ</code> will allow for the results of the time-consuming computation of qcCFs to be
+saved, along with p-values,
+for input to further calls of <code>NANUQ</code> with new choices of <code>alpha</code> and <code>beta</code>.
+</p>
+<p>See the documentation for <code>quartetNetworkDist</code> for an explanation of a small, rarely noticeable,
+stochastic element of the algorithm.
+</p>
+<p>For data sets of many gene trees, user time may be reduced by using parallel code for
+counting displayed quartets. See <code>quartetTableParallel</code>, where example commands are given.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a table <code>$pTable</code> of quartets and p-values for judging fit to the MSC on quartet
+trees, and a distance table <code>$dist</code>, or list of distance tables, giving NANUQ distance (returned invisibly);
+the table can be used as input to <code>NANUQ</code> or <code>NANUQdist</code> with new choices of alpha and beta, without re-tallying quartets on
+gene trees; the distance table is to be used as input to NeighborNet.
+</p>
+
+
+<h3>References</h3>
+
+<p>Allman ES, Baños H, Rhodes JA (2019).
+“NANUQ: A method for inferring species networks from gene trees under the coalescent model.”
+<em>Algorithms Mol. Biol.</em>, <b>14</b>(24), 1-25.
+<a href="https://doi.org/10.1186/s13015-019-0159-2">doi:10.1186/s13015-019-0159-2</a>.
+</p>
+<p>Huson DH, Bryant D (2006).
+“Application of Phylogenetic Networks in Evolutionary Studies.”
+<em>Molecular Biology and Evolution</em>, <b>23</b>(2), 254-267.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>quartetTable</code>, <code>quartetTableParallel</code>, <code>quartetTableDominant</code>, <code>quartetTreeTestInd</code>,
+<code>quartetStarTestInd</code>, <code>NANUQdist</code>, <code>quartetTestPlot</code>, <code>pvalHist</code>,
+<code>quartetNetworkDist</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(pTableYeastRokas)
+out=NANUQ(pTableYeastRokas, alpha=.05, beta=.95, outfile = NULL)
+# Specifying an outfile would write the distance table to it for opening in SplitsTree.
+# Alternately, to use the phangorn implementation of NeighborNet
+# within R, enter the following additional lines:
+nn=neighborNet(out$dist)
+plot(nn,"2D")
+
+</code></pre>
+
+
+</div>

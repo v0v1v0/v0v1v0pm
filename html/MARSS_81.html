@@ -1,0 +1,257 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MARSSkem</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> EM Algorithm function for MARSS models </h2>
+
+<h3>Description</h3>
+
+<p><code>MARSSkem()</code> performs maximum-likelihood estimation, using an EM algorithm for constrained and unconstrained MARSS models.  Users would not call this function directly normally.  The function <code>MARSS()</code> calls <code>MARSSkem()</code>.  However users might want to use <code>MARSSkem()</code> directly if they need to avoid some of the error-checking overhead associated with the <code>MARSS()</code> function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MARSSkem(MLEobj)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table><tr style="vertical-align: top;">
+<td><code>MLEobj</code></td>
+<td>
+<p> An object of class <code>marssMLE</code>. </p>
+</td>
+</tr></table>
+<h3>Details</h3>
+
+<p>Objects of class <code>marssMLE</code> may be built from scratch but are easier to construct using <code>MARSS()</code> with <code>MARSS(..., fit=FALSE)</code>.
+</p>
+<p>Options for <code>MARSSkem()</code> may be set using <code>MLEobj$control</code>.  The commonly used elements of <code>control</code> are as follows (see <code>marssMLE</code>):
+</p>
+
+<dl>
+<dt><code>minit</code></dt>
+<dd>
+<p> Minimum number of EM iterations. You can use this to force the algorithm to do a certain number of iterations.  This is helpful if your solution is not converging.</p>
+</dd> 
+<dt><code>maxit</code></dt>
+<dd>
+<p> Maximum number of EM iterations. </p>
+</dd> 
+<dt><code>min.iter.conv.test</code></dt>
+<dd>
+<p> The minimum number of iterations before the log-log convergence test will be computed.  If <code>maxit</code> is set less than this, then convergence will not be computed (and the algorithm will just run for maxit iterations). </p>
+</dd> 
+<dt><code>kf.x0</code></dt>
+<dd>
+<p> Whether to set the prior at <code class="reqn">t=0</code> (<code>"x00"</code>) or at <code class="reqn">t=1</code> (<code>"x10"</code>). The default is <code>"x00"</code>. </p>
+</dd> 
+<dt><code>conv.test.deltaT</code></dt>
+<dd>
+<p> The number of iterations to use in the log-log convergence test.  This defaults to 9. </p>
+</dd> 
+<dt><code>abstol</code></dt>
+<dd>
+<p> Tolerance for log-likelihood change for the delta logLik convergence test.  If log-likelihood changes less than this amount relative to the previous iteration, the EM algorithm exits. This is normally (default) set to NULL and the log-log convergence test is used instead.</p>
+</dd> 
+<dt><code>allow.degen</code></dt>
+<dd>
+<p> Whether to try setting <code class="reqn">\mathbf{Q}</code> or <code class="reqn">\mathbf{R}</code> elements to zero if they appear to be going to zero. </p>
+</dd>
+<dt><code>trace</code></dt>
+<dd>
+<p> A positive integer. If not 0, a record will be created of each variable over all EM iterations and detailed warning messages (if appropriate) will be printed. </p>
+</dd>
+<dt><code>safe</code></dt>
+<dd>
+<p> If TRUE, <code>MARSSkem</code> will rerun <code>MARSSkf</code> after each individual parameter update rather than only after all parameters are updated.  The latter is slower and unnecessary for many models, but in some cases, the safer and slower algorithm is needed because the ML parameter matrices have high condition numbers. </p>
+</dd>
+<dt><code>silent</code></dt>
+<dd>
+<p> Suppresses printing of progress bars, error messages, warnings and convergence information. </p>
+</dd>    
+</dl>
+<h3>Value</h3>
+
+<p>The <code>marssMLE</code> object which was passed in, with additional components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>String "kem".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kf</code></td>
+<td>
+<p>Kalman filter output. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter.record</code></td>
+<td>
+<p>If <code>MLEobj$control$trace = TRUE</code>, a list with <code>par</code> = a record of each estimated parameter over all EM iterations and <code>logLik</code> = a record of the log likelihood at each iteration. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>numIter</code></td>
+<td>
+<p>Number of iterations needed for convergence.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convergence</code></td>
+<td>
+<p> Did estimation converge successfully? 
+</p>
+
+<dl>
+<dt>convergence=0</dt>
+<dd>
+<p> Converged in both the abstol test and the log-log plot test. </p>
+</dd>  
+<dt>convergence=1</dt>
+<dd>
+<p>Some of the parameter estimates did not converge (based on the log-log plot test AND abstol tests) before <code>MLEobj$control$maxit</code> was reached. This is not an error per se.</p>
+</dd>
+<dt>convergence=3</dt>
+<dd>
+<p> No convergence diagnostics were computed because all parameters were fixed thus no fitting required. </p>
+</dd>   
+<dt>convergence=-1</dt>
+<dd>
+<p> No convergence diagnostics were computed because the MLE object was not fit (called with fit=FALSE). This isn't a convergence error just information. There is not par element so no functions can be run with the object. </p>
+</dd>  
+<dt>convergence=2</dt>
+<dd>
+<p>No convergence diagnostics were computed because the MLE object had problems and was not fit. This isn't a convergence error just information.</p>
+</dd>
+<dt>convergence=10</dt>
+<dd>
+<p>Abstol convergence only. Some of the parameter estimates did not converge (based on the log-log plot test) before <code>MLEobj$control$maxit</code> was reached.  However <code>MLEobj$control$abstol</code> was reached. </p>
+</dd>
+<dt>convergence=11</dt>
+<dd>
+<p>Log-log convergence only. Some of the parameter estimates did not converge (based on the abstol test) before <code>MLEobj$control$maxit</code> was reached.  However the log-log convergence test was passed. </p>
+</dd>
+<dt>convergence=12</dt>
+<dd>
+<p>Abstol convergence only. Log-log convergence test was not computed because <code>MLEobj$control$maxit</code> was set to less than <code>control$min.iter.conv.test</code>. </p>
+</dd>  
+<dt>convergence=13</dt>
+<dd>
+<p>Lack of convergence info. Parameter estimates did not converge based on the abstol test before <code>MLEobj$control$maxit</code> was reached.  No log-log information since <code>control$min.iter.conv.test</code> is less than <code>MLEobj$control$maxit</code> so no log-log plot test could be done. </p>
+</dd>
+<dt>convergence=42</dt>
+<dd>
+<p><code>MLEobj$control$abstol</code> was reached but the log-log plot test returned NAs.  This is an odd error and you should set <code>control$trace=TRUE</code> and look at the outputted <code>$iter.record</code> to see what is wrong. </p>
+</dd>
+<dt>convergence=52</dt>
+<dd>
+<p>The EM algorithm was abandoned due to numerical errors.  Usually this means one of the variances either went to zero or to all elements being equal.  This is not an error per se.  Most likely it means that your model is not very good for your data (too inflexible or too many parameters).  Try setting <code>control$trace=1</code> to view a detailed error report.</p>
+</dd>
+<dt>convergence=53</dt>
+<dd>
+<p> The algorithm was abandoned due to numerical errors in the likelihood calculation from <code>MARSSkf</code>.  </p>
+</dd> 
+<dt>convergence=62</dt>
+<dd>
+<p>The algorithm was abandoned due to errors in the log-log convergence test.  You should not get this error (it is included for debugging purposes to catch improper arguments passed into the log-log convergence test). </p>
+</dd>
+<dt>convergence=63</dt>
+<dd>
+<p>The algorithm was run for <code>control$maxit</code> iterations, <code>control$abstol</code> not reached, and the log-log convergence test returned errors.  You should not get this error (it is included for debugging purposes to catch improper arguments passed into the log-log convergence test).</p>
+</dd>
+<dt>convergence=72</dt>
+<dd>
+<p>Other convergence errors.  This is included for debugging purposes to catch misc. errors. </p>
+</dd>        
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logLik</code></td>
+<td>
+<p>Log-likelihood.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>states</code></td>
+<td>
+<p>State estimates from the Kalman smoother.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>states.se</code></td>
+<td>
+<p>Confidence intervals based on state standard errors, see caption of Fig 6.3 (p. 337) in Shumway &amp; Stoffer (2006).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>errors</code></td>
+<td>
+<p>Any error messages.</p>
+</td>
+</tr>
+</table>
+<h3>Discussion</h3>
+
+<p>To ensure that the global maximum-likelihood values are found, it is recommended that you test the fit under different initial parameter values, particularly if the model is not a good fit to the data.  This requires more computation time, but reduces the chance of the algorithm terminating at a local maximum and not reaching the true MLEs.   For many models and for draft analyses, this is unnecessary, but answers should be checked using an initial conditions search before reporting final values.  See the chapter on initial conditions in the User Guide for a discussion on how to do this.
+</p>
+<p><code>MARSSkem()</code> calls a Kalman filter/smoother <code>MARSSkf()</code> for hidden state estimation.   The algorithm allows two options for the initial state conditions: fixed but unknown or a prior.  In the first case, x0 (whether at t=0 or t=1) is treated as fixed but unknown (estimated); in this case, <code>fixed$V0=0</code> and x0 is estimated.  This is the default behavior.  In the second case, the initial conditions are specified with a prior and V0!=0.   In the later case, x0 or V0 may be estimated.  MARSS will allow you to try to estimate both, but many researchers have noted that this is not robust so you should fix one or the other.
+</p>
+<p>If you get errors, you can type <code>MARSSinfo()</code> for help. Fitting problems often mean that the solution involves an ill-conditioned matrix.    For example, your <code class="reqn">\mathbf{Q}</code> or <code class="reqn">\mathbf{R}</code> matrix is going to a value in which all elements have the same value, for example zero.  If for example, you tried to fit a model with a fixed <code class="reqn">\mathbf{R}</code> matrix with high values on the diagonal and the variance in that <code class="reqn">\mathbf{R}</code> matrix (diagonal terms) was much higher than what is actually in the data, then you might drive <code class="reqn">\mathbf{Q}</code> to zero.   Also if you try to fit a structurally inadequate model, then it is not unusual that <code class="reqn">\mathbf{Q}</code> will be driven to zero.  For example, if you fit a model with 1 hidden state trajectory to data that clearly have 2 quite different hidden state trajectories, you might have this problem.  Comparing the likelihood of this model to a model with more structural flexibility should reveal that the structurally inflexible model is inadequate (much lower likelihood).
+</p>
+<p>Convergence testing is done via a combination of two tests.  The first test (abstol test) is the test that the change in the absolute value of the log-likelihood from one iteration to another is less than some tolerance value (abstol).  The second test (log-log test) is that the slope of a plot of the log of the parameter value or log-likelihood versus the log of the iteration number is less than some tolerance.  Both of these must be met to generate the Success! parameters converged output.  If you want to circumvent one of these tests, then set the tolerance for the unwanted test to be high.  That will guarantee that that test is met before the convergence test you want to use is met.  The tolerance for the abstol test is set by <code>control$abstol</code> and the tolerance for the log-log test is set by <code>control$conv.test.slope.tol</code>.  Anything over 1 is huge for both of these. 
+</p>
+
+
+<h3>Author(s)</h3>
+
+ 
+<p>Eli Holmes and Eric Ward, NOAA, Seattle, USA.  
+</p>
+
+
+<h3>References</h3>
+
+ 
+<p>R. H. Shumway and D. S. Stoffer (2006).  Chapter 6 in Time series analysis and its applications.  Springer-Verlag, New York.
+</p>
+<p>Ghahramani, Z. and Hinton, G. E. (1996) Parameter estimation for linear dynamical systems. Technical Report CRG-TR-96-2, University of Toronto, Dept. of Computer Science. 
+</p>
+<p>Harvey, A. C. (1989) Chapter 5 in Forecasting, structural time series models and the
+Kalman filter. Cambridge University Press, Cambridge, UK.
+</p>
+<p>The MARSS User Guide:  Holmes, E. E., E. J. Ward, and M. D. Scheuerell (2012) Analysis of multivariate time-series using the MARSS package. NOAA Fisheries, Northwest Fisheries Science
+Center, 2725 Montlake Blvd E., Seattle, WA 98112   Go to <a href="https://cran.r-project.org/package=MARSS/vignettes/UserGuide.pdf">User Guide</a> to open the most recent version.
+</p>
+<p>Holmes, E. E. (2012).  Derivation of the EM algorithm for constrained and unconstrained multivariate autoregressive
+state-space (MARSS) models.  Technical Report. arXiv:1302.3919 [stat.ME] <a href="https://cran.r-project.org/package=MARSS/vignettes/EMDerivation.pdf">EMDerivation</a> has the most recent version.
+</p>
+
+
+<h3>See Also</h3>
+
+ 
+<p><code>MARSSkf()</code>, <code>marssMLE</code>, <code>MARSSoptim()</code>, <code>MARSSinfo()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">dat &lt;- t(harborSeal)
+dat &lt;- dat[2:4, ]
+# you can use MARSS to construct a proper marssMLE object.
+fit &lt;- MARSS(dat, model = list(Q = "diagonal and equal", U = "equal"), fit = FALSE)
+# Pass this marssMLE object to MARSSkem to do the fit.
+kemfit &lt;- MARSSkem(fit)
+</code></pre>
+
+
+</div>

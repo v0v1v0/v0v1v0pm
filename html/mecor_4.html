@@ -1,0 +1,211 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ipwm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Weighting for Confounding and Joint Misclassification of Exposure and Outcome</h2>
+
+<h3>Description</h3>
+
+<p><code>ipwm</code> implements a method for estimating the marginal causal odds ratio by constructing weights (modified inverse probability weights) that address both confounding and joint misclassification of exposure and outcome.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ipwm(
+  formulas,
+  data,
+  outcome_true,
+  outcome_mis = NULL,
+  exposure_true,
+  exposure_mis = NULL,
+  nboot = 1000,
+  conf_level = 0.95,
+  fix_nNAs = FALSE,
+  semiparametric = FALSE,
+  optim_args = list(method = "BFGS"),
+  force_optim = FALSE,
+  sp = Inf,
+  print = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formulas</code></td>
+<td>
+<p>a list of objects of class <code>formula</code> specifying the probability models for the stats::terms of some factorisation of the joint conditional probability function of <code>exposure_true</code>, <code>exposure_mis</code>, <code>outcome_true</code> and <code>outcome_mis</code>, given covariates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p><code>data.frame</code> containing <code>exposure.true</code>, <code>exposure.mis</code>, <code>outcome.true</code>, <code>outcome.mis</code> and covariates. Missings (<code>NA</code>s) are allowed on variables <code>exposure_true</code> and <code>outcome_true</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outcome_true</code></td>
+<td>
+<p>a character string specifying the name of the true outcome variable that is free of misclassification but possibly unknown (<code>NA</code>) for some (but not all) subjects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outcome_mis</code></td>
+<td>
+<p>a character string specifying the name of the counterpart of <code>outcome_true</code> that is available on all subjects but potentially misclassifies subjects' outcomes. The default (<code>outcome_mis = NULL</code>) indicates absence of outcome misclassification</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exposure_true</code></td>
+<td>
+<p>a character string specifying the name of the true exposure variable that is free of misclassification but possibly unknown (<code>NA</code>) for some (but not all) subjects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exposure_mis</code></td>
+<td>
+<p>a character string specifying the name of the counterpart of <code>exposure_true</code> that is available on all subjects but potentially misclassifies subjects as exposed or as non-exposed. The default (<code>exposure_mis = NULL</code>) indicates absence of exposure misclassification</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nboot</code></td>
+<td>
+<p>number of bootstrap samples. Setting <code>nboot == 0</code> results in point estimation only.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf_level</code></td>
+<td>
+<p>the desired confidence level of the confidence interval</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fix_nNAs</code></td>
+<td>
+<p>logical indicator specifying whether or not to fix the joint distribution of <code>is.na(exposure_true)</code> and <code>is.na(outcome_true)</code>. If <code>TRUE</code>, stratified bootstrap sampling is done according to the missing data pattern.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>semiparametric</code></td>
+<td>
+<p>logical indicator specifying whether or not to parametrically sample <code>exposure_true</code>, <code>exposure_mis</code>, <code>outcome_true</code> and <code>outcome_mis</code>. If <code>semiparametric == TRUE</code>, it is assumed that the missing data pattern is conditionally independent of these variables given covariates. Provided <code>nboot &gt; 0</code>, the missing data pattern and covariates are sampled nonparametrically. <code>semiparametric</code> is ignored if <code>nboot == 0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optim_args</code></td>
+<td>
+<p>arguments passed onto <code>optim</code> if called. See Details below for more information.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>force_optim</code></td>
+<td>
+<p>logical indicator specifying whether or not to force the <code>optim</code> function to be called</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sp</code></td>
+<td>
+<p>scalar shrinkage parameter in the interval <code>(0, Inf)</code>. Values closer to zero result in greater shrinkage of the estimated odds ratio to unity; <code>sp == Inf</code> results in no shrinkage.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>print</code></td>
+<td>
+<p>logical indicator specifying whether or not to print the output.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function is an implementation of the weighting method described by Penning de Vries et al. (2018).
+The method defaults to the estimator proposed by Gravel and Platt (2018) in the absence of exposure misclassification.
+</p>
+<p>The function assumes that the exposure or the outcome has a misclassified version. An error is issued when both <code>outcome_mis</code> and <code>exposure_mis</code> are set to <code>NULL</code>.
+</p>
+<p>Provided <code>force_optim = FALSE</code>, <code>ipwm</code> is considerably more efficient when the <code>optim</code> function is not invoked; i.e., when (1) <code>exposure_mis = NULL</code> and the formula for <code>outcome_true</code> does not contain stats::terms involving <code>outcome_mis</code> or <code>exposure_true</code>, (2) <code>outcome_mis = NULL</code> and the formula for <code>exposure_true</code> does not contain stats::terms involving <code>exposure_mis</code> or <code>outcome_true</code>, or (3) <code>all(is.na(data[, exposure_true]) == is.na(data[, outcome_true]))</code> and the formulas for <code>exposure_true</code> and <code>outcome_true</code> do not contain stats::terms involving <code>exposure_mis</code> or <code>outcome_mis</code>. In these cases, <code>ipwm</code> uses iteratively reweighted least squares via the <code>glm</code> function for maximum likelihood estimation. In all other cases, <code>optim_args</code> is passed on to <code>optim</code> for optimisation of the joint likelihood of <code>outcome_true</code>, <code>outcome_mis</code>, <code>exposure_true</code> and <code>exposure_mis</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>ipwm</code> returns an object of class <code>ipwm</code>.
+The returned object is a list containing the following elements:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>logOR</code></td>
+<td>
+<p>the estimated log odds ratio;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>the matched function call.</p>
+</td>
+</tr>
+</table>
+<p>If <code>nboot != 0</code>, the list also contains
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>SE</code></td>
+<td>
+<p>a bootstrap estimate of the standard error for the estimator of the log odds ratio;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CI</code></td>
+<td>
+<p>a bootstrap percentile confidence interval for the log odds ratio.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Bas B. L. Penning de Vries, <a href="mailto:b.b.l.penning_de_vries@lumc.nl">b.b.l.penning_de_vries@lumc.nl</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Gravel, C. A., &amp; Platt, R. W. (2018). Weighted estimation for confounded binary outcomes subject to misclassification. <em>Statistics in medicine</em>, 37(3), 425-436. https://doi.org/10.1002/sim.7522
+</p>
+<p>Penning de Vries, B. B. L., van Smeden, M., &amp; Groenwold, R. H. H. (2020). A weighting method for simultaneous adjustment for confounding and joint exposure-outcome misclassifications. <em>Statistical Methods in Medical Research</em>, 0(0), 1-15. https://doi.org/10.1177/0962280220960172
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(sim) # simulated data on 10 covariates, exposure A and outcome Y.
+formulas &lt;- list(
+  Y ~ A + L1 + L2 + L3 + L4 + L5 + L6 + L7 + L8 + L9 + L10 + B + Z,
+  A ~ L1 + L2 + L3 + L4 + L5 + L6 + L7 + L8 + L9 + L10 + B + Z,
+  Z ~ L1 + L2 + L3 + L4 + L5 + L6 + L7 + L8 + L9 + L10 + B,
+  B ~ L1 + L2 + L3 + L4 + L5 + L6 + L7 + L8 + L9 + L10
+)
+## Not run: 
+ipwm_out &lt;- ipwm(
+  formulas = formulas,
+  data = sim,
+  outcome_true = "Y",
+  outcome_mis = "Z",
+  exposure_true = "A",
+  exposure_mis = "B",
+  nboot = 200,
+  sp = 1e6
+)
+ipwm_out
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

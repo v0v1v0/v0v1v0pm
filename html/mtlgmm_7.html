@@ -1,0 +1,460 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mtlgmm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit binary Gaussian mixture models (GMMs) on multiple data sets under a multi-task learning (MTL) setting.</h2>
+
+<h3>Description</h3>
+
+<p>it binary Gaussian mixture models (GMMs) on multiple data sets under a multi-task learning (MTL) setting. This function implements the modified EM algorithm (Altorithm 1) proposed in Tian, Y., Weng, H., &amp; Feng, Y. (2022).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mtlgmm(
+  x,
+  step_size = c("lipschitz", "fixed"),
+  eta_w = 0.1,
+  eta_mu = 0.1,
+  eta_beta = 0.1,
+  lambda_choice = c("cv", "fixed"),
+  cv_nfolds = 5,
+  cv_upper = 5,
+  cv_lower = 0.01,
+  cv_length = 5,
+  C1_w = 0.05,
+  C1_mu = 0.2,
+  C1_beta = 0.2,
+  C2_w = 0.05,
+  C2_mu = 0.2,
+  C2_beta = 0.2,
+  kappa = 1/3,
+  tol = 1e-05,
+  initial_method = c("EM", "kmeans"),
+  alignment_method = ifelse(length(x) &lt;= 10, "exhaustive", "greedy"),
+  trim = 0.1,
+  iter_max = 1000,
+  iter_max_prox = 100,
+  ncores = 1
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>design matrices from multiple data sets. Should be a list, of which each component is a <code>matrix</code> or <code>data.frame</code> object, representing the design matrix from each task.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>step_size</code></td>
+<td>
+<p>step size choice in proximal gradient method to solve each optimization problem in the revised EM algorithm (Algorithm 1 in Tian, Y., Weng, H., &amp; Feng, Y. (2022)), which can be either "lipschitz" or "fixed". Default = "lipschitz".
+</p>
+
+<ul>
+<li>
+<p> lipschitz: <code>eta_w</code>, <code>eta_mu</code> and <code>eta_beta</code> will be chosen by the Lipschitz property of the gradient of objective function (without the penalty part). See Section 4.2 of Parikh, N., &amp; Boyd, S. (2014).
+</p>
+</li>
+<li>
+<p> fixed: <code>eta_w</code>, <code>eta_mu</code> and <code>eta_beta</code> need to be specified
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eta_w</code></td>
+<td>
+<p>step size in the proximal gradient method to learn w (Step 3 of Algorithm 1 in Tian, Y., Weng, H., &amp; Feng, Y. (2022)). Default: 0.1. Only used when <code>step_size</code> = "fixed".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eta_mu</code></td>
+<td>
+<p>step size in the proximal gradient method to learn mu (Steps 4 and 5 of Algorithm 1 in Tian, Y., Weng, H., &amp; Feng, Y. (2022)). Default: 0.1. Only used when <code>step_size</code> = "fixed".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eta_beta</code></td>
+<td>
+<p>step size in the proximal gradient method to learn beta (Step 9 of Algorithm 1 in Tian, Y., Weng, H., &amp; Feng, Y. (2022)). Default: 0.1. Only used when <code>step_size</code> = "fixed".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda_choice</code></td>
+<td>
+<p>the choice of constants in the penalty parameter used in the optimization problems. See Algorithm 1 of Tian, Y., Weng, H., &amp; Feng, Y. (2022), which can be either "fixed" or "cv". Default: "cv".
+</p>
+
+<ul>
+<li>
+<p> cv: <code>cv_nfolds</code>, <code>cv_upper</code>, and <code>cv_length</code> need to be specified. Then the C1 and C2 parameters will be chosen in all combinations in <code>exp(seq(log(cv_lower/10), log(cv_upper/10), length.out = cv_length))</code> via cross-validation. Note that this is a two-dimensional cv process, because we set <code>C1_w</code> = <code>C2_w</code>, <code>C1_mu</code> = <code>C1_beta</code> = <code>C2_mu</code> = <code>C2_beta</code> to reduce the computational cost.
+</p>
+</li>
+<li>
+<p> fixed: <code>C1_w</code>, <code>C1_mu</code>, <code>C1_beta</code>, <code>C2_w</code>, <code>C2_mu</code>, and <code>C2_beta</code> need to be specified. See equations (7)-(12) in Tian, Y., Weng, H., &amp; Feng, Y. (2022).
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv_nfolds</code></td>
+<td>
+<p>the number of cross-validation folds. Default: 5</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv_upper</code></td>
+<td>
+<p>the upper bound of <code>lambda</code> values used in cross-validation. Default: 5</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv_lower</code></td>
+<td>
+<p>the lower bound of <code>lambda</code> values used in cross-validation. Default: 0.01</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv_length</code></td>
+<td>
+<p>the number of <code>lambda</code> values considered in cross-validation. Default: 5</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C1_w</code></td>
+<td>
+<p>the initial value of C1_w. See equations (7) in Tian, Y., Weng, H., &amp; Feng, Y. (2022). Default: 0.05</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C1_mu</code></td>
+<td>
+<p>the initial value of C1_mu. See equations (8) in Tian, Y., Weng, H., &amp; Feng, Y. (2022). Default: 0.2</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C1_beta</code></td>
+<td>
+<p>the initial value of C1_beta. See equations (9) in Tian, Y., Weng, H., &amp; Feng, Y. (2022). Default: 0.2</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C2_w</code></td>
+<td>
+<p>the initial value of C2_w. See equations (10) in Tian, Y., Weng, H., &amp; Feng, Y. (2022). Default: 0.05</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C2_mu</code></td>
+<td>
+<p>the initial value of C2_mu. See equations (11) in Tian, Y., Weng, H., &amp; Feng, Y. (2022). Default: 0.2</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C2_beta</code></td>
+<td>
+<p>the initial value of C2_beta. See equations (12) in Tian, Y., Weng, H., &amp; Feng, Y. (2022). Default: 0.2</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kappa</code></td>
+<td>
+<p>the decaying rate used in equation (7)-(12) in Tian, Y., Weng, H., &amp; Feng, Y. (2022). Default: 1/3</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>maximum tolerance in all optimization problems. If the difference between last update and the current update is less than this value, the iterations of optimization will stop. Default: 1e-05</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial_method</code></td>
+<td>
+<p>initialization method. This indicates the method to initialize the estimates of GMM parameters for each data set. Can be either "EM" or "kmeans". Default: "EM".
+</p>
+
+<ul>
+<li>
+<p> EM: the initial estimates of GMM parameters will be generated from the single-task EM algorithm. Will call <code>Mclust</code> function in <code>mclust</code> package.
+</p>
+</li>
+<li>
+<p> kmeans: the initial estimates of GMM parameters will be generated from the single-task k-means algorithm. Will call <code>kmeans</code> function in <code>stats</code> package.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alignment_method</code></td>
+<td>
+<p>the alignment algorithm to use. See Section 2.4 of Tian, Y., Weng, H., &amp; Feng, Y. (2022). Can either be "exhaustive" or "greedy". Default: when <code>length(x)</code> &lt;= 10, "exhaustive" will be used, otherwise "greedy" will be used.
+</p>
+
+<ul>
+<li>
+<p> exhaustive: exhaustive search algorithm (Algorithm 2 in Tian, Y., Weng, H., &amp; Feng, Y. (2022)) will be used.
+</p>
+</li>
+<li>
+<p> greedy: greey label swapping algorithm (Algorithm 3 in Tian, Y., Weng, H., &amp; Feng, Y. (2022)) will be used.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trim</code></td>
+<td>
+<p>the proportion of trimmed data sets in the cross-validation procedure of choosing tuning parameters. Setting it to a non-zero small value can help avoid the impact of outlier tasks on the choice of tuning parameters. Default: 0.1</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter_max</code></td>
+<td>
+<p>the maximum iteration number of the revised EM algorithm (i.e. the parameter T in Algorithm 1 in Tian, Y., Weng, H., &amp; Feng, Y. (2022)). Default: 1000</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter_max_prox</code></td>
+<td>
+<p>the maximum iteration number of the proximal gradient method. Default: 100</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+<p>the number of cores to use. Parallel computing is strongly suggested, specially when <code>lambda_choice</code> = "cv". Default: 1</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list with the following components.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>w</code></td>
+<td>
+<p>the estimate of mixture proportion in GMMs for each task. Will be a vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu1</code></td>
+<td>
+<p>the estimate of Gaussian mean in the first cluster of GMMs for each task. Will be a matrix, where each column represents the estimate for a task.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu2</code></td>
+<td>
+<p>the estimate of Gaussian mean in the second cluster of GMMs for each task. Will be a matrix, where each column represents the estimate for a task.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta</code></td>
+<td>
+<p>the estimate of the discriminant coefficient for each task. Will be a matrix, where each column represents the estimate for a task.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Sigma</code></td>
+<td>
+<p>the estimate of the common covariance matrix for each task. Will be a list, where each component represents the estimate for a task.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>w_bar</code></td>
+<td>
+<p>the center estimate of w. Numeric. See Algorithm 1 in Tian, Y., Weng, H., &amp; Feng, Y. (2022). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu1_bar</code></td>
+<td>
+<p>the center estimate of mu1. Will be a vector. See Algorithm 1 in Tian, Y., Weng, H., &amp; Feng, Y. (2022).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu2_bar</code></td>
+<td>
+<p>the center estimate of mu2. Will be a vector. See Algorithm 1 in Tian, Y., Weng, H., &amp; Feng, Y. (2022).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta_bar</code></td>
+<td>
+<p>the center estimate of beta. Will be a vector. See Algorithm 1 in Tian, Y., Weng, H., &amp; Feng, Y. (2022).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C1_w</code></td>
+<td>
+<p>the initial value of C1_w.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C1_mu</code></td>
+<td>
+<p>the initial value of C1_mu.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C1_beta</code></td>
+<td>
+<p>the initial value of C1_beta.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C2_w</code></td>
+<td>
+<p>the initial value of C2_w.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C2_mu</code></td>
+<td>
+<p>the initial value of C2_mu.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C2_beta</code></td>
+<td>
+<p>the initial value of C2_beta.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial_mu1</code></td>
+<td>
+<p>the well-aligned initial estimate of mu1 of different tasks. Useful for the alignment problem in transfer learning. See Section 3.4 in Tian, Y., Weng, H., &amp; Feng, Y. (2022).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial_mu2</code></td>
+<td>
+<p>the well-aligned initial estimate of mu2 of different tasks. Useful for the alignment problem in transfer learning. See Section 3.4 in Tian, Y., Weng, H., &amp; Feng, Y. (2022).</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Tian, Y., Weng, H., &amp; Feng, Y. (2022). Unsupervised Multi-task and Transfer Learning on Gaussian Mixture Models. arXiv preprint arXiv:2209.15224.
+</p>
+<p>Parikh, N., &amp; Boyd, S. (2014). Proximal algorithms. Foundations and trends in Optimization, 1(3), 127-239.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>tlgmm</code>, <code>predict_gmm</code>, <code>data_generation</code>, <code>initialize</code>, <code>alignment</code>, <code>alignment_swap</code>, <code>estimation_error</code>, <code>misclustering_error</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(0, kind = "L'Ecuyer-CMRG")
+library(mclust)
+## Consider a 5-task multi-task learning problem in the setting "MTL-1"
+data_list &lt;- data_generation(K = 5, outlier_K = 1, simulation_no = "MTL-1",
+h_w = 0.1, h_mu = 1, n = 50)  # generate the data
+fit &lt;- mtlgmm(x = data_list$data$x, C1_w = 0.05, C1_mu = 0.2, C1_beta = 0.2,
+C2_w = 0.05, C2_mu = 0.2, C2_beta = 0.2, kappa = 1/3, initial_method = "EM",
+trim = 0.1, lambda_choice = "fixed", step_size = "lipschitz")
+
+
+## compare the performance with that of single-task estimators
+# fit single-task GMMs
+fitted_values &lt;- initialize(data_list$data$x, "EM")  # initilize the estimates
+L &lt;- alignment(fitted_values$mu1, fitted_values$mu2,
+method = "exhaustive")  # call the alignment algorithm
+fitted_values &lt;- alignment_swap(L$L1, L$L2,
+initial_value_list = fitted_values)  # obtain the well-aligned initial estimates
+
+# fit a pooled GMM
+x.comb &lt;- Reduce("rbind", data_list$data$x)
+fit_pooled &lt;- Mclust(x.comb, G = 2, modelNames = "EEE")
+fitted_values_pooled &lt;- list(w = NULL, mu1 = NULL, mu2 = NULL, beta = NULL, Sigma = NULL)
+fitted_values_pooled$w &lt;- rep(fit_pooled$parameters$pro[1], length(data_list$data$x))
+fitted_values_pooled$mu1 &lt;- matrix(rep(fit_pooled$parameters$mean[,1],
+length(data_list$data$x)), ncol = length(data_list$data$x))
+fitted_values_pooled$mu2 &lt;- matrix(rep(fit_pooled$parameters$mean[,2],
+length(data_list$data$x)), ncol = length(data_list$data$x))
+fitted_values_pooled$Sigma &lt;- sapply(1:length(data_list$data$x), function(k){
+  fit_pooled$parameters$variance$Sigma
+}, simplify = FALSE)
+fitted_values_pooled$beta &lt;- sapply(1:length(data_list$data$x), function(k){
+  solve(fit_pooled$parameters$variance$Sigma) %*%
+  (fit_pooled$parameters$mean[,1] - fit_pooled$parameters$mean[,2])
+})
+error &lt;- matrix(nrow = 3, ncol = 4, dimnames = list(c("Single-task-GMM","Pooled-GMM","MTL-GMM"),
+c("w", "mu", "beta", "Sigma")))
+error["Single-task-GMM", "w"] &lt;- estimation_error(
+fitted_values$w[-data_list$data$outlier_index],
+data_list$parameter$w[-data_list$data$outlier_index], "w")
+error["Pooled-GMM", "w"] &lt;- estimation_error(
+fitted_values_pooled$w[-data_list$data$outlier_index],
+data_list$parameter$w[-data_list$data$outlier_index], "w")
+error["MTL-GMM", "w"] &lt;- estimation_error(
+fit$w[-data_list$data$outlier_index],
+data_list$parameter$w[-data_list$data$outlier_index], "w")
+
+error["Single-task-GMM", "mu"] &lt;- estimation_error(
+list(fitted_values$mu1[, -data_list$data$outlier_index],
+fitted_values$mu2[, -data_list$data$outlier_index]),
+list(data_list$parameter$mu1[, -data_list$data$outlier_index],
+data_list$parameter$mu2[, -data_list$data$outlier_index]), "mu")
+error["Pooled-GMM", "mu"] &lt;- estimation_error(list(
+fitted_values_pooled$mu1[, -data_list$data$outlier_index],
+fitted_values_pooled$mu2[, -data_list$data$outlier_index]),
+list(data_list$parameter$mu1[, -data_list$data$outlier_index],
+data_list$parameter$mu2[, -data_list$data$outlier_index]), "mu")
+error["MTL-GMM", "mu"] &lt;- estimation_error(list(
+fit$mu1[, -data_list$data$outlier_index],
+fit$mu2[, -data_list$data$outlier_index]),
+list(data_list$parameter$mu1[, -data_list$data$outlier_index],
+data_list$parameter$mu2[, -data_list$data$outlier_index]), "mu")
+
+error["Single-task-GMM", "beta"]  &lt;- estimation_error(
+fitted_values$beta[, -data_list$data$outlier_index],
+data_list$parameter$beta[, -data_list$data$outlier_index], "beta")
+error["Pooled-GMM", "beta"] &lt;- estimation_error(
+fitted_values_pooled$beta[, -data_list$data$outlier_index],
+data_list$parameter$beta[, -data_list$data$outlier_index], "beta")
+error["MTL-GMM", "beta"] &lt;- estimation_error(
+fit$beta[, -data_list$data$outlier_index],
+data_list$parameter$beta[, -data_list$data$outlier_index], "beta")
+
+error["Single-task-GMM", "Sigma"] &lt;- estimation_error(
+fitted_values$Sigma[-data_list$data$outlier_index],
+data_list$parameter$Sigma[-data_list$data$outlier_index], "Sigma")
+error["Pooled-GMM", "Sigma"] &lt;- estimation_error(
+fitted_values_pooled$Sigma[-data_list$data$outlier_index],
+data_list$parameter$Sigma[-data_list$data$outlier_index], "Sigma")
+error["MTL-GMM", "Sigma"] &lt;- estimation_error(
+fit$Sigma[-data_list$data$outlier_index],
+data_list$parameter$Sigma[-data_list$data$outlier_index], "Sigma")
+
+error
+
+
+# use cross-validation to choose the tuning parameters
+# warning: can be quite slow, large "ncores" input is suggested!!
+fit &lt;- mtlgmm(x = data_list$data$x, kappa = 1/3, initial_method = "EM", ncores = 2, cv_length = 5,
+trim = 0.1, cv_upper = 2, cv_lower = 0.01, lambda = "cv", step_size = "lipschitz")
+
+
+</code></pre>
+
+
+</div>

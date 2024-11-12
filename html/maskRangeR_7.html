@@ -1,0 +1,120 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>maskRanger</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Make a matrix of modeling decisions to be used to specify clipping rules</h2>
+
+<h3>Description</h3>
+
+<p>Performs data driven masking of potential species distributions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">maskRanger(
+  potentialDist,
+  initialDist = NULL,
+  maskLayers,
+  logicString,
+  method = "mask"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>potentialDist</code></td>
+<td>
+<p>A raster stack of binary or continuous values. Supplying more than one layer will be interepreted as different time periods. Layers should follow the naming convention 'Y2000', 'Y2001', etc. Must have same extent and resolution as maskLayers.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initialDist</code></td>
+<td>
+<p>A raster showing a previously created optimally tuned SDM. Must have same extent and resolution as maskLayers.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maskLayers</code></td>
+<td>
+<p>A single raster or a raster stack. If a single raster, the same mask will be applied to each layer of 'potentialDist'. If a stack it must have the same number of layers as potentialDist, and each layer corresponds to a different time period. Must have same extent and resolution as initialDist.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logicString</code></td>
+<td>
+<p>a character indicating the logical conditions to use for masking.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>A list of strings defining methods to be used, in the same order as 'rsList'. If a single value is provided it will be applied to all rasters in 'rsList'. Options currently include only 'mask' to mask cells with values outside the bounds.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>See Examples.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a raster stack
+</p>
+
+
+<h3>Note</h3>
+
+<p>To apply multiple masks, e.g., elevation and forest cover, use separate calls to maskRS.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Cory Merow &lt;cory.merow@gmail.com&gt;,
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Multiple Expert Maps
+# Generate random polygon
+env1 &lt;- raster::raster(nrows=108, ncols=21, xmn=0, xmx=10)
+env2 &lt;- raster::raster(nrows=108, ncols=21, xmn=0, xmx=10)
+env3 &lt;- raster::raster(nrows=108, ncols=21, xmn=0, xmx=10)
+raster::values(env1)&lt;- sort(runif(n = (108*21)))  
+raster::values(env2)&lt;- runif(n = (108*21))
+raster::values(env3)&lt;- runif(n = (108*21))
+sdm &lt;- raster::raster(nrows=108, ncols=21, xmn=0, xmx=10)
+raster::values(sdm)&lt;- sort(runif(n = (108*21)))  
+coords &lt;- dismo::randomPoints(sdm, 3)
+polyg &lt;- sp::Polygon(coords)
+polyg &lt;- sp::SpatialPolygons(list(sp::Polygons(list(polyg), ID = "a")))
+expertRaster &lt;- raster::rasterize(polyg, sdm)
+maskStack &lt;-raster:: stack(env1, env2, env3)
+names(maskStack) &lt;- c("env1", "env2", "env3")
+# Get list of tolerances for environmental data
+env1Vals &lt;- quantile(raster::values(env1), prob = c(0, 0.025, 0.25, 0.5, 0.75, 0.975, 1), 
+                     na.rm = TRUE)
+env2Vals &lt;- quantile(raster::values(env2), prob = c(0, 0.025, 0.25, 0.5, 0.75, 0.975, 1), 
+                     na.rm = TRUE)
+env3Vals &lt;- quantile(raster::values(env3), prob = c(0, 0.025, 0.25, 0.5, 0.75, 0.975, 1), 
+                     na.rm = TRUE)
+maskBounds &lt;- data.frame(rbind(cbind(env1Vals[[3]], env1Vals[[5]]), 
+                               cbind(env2Vals[[3]], env2Vals[[5]]),
+                               cbind(env3Vals[[3]], env3Vals[[5]])))
+maskBounds &lt;- cbind(names(maskStack), maskBounds)
+colnames(maskBounds) &lt;- c("Layer", "min", "max")
+# mask range by these tolerance masks
+realized &lt;- lotsOfMasks(expertRaster, maskStack, maskBounds)
+</code></pre>
+
+
+</div>

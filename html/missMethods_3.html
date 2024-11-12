@@ -1,0 +1,315 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>delete_MAR_1_to_x</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create MAR values using MAR1:x</h2>
+
+<h3>Description</h3>
+
+<p>Create missing at random (MAR) values using MAR1:x in a data frame or
+a matrix
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">delete_MAR_1_to_x(
+  ds,
+  p,
+  cols_mis,
+  cols_ctrl,
+  x,
+  cutoff_fun = median,
+  prop = 0.5,
+  use_lpSolve = TRUE,
+  ordered_as_unordered = FALSE,
+  n_mis_stochastic = FALSE,
+  x_stochastic = FALSE,
+  add_realized_x = FALSE,
+  ...,
+  miss_cols,
+  ctrl_cols,
+  stochastic
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>ds</code></td>
+<td>
+<p>A data frame or matrix in which missing values will be created.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>A numeric vector with length one or equal to length <code>cols_mis</code>;
+the probability that a value is missing.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cols_mis</code></td>
+<td>
+<p>A vector of column names or indices of columns in which
+missing values will be created.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cols_ctrl</code></td>
+<td>
+<p>A vector of column names or indices of columns, which
+controls the creation of missing values in <code>cols_mis</code>. Must be of the
+same length as <code>cols_mis</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Numeric with length one (0 &lt; x &lt; <code>Inf</code>); odds are 1 to x for
+the probability of a value to be missing in group 1 against the probability
+of a value to be missing  in group 2 (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cutoff_fun</code></td>
+<td>
+<p>Function that calculates the cutoff values in the
+<code>cols_ctrl</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prop</code></td>
+<td>
+<p>Numeric of length one; (minimum) proportion of rows in group 1
+(only used for unordered factors).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_lpSolve</code></td>
+<td>
+<p>Logical; should lpSolve be used for the determination of
+groups, if <code>cols_ctrl[i]</code> is an unordered factor.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ordered_as_unordered</code></td>
+<td>
+<p>Logical; should ordered factors be treated as
+unordered factors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_mis_stochastic</code></td>
+<td>
+<p>Logical, should the number of missing values be
+stochastic? If <code>n_mis_stochastic = TRUE</code>, the number of missing values
+for a column with missing values <code>cols_mis[i]</code> is a random variable
+with expected value <code>nrow(ds) * p[i]</code>. If <code>n_mis_stochastic =
+FALSE</code>, the number of missing values will be deterministic. Normally, the
+number of missing values for a column with missing values
+<code>cols_mis[i]</code> is <code>round(nrow(ds) * p[i])</code>. Possible deviations
+from this value, if any exists, are documented in Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x_stochastic</code></td>
+<td>
+<p>Logical; should the odds be stochastic or deterministic.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>add_realized_x</code></td>
+<td>
+<p>Logical; if TRUE the realized odds for cols_mis will
+be returned (as attribute).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments passed to <code>cutoff_fun</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>miss_cols</code></td>
+<td>
+<p>Deprecated, use <code>cols_mis</code> instead.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ctrl_cols</code></td>
+<td>
+<p>Deprecated, use <code>cols_ctrl</code> instead.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stochastic</code></td>
+<td>
+<p>Deprecated, use <code>n_mis_stochastic</code> instead.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function creates missing at random (MAR) values in the columns
+specified by the argument <code>cols_mis</code>.
+The probability for missing values is controlled by <code>p</code>.
+If <code>p</code> is a single number, then the overall probability for a value to
+be missing will be <code>p</code> in all columns of <code>cols_mis</code>.
+(Internally <code>p</code> will be replicated to a vector of the same length as
+<code>cols_mis</code>.
+So, all <code>p[i]</code> in the following sections will be equal to the given
+single number <code>p</code>.)
+Otherwise, <code>p</code> must be of the same length as <code>cols_mis</code>.
+In this case, the overall probability for a value to be missing will be
+<code>p[i]</code> in the column <code>cols_mis[i]</code>.
+The position of the missing values in <code>cols_mis[i]</code> is controlled by
+<code>cols_ctrl[i]</code>.
+The following procedure is applied for each pair of <code>cols_ctrl[i]</code> and
+<code>cols_mis[i]</code> to determine the positions of missing values:
+</p>
+<p>At first, the rows of <code>ds</code> are divided into two groups.
+Therefore, the <code>cutoff_fun</code> calculates a cutoff value for
+<code>cols_ctrl[i]</code> (via <code>cutoff_fun(ds[, cols_ctrl[i]], ...)</code>).
+The group 1 consists of the rows, whose values in
+<code>cols_ctrl[i]</code> are below the calculated cutoff value.
+If the so defined group 1 is empty, the rows that have a value equal to the
+cutoff value will be added to this group (otherwise, these rows will
+belong to group 2).
+The group 2 consists of the remaining rows, which are not part of group 1.
+Now the probabilities for the rows in the two groups are set in the way
+that the odds are 1:x against a missing value in <code>cols_mis[i]</code> for the
+rows in group 1 compared to the rows in group 2.
+That means, the probability for a value to be missing in group 1 divided by
+the probability for a value to be missing in group 2 equals 1 divided
+by x.
+For example, for two equal sized groups 1 and 2, ideally the number of NAs in
+group 1 divided by the number of NAs in group 2 should equal 1 divided by x.
+But there are some restrictions, which can lead to some deviations from the
+odds 1:x (see below).
+</p>
+<p>If <code>x_stochastic</code> and <code>n_mis_stochastic</code> are false (the default),
+then exactly <code>round(nrow(ds) * p[i])</code> values will be set <code>NA</code> in
+column <code>cols_mis[i]</code>.
+To achieve this, it is possible that the true odds differ from 1:x.
+The number of observations that are deleted in group 1 and group 2 are
+chosen to minimize the absolute difference between the realized odds and 1:x.
+Furthermore, if <code>round(nrow(ds) * p[i])</code> == 0, then no missing value
+will be created in <code>cols_mis[i]</code>.
+</p>
+<p>If <code>x_stochastic</code> is true, the rows from the two groups will get
+sampling weights proportional to 1 (group 1) and x (group 2). If
+<code>n_mis_stochastic</code> is false, these weights are given to
+<code>sample</code> via the argument <code>prob</code> and exactly
+<code>round(nrow(ds) * p[i])</code> values will be set <code>NA</code>. If
+<code>n_mis_stochastic</code> is true, the sampling weights will be scaled and
+compared to uniform random numbers. The scaling is done in such a way to get
+expected <code>nrow(ds) * p[i]</code> missing values in <code>cols_mis[i]</code>.
+</p>
+<p>If <code>p</code> is high and <code>x</code> is too high or too low, it is possible that
+the odds 1:x and the proportion of missing values <code>p</code> cannot be
+realized together.
+For example, if <code>p[i]</code> = 0.9, then a maximum of <code>x</code> = 1.25 is
+possible (assuming that  exactly 50 % of the values are below and 50 % of
+the values are above the cutoff value in <code>cols_ctrl[i]</code>).
+If a combination of <code>p</code> and <code>x</code> that cannot be realized together
+is given to <code>delete_MAR_1_to_x</code>, then a warning will be generated and
+<code>x</code> will be adjusted in such a way that <code>p</code> can be realized as
+given to the function. The warning can be silenced by setting the option
+<code>missMethods.warn.too.high.p</code> to false.
+</p>
+<p>The argument <code>add_realized_x</code> controls whether the x of the realized
+odds are added to the return value or not.
+If <code>add_realized_x = TRUE</code>, then the realized x values for all
+<code>cols_mis</code> will be added as an attribute to the returned object.
+For <code>x_stochastic = TRUE</code> these realized x will differ from the given
+<code>x</code> most of the time and will change if the function is rerun without
+setting a seed.
+For <code>x_stochastic = FALSE</code>, it is also possible that the realized odds
+differ (see above). However, the realized odds will be constant over multiple
+runs.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of the same class as <code>ds</code> with missing values.
+</p>
+
+
+<h3>Treatment of factors</h3>
+
+<p>If <code>ds[, cols_ctrl[i]]</code> is an unordered factor, then the concept of a
+cutoff value is not meaningful and cannot be applied.
+Instead, a combinations of the levels of the unordered factor is searched that
+</p>
+
+<ul>
+<li>
+<p>guarantees at least a proportion of <code>prop</code> rows are in group 1
+</p>
+</li>
+<li>
+<p>minimize the difference between <code>prop</code> and the proportion of
+rows in group 1.
+</p>
+</li>
+</ul>
+<p>This can be seen as a binary search problem, which is solved by the solver
+from the package <code>lpSolve</code>, if <code>use_lpSolve = TRUE</code>.
+If <code>use_lpSolve = FALSE</code>, a very simple heuristic is applied.
+The heuristic only guarantees that at least a proportion of <code>prop</code> rows
+are in group 1.
+The choice <code>use_lpSolve = FALSE</code> is not recommend and should only be
+considered, if the solver of lpSolve fails.
+</p>
+<p>If <code>ordered_as_unordered = TRUE</code>, then ordered factors will be treated
+like unordered factors and the same binary search problem will be solved for
+both types of factors.
+If <code>ordered_as_unordered = FALSE</code> (the default), then ordered factors
+will be grouped via <code>cutoff_fun</code> as described in Details.
+</p>
+
+
+<h3>References</h3>
+
+<p>Santos, M. S., Pereira, R. C., Costa, A. F., Soares, J. P.,
+Santos, J., &amp; Abreu, P. H. (2019). Generating Synthetic Missing Data: A
+Review by Missing Mechanism. <em>IEEE Access</em>, 7, 11651-11667
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>delete_MNAR_1_to_x</code>
+</p>
+<p>Other functions to create MAR: 
+<code>delete_MAR_censoring()</code>,
+<code>delete_MAR_one_group()</code>,
+<code>delete_MAR_rank()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">ds &lt;- data.frame(X = 1:20, Y = 101:120)
+delete_MAR_1_to_x(ds, 0.2, "X", "Y", 3)
+# beware of small datasets and x_stochastic = FALSE
+attr(delete_MAR_1_to_x(ds, 0.4, "X", "Y", 3, add_realized_x = TRUE), "realized_x")
+attr(delete_MAR_1_to_x(ds, 0.4, "X", "Y", 4, add_realized_x = TRUE), "realized_x")
+attr(delete_MAR_1_to_x(ds, 0.4, "X", "Y", 5, add_realized_x = TRUE), "realized_x")
+attr(delete_MAR_1_to_x(ds, 0.4, "X", "Y", 7, add_realized_x = TRUE), "realized_x")
+# p = 0.4 and 20 values -&gt; 8 missing values, possible combinations:
+# either 6 above 2 below (x = 3) or
+# 7 above and 1 below (x = 7)
+# Too high combination of p and x:
+tryCatch(delete_MAR_1_to_x(ds, 0.9, "X", "Y", 3), warning = function(w) w)
+</code></pre>
+
+
+</div>

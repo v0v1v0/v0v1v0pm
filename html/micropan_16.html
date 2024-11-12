@@ -1,0 +1,151 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>hmmerScan</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Scanning a profile Hidden Markov Model database</h2>
+
+<h3>Description</h3>
+
+<p>Scanning FASTA formatted protein files against a database of pHMMs using the HMMER3
+software.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">hmmerScan(in.files, dbase, out.folder, threads = 0, verbose = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>in.files</code></td>
+<td>
+<p>A character vector of file names.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dbase</code></td>
+<td>
+<p>The full path-name of the database to scan (text).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>out.folder</code></td>
+<td>
+<p>The name of the folder to put the result files.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threads</code></td>
+<td>
+<p>Number of CPU's to use.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Logical indicating if textual output should be given to monitor the progress.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The HMMER3 software is purpose-made for handling profile Hidden Markov Models (pHMM)
+describing patterns in biological sequences (Eddy, 2008). This function will make calls to the
+HMMER3 software to scan FASTA files of proteins against a pHMM database. 
+</p>
+<p>The files named in ‘<span class="samp">⁠in.files⁠</span>’ must contain FASTA formatted protein sequences. These files
+should be prepared by <code>panPrep</code> to make certain each sequence, as well as the file name,
+has a GID-tag identifying their genome. The database named in ‘<span class="samp">⁠db⁠</span>’ must be a HMMER3 formatted
+database. It is typically the Pfam-A database, but you can also make your own HMMER3 databases, see
+the HMMER3 documentation for help.
+</p>
+<p><code>hmmerScan</code> will query every input file against the named database. The database contains
+profile Hidden Markov Models describing position specific sequence patterns. Each sequence in every
+input file is scanned to see if some of the patterns can be matched to some degree. Each input file
+results in an output file with the same GID-tag in the name. The result files give tabular output, and
+are plain text files. See <code>readHmmer</code> for how to read the results into R.
+</p>
+<p>Scanning large databases like Pfam-A takes time, usually several minutes per genome. The scan is set
+up to use only 1 cpu per scan by default. By increasing <code>threads</code> you can utilize multiple CPUs, typically
+on a computing cluster.
+Our experience is that from a multi-core laptop it is better to start this function in default mode
+from mutliple R-sessions. This function will not overwrite an existing result file, and multiple parallel
+sessions can write results to the same folder.
+</p>
+
+
+<h3>Value</h3>
+
+<p>This function produces files in the folder specified by ‘<span class="samp">⁠out.folder⁠</span>’. Existing files are
+never overwritten by <code>hmmerScan</code>, if you want to re-compute something, delete the
+corresponding result files first.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The HMMER3 software must be installed on the system for this function to work, i.e. the command
+‘<span class="samp">⁠system("hmmscan -h")⁠</span>’ must be recognized as a valid command if you run it in the Console window.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Lars Snipen and Kristian Hovde Liland.
+</p>
+
+
+<h3>References</h3>
+
+<p>Eddy, S.R. (2008). A Probabilistic Model of Local Sequence Alignment That Simplifies
+Statistical Significance Estimation. PLoS Computational Biology, 4(5).
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>panPrep</code>, <code>readHmmer</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# This example require the external software HMMER
+# Using example files in this package
+pf &lt;- file.path(path.package("micropan"), "extdata", "xmpl_GID1.faa.xz")
+dbf &lt;- file.path(path.package("micropan"), "extdata",
+                 str_c("microfam.hmm", c(".h3f.xz",".h3i.xz",".h3m.xz",".h3p.xz")))
+
+# We need to uncompress them first...
+prot.file &lt;- tempfile(pattern = "GID1.faa", fileext=".xz")
+ok &lt;- file.copy(from = pf, to = prot.file)
+prot.file &lt;- xzuncompress(prot.file)
+db.files &lt;- str_c(tempfile(), c(".h3f.xz",".h3i.xz",".h3m.xz",".h3p.xz"))
+ok &lt;- file.copy(from = dbf, to = db.files)
+db.files &lt;- unlist(lapply(db.files, xzuncompress))
+db.name &lt;- str_remove(db.files[1], "\\.[a-z0-9]+$")
+
+# Scanning the FASTA file against microfam.hmm...
+hmmerScan(in.files = prot.file, dbase = db.name, out.folder = ".")
+
+# Reading results
+hmm.file &lt;- file.path(".", str_c("GID1_vs_", basename(db.name), ".txt"))
+hmm.tbl &lt;- readHmmer(hmm.file)
+
+# ...and cleaning...
+ok &lt;- file.remove(prot.file)
+ok &lt;- file.remove(str_remove(db.files, ".xz"))
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,124 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>acc.metric.fun</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Accuracy metrics calculation</h2>
+
+<h3>Description</h3>
+
+<p>Calculates classification and regression accuracy metrics for given coresponding observation and prediction vectors.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">acc.metric.fun(obs, pred, acc.m)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obs</code></td>
+<td>
+<p><code>numeric or factor vector;</code> Observations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pred</code></td>
+<td>
+<p><code>numeric or factor vector;</code> Predictions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>acc.m</code></td>
+<td>
+<p><code>character</code>; Accuracy metric. Possible values for regression: "ME", "MAE", "NMAE", "RMSE", "NRMSE", "R2", "CCC". Possible values for classification: "Accuracy", "Kappa", "AccuracyLower", "AccuracyUpper", "AccuracyNull", "AccuracyPValue", "McnemarPValue".</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Accuracy metric value.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Aleksandar Sekulic <a href="mailto:asekulic@grf.bg.ac.rs">asekulic@grf.bg.ac.rs</a></p>
+
+
+<h3>References</h3>
+
+<p>Sekulić, A., Kilibarda, M., Heuvelink, G. B., Nikolić, M. &amp; Bajat, B. Random Forest Spatial Interpolation.Remote. Sens. 12, 1687, https://doi.org/10.3390/rs12101687 (2020).
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>acc.metric.fun</code>
+<code>rfsi</code>
+<code>pred.rfsi</code>
+<code>tune.rfsi</code>
+<code>cv.rfsi</code>
+<code>pred.strk</code>
+<code>cv.strk</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(sp)
+library(sf)
+library(CAST)
+library(ranger)
+library(plyr)
+library(meteo)
+
+# preparing data
+demo(meuse, echo=FALSE)
+meuse &lt;- meuse[complete.cases(meuse@data),]
+data = st_as_sf(meuse, coords = c("x", "y"), crs = 28992, agr = "constant")
+fm.RFSI &lt;- as.formula("zinc ~ dist + soil + ffreq")
+
+# making tgrid
+n.obs &lt;- 1:3
+min.node.size &lt;- 2:10
+sample.fraction &lt;- seq(1, 0.632, -0.05) # 0.632 without / 1 with replacement
+splitrule &lt;- "variance"
+ntree &lt;- 250 # 500
+mtry &lt;- 3:(2+2*max(n.obs))
+tgrid = expand.grid(min.node.size=min.node.size, num.trees=ntree,
+                    mtry=mtry, n.obs=n.obs, sample.fraction=sample.fraction)
+
+
+# do cross-validation
+rfsi_cv &lt;- cv.rfsi(formula=fm.RFSI, # without nearest obs
+                   data = data,
+                   zero.tol=0,
+                   tgrid = tgrid, # combinations for tuning
+                   tgrid.n = 5, # number of randomly selected combinations from tgrid for tuning
+                   tune.type = "LLO", # Leave-Location-Out CV
+                   k = 5, # number of folds
+                   seed = 42,
+                   acc.metric = "RMSE", # R2, CCC, MAE
+                   output.format = "data.frame",
+                   cpus=2, # detectCores()-1,
+                   progress=1,
+                   importance = "impurity")
+summary(rfsi_cv)
+
+# accuracy metric calculation
+acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "R2")
+acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "RMSE")
+acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "NRMSE")
+acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "MAE")
+acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "NMAE")
+acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "CCC")
+
+</code></pre>
+
+
+</div>

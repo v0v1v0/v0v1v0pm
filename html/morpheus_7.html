@@ -1,0 +1,157 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>multiRun</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>multiRun</h2>
+
+<h3>Description</h3>
+
+<p>Estimate N times some parameters, outputs of some list of functions.
+This method is thus very generic, allowing typically bootstrap or
+Monte-Carlo estimations of matrices mu or beta.
+Passing a list of functions opens the possibility to compare them on a fair
+basis (exact same inputs). It's even possible to compare methods on some
+deterministic design of experiments.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">multiRun(
+  fargs,
+  estimParams,
+  prepareArgs = function(x, i) x,
+  N = 10,
+  ncores = 3,
+  agg = lapply,
+  verbose = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>fargs</code></td>
+<td>
+<p>List of arguments for the estimation functions</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimParams</code></td>
+<td>
+<p>List of nf function(s) to apply on fargs</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prepareArgs</code></td>
+<td>
+<p>Prepare arguments for the functions inside estimParams</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N</code></td>
+<td>
+<p>Number of runs</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+<p>Number of cores for parallel runs (&lt;=1: sequential)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>agg</code></td>
+<td>
+<p>Aggregation method (default: lapply)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>TRUE to indicate runs + methods numbers</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list of nf aggregates of N results (matrices).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+beta &lt;- matrix(c(1,-2,3,1),ncol=2)
+
+# Bootstrap + computeMu, morpheus VS flexmix
+io &lt;- generateSampleIO(n=1000, p=1/2, beta=beta, b=c(0,0), "logit")
+mu &lt;- normalize(beta)
+res &lt;- multiRun(list(X=io$X,Y=io$Y,K=2), list(
+  # morpheus
+  function(fargs) {
+    library(morpheus)
+    ind &lt;- fargs$ind
+    computeMu(fargs$X[ind,], fargs$Y[ind], list(K=fargs$K))
+  },
+  # flexmix
+  function(fargs) {
+    library(flexmix)
+    ind &lt;- fargs$ind
+    K &lt;- fargs$K
+    dat &lt;- as.data.frame( cbind(fargs$Y[ind],fargs$X[ind,]) )
+    out &lt;- refit( flexmix( cbind(V1, 1 - V1) ~ 0+., data=dat, k=K,
+      model=FLXMRglm(family="binomial") ) )
+    normalize( matrix(out@coef[1:(ncol(fargs$X)*K)], ncol=K) )
+  } ),
+  prepareArgs = function(fargs,index) {
+    if (index == 1)
+      fargs$ind &lt;- 1:nrow(fargs$X)
+    else
+      fargs$ind &lt;- sample(1:nrow(fargs$X),replace=TRUE)
+    fargs
+  }, N=10, ncores=3)
+for (i in 1:2)
+  res[[i]] &lt;- alignMatrices(res[[i]], ref=mu, ls_mode="exact")
+
+# Monte-Carlo + optimParams from X,Y, morpheus VS flexmix
+res &lt;- multiRun(list(n=1000,p=1/2,beta=beta,b=c(0,0),link="logit"), list(
+  # morpheus
+  function(fargs) {
+    library(morpheus)
+    K &lt;- fargs$K
+    mu &lt;- computeMu(fargs$X, fargs$Y, list(K=fargs$K))
+    o &lt;- optimParams(fargs$X, fargs$Y, fargs$K, fargs$link, fargs$M)
+    o$run(list(beta=mu))$beta
+  },
+  # flexmix
+  function(fargs) {
+    library(flexmix)
+    K &lt;- fargs$K
+    dat &lt;- as.data.frame( cbind(fargs$Y,fargs$X) )
+    out &lt;- refit( flexmix( cbind(V1, 1 - V1) ~ ., data=dat, k=K,
+      model=FLXMRglm(family="binomial") ) )
+    sapply( seq_len(K), function(i)
+      as.double( out@components[[1]][[i]][2:(1+ncol(fargs$X)),1] ) )
+  } ),
+  prepareArgs = function(fargs,index) {
+    library(morpheus)
+    io &lt;- generateSampleIO(fargs$n, fargs$p, fargs$beta, fargs$b, fargs$link)
+    fargs$X &lt;- io$X
+    fargs$Y &lt;- io$Y
+    fargs$K &lt;- ncol(fargs$beta)
+    fargs$link &lt;- fargs$link
+    fargs$M &lt;- computeMoments(io$X,io$Y)
+    fargs
+  }, N=10, ncores=3)
+for (i in 1:2)
+  res[[i]] &lt;- alignMatrices(res[[i]], ref=beta, ls_mode="exact")
+## End(Not run)
+</code></pre>
+
+
+</div>

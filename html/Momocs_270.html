@@ -1,0 +1,180 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>efourier</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Elliptical Fourier transform (and its normalization)</h2>
+
+<h3>Description</h3>
+
+<p><code>efourier</code> computes Elliptical Fourier Analysis (or Transforms or EFT)
+from a matrix (or a list) of (x; y) coordinates. <code>efourier_norm</code> normalizes Fourier coefficients.
+Read Details carefully.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">efourier(x, ...)
+
+## Default S3 method:
+efourier(x, nb.h, smooth.it = 0, ...)
+
+## S3 method for class 'Out'
+efourier(x, nb.h, smooth.it = 0, norm = TRUE, start = FALSE, ...)
+
+## S3 method for class 'list'
+efourier(x, ...)
+
+efourier_norm(ef, start = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A <code>list</code> or a <code>matrix</code> of coordinates or a <code>Out</code> object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>useless here</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nb.h</code></td>
+<td>
+<p><code>integer</code>. The number of harmonics to use. If missing, 12 is used on shapes;
+99 percent of harmonic power on Out objects, both with messages.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>smooth.it</code></td>
+<td>
+<p><code>integer</code>. The number of smoothing iterations to
+perform.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>norm</code></td>
+<td>
+<p>whether to normalize the coefficients using efourier_norm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p><code>logical</code>. For <code>efourier</code> whether to consider the first point as homologous;
+for <code>efourier_norm</code> whether to conserve the position of the first
+point of the outline.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ef</code></td>
+<td>
+<p><code>list</code> with <code>a_n</code>, <code>b_n</code>, <code>c_n</code> and
+<code>d_n</code> Fourier coefficients, typically returned by efourier</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For the maths behind see the paper in JSS.
+</p>
+<p>Normalization of coefficients has long been a matter of trouble,
+and not only for newcomers. There are two ways of normalizing outlines: the first,
+and by far the most used, is to use a "numerical" alignment, directly on the
+matrix of coefficients. The coefficients of the first harmonic are consumed
+by this process but harmonics of higher rank are normalized in terms of size
+and rotation. This is sometimes referred as using the "first ellipse", as the
+harmonics define an ellipse in the plane, and the first one is the mother of all
+ellipses, on which all others "roll" along. This approach is really convenient
+as it is done easily by most software (if not the only option) and by Momocs too.
+It is the default option of <code>efourier</code>.
+</p>
+<p>But here is the pitfall: if your shapes are prone to bad aligments among all
+the first ellipses, this will result in poorly (or even not at all) "homologous" coefficients.
+The shapes particularly prone to this are either (at least roughly) circular and/or with a strong
+bilateral symmetry. You can try to use <code>stack</code> on the <code>Coe</code> object
+returned by <code>efourier</code>. Also, and perhaps more explicitely, morphospace usually show a mirroring symmetry,
+typically visible when calculated in some couple of components (usually the first two).
+</p>
+<p>If you see these  upside-down (or 180 degrees rotated) shapes on the morphospace,
+you should seriously consider aligning your shapes <strong>before</strong> the efourier step,
+and performing the latter with <code>norm = FALSE</code>.
+</p>
+<p>Such a pitfall explains the (quite annoying) message when passing <code>efourier</code> with just the <code>Out</code>.
+</p>
+<p>You have several options to align your shapes, using control points (or landmarks),
+by far the most time consuming (and less reproducible) but possibly the best one too
+when alignment is too tricky to automate.
+You can also try Procrustes alignment (see <code>fgProcrustes</code>) through their calliper
+length (see <code>coo_aligncalliper</code>), etc. You should also make the first
+point homologous either with <code>coo_slide</code> or <code>coo_slidedirection</code>
+to minimize any subsequent problems.
+</p>
+<p>I will dedicate (some day) a vignette or a paper to this problem.
+</p>
+
+
+<h3>Value</h3>
+
+<p>For <code>efourier</code>, a list with components: <code>an</code>, <code>bn</code>, <code>cn</code>, <code>dn</code> harmonic coefficients, plus <code>ao</code> and <code>co</code>.
+The latter should have been named <code>a0</code> and <code>c0</code> in Claude (2008) but I (intentionnaly) propagated the error.
+</p>
+<p>For <code>efourier_norm</code>, a list with components: <code>A</code>, <code>B</code>, <code>C</code>, <code>D</code>
+for harmonic coefficients, plus <code>size</code>, the magnitude of the semi-major axis of the first
+fitting ellipse, <code>theta</code> angle, in radians, between the starting and the semi-major axis
+of the first fitting ellipse, <code>psi</code> orientation of the first fitting ellipse, <code>ao</code> and <code>do</code>, same as above,
+and <code>lnef</code> that is the concatenation of coefficients.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Directly borrowed for Claude (2008).
+</p>
+<p>Silent message and progress bars (if any) with <code>options("verbose"=FALSE)</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Claude, J. (2008) <em>Morphometrics with R</em>, Use R! series,
+Springer 316 pp.
+Ferson S, Rohlf FJ, Koehn RK. 1985. Measuring shape variation of
+two-dimensional outlines. <em>Systematic Biology</em> <b>34</b>: 59-68.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other efourier: 
+<code>efourier_i()</code>,
+<code>efourier_shape()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># single shape
+coo &lt;- bot[1]
+coo_plot(coo)
+ef &lt;- efourier(coo, 12)
+# same but silent
+efourier(coo, 12, norm=TRUE)
+# inverse EFT
+efi &lt;- efourier_i(ef)
+coo_draw(efi, border='red', col=NA)
+
+# on Out
+bot %&gt;% slice(1:5) %&gt;% efourier
+</code></pre>
+
+
+</div>

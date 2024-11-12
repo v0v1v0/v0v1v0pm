@@ -1,0 +1,297 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MARSSresiduals.tT</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> MARSS Smoothed Residuals </h2>
+
+<h3>Description</h3>
+
+<p>Calculates the standardized (or auxiliary) smoothed residuals sensu Harvey, Koopman and Penzer (1998). The expected values and variance for missing (or left-out) data are also returned (Holmes 2014). Not exported. Access this function with <code>MARSSresiduals(object, type="tT")</code>. At time <code class="reqn">t</code> (in the returned matrices), the model residuals are for time <code class="reqn">t</code>, while the state residuals are for the transition from <code class="reqn">t</code> to <code class="reqn">t+1</code> following the convention in Harvey, Koopman and Penzer (1998).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MARSSresiduals.tT(object, Harvey = FALSE, normalize = FALSE, 
+    silent = FALSE, fun.kf = c("MARSSkfas", "MARSSkfss"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p> An object of class <code>marssMLE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Harvey</code></td>
+<td>
+<p> TRUE/FALSE. Use the Harvey et al. (1998) algorithm or use the Holmes (2014) algorithm. The values are the same except for missing values. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>normalize</code></td>
+<td>
+<p> TRUE/FALSE See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>silent</code></td>
+<td>
+<p> If TRUE, don't print inversion warnings. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun.kf</code></td>
+<td>
+<p> Kalman filter function to use. Can be ignored. </p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function returns the raw, the Cholesky standardized and the marginal standardized smoothed model and state residuals.  'smoothed' means conditioned on all the observed data and a set of parameters. These are the residuals presented in Harvey, Koopman and Penzer (1998) pages 112-113, with the addition of the values for unobserved data (Holmes 2014).  If Harvey=TRUE, the function uses the algorithm on page 112 of Harvey, Koopman and Penzer (1998) to compute the conditional residuals and variance of the residuals.  If Harvey=FALSE, the function uses the equations in the technical report (Holmes 2014).  Unlike the innovations residuals, the smoothed residuals are autocorrelated (section 4.1 in Harvey and Koopman 1992) and thus an ACF test on these residuals would not reveal model inadequacy.
+</p>
+<p>The residuals matrix has a value for each time step.  The residuals in column <code class="reqn">t</code> rows 1 to n are the model residuals associated with the data at time <code class="reqn">t</code>. The residuals in rows n+1 to n+m are the state residuals associated with the transition from <code class="reqn">\mathbf{x}_{t}</code> to <code class="reqn">\mathbf{x}_{t+1}</code>, not the transition from <code class="reqn">\mathbf{x}_{t-1}</code> to <code class="reqn">\mathbf{x}_{t}</code>. Because <code class="reqn">\mathbf{x}_{t+1}</code> does not exist at time <code class="reqn">T</code>, the state residuals and associated variances at time <code class="reqn">T</code> are NA.
+</p>
+<p>Below the conditional residuals and their variance are discussed. The random variables are capitalized and the realizations from the random variables are lower case. The random variables are <code class="reqn">\mathbf{X}</code>, <code class="reqn">\mathbf{Y}</code>, <code class="reqn">\mathbf{V}</code> and <code class="reqn">\mathbf{W}</code>. There are two types of <code class="reqn">\mathbf{Y}</code>. The observed <code class="reqn">\mathbf{Y}</code> that are used to estimate the states <code class="reqn">\mathbf{x}</code>. These are termed <code class="reqn">\mathbf{Y}^{(1)}</code>. The unobserved  <code class="reqn">\mathbf{Y}</code> are termed <code class="reqn">\mathbf{Y}^{(2)}</code>. These are not used to estimate the states <code class="reqn">\mathbf{x}</code> and we may or may not know the values of <code class="reqn">\mathbf{y}^{(2)}</code>. Typically we treat <code class="reqn">\mathbf{y}^{(2)}</code> as unknown but it may be known but we did not include it in our model fitting.  Note that the model parameters <code class="reqn">\Theta</code> are treated as fixed or known. The 'fitting' does not involve estimating <code class="reqn">\Theta</code>; it involves estimating <code class="reqn">\mathbf{x}</code>. All MARSS parameters can be time varying but the <code class="reqn">t</code> subscripts are left off parameters to reduce clutter.
+</p>
+<p><strong>Model residuals</strong>
+</p>
+<p><code class="reqn">\mathbf{v}_{t}</code> is the difference between the data and the predicted data at time <code class="reqn">t</code> given <code class="reqn">\mathbf{x}_{t}</code>:
+</p>
+<p style="text-align: center;"><code class="reqn"> \mathbf{v}_{t} = \mathbf{y}_{t} - \mathbf{Z} \mathbf{x}_{t} - \mathbf{a} - \mathbf{D}\mathbf{d}_t</code>
+</p>
+
+<p><code class="reqn">\mathbf{x}_{t}</code> is unknown (hidden) and our data are one realization of <code class="reqn">\mathbf{y}_{t}</code>. The observed model residuals <code class="reqn">\hat{\mathbf{v}}_{t}</code> are the difference between the observed data and the predicted data at time <code class="reqn">t</code> using the fitted model. <code>MARSSresiduals.tT</code> fits the model using all the data, thus
+</p>
+<p style="text-align: center;"><code class="reqn"> \hat{\mathbf{v}}_{t} = \mathbf{y}_{t} - \mathbf{Z}\mathbf{x}_{t}^T - \mathbf{a} - \mathbf{D}\mathbf{d}_t</code>
+</p>
+
+<p>where <code class="reqn">\mathbf{x}_{t}^T</code> is the expected value of <code class="reqn">\mathbf{X}_{t}</code> conditioned on the data from 1 to <code class="reqn">T</code> (all the data), i.e. the Kalman smoother estimate of the states at time <code class="reqn">t</code>. <code class="reqn">\mathbf{y}_{t}</code> are your data and missing values will appear as NA in the observed model residuals. These are returned as <code>model.residuals</code> and rows 1 to <code class="reqn">n</code> of <code>residuals</code>.
+</p>
+<p><code>res1</code> and <code>res2</code> in the code below will be the same.
+</p>
+<pre>dat = t(harborSeal)[2:3,]
+fit = MARSS(dat)
+Z = coef(fit, type="matrix")$Z
+A = coef(fit, type="matrix")$A
+res1 = dat - Z %*% fit$states - A %*% matrix(1,1,ncol(dat))
+res2 = MARSSresiduals(fit, type="tT")$model.residuals
+</pre>
+<p><strong>State residuals</strong>
+</p>
+<p><code class="reqn">\mathbf{w}_{t+1}</code> are the difference between the state at time <code class="reqn">t+1</code> and the expected value of the state at time <code class="reqn">t+1</code> given the state at time <code class="reqn">t</code>:
+</p>
+<p style="text-align: center;"><code class="reqn"> \mathbf{w}_{t+1} = \mathbf{x}_{t+1} - \mathbf{B} \mathbf{x}_{t} - \mathbf{u} - \mathbf{C}\mathbf{c}_{t+1}</code>
+</p>
+
+<p>The estimated state residuals <code class="reqn">\hat{\mathbf{w}}_{t+1}</code> are the difference between estimate of <code class="reqn">\mathbf{x}_{t+1}</code> minus the estimate using <code class="reqn">\mathbf{x}_{t}</code>. 
+</p>
+<p style="text-align: center;"><code class="reqn"> \hat{\mathbf{w}}_{t+1} = \mathbf{x}_{t+1}^T - \mathbf{B}\mathbf{x}_{t}^T - \mathbf{u} - \mathbf{C}\mathbf{c}_{t+1}</code>
+</p>
+
+<p>where <code class="reqn">\mathbf{x}_{t+1}^T</code> is the Kalman smoother estimate of the states at time <code class="reqn">t+1</code> and <code class="reqn">\mathbf{x}_{t}^T</code> is the Kalman smoother estimate of the states at time <code class="reqn">t</code>.
+The estimated state residuals <code class="reqn">\mathbf{w}_{t+1}</code> are returned in <code>state.residuals</code> and rows <code class="reqn">n+1</code> to <code class="reqn">n+m</code> of <code>residuals</code>. <code>state.residuals[,t]</code> is <code class="reqn">\mathbf{w}_{t+1}</code> (notice time subscript difference). There are no NAs in the estimated state residuals as an estimate of the state exists whether or not there are associated data.
+</p>
+<p><code>res1</code> and <code>res2</code> in the code below will be the same.
+</p>
+<pre>dat &lt;- t(harborSeal)[2:3,]
+TT &lt;- ncol(dat)
+fit &lt;- MARSS(dat)
+B &lt;- coef(fit, type="matrix")$B
+U &lt;- coef(fit, type="matrix")$U
+statestp1 &lt;- MARSSkf(fit)$xtT[,2:TT]
+statest &lt;- MARSSkf(fit)$xtT[,1:(TT-1)]
+res1 &lt;- statestp1 - B %*% statest - U %*% matrix(1,1,TT-1)
+res2 &lt;- MARSSresiduals(fit, type="tT")$state.residuals[,1:(TT-1)]
+</pre>
+<p>Note that the state residual at the last time step (not shown) will be NA because it is the residual associated with <code class="reqn">\mathbf{x}_T</code> to <code class="reqn">\mathbf{x}_{T+1}</code> and <code class="reqn">T+1</code> is beyond the data.  Similarly, the variance matrix at the last time step will have NAs for the same reason.
+</p>
+<p><strong>Variance of the residuals</strong>
+</p>
+<p>In a state-space model, <code class="reqn">\mathbf{X}</code> and <code class="reqn">\mathbf{Y}</code> are stochastic, and the model and state residuals are random variables <code class="reqn">\hat{\mathbf{V}}_{t}</code> and <code class="reqn">\hat{\mathbf{W}}_{t+1}</code>. To evaluate the residuals we observed (with <code class="reqn">\mathbf{y}^{(1)}</code>), we use the joint distribution of <code class="reqn">\hat{\mathbf{V}}_{t}, \hat{\mathbf{W}}_{t+1}</code> across all the different possible data sets that our MARSS equations with parameters <code class="reqn">\Theta</code> might generate. Denote the matrix of <code class="reqn">\hat{\mathbf{V}}_{t}, \hat{\mathbf{W}}_{t+1}</code>, as <code class="reqn">\widehat{\mathcal{E}}_{t}</code>. That distribution has an expected value (mean) and variance:
+</p>
+<p style="text-align: center;"><code class="reqn"> \textrm{E}[\widehat{\mathcal{E}}_{t}] = 0; \textrm{var}[\widehat{\mathcal{E}}_{t}] = \hat{\Sigma}_{t} </code>
+</p>
+
+<p>Our observed residuals (returned in <code>residuals</code>) are one sample from this distribution.
+To standardize the observed residuals, we will use <code class="reqn"> \hat{\Sigma}_{t} </code>. <code class="reqn"> \hat{\Sigma}_{t} </code> is returned in <code>var.residuals</code>. Rows/columns 1 to <code class="reqn">n</code> are the conditional variances of the model residuals and rows/columns <code class="reqn">n+1</code> to <code class="reqn">n+m</code> are the conditional variances of the state residuals. The off-diagonal blocks are the covariances between the two types of residuals.
+</p>
+<p><strong>Standardized residuals</strong>
+</p>
+<p><code>MARSSresiduals</code> will return the Cholesky standardized residuals sensu Harvey et al. (1998) in <code>std.residuals</code> for outlier and shock detection.  These are the model and state residuals multiplied by the inverse of the lower triangle of the Cholesky decomposition of <code>var.residuals</code> (note <code>chol()</code> in R returns the upper triangle thus a transpose is needed). The standardized model residuals are set to NA when there are missing data. The standardized state residuals however always exist since the expected value of the states exist without data. The calculation of the standardized residuals for both the observations and states requires the full residuals variance matrix. Since the state residuals variance is NA at the last time step, the standardized residual in the last time step will be all NA (for both model and state residuals).
+</p>
+<p>The interpretation of the Cholesky standardized residuals is not straight-forward when the <code class="reqn">\mathbf{Q}</code> and <code class="reqn">\mathbf{R}</code> variance-covariance matrices are non-diagonal.  The residuals which were generated by a non-diagonal variance-covariance matrices are transformed into orthogonal residuals in <code class="reqn">\textrm{MVN}(0,\mathbf{I})</code> space.  For example, if v is 2x2 correlated errors with variance-covariance matrix R. The transformed residuals (from this function) for the i-th row of <code class="reqn">\mathbf{v}</code> is a combination of the row 1 effect and the row 1 effect plus the row 2 effect.  So in this case, row 2 of the transformed residuals would not be regarded as solely the row 2 residual but rather how different row 2 is from row 1, relative to expected.  If the errors are highly correlated, then the transformed residuals can look rather non-intuitive.
+</p>
+<p>The marginal standardized residuals are returned in <code>mar.residuals</code>. These are the model and state residuals multiplied by the inverse of the diagonal matrix formed by the square root of the diagonal of <code>var.residuals</code>. These residuals will be correlated (across the residuals at time <code class="reqn">t</code>) but are easier to interpret when <code class="reqn">\mathbf{Q}</code> and <code class="reqn">\mathbf{R}</code> are non-diagonal.
+</p>
+<p>The Block Cholesky standardized residuals are like the Cholesky standardized residuals except that the full variance-covariance matrix is not used, only the variance-covariance matrix for the model or state residuals (respectively) is used for standardization. For the model residuals, the Block Cholesky standardized residuals will be the same as the Cholesky standardized residuals because the upper triangle of the lower triangle of the Cholesky decomposition (which is what we standardize by) is all zero. For the state residuals, the Block Cholesky standardization will be different because Block Cholesky standardization treats the model and state residuals as independent (which they are not in the smoothations case). 
+</p>
+<p><strong>Normalized residuals</strong>
+</p>
+<p>If <code>normalize=FALSE</code>, the unconditional variance of <code class="reqn">\mathbf{V}_t</code> and <code class="reqn">\mathbf{W}_t</code> are <code class="reqn">\mathbf{R}</code> and <code class="reqn">\mathbf{Q}</code> and the model is assumed to be written as
+</p>
+<p style="text-align: center;"><code class="reqn">\mathbf{y}_t = \mathbf{Z} \mathbf{x}_t + \mathbf{a} + \mathbf{v}_t</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\mathbf{x}_t = \mathbf{B} \mathbf{x}_{t-1} + \mathbf{u} + \mathbf{w}_t</code>
+</p>
+
+<p>If normalize=TRUE, the model is assumed to be written
+</p>
+<p style="text-align: center;"><code class="reqn">\mathbf{y}_t = \mathbf{Z} \mathbf{x}_t + \mathbf{a} + \mathbf{H}\mathbf{v}_t</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\mathbf{x}_t = \mathbf{B} \mathbf{x}_{t-1} + \mathbf{u} + \mathbf{G}\mathbf{w}_t</code>
+</p>
+
+<p>with the variance of <code class="reqn">\mathbf{V}_t</code> and <code class="reqn">\mathbf{W}_t</code> equal to <code class="reqn">\mathbf{I}</code> (identity).
+</p>
+<p><code>MARSSresiduals.tT</code> returns the residuals defined as in the first equations. To get the residuals defined as Harvey et al. (1998) define them (second equations), then use <code>normalize=TRUE</code>.  In that case the unconditional variance of residuals will be <code class="reqn">\mathbf{I}</code> instead of <code class="reqn">\mathbf{Q}</code> and <code class="reqn">\mathbf{R}</code>.
+</p>
+<p><strong>Missing or left-out data</strong>
+</p>
+<p><code class="reqn"> \textrm{E}[\widehat{\mathcal{E}}_{t}] </code> and <code class="reqn"> \textrm{var}[\widehat{\mathcal{E}}_{t}] </code> are for the distribution across all possible  <code class="reqn">\mathbf{X}</code> and <code class="reqn">\mathbf{Y}</code>. We can also compute the expected value and variance conditioned on a specific value of <code class="reqn">\mathbf{Y}</code>, the one we observed <code class="reqn">\mathbf{y}^{(1)}</code> (Holmes 2014). If there are no missing values, this is not very interesting as  <code class="reqn">\textrm{E}[\hat{\mathbf{V}}_{t}|\mathbf{y}^{(1)}]=\hat{\mathbf{v}}_{t}</code> and <code class="reqn">\textrm{var}[\hat{\mathbf{V}}_{t}|\mathbf{y}^{(1)}] = 0</code>. If we have data that are missing because we left them out, however, <code class="reqn">\textrm{E}[\hat{\mathbf{V}}_{t}|\mathbf{y}^{(1)}]</code> and <code class="reqn">\textrm{var}[\hat{\mathbf{V}}_{t}|\mathbf{y}^{(1)}]</code> are the values we need to evaluate whether the left-out data are unusual relative to what you expect given the data you did collect. 
+</p>
+<p><code>E.obs.residuals</code> is the conditional expected value <code class="reqn">\textrm{E}[\hat{\mathbf{V}}|\mathbf{y}^{(1)}]</code> (notice small <code class="reqn">\mathbf{y}</code>). It is 
+</p>
+<p style="text-align: center;"><code class="reqn">\textrm{E}[\mathbf{Y}_{t}|\mathbf{y}^{(1)}] - \mathbf{Z}\mathbf{x}_t^T - \mathbf{a} </code>
+</p>
+
+<p>It is similar to <code class="reqn">\hat{\mathbf{v}}_{t}</code>. The difference is the <code class="reqn">\mathbf{y}</code> term. <code class="reqn">\textrm{E}[\mathbf{Y}^{(1)}_{t}|\mathbf{y}^{(1)}] </code> is <code class="reqn">\mathbf{y}^{(1)}_{t}</code> for the non-missing values. For the missing values, the value depends on <code class="reqn">\mathbf{R}</code>. If <code class="reqn">\mathbf{R}</code> is diagonal, <code class="reqn">\textrm{E}[\mathbf{Y}^{(2)}_{t}|\mathbf{y}^{(1)}] </code> is <code class="reqn">\mathbf{Z}\mathbf{x}_t^T + \mathbf{a}</code> and the expected residual value is 0. If <code class="reqn">\mathbf{R}</code> is non-diagonal however, it will be non-zero.
+</p>
+<p><code>var.obs.residuals</code> is the conditional variance  <code class="reqn">\textrm{var}[\hat{\mathbf{V}}|\mathbf{y}^{(1)}]</code> (eqn 24 in Holmes (2014)).  For the non-missing values, this variance is 0 since <code class="reqn">\hat{\mathbf{V}}|\mathbf{y}^{(1)}</code> is a fixed value. For the missing values, <code class="reqn">\hat{\mathbf{V}}|\mathbf{y}^{(1)}</code> is not fixed because <code class="reqn">\mathbf{Y}^{(2)}</code> is a random variable. For these values, the variance of <code class="reqn">\hat{\mathbf{V}}|\mathbf{y}^{(1)}</code> is determined by the variance of <code class="reqn">\mathbf{Y}^{(2)}</code> conditioned on <code class="reqn">\mathbf{Y}^{(1)}=\mathbf{y}^{(1)}</code>. This variance matrix is returned in <code>var.obs.residuals</code>. The variance of <code class="reqn">\hat{\mathbf{W}}|\mathbf{y}^{(1)}</code> is 0 and thus is not included.
+</p>
+<p>The variance <code class="reqn">\textrm{var}[\hat{\mathbf{V}}_{t}|\mathbf{Y}^{(1)}] </code> (uppercase <code class="reqn"> \mathbf{Y} </code>) returned in the 1 to <code class="reqn">n</code> rows/columns of <code>var.residuals</code> may also be of interest depending on what you are investigating with regards to missing values. For example, it may be of interest in a simulation study or cases where you have multiple replicated <code class="reqn">\mathbf{Y}</code> data sets. <code>var.residuals</code> would allow you to determine if the left-out residuals are unusual with regards to what you would expect for left-out data in that location of the <code class="reqn">\mathbf{Y}</code> matrix but not specifically relative to the data you did collect. If <code class="reqn">\mathbf{R}</code> is non-diagonal and the <code class="reqn">\mathbf{y}^{(1)}</code> and <code class="reqn">\mathbf{y}^{(2)}</code> are highly correlated, the variance of <code class="reqn">\textrm{var}[\hat{\mathbf{V}}_{t}|\mathbf{Y}^{(1)}] </code> and variance of <code class="reqn">\textrm{var}[\hat{\mathbf{V}}_{t}|\mathbf{y}^{(1)}] </code> for the left-out data would be quite different. In the latter, the variance is low because <code class="reqn">\mathbf{y}^{(1)} </code> has strong information about <code class="reqn">\mathbf{y}^{(2)} </code>. In the former, we integrate over <code class="reqn">\mathbf{Y}^{(1)} </code> and the variance could be high (depending on the parameters).
+</p>
+<p>Note, if <code>Harvey=TRUE</code> then the rows and columns of <code>var.residuals</code> corresponding to missing values will be NA. This is because the Harvey et al. algorithm does not compute the residual variance for missing values.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with the following components  
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>model.residuals</code></td>
+<td>
+<p> The the observed smoothed model residuals: data minus the model predictions conditioned on all observed data. This is different than the Kalman filter innovations which use on the data up to time <code class="reqn">t-1</code> for the predictions. See details. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>state.residuals</code></td>
+<td>
+<p> The smoothed state residuals <code class="reqn">\mathbf{x}_{t+1}^T - \mathbf{Z} \mathbf{x}_{t}^T - \mathbf{u}</code>. The last time step will be NA because the last step would be for T to T+1 (past the end of the data).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>residuals</code></td>
+<td>
+<p> The residuals conditioned on the observed data. Returned as a (n+m) x T matrix with <code>model.residuals</code> in rows 1 to n and <code>state.residuals</code> in rows n+1 to n+m.  NAs will appear in rows 1 to n in the places where data are missing. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var.residuals</code></td>
+<td>
+<p> The joint variance of the model and state residuals conditioned on observed data. Returned as a (n+m) x (n+m) x T matrix. For Harvey=FALSE, this is Holmes (2014) equation 57. For Harvey=TRUE, this is the residual variance in eqn. 24, page 113, in Harvey et al. (1998). They are identical except for missing values, for those Harvey=TRUE returns 0s. For the state residual variance, the last time step will be all NA because the last step would be for T to T+1 (past the end of the data).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>std.residuals</code></td>
+<td>
+<p> The Cholesky standardized residuals as a (n+m) x T matrix. This is <code>residuals</code> multiplied by the inverse of the lower triangle of the Cholesky decomposition of <code>var.residuals</code>. The model standardized residuals associated with the missing data are replaced with NA. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mar.residuals</code></td>
+<td>
+<p> The marginal standardized residuals as a (n+m) x T matrix. This is <code>residuals</code> multiplied by the inverse of the diagonal matrix formed by the square-root of the diagonal of <code>var.residuals</code>.  The model marginal residuals associated with the missing data are replaced with NA. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bchol.residuals</code></td>
+<td>
+<p> The Block Cholesky standardized residuals as a (n+m) x T matrix. This is <code>model.residuals</code> multiplied by the inverse of the lower triangle of the Cholesky decomposition of <code>var.residuals[1:n,1:n,]</code> and <code>state.residuals</code> multiplied by the inverse of the lower triangle of the Cholesky decomposition of <code>var.residuals[(n+1):(n+m),(n+1):(n+m),]</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>E.obs.residuals</code></td>
+<td>
+<p> The expected value of the model residuals conditioned on the observed data. Returned as a n x T matrix.  For observed data, this will be the observed residuals (values in <code>model.residuals</code>). For unobserved data, this will be 0 if <code class="reqn">\mathbf{R}</code> is diagonal but non-zero if <code class="reqn">\mathbf{R}</code> is non-diagonal. See details. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var.obs.residuals</code></td>
+<td>
+<p> The variance of the model residuals conditioned on the observed data. Returned as a n x n x T matrix.  For observed data, this will be 0. See details. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>msg</code></td>
+<td>
+<p> Any warning messages. This will be printed unless Object$control$trace = -1 (suppress all error messages). </p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+ 
+<p>Eli Holmes, NOAA, Seattle, USA.  
+</p>
+
+
+<h3>References</h3>
+
+<p>Harvey, A., S. J. Koopman, and J. Penzer. 1998. Messy time series: a unified approach. Advances in Econometrics 13: 103-144  (see page 112-113).  Equation 21 is the Kalman eqns.  Eqn 23 and 24 is the backward recursion to compute the smoothations.  This function uses the MARSSkf output for eqn 21 and then implements the backwards recursion in equation 23 and equation 24.  Pages 120-134 discuss the use of standardized residuals for outlier and structural break detection.
+</p>
+<p>de Jong, P. and J. Penzer. 1998. Diagnosing shocks in time series. Journal of the American Statistical Association 93: 796-806.  This one shows the same equations; see eqn 6.  This paper mentions the scaling based on the inverse of the sqrt (Cholesky decomposition) of the variance-covariance matrix for the residuals (model and state together).  This is in the right column, half-way down on page 800.
+</p>
+<p>Koopman, S. J., N. Shephard, and J. A. Doornik. 1999. Statistical algorithms for models in state space using SsfPack 2.2. Econometrics Journal 2: 113-166. (see pages 147-148).
+</p>
+<p>Harvey, A. and S. J. Koopman. 1992. Diagnostic checking of unobserved-components time series models. Journal of Business &amp; Economic Statistics 4: 377-389.
+</p>
+<p>Holmes, E. E. 2014. Computation of standardized residuals for (MARSS) models. Technical Report. arXiv:1411.0045. 
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code>MARSSresiduals()</code>, <code>MARSSresiduals.tt1()</code>, <code>fitted.marssMLE()</code>, <code>plot.marssMLE()</code> </p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">  dat &lt;- t(harborSeal)
+  dat &lt;- dat[c(2,11),]
+  fit &lt;- MARSS(dat)
+  
+  #state residuals
+  state.resids1 &lt;- MARSSresiduals(fit, type="tT")$state.residuals
+  #this is the same as hatx_t-(hatx_{t-1}+u)
+  states &lt;- fit$states
+  state.resids2 &lt;- states[,2:30]-states[,1:29]-matrix(coef(fit,type="matrix")$U,2,29)
+  #compare the two
+  cbind(t(state.resids1[,-30]), t(state.resids2))
+
+  #normalize the state residuals to a variance of 1
+  Q &lt;- coef(fit,type="matrix")$Q
+  state.resids1 &lt;- MARSSresiduals(fit, type="tT", normalize=TRUE)$state.residuals
+  state.resids2 &lt;- (solve(t(chol(Q))) %*% state.resids2)
+  cbind(t(state.resids1[,-30]), t(state.resids2))
+
+  #Cholesky standardized (by joint variance) model &amp; state residuals
+  MARSSresiduals(fit, type="tT")$std.residuals
+  
+  # Returns residuals in a data frame in long form
+  residuals(fit, type="tT")
+</code></pre>
+
+
+</div>

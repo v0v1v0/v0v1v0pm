@@ -1,0 +1,423 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>taxaturn</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Analyze the 'turnover' of taxa.</h2>
+
+<h3>Description</h3>
+
+<p>Analyze the 'turnover' of taxa along a defined gradient.
+The workflow of taxaturn class includes the taxonomic abundance calculation, abundance transformation, abundance change summary, statistical analysis and visualization.
+</p>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-taxaturn-new"><code>taxaturn$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-taxaturn-cal_diff"><code>taxaturn$cal_diff()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-taxaturn-plot"><code>taxaturn$plot()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-taxaturn-clone"><code>taxaturn$clone()</code></a>
+</p>
+</li>
+</ul>
+<hr>
+<a id="method-taxaturn-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>taxaturn$new(
+  dataset,
+  taxa_level = "Phylum",
+  group,
+  ordered_group,
+  by_ID = NULL,
+  by_group = NULL,
+  filter_thres = 0
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>dataset</code></dt>
+<dd>
+<p>the object of <code>microtable</code> class.</p>
+</dd>
+<dt><code>taxa_level</code></dt>
+<dd>
+<p>default "Phylum"; taxonomic rank name, such as "Genus". An integer is also acceptable.
+If the provided taxa_level is not found in <code>taxa_abund</code> list,
+the function will invoke the <code>cal_abund</code> function to obtain the relative abudance automatically.</p>
+</dd>
+<dt><code>group</code></dt>
+<dd>
+<p>sample group used for the selection; a colname of input <code>microtable$sample_table</code>.</p>
+</dd>
+<dt><code>ordered_group</code></dt>
+<dd>
+<p>a vector representing the ordered elements of <code>group</code> parameter.</p>
+</dd>
+<dt><code>by_ID</code></dt>
+<dd>
+<p>default NULL; a column of sample_table used to obtain the consistent change along provided elements.
+So by_ID can be ID (unique repetition) or even group (with repetitions). 
+If it denotes unique ID, consistent change can be performed across each ID.
+It is also especially useful for the paired wilcox test (or paired t test) in the following analysis.
+If it does not represent unique ID, the mean of each group will be calculated, and consistent change across groups will be obtained.</p>
+</dd>
+<dt><code>by_group</code></dt>
+<dd>
+<p>default NULL; NULL or other colname of sample_table of input dataset used to show the result for different groups; 
+NULL represents the output is the default consistent change across all the elements in <code>by_ID</code>;
+a colname of sample_table of input dataset means the consistent change is obtained for each group instead of all the elements in <code>by_group</code>;
+Note that the by_group can be same with by_ID, in which the final change is the result of each element in <code>by_group</code>.
+So generally <code>by_group</code> has a larger scale than <code>by_ID</code> parameter in terms of the sample numbers in each element.</p>
+</dd>
+<dt><code>filter_thres</code></dt>
+<dd>
+<p>default 0; the mean abundance threshold used to filter features with low abudance.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>res_abund</code>, <code>res_change_pair</code> and <code>res_change</code> in the object:
+</p>
+
+<dl>
+<dt><code>res_abund</code></dt>
+<dd>
+<p>The Mean, SD or SE of abundances for all the samples or each group.
+Mean: mean of abudances; SD: standard deviation; SE: standard error.</p>
+</dd>
+<dt><code>res_change_pair</code></dt>
+<dd>
+<p>The difference value of abudances between two niches, i.e. the latter minus the former.</p>
+</dd>
+<dt><code>res_change</code></dt>
+<dd>
+<p>The summary of the abudance change results in res_change_pair.</p>
+</dd>
+</dl>
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>data(wheat_16S)
+t1 &lt;- taxaturn$new(wheat_16S, taxa_level = "Phylum", group = "Type", 
+ ordered_group = c("S", "RS", "R"), by_ID = "Plant_ID", filter_thres = 0.01)
+</pre>
+</div>
+
+
+<hr>
+<a id="method-taxaturn-cal_diff"></a>
+
+
+
+<h4>Method <code>cal_diff()</code>
+</h4>
+
+<p>Differential test of taxonomic abundance across groups
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>taxaturn$cal_diff(
+  method = c("wilcox", "t.test", "anova", "betareg", "lme", "glmm")[1],
+  group2num = FALSE,
+  ...
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>method</code></dt>
+<dd>
+<p>default "wilcox"; see the following available options:
+</p>
+
+<dl>
+<dt><strong>'wilcox'</strong></dt>
+<dd>
+<p>Wilcoxon Rank Sum and Signed Rank Tests for all paired groups </p>
+</dd>
+<dt><strong>'t.test'</strong></dt>
+<dd>
+<p>Student's t-Test for all paired groups</p>
+</dd>
+<dt><strong>'anova'</strong></dt>
+<dd>
+<p>one-way or multi-way anova</p>
+</dd>
+<dt><strong>'betareg'</strong></dt>
+<dd>
+<p>Beta Regression based on the <code>betareg</code> package</p>
+</dd>
+<dt><strong>'lme'</strong></dt>
+<dd>
+<p>lme: Linear Mixed Effect Model based on the <code>lmerTest</code> package</p>
+</dd>
+<dt><strong>'glmm'</strong></dt>
+<dd>
+<p>Generalized linear mixed model (GLMM) based on the <code>glmmTMB</code> package with the beta family function, 
+i.e. <code>family = glmmTMB::beta_family(link = "logit")</code>.
+For more parameters, please see <code>glmmTMB::glmmTMB</code> function.
+In the return table, Conditional_R2 and Marginal_R2 represent total variance (explained by both fixed and random effects) and the variance explained by 
+fixed effects, respectively. The significance of fixed factors are tested by Chi-square test from function <code>car::Anova</code>.
+The significance of 'Estimate' in each term of fixed factors comes from the model.
+</p>
+</dd>
+</dl>
+</dd>
+<dt><code>group2num</code></dt>
+<dd>
+<p>default FALSE; whether convert ordered groups to integer numbers when method is "lme" or "glmm".</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p>parameters passed to <code>trans_diff$new</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>res_change</code> or <code>res_diff</code> in the object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>t1$cal_diff(method = "wilcox")
+</pre>
+</div>
+
+
+<hr>
+<a id="method-taxaturn-plot"></a>
+
+
+
+<h4>Method <code>plot()</code>
+</h4>
+
+<p>Plot the line chart.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>taxaturn$plot(
+  select_taxon = NULL,
+  color_values = RColorBrewer::brewer.pal(8, "Dark2"),
+  delete_prefix = TRUE,
+  plot_type = c("point", "line", "errorbar", "smooth")[1:3],
+  errorbar_SE = TRUE,
+  rect_fill = TRUE,
+  rect_color = c("grey70", "grey90"),
+  rect_alpha = 0.2,
+  position = position_dodge(0.1),
+  errorbar_size = 1,
+  errorbar_width = 0.1,
+  point_size = 3,
+  point_alpha = 0.8,
+  line_size = 0.8,
+  line_alpha = 0.8,
+  line_type = 1,
+  ...
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>select_taxon</code></dt>
+<dd>
+<p>default NULL; a taxon name.
+Note that if <code>delete_prefix</code> is TRUE, the provided select_taxon should be taxa names without long prefix (those before |);
+if <code>delete_prefix</code> is FALSE, the select_taxon should be full names same with those in the <code>res_abund</code> of the object.</p>
+</dd>
+<dt><code>color_values</code></dt>
+<dd>
+<p>default <code>RColorBrewer::brewer.pal</code>(8, "Dark2"); colors palette for the plotting.</p>
+</dd>
+<dt><code>delete_prefix</code></dt>
+<dd>
+<p>default TRUE; whether delete the prefix in the taxa names.</p>
+</dd>
+<dt><code>plot_type</code></dt>
+<dd>
+<p>default c("point", "line", "errorbar", "smooth")[1:3]; a vector of visualization types. Multiple elements are available. 
+'smooth' denotes the fitting with <code>geom_smooth</code> function of ggplot2 package.</p>
+</dd>
+<dt><code>errorbar_SE</code></dt>
+<dd>
+<p>default TRUE; TRUE: plot the errorbar with mean ± se; FALSE: plot the errorbar with mean ± sd.</p>
+</dd>
+<dt><code>rect_fill</code></dt>
+<dd>
+<p>default TRUE; Whether fill color in each rectangular area.</p>
+</dd>
+<dt><code>rect_color</code></dt>
+<dd>
+<p>default c("grey70", "grey90"); the colors used to fill different rectangular area.</p>
+</dd>
+<dt><code>rect_alpha</code></dt>
+<dd>
+<p>default 0.2; the fill color transparency in rectangular area.</p>
+</dd>
+<dt><code>position</code></dt>
+<dd>
+<p>default position_dodge(0.1); Position adjustment for the points and lines, either as a string (such as "identity"), 
+or the result of a call to a position adjustment function.</p>
+</dd>
+<dt><code>errorbar_size</code></dt>
+<dd>
+<p>default 1; errorbar size.</p>
+</dd>
+<dt><code>errorbar_width</code></dt>
+<dd>
+<p>default 0.1; errorbar width.</p>
+</dd>
+<dt><code>point_size</code></dt>
+<dd>
+<p>default 3; point size for taxa.</p>
+</dd>
+<dt><code>point_alpha</code></dt>
+<dd>
+<p>default 0.8; point transparency.</p>
+</dd>
+<dt><code>line_size</code></dt>
+<dd>
+<p>default 0.8; line size.</p>
+</dd>
+<dt><code>line_alpha</code></dt>
+<dd>
+<p>default 0.8; line transparency.</p>
+</dd>
+<dt><code>line_type</code></dt>
+<dd>
+<p>default 1; an integer; line type.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p>parameters passed to <code>geom_smooth</code> when 'smooth' is in plot_type parameter.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>ggplot2 plot.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>t1$plot()
+</pre>
+</div>
+
+
+<hr>
+<a id="method-taxaturn-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>taxaturn$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## ------------------------------------------------
+## Method `taxaturn$new`
+## ------------------------------------------------
+
+data(wheat_16S)
+t1 &lt;- taxaturn$new(wheat_16S, taxa_level = "Phylum", group = "Type", 
+ ordered_group = c("S", "RS", "R"), by_ID = "Plant_ID", filter_thres = 0.01)
+
+## ------------------------------------------------
+## Method `taxaturn$cal_diff`
+## ------------------------------------------------
+
+t1$cal_diff(method = "wilcox")
+
+## ------------------------------------------------
+## Method `taxaturn$plot`
+## ------------------------------------------------
+
+t1$plot()
+</code></pre>
+
+
+</div>

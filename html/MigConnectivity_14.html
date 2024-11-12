@@ -1,0 +1,766 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>estMC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate migratory connectivity</h2>
+
+<h3>Description</h3>
+
+<p>Resampling of uncertainty for migratory connectivity strength (MC)
+and transition probabilities (psi) from RMark psi matrix estimates or
+samples of psi and/or JAGS
+relative abundance MCMC samples OR SpatialPoints geolocators and/or GPS
+data OR intrinsic markers such as isotopes. NOTE: active development of this
+function is ending. We suggest users estimate psi with
+<code>estTransition</code>, MC with <code>estStrength</code>, and Mantel
+correlations (rM) with <code>estMantel</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">estMC(
+  originDist,
+  targetDist = NULL,
+  originRelAbund,
+  psi = NULL,
+  sampleSize = NULL,
+  originSites = NULL,
+  targetSites = NULL,
+  originPoints = NULL,
+  targetPoints = NULL,
+  originAssignment = NULL,
+  targetAssignment = NULL,
+  originNames = NULL,
+  targetNames = NULL,
+  nSamples = 1000,
+  nSim = ifelse(isTRUE(isIntrinsic), 10, 1000),
+  isGL = FALSE,
+  geoBias = NULL,
+  geoVCov = NULL,
+  row0 = 0,
+  verbose = 0,
+  calcCorr = FALSE,
+  alpha = 0.05,
+  approxSigTest = FALSE,
+  sigConst = 0,
+  resampleProjection = "ESRI:102010",
+  maxTries = 300,
+  targetIntrinsic = NULL,
+  isIntrinsic = FALSE,
+  maintainLegacyOutput = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>originDist</code></td>
+<td>
+<p>Distances between the B origin sites.  Symmetric B by B
+matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetDist</code></td>
+<td>
+<p>Distances between the W target sites.  Symmetric W by W
+matrix.  Optional for intrinsic data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originRelAbund</code></td>
+<td>
+<p>Relative abundance estimates at B origin sites. Either
+a numeric vector of length B that sums to 1 or an mcmc object with
+<code>nSamples</code> rows  and columns including 'relN[1]' through 'relN[B]'.
+Currently, an mcmc object doesn't work with geolocator, GPS, or intrinsic
+data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>psi</code></td>
+<td>
+<p>Transition probabilities between B origin and W target sites.
+Either a matrix with B rows and W columns where rows sum to 1, an array with
+dimensions x, B, and W (with x samples of the transition probability matrix
+from another model), or a MARK object with estimates of transition
+probabilities.  If you are estimating MC from GPS, geolocator, or intrinsic
+data, leave this as NULL</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sampleSize</code></td>
+<td>
+<p>Total sample size of animals that psi will be estimated
+from. Should be the number of animals released in one of the origin sites
+and observed in one of the target sites.  Optional, but recommended, unless
+you are estimating MC from GPS, geolocator, intrinsic, or direct band return
+data (in which case the function can calculate it for you)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originSites</code></td>
+<td>
+<p>If <code>psi</code> is a MARK object, this must be a numeric
+vector indicating which sites are origin.  If using GPS, geolocator, or
+intrinsic data, this can be the geographic definition of sites in the
+release season</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetSites</code></td>
+<td>
+<p>If <code>psi</code> is a MARK object, this must be a numeric
+vector indicating which sites are target.  If using GPS, geolocator, or
+intrinsic data, this must be the geographic definition of sites in the
+non-release season.  Optional for intrinsic data; if left out, the function
+will use the <code>targetSites</code> defined in <code>targetIntrinsic</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originPoints</code></td>
+<td>
+<p>A <code>POINT</code> sf object, with length number of
+animals tracked.  Each point indicates the release location of an animal</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetPoints</code></td>
+<td>
+<p>For GL or GPS data, a <code>POINT</code> sf object, with
+length number of animals tracked.  Each point indicates the point estimate
+location in the non-release season</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originAssignment</code></td>
+<td>
+<p>Assignment of <code>originPoints</code> to release season
+sites. Integer vector with length number of animals tracked. Optional,
+but if using GL or GPS data, either <code>originAssignment</code> or
+<code>originSites</code> and <code>originPoints</code> should be defined</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetAssignment</code></td>
+<td>
+<p>Optional. Point estimate assignment of
+<code>targetPoints</code> to non-release season sites. Integer vector with
+length number of animals tracked</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originNames</code></td>
+<td>
+<p>Optional but recommended. Vector of names for the release season sites</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetNames</code></td>
+<td>
+<p>Optional but recommended. Vector of names for the non-release season
+sites</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nSamples</code></td>
+<td>
+<p>Number of times to resample <code>psi</code> and/or
+<code>originRelAbund</code> OR number of post-burn-in MCMC samples to store (band
+data) OR number of times to resample <code>targetPoints</code>
+for intrinsic data OR number of bootstrap runs for GL or GPS data. In
+the last two cases, animals are sampled with replacement for each. For all,
+the purpose is to estimate sampling uncertainty</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nSim</code></td>
+<td>
+<p>Tuning parameter for GL or intrinsic data. Affects only the
+speed; 1000 seems to work well with our GL data and 10 for our intrinsic
+data, but your results may vary.  Should be integer &gt; 0</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>isGL</code></td>
+<td>
+<p>Indicates whether or which animals were tracked with geolocators.
+Should be either single TRUE or FALSE value, or vector with length of
+number of animals tracked, with TRUE for animals in
+<code>targetPoints</code> with geolocators and FALSE for animals with GPS</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>geoBias</code></td>
+<td>
+<p>For GL data, vector of length 2 indicating expected bias
+in longitude and latitude of <code>targetPoints</code>, in
+<code>resampleProjection</code> units (default meters)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>geoVCov</code></td>
+<td>
+<p>For GL data, 2x2 matrix with expected variance/covariance
+in longitude and latitude of <code>targetPoints</code>, in
+<code>resampleProjection</code> units (default meters)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>row0</code></td>
+<td>
+<p>If <code>originRelAbund</code> is an mcmc object, this can be set
+to 0 (default) or any greater integer to specify where to stop ignoring
+samples ("burn-in")</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>0 (default) to 3. 0 prints no output during run. 1 prints
+a line every 100 samples or bootstraps and a summary every 10.  2 prints a
+line and summary every sample or bootstrap. 3 also prints the number of
+draws (for tuning nSim for GL/intrinsic data only)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>calcCorr</code></td>
+<td>
+<p>In addition to MC, should function also estimate Mantel
+correlation between release and non-release locations (GPS or GL data
+only)?  Default is FALSE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>Level for confidence/credible intervals provided</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>approxSigTest</code></td>
+<td>
+<p>Should function compute approximate one-sided
+significance tests (p-values) for MC from the bootstrap?  Default is
+FALSE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigConst</code></td>
+<td>
+<p>Value to compare MC to in significance test.
+Default is 0</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resampleProjection</code></td>
+<td>
+<p>Projection when sampling from geolocator
+bias/error. This projection needs units = m. Default is Equidistant
+Conic. The default setting preserves distances around latitude = 0 and
+longitude = 0. Other projections may work well, depending on the location
+of <code>targetSites</code>.  Ignored unless data are geolocator or GPS</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxTries</code></td>
+<td>
+<p>Maximum number of times to run a single GL/intrinsic
+bootstrap before exiting with an error.  Default is 300.  Set to NULL to
+never stop.  This parameter was added to prevent GL setups where some
+sample points never land on target sites from running indefinitely</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetIntrinsic</code></td>
+<td>
+<p>For intrinsic tracking data, the results of
+<code>isoAssign</code> or a similar function, of class <code>intrinsicAssign</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>isIntrinsic</code></td>
+<td>
+<p>Logical indicating whether the animals are tracked via
+intrinsic marker (e.g. isotopes) or not.  Currently estMC will only estimate
+connectivity for all intrinsically marked animals or all extrinsic (e.g.,
+bands, GL, or GPS), so isIntrinsic should be a single TRUE or FALSE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maintainLegacyOutput</code></td>
+<td>
+<p>version 0.4.0 of <code>MigConnectivity</code>
+updated the structure of the estimates. If you have legacy code that refers
+to elements within a <code>estMigConnectivity</code> object, you can set this
+to TRUE to also keep the old structure. Defaults to FALSE</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>NOTE: Starting with version 0.4.0 of <code>MigConnectivity</code>, we've
+updated the structure of <code>MigConnectivityEstimate</code> objects. Below we
+describe the updated structure. If parameter <code>maintainLegacyOutput</code> is
+set to TRUE, the list will start with the old structure: <code>sampleMC</code>,
+<code>samplePsi</code>, <code>pointPsi</code>, <code>pointMC</code>, <code>meanMC</code>,
+<code>medianMC</code>, <code>seMC</code>, <code>simpleCI</code>, <code>bcCI</code>, <code>hpdCI</code>,
+<code>simpleP</code>, <code>bcP</code>, <code>sampleCorr</code>, <code>pointCorr</code>,
+<code>meanCorr, medianCorr, seCorr, simpleCICorr, bcCICorr</code>,
+<code>inputSampleSize</code>, <code>alpha</code>, and <code>sigConst</code>.
+</p>
+<p><code>estMC</code> returns a list with the elements:
+</p>
+
+<dl>
+<dt><code>psi</code></dt>
+<dd>
+<p>List containing estimates of transition probabilities:
+</p>
+
+<ul>
+<li>
+<p><code>sample</code> Array of sampled values for psi. <code>nSamples</code> x
+[number of origin sites] x [number of target sites]. Provided to allow
+the user to compute own summary statistics.
+</p>
+</li>
+<li>
+<p><code>mean</code> Main estimate of psi matrix. [number of origin sites]
+x [number of target sites].
+</p>
+</li>
+<li>
+<p><code>se</code> Standard error of psi, estimated from SD of
+<code>psi$sample</code>.
+</p>
+</li>
+<li>
+<p><code>simpleCI</code> <code>1 - alpha</code> confidence interval for psi,
+estimated as <code>alpha/2</code> and <code>1 - alpha/2</code> quantiles of
+<code>psi$sample</code>.
+</p>
+</li>
+<li>
+<p><code>bcCI</code> Bias-corrected <code>1 - alpha</code> confidence interval
+for psi.  Preferable to <code>simpleCI</code> when <code>mean</code> is the
+best estimate of psi. <code>simpleCI</code> is preferred when
+<code>median</code> is a better estimator. When <code>meanMC==medianMC</code>,
+these should be identical.  Estimated as the
+<code>pnorm(2 * z0 + qnorm(alpha / 2))</code> and
+<code>pnorm(2 * z0 + qnorm(1 - alpha / 2))</code> quantiles of <code>sample</code>,
+where z0 is the proportion of <code>sample &lt; mean</code>.
+</p>
+</li>
+<li>
+<p><code>median</code> Median estimate of psi matrix.
+</p>
+</li>
+<li>
+<p><code>point</code> Simple point estimate of psi matrix, not accounting
+for sampling error. NULL when <code>isIntrinsic == TRUE</code>.
+</p>
+</li>
+</ul>
+</dd>
+<dt><code>MC</code></dt>
+<dd>
+<p>List containing estimates of migratory connectivity
+strength:
+</p>
+
+<ul>
+<li>
+<p><code>sample</code> <code>nSamples</code> sampled values for
+MC. Provided to allow the user to compute own summary statistics.
+</p>
+</li>
+<li>
+<p><code>mean</code> Mean of <code>MC$sample</code>. Main estimate of MC,
+incorporating parametric uncertainty.
+</p>
+</li>
+<li>
+<p><code>se</code> Standard error of MC, estimated from SD of
+<code>MC$sample</code>.
+</p>
+</li>
+<li>
+<p><code>simpleCI</code> Default<code>1 - alpha</code> confidence interval for
+MC, estimated as <code>alpha/2</code> and <code>1 - alpha/2</code> quantiles of
+<code>MC$sample</code>.
+</p>
+</li>
+<li>
+<p><code>bcCI</code> Bias-corrected <code>1 - alpha</code> confidence interval
+for MC.  Preferable to <code>MC$simpleCI</code> when <code>MC$mean</code> is the
+best estimate of MC. <code>MC$simpleCI</code> is preferred when
+<code>MC$median</code> is a better estimator. When <code>MC$mean==MC$median</code>,
+these should be identical.  Estimated as the
+<code>pnorm(2 * z0 + qnorm(alpha / 2))</code> and
+<code>pnorm(2 * z0 + qnorm(1 - alpha / 2))</code> quantiles of <code>MC$sample</code>,
+where z0 is the proportion of <code>MC$sample &lt; MC$mean</code>.
+</p>
+</li>
+<li>
+<p><code>hpdCI</code> <code>1 - alpha</code> credible interval for MC,
+estimated using the highest posterior density (HPD) method.
+</p>
+</li>
+<li>
+<p><code>median</code> Median of MC, alternate estimator also including
+parametric uncertainty.
+</p>
+</li>
+<li>
+<p><code>point</code> Simple point estimate of MC, using the point
+estimates of <code>psi</code> and <code>originRelAbund</code>, not accounting
+for sampling error. NULL when <code>isIntrinsic == TRUE</code>.
+</p>
+</li>
+<li>
+<p><code>simpleP</code> Approximate p-value for MC, estimated as the
+proportion of bootstrap iterations where MC &lt; <code>sigConst</code> (or MC &gt;
+<code>sigConst</code> if <code>pointMC &lt; sigConst</code>).  Note that if the
+proportion is 0, a default value of 0.5 / <code>nSamples</code> is provided,
+but this is best interpreted as p &lt; 1 / <code>nSamples</code>.  NULL when
+<code>approxSigTest==FALSE</code>.
+</p>
+</li>
+<li>
+<p><code>bcP</code> Approximate bias-corrected p-value for MC, estimated as
+<code>pnorm(qnorm(simpleP) - 2 * z0)</code>, where z0 is the proportion of
+<code>sampleMC &lt; meanMC</code>.  May be a better approximation of the p-value
+than <code>simpleP</code>, but many of the same limitations apply.  NULL when
+<code>approxSigTest==FALSE</code>.
+</p>
+</li>
+</ul>
+</dd>
+<dt><code>corr</code></dt>
+<dd>
+<p>List containing estimates of rM, an alternate measure of
+migratory connectivity strength. NULL when <code>calcCorr==FALSE</code> or
+<code>!is.null(psi)</code>:
+</p>
+
+<ul>
+<li>
+<p><code>sample</code> <code>nBoot</code> sampled values for continuous
+correlation. Provided to allow the user to compute own summary
+statistics.
+</p>
+</li>
+<li>
+<p><code>mean, se, simpleCI, bcCI, median, point</code> Summary
+statistics for continuous correlation bootstraps.
+</p>
+</li>
+</ul>
+</dd>
+<dt><code>input</code></dt>
+<dd>
+<p>List containing the inputs to <code>estMC</code>, or at least
+the relevant ones, such as sampleSize.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Cohen, E. B., J. A. Hostetler, M. T. Hallworth, C. S. Rushing, T. S. Sillett,
+and P. P. Marra. 2018. Quantifying the strength of migratory connectivity.
+Methods in Ecology and Evolution 9: 513 - 524.
+<a href="https://doi.org/10.1111/2041-210X.12916">doi:10.1111/2041-210X.12916</a>
+</p>
+<p>Cohen, E. B., C. S. Rushing, F. R. Moore, M. T. Hallworth, J. A. Hostetler,
+M. Gutierrez Ramirez, and P. P. Marra. 2019. The strength of
+migratory connectivity for birds en route to breeding through the Gulf of
+Mexico. Ecography 42: 658–669.
+<a href="https://doi.org/10.1111/ecog.03974">doi:10.1111/ecog.03974</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>estStrength</code>, <code>estTransition</code>,
+<code>estMantel</code>, <code>calcMC</code>, <code>projections</code>,
+<code>isoAssign</code>, <code>plot.estMigConnectivity</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+  set.seed(101)
+  # Uncertainty in detection ('RMark' estimates) with equal abundances
+  # Number of resampling iterations for generating confidence intervals
+
+  nSamplesCMR &lt;- 100
+  nSimulationsCMR &lt;- 10
+  originPos13 &lt;- matrix(c(rep(seq(-99, -81, 2), each = 10),
+                          rep(seq(49, 31, -2), 10)), 100, 2)
+  targetPos13 &lt;- matrix(c(rep(seq(-79, -61, 2), each = 10),
+                          rep(seq(9, -9, -2), 10)), 100, 2)
+  originPosCMR &lt;- rowsum(originPos13, c(rep(1:2, 5, each = 5),
+                                        rep(3:4, 5, each = 5))) / 25
+  originPosCMR
+  targetPosCMR &lt;- rowsum(targetPos13, c(rep(1:2, 5, each = 5),
+                                        rep(3:4, 5, each = 5))) / 25
+  targetPosCMR
+
+  originDist &lt;- distFromPos(originPosCMR, 'ellipsoid')
+  targetDist &lt;- distFromPos(targetPosCMR, 'ellipsoid')
+  originRelAbundTrue &lt;- rep(0.25, 4)
+  # the second intermediate psi scenario, the "low" level
+  psiTrue &lt;- samplePsis[["Low"]]
+  trueMC &lt;- calcMC(originDist, targetDist, originRelAbundTrue, psiTrue)
+  trueMC
+
+  # Storage matrix for samples
+  cmrMCSample &lt;- matrix(NA, nSamplesCMR, nSimulationsCMR)
+  summaryCMR &lt;- data.frame(Simulation = 1:nSimulationsCMR, True=trueMC,
+                           mean=NA, se=NA, lcl=NA, ucl=NA)
+  # Get RMark psi estimates and estimate MC from each
+  for (r in 1:nSimulationsCMR) {
+    cat("Simulation",r,"of",nSimulationsCMR,"\n")
+    # Note: getCMRexample() requires a valid internet connection and that GitHub
+    # is accessible
+    fm &lt;- getCMRexample(r)
+    results &lt;- estMC(originRelAbund = originRelAbundTrue, psi = fm,
+                     originDist = originDist, targetDist = targetDist,
+                     originSites = 5:8, targetSites = c(3,2,1,4),
+                     nSamples = nSamplesCMR, verbose = 0,
+                     sampleSize = length(grep('[2-5]', fm$data$data$ch)))
+    #sampleSize argument not really needed (big sample sizes)
+    cmrMCSample[ , r] &lt;- results$MC$sample
+    summaryCMR$mean[r] &lt;- results$MC$mean
+    summaryCMR$se[r] &lt;- results$MC$se
+    # Calculate confidence intervals using quantiles of sampled MC
+    summaryCMR[r, c('lcl', 'ucl')] &lt;- results$MC$simpleCI
+  }
+
+  summaryCMR &lt;- transform(summaryCMR, coverage = (True&gt;=lcl &amp; True&lt;=ucl))
+  summaryCMR
+  summary(summaryCMR)
+  biasCMR &lt;- mean(summaryCMR$mean) - trueMC
+  biasCMR
+  mseCMR &lt;- mean((summaryCMR$mean - trueMC)^2)
+  mseCMR
+  rmseCMR &lt;- sqrt(mseCMR)
+  rmseCMR
+
+
+  # Simulation of BBS data to quantify uncertainty in relative abundance
+
+  nSamplesAbund &lt;- 700 #1700 are stored
+  nSimulationsAbund &lt;- 10
+  # Storage matrix for samples
+  abundMCSample &lt;- matrix(NA, nSamplesAbund, nSimulationsAbund)
+  summaryAbund &lt;- data.frame(Simulation = 1:nSimulationsAbund, True = trueMC,
+                             mean = NA, se = NA, lcl = NA, ucl = NA)
+  for (r in 1:nSimulationsAbund) {
+    cat("Simulation",r,"of",nSimulationsAbund,"\n")
+    row0 &lt;- nrow(abundExamples[[r]]) - nSamplesAbund
+    results &lt;- estMC(originRelAbund = abundExamples[[r]], psi = psiTrue,
+                     originDist = originDist, targetDist = targetDist,
+                     row0 = row0, nSamples = nSamplesAbund, verbose = 1)
+    abundMCSample[ , r] &lt;- results$MC$sample
+    summaryAbund$mean[r] &lt;- results$MC$mean
+    summaryAbund$se[r] &lt;- results$MC$se
+    # Calculate confidence intervals using quantiles of sampled MC
+    summaryAbund[r, c('lcl', 'ucl')] &lt;- results$MC$simpleCI
+  }
+
+  summaryAbund &lt;- transform(summaryAbund,
+                            coverage = (True &gt;= lcl &amp; True &lt;= ucl))
+  summaryAbund
+  summary(summaryAbund)
+  biasAbund &lt;- mean(summaryAbund$mean) - trueMC
+  biasAbund
+  mseAbund &lt;- mean((summaryAbund$mean - trueMC)^2)
+  mseAbund
+  rmseAbund &lt;- sqrt(mseAbund)
+  rmseAbund
+
+  # Ovenbird example with GL and GPS data
+  data(OVENdata) # Ovenbird
+
+  nSamplesGLGPS &lt;- 100 # Number of bootstrap iterations
+
+  # Estimate MC only, treat all data as geolocator
+  GL_mc&lt;-estMC(isGL=TRUE, # Logical vector: light-level geolocator(T)/GPS(F)
+               geoBias = OVENdata$geo.bias, #Geolocator location bias
+               geoVCov = OVENdata$geo.vcov, # Location covariance matrix
+               targetDist = OVENdata$targetDist, # targetSites distance matrix
+               originDist = OVENdata$originDist, # originSites distance matrix
+               targetSites = OVENdata$targetSites, # Non-breeding target sites
+               originSites = OVENdata$originSites, # Breeding origin sites
+               originPoints = OVENdata$originPoints, # Capture Locations
+               targetPoints = OVENdata$targetPoints, # Device target locations
+               originRelAbund = OVENdata$originRelAbund,#Origin relative abund.
+               verbose = 1,   # output options
+               nSamples = nSamplesGLGPS,# This is set low for example
+               resampleProjection = terra::crs(OVENdata$targetSites))
+
+  # Estimate MC and rM, treat all data as is
+  Combined&lt;-estMC(isGL=OVENdata$isGL, #Logical vector:light-level GL(T)/GPS(F)
+                  geoBias = OVENdata$geo.bias, # Light-level GL location bias
+                  geoVCov = OVENdata$geo.vcov, # Location covariance matrix
+                  targetDist = OVENdata$targetDist, # Winter distance matrix
+                  originDist = OVENdata$originDist, # Breeding distance matrix
+                  targetSites = OVENdata$targetSites, # Nonbreeding/target sites
+                  originSites = OVENdata$originSites, # Breeding origin sites
+                  originPoints = OVENdata$originPoints, # Capture Locations
+                  targetPoints = OVENdata$targetPoints, #Device target locations
+                  originRelAbund = OVENdata$originRelAbund,#Relative abundance
+                  verbose = 1,   # output options
+                  calcCorr = TRUE, # estimate rM as well
+                  nSamples = nSamplesGLGPS, # This is set low for example
+                  approxSigTest = TRUE,
+                  resampleProjection = terra::crs(OVENdata$targetSites),
+                  originNames = OVENdata$originNames,
+                  targetNames = OVENdata$targetNames)
+
+  print(Combined)
+
+  # For treating all data as GPS,
+  # Move the latitude of birds with locations that fall offshore - only change
+  # Latitude
+  int &lt;- sf::st_intersects(OVENdata$targetPoints, OVENdata$targetSites)
+  any(lengths(int)&lt;1)
+  plot(OVENdata$targetPoints)
+  plot(OVENdata$targetSites,add=TRUE)
+  tp&lt;-sf::st_coordinates(OVENdata$targetPoints)
+  text(tp[,1], tp[,2], label=c(1:39))
+
+  tp[5,2]&lt;- -1899469
+  tp[10,2]&lt;- -1927848
+  tp[1,2]&lt;- -1927930
+  tp[11,2]&lt;- -2026511
+  tp[15,2]&lt;- -2021268
+  tp[16,2]&lt;- -1976063
+
+  oven_targetPoints&lt;-sf::st_as_sf(as.data.frame(tp),
+                                  coords = c("X","Y"),
+                                  crs = sf::st_crs(OVENdata$targetPoints))
+  inter &lt;- sf::st_intersects(oven_targetPoints, OVENdata$targetSites)
+  any(lengths(inter)&lt;1)
+  plot(oven_targetPoints,add=TRUE, col = "green")
+
+  # Estimate MC only, treat all data as GPS
+  GPS_mc&lt;-estMC(isGL=FALSE, # Logical vector: light-level geolocator(T)/GPS(F)
+                targetDist = OVENdata$targetDist, # targetSites distance matrix
+                originDist = OVENdata$originDist, # originSites distance matrix
+                targetSites = OVENdata$targetSites, # Non-breeding target sites
+                originSites = OVENdata$originSites, # Breeding origin sites
+                originPoints = OVENdata$originPoints, # Capture Locations
+                targetPoints = oven_targetPoints, # Device target locations
+                originRelAbund = OVENdata$originRelAbund,#Origin relative abund.
+                verbose = 1,   # output options
+                nSamples = nSamplesGLGPS) # This is set low for example
+
+  str(GPS_mc, max.level = 2)
+  str(Combined, max.level = 2)
+  str(GL_mc, max.level = 2)
+  plot(Combined, legend = "top", main = "Ovenbird GL and GPS")
+  text(1.1, 0.98, cex = 1,
+       labels = paste("MC = ", round(Combined$MC$mean, 2), "+/-",
+                      round(Combined$MC$se, 2)))
+
+
+  # Generate probabilistic assignments using intrinsic markers (stable-hydrogen
+  # isotopes)
+  getCSV &lt;- function(filename) {
+    tmp &lt;- tempdir()
+    url1 &lt;- paste0('https://github.com/SMBC-NZP/MigConnectivity/blob/master/data-raw/',
+                   filename, '?raw=true')
+    temp &lt;- paste(tmp, filename, sep = '/')
+    utils::download.file(url1, temp, mode = 'wb')
+    csv &lt;- read.csv(temp)
+    unlink(temp)
+    return(csv)
+  }
+
+  getRDS &lt;- function(speciesDist) {
+    tmp &lt;- tempdir()
+    extension &lt;- '.rds'
+    filename &lt;- paste0(speciesDist, extension)
+    url1 &lt;- paste0(
+      'https://github.com/SMBC-NZP/MigConnectivity/blob/master/data-raw/Spatial_Layers/',
+                   filename, '?raw=true')
+    temp &lt;- paste(tmp, filename, sep = '/')
+    utils::download.file(url1, temp, mode = 'wb')
+    shp &lt;- readRDS(temp)
+    unlink(temp)
+    return(shp)
+  }
+  OVENdist &lt;- getRDS("OVENdist")
+
+  OVENvals &lt;- getCSV("deltaDvalues.csv")
+
+  OVENvals &lt;- OVENvals[grep(x=OVENvals$Sample,"NH", invert = TRUE),]
+
+  originSites &lt;- getRDS("originSites")
+  originSites &lt;- sf::st_as_sf(originSites)
+
+  EVER &lt;- length(grep(x=OVENvals$Sample,"EVER"))
+  JAM &lt;- length(grep(x=OVENvals$Sample,"JAM"))
+
+  originRelAbund &lt;- matrix(c(EVER,JAM),nrow = 1,byrow = TRUE)
+  originRelAbund &lt;- prop.table(originRelAbund,1)
+
+  op &lt;- sf::st_centroid(originSites)
+
+  originPoints &lt;- array(NA,c(EVER+JAM,2), list(NULL, c("x","y")))
+  originPoints[grep(x = OVENvals$Sample,"JAM"),1] &lt;- sf::st_coordinates(op)[1,1]
+  originPoints[grep(x = OVENvals$Sample,"JAM"),2] &lt;- sf::st_coordinates(op)[1,2]
+  originPoints[grep(x = OVENvals$Sample,"EVER"),1] &lt;-sf::st_coordinates(op)[2,1]
+  originPoints[grep(x = OVENvals$Sample,"EVER"),2] &lt;-sf::st_coordinates(op)[2,2]
+
+  originPoints &lt;- sf::st_as_sf(data.frame(originPoints),
+                               coords = c("x", "y"),
+                               crs = sf::st_crs(originSites))
+  originDist &lt;- distFromPos(sf::st_coordinates(op))
+
+
+  iso &lt;- isoAssign(isovalues = OVENvals[,2],
+                   isoSTD = 12,       # this value is for demonstration only
+                   intercept = -10,   # this value is for demonstration only
+                   slope = 0.8,       # this value is for demonstration only
+                   odds = NULL,
+                   restrict2Likely = TRUE,
+                   nSamples = 1000,
+                   sppShapefile = OVENdist,
+                   assignExtent = c(-179,-60,15,89),
+                   element = "Hydrogen",
+                   period = "GrowingSeason",#this setting for demonstration only
+                   seed = 12345,
+                   verbose=1)
+
+  targetSites &lt;- sf::st_as_sf(iso$targetSites)
+  targetSites &lt;- sf::st_make_valid(targetSites)
+  targetSites &lt;- sf::st_union(targetSites, by_feature = TRUE)
+
+  ovenMC &lt;- estMC(originRelAbund = originRelAbund,
+                  targetIntrinsic = iso,
+                  originPoints = originPoints,
+                  originSites = originSites,
+                  originDist = originDist,
+                  nSamples = 50, # set very low for example speed
+                  verbose = 1,
+                  calcCorr = TRUE,
+                  alpha = 0.05,
+                  approxSigTest = FALSE,
+                  isIntrinsic = TRUE,
+                  targetSites = targetSites)
+
+  ovenMC
+
+</code></pre>
+
+
+</div>

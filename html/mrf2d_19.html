@@ -1,0 +1,220 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>fit_sa</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Stochastic Approximation fitting of MRFs on 2d lattices</h2>
+
+<h3>Description</h3>
+
+<p>Estimates the parameters of a MRF by successively sampling from
+a parameter configuration and updating it by comparing the sufficient statistics
+of the sampled field and the observed field.
+</p>
+<p>This method aims to find the parameter value where the gradient of the
+likelihood function is equal to zero.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">fit_sa(
+  Z,
+  mrfi,
+  family = "onepar",
+  gamma_seq,
+  init = 0,
+  cycles = 5,
+  refresh_each = length(gamma_seq) + 1,
+  refresh_cycles = 60,
+  verbose = interactive()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Z</code></td>
+<td>
+<p>A <code>matrix</code> object containing the observed MRF. <code>NA</code> values can be
+used to create a subregion of the lattice for non-rectangular data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mrfi</code></td>
+<td>
+<p>A <code>mrfi</code> object representing the
+interaction structure.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>The family of parameter restrictions to potentials. Families
+are:
+<code>'onepar'</code>, <code>'oneeach'</code>, <code>'absdif'</code>, <code>'dif'</code> or <code>'free'</code>.
+See <code>mrf2d-familiy</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma_seq</code></td>
+<td>
+<p>A <code>numeric</code> vector with the sequence of constants
+used in each step <code class="reqn">\gamma_t</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+<p>The initial value to be used in the optimization. It can be:
+</p>
+
+<ul>
+<li>
+<p> A valid <code>array</code> of parameter values according to <code>family</code>.
+</p>
+</li>
+<li> <p><code>0</code>. If set to <code>0</code> an array with '0“ in all entries is created.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cycles</code></td>
+<td>
+<p>The number of updates to be done (for each each pixel).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>refresh_each</code></td>
+<td>
+<p>An integer with the number of iterations taken before a
+complete refresh (restart from a random state). This prevents the sample from
+being stuck in a mode for too long. Defaults to <code>length(gamma_seq) + 1</code> (no
+refresh happens).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>refresh_cycles</code></td>
+<td>
+<p>An integer indicating how many Gibbs Sampler cycles are
+performed when a refresh happens. Larger is usually better, but slower.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p><code>logical</code> indicating whether the iteration number is printed
+during execution.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The stochastic approximation method consists of, given an observed field <code>Z</code>,
+and a starting parameters configuration <code class="reqn">\theta_0</code>, successively sample
+a field <code class="reqn">Z_t</code> from the current parameter configuration and estimate the
+direction of the  gradient of the likelihood function by comparing the
+sufficient statistics in the current sample and the observed field.
+</p>
+<p>The solution is updated by moving in the estimated direction with a predefined
+step size <code class="reqn">\gamma_t</code>, a new field <code class="reqn">Z_{t+1}</code> is sampled using the new
+parameter configuration and <code class="reqn">Z_t</code> as an initial value, and the process is
+repeated.
+</p>
+<p style="text-align: center;"><code class="reqn">\theta_{t+1} = \theta_t - \gamma_t(T(Z_t) - T(Z)),</code>
+</p>
+
+<p>where <code class="reqn">T(Z)</code> is the sufficient statistics for the reference field,
+<code class="reqn">T(Z_t)</code> is the sufficient statistics for a field sampled from
+<code class="reqn">\theta_t</code>.
+</p>
+<p><code>gamma_seq</code> is normalized internally by diving values by <code>length(Z)</code>, so the
+choice of the sequence is invariant to the lattice dimensions. Typically, a
+sequence like <code>seq(from = 1, to = 0, length.out = 1000)</code> should be used for
+defining a sequence with <code>1000</code> steps. Some tuning of this sequence is
+required.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>mrfout</code> object with the following elements:
+</p>
+
+<ul>
+<li> <p><code>theta</code>: The estimated <code>array</code> of potentials.
+</p>
+</li>
+<li> <p><code>mrfi</code>: The interaction structure considered.
+</p>
+</li>
+<li> <p><code>family</code>: The parameter restriction family considered.
+</p>
+</li>
+<li> <p><code>method</code>: The estimation method (<code>"Stochastic Approximation"</code>).
+</p>
+</li>
+<li> <p><code>metrics</code>: A <code>data.frame</code> containing the the euclidean distance between
+the sufficient statics computed for <code>Z</code> and the current sample.
+</p>
+</li>
+</ul>
+<h3>Note</h3>
+
+<p>Stochastic Approximation is called "Controllable Simulated Annealing" in
+some references.
+</p>
+<p>Examples where Stochastic Approximation is used with MRFs are
+(Gimel'farb 1996), (Atchadé et al. 2013).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Victor Freguglia
+</p>
+
+
+<h3>References</h3>
+
+<p>Wikipedia (2019).
+“Stochastic approximation.”
+<a href="https://en.wikipedia.org/wiki/Stochastic_approximation">https://en.wikipedia.org/wiki/Stochastic_approximation</a>.
+</p>
+<p>Atchadé YF, Lartillot N, Robert C, others (2013).
+“Bayesian computation for statistical models with intractable normalizing constants.”
+<em>Brazilian Journal of Probability and Statistics</em>, <b>27</b>(4), 416–436.<br><br> Gimel'farb GL (1996).
+“Texture modeling by multiple pairwise pixel interactions.”
+<em>IEEE Transactions on pattern analysis and machine intelligence</em>, <b>18</b>(11), 1110–1114.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>A paper with detailed description of the package can be found at
+doi: <a href="https://doi.org/10.18637/jss.v101.i08">10.18637/jss.v101.i08</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+set.seed(2)
+fit1 &lt;- fit_sa(Z_potts, mrfi(1), family = "oneeach", gamma_seq = seq(1, 0, length.out = 50))
+# Estimated parameters
+fit1$theta
+# A visualization of estimated gradient norm over iterations.
+plot(fit1$metrics, type = "l")
+
+fit_sa(Z_potts, mrfi(1), family = "oneeach", gamma_seq = seq(1, 0, length.out = 50))
+
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,584 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>fit.mpt</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Function to fit MPT models
+</h2>
+
+<h3>Description</h3>
+
+<p><code>fit.mpt</code> fits <em>binary</em> multinomial processing tree models (MPT models; e.g., Riefer &amp; Batchelder, 1988) from an external model file and (optional) external restrictions using the general-purpose quasi-Newton box-constraint optimization routine provided by Byrd et al. (1995). Additionally, measures for model selection (AIC, BIC, FIA) can be computed. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">fit.mpt(
+	data,
+	model.filename, 
+	restrictions.filename = NULL, 
+	n.optim = 5,
+	fia = NULL,
+	ci = 95, 
+	starting.values = NULL,
+	output = c("standard", "fia", "full"),
+	reparam.ineq = TRUE,
+	fit.aggregated = TRUE,
+	sort.param = TRUE,
+	show.messages = TRUE,
+	model.type = c("easy", "eqn", "eqn2"),
+	multicore = c("none", "individual", "n.optim", "fia"), sfInit = FALSE, nCPU = 2,
+	control = list(), args.fia = list(), numDeriv = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>Either a <em>numeric</em> <code>vector</code> for individual fit or a <em>numeric</em> <code>matrix</code> or <code>data.frame</code> for multi-individual fit. The data on each position (column for multi-individual fit) must correspond to the respective line in the model file. For EQN model files, the required order is given by an alphabetic ordering of first model names than categories. This order in terms of the names in the EQN file can be obtained through <code>check.mpt</code>. Fitting for multiple individuals can be parallelized via <code>multicore</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.filename</code></td>
+<td>
+
+<p>A character <code>vector</code> specifying the location and name of the model file. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>restrictions.filename</code></td>
+<td>
+
+<p><code>NULL</code> or a character <code>vector</code> or a <code>list</code> of characters. The default is <code>NULL</code> which corresponds to no restrictions. A character <code>vector</code> specifies the location or name of the restrictions file. A <code>list</code> of characters contains the restrictions directly. See Details and Examples.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.optim</code></td>
+<td>
+
+<p>Number of optimization runs. Can be parallelized via <code>multicore</code>. Default is 5. If the number is high, fitting can take long for <em>large</em> models.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fia</code></td>
+<td>
+
+<p>Number of random samples to be drawn in the Monte Carlo algorithm to estimate the Fisher Information Approximation (FIA), a minimum description length based measure of model complexity (see Wu, Myung &amp; Batchelder, 2010). The default is <code>NULL</code> which corresponds to no computation of the FIA. Reasonable values (e.g., &gt; 200000) can lead to long computation times (minutes to hours) depending on the size of the model. See Details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ci</code></td>
+<td>
+
+<p>A scalar corresponding to the size of the confidence intervals for the parameter estimates. Default is 95 which corresponds to 95% confidence intervals.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>starting.values</code></td>
+<td>
+
+<p>A <code>vector</code>, a <code>list</code>, or <code>NULL</code> (the default). If <code>NULL</code> starting values for parameters are randomly drawn from a uniform distribution with the interval <code>(0.1 - 0.9)</code>. See Details of <code>fit.mptinr</code> for the other options.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output</code></td>
+<td>
+
+<p>If "fia", <code>fit.mpt</code> will additionally return the results from <code>get.mpt.fia</code> (if <code>fia</code> not equal <code>NULL</code>). If "full" <code>fit.mpt</code> will additionally return the results from <code>get.mpt.fia</code> and the output of <code>nlminb</code> and the Hessian matrix/matrices.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reparam.ineq</code></td>
+<td>
+
+<p>Logical. Indicates whether or not inequality restrictions (when present in the model file) should be enforced while fitting the model. If <code>TRUE</code> (the default) inequality restricted parameters will be reparameterized, if <code>FALSE</code> not. See Details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fit.aggregated</code></td>
+<td>
+
+<p>Logical. Only relevant for multiple datasets (i.e., <code>matrix</code> or <code>data.frame</code>). Should the aggregated dataset (i.e., data summed over rows) be fitted? Default (<code>TRUE</code>) fits the aggregated data. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sort.param</code></td>
+<td>
+
+<p>Logical. If TRUE, parameters are alphabetically sorted in the parameter table. If FALSE, the first parameters in the parameter table are the non-restricted ones, followed by the restricted parameters. Default is TRUE.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>show.messages</code></td>
+<td>
+
+<p>Logical. If TRUE the time the fitting algorithms takes is printed to the console.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.type</code></td>
+<td>
+
+<p>Character vector specifying whether the model file is formatted in the easy way (<code>"easy"</code>; i.e., each line represents all branches corresponding to a response category) or the traditional EQN syntax (<code>"eqn"</code> or <code>"eqn2"</code>; see Details and e.g., Stahl &amp; Klauer, 2007). If <code>model.filename</code> ends with .eqn or .EQN, <code>model.type</code> is automatically set to <code>"eqn"</code>. Default is <code>"easy"</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>multicore</code></td>
+<td>
+
+<p>Character vector. If not <code>"none"</code>, uses <code>snowfall</code> for parallelization (which needs to be installed separately via <code>install.packages(snowfall)</code>). If <code>"individual"</code>, parallelizes the optimization for each individual (i.e., data needs to be a <code>matrix</code> or <code>data.frame</code>). If <code>"n.optim"</code>, parallelizes the <code>n.optim</code> optimization runs. If not <code>"none"</code> (e.g., <code>"fia"</code>) calculation of FIA is parallelized (if FIA is requested). Default is <code>"none"</code> which corresponds to no parallelization. Note that you need to initialize <code>snowfall</code> in default settings. See <code>sfInit</code> and Details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sfInit</code></td>
+<td>
+
+<p>Logical. Relevant if <code>multicore</code> is not <code>"none"</code>. If <code>TRUE</code>, <code>fit.mpt</code> will initialize and close the multicore support. If <code>FALSE</code>, (the default) assumes that <code>sfInit()</code> was initialized before. See Details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nCPU</code></td>
+<td>
+
+<p>Scalar. Only relevant if <code>multicore</code> is not <code>"none"</code> and <code>sfInit</code> is TRUE. Number of CPUs used by <code>snowfall</code>. Default is 2.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+
+<p>list containing control arguments passed on to <code>nlminb</code>. See there.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>args.fia</code></td>
+<td>
+
+<p>named list of further arguments passed to <code>get.mpt.fia</code>, such as <code>mConst</code> to avoid numerical problems in the FIA function.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>numDeriv</code></td>
+<td>
+
+<p>logical. Should the Hessian matrix of the maximum likelihood estimates be estimated numerically using <code>numDeriv::hessian</code> in case it cannot be estimated analytically? This can be extremely time and memory consuming for larger models. Default is TRUE.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The model file is either of the easy format or the "classical" EQN format (see below).<br>
+In the easy format (the default) the model file contains all trees of the model. Trees are separated by at least one empty line. Everything to the right of a hash (#) is ignored (this behavior is new since version 0.9.2). Lines starting with a # are treated as empty. Each line in each tree corresponds to all branches of this tree (concatenated by a +) that correspond to one of the possible response categories. The position of each line must correspond to the position of this response category in the data object (for multi-individual fit to the respective column).
+</p>
+<p>For EQN model files the order of the data does NOT correspond to the order in the model file, but to the order given by first sorting the tree names alphabetically/numerically and than the category names within the trees. As this is often difficult to see if the EQN files contains names and not numbers for trees and categories, <code>check.mpt</code> returns the order of both trees and categories for EQN model files.
+</p>
+<p>The difference between both types of EQN format (<code>"eqn"</code> or<code>"eqn2"</code>) is the way the first line of the model file is treated. If <code>model.file</code> is set to <code>"eqn"</code>, <code>MPTinR</code> will ignore the first line of the model file and will read the rest of the file (as does multiTree; Moshagen, 2010). If <code>model.file</code> is set to <code>"eqn2"</code> MPTinR will only read as many lines as indicated in the first line of the EQN model file (as does e.g., HMMTree; Stahl &amp; Klauer, 2007). As default <code>fit.mpt</code> expects the easy format, but if the filename ends with .eqn or .EQN and <code>model.type</code> is <code>"easy"</code>, <code>model.type</code> is set to <code>"eqn"</code><br>
+For the EQN format consult one of the corresponding papers (see e.g., Moshagen, 2010; Stahl &amp; Klauer, 2007). The positions in the data object (number of column for multi-individual fit) must correspond to the category number in the EQN file.<br></p>
+<p>Note that names of parameters in the model file should not start with <code>hank.</code>. Variables with these names can lead to unforeseen problems as variables starting with these letters are internally used. Furthermore, any <code>reserved</code> names (e.g., <code>NA</code>) are not allowed in model files of any types (i.e., also not as category labels in .eqn files). All names in models need to be valid R variable names (see <code>make.names</code>).
+</p>
+<p>The restrictions file may contain (sequential) equality (i.e., =) and inequality (i.e., &lt;) restrictions and must adhere to the following rules:<br>
+1. Inequalities first.<br>
+2. If a variable appears in an inequality restriction, it can not be on the left hand side (LHS) of any further restriction.<br>
+3. If a variable appears on the right hand side (RHS) of an equality restriction, it can not appear on LHS of an equality restriction.<br>
+Note that only "&lt;" is supported as inequality operator but not "&gt;"!<br>
+Examples of restrictions are (the following could all appear in one restrictions file):<br><code>D1 &lt; D2 &lt; D3</code><br><code>D4 = D3</code><br><code>B1 = B3 = 0.3333</code><br><code>X4 = X5 = D3</code><br>
+Restrictions file may contain comments (i.e., everything to the right of a # will be ignored; new behavior since version 0.9.2)
+</p>
+<p>Restrictions can also be specified in line as a list. The same restrictions as the one above as a <code>list</code> would be <code>list("D1 &lt; D2 &lt; D3", "D4 = D3", "B1 = B3 = 0.3333", "X4 = X5 = D3")</code> (simply use this <code>list</code> as the <code>restrictions.filename</code> argument).
+</p>
+<p>For equality restrictions, the equality restricted parameters are simply exchanged with their restrictions before the fitting.<br>
+For inequality restricted parameters, the model is reparameterized so that only the rightmost parameter of an inequality restriction remains the original parameter. Each instance of the other parameters in this restriction is replaced by the product of the rightmost parameter and dummy parameters (see Knapp &amp; Batchelder, 2004). This procedure (which is equivalent to method A described in Knapp &amp; Batchelder, 2004) leads to an equivalent model (although the binary MPT structure is not apparent in the resulting equations).<br>
+To prohibit this reparameterization (i.e., if the inequality restrictions hold without reparameterization), you can set <code>reparam.ineq</code> to <code>FALSE</code>. This can be useful for obtaining the FIA (see examples in Wu, Myung, &amp; Batchelder, 2010).
+</p>
+<p>Both models and restrictions can be specified as <code>textConnection</code>s instead of as external files.<br>
+Furthermore, restrictions can be specified directly as a <code>list</code> containing the restrictions (quoted, i.e. as characters).<br><code>fit.model</code> contains additional examples showing model and restrictions specification within the code.
+</p>
+<p>Note that when setting some parameters equal and also restricting their order, the parameters set equal which are not the rightmost element in the order (i.e., inequality) restriction, are computed correctly, but are marked as inequality restricted instead of equality restricted in the output (this did not work at all before v1.0.1). An example: For the restrictions <code>list("G2 &lt; G3 &lt; G5", "G1 = G2", "G4 = G5")</code>, <code>G1</code> would be computed correctly, but marked as inequality restricted. In contrast, <code>G4</code> would be marked as equal to <code>G5</code> (and also computed correctly).
+</p>
+<p>To obtain a measure of the model's complexity beyond the number of parameters (and taking inequality restrictions into account), set <code>fia</code> to a (reasonably high) scalar integer (i.e., a number). Then, <code>fit.mpt</code> will obtain the Fisher Information Approximation (FIA), a Minimum Description Length (MDL) based measure of model complexity, using the algorithm provided by Wu, Myung, &amp; Batchelder (2010a, 2010b) ported from Matlab to R. When performing model-selection, this measure is superior to other methods such as the Akaike Information Criterion (AIC) or Bayesian Information Criterion (BIC) which basically only take the number of parameters into account.<br>
+To get the FIA, <code>fit.mpt</code> performs the following steps:<br>
+1. The representation of the model as equations is transformed into the string representation of the model in the context-free language of MPT models (L-BMPT; Purdy &amp; Batchelder, 2009). For this step to be successful it is <em>absolutely necessary</em> that the equations representing the model perfectly map the tree structure of the MPT. That is, the model file is only allowed to contain parameters, their inverse (e.g., <code>Dn</code> and <code>(1 - Dn)</code>) and the operators + and *, but nothing else. Simplifications of the equations will seriously distort this step. Similarly, unnecessary brackets will distort the results. Brackets must only be used to indicate the inverse of a parameter (i.e. (1 - parameter)). This step is achieved by <code>make.mpt.cf</code>.<br>
+2. The context free representation of the model is then fed into the MCMC function computing the FIA (the port of BMPTFIA provided by Wu, Myung &amp; Batchelder (2010a), see <code>bmpt.fia</code>).<br>
+(Actually, both steps are achieved by a call to <code>get.mpt.fia</code>)
+</p>
+<p>Note that FIA can sometimes be non-consistent (i.e., larger FIA penalty values for restricted versions of a model than for the superordinate model; see Navarro, 2004). This may specifically happens for small ns and is for example the case for the Broder &amp; Schutz example below. In these cases FIA cannot be used! Therefore, always check for consistency of the FIA penalty terms.
+</p>
+<p>Once again: If one wants to compute the FIA, it is <em>absolutely necessary</em>, that the representation of the model via equations in the model file exactly maps on the structure of the binary MPT (see <code>make.mpt.cf</code> for more details).
+</p>
+<p>Confidence intervals (CI) are based on the observed Hessian matrix produced by the symbolically derived function for the Hessian (i.e., the second derivative of the likelihood function). If it is based on a numerically estimated Hessian, a warning will be given. <br>
+For inequality restricted parameters, the CIs are computed using the parameter estimates' variance bounds (see Baldi &amp; Batchelder, 2003; especially Equation 19). Note that these bounds represent the "worst case scenario" variances, and can lead to CIs outside parameter boundaries if the set of inequalities is large and/or the variances for the reparameterized model are large (Note that CIs for non-restricted parameters can be outside the parameter boundaries as well due to large variances).
+</p>
+<p>To avoid local minima and instead find the maximum likelihood estimates it is useful to set <code>n.optim</code> &gt; 1 with random starting values (see below). If <code>n.optim</code> &gt; 1, the <code>summary</code> of the vector containing the Log-Likelihood values returned by each run of <code>nlminb</code> is added to the output (to check whether local minima were present). If the model is rather big, <code>n.optim</code> &gt; 1 can be slow.
+</p>
+<p>Multicore fitting is achieved via the <code>snowfall</code> package and needs to be initialized via <code>sfInit</code>. As initialization needs some time, you can either initialize multicore facilities yourself using <code>sfInit()</code> and setting the <code>sfInit</code> argument to <code>FALSE</code> (the default) or let MPTinR initialize multicore facilities by setting the <code>sfInit</code> argument to <code>TRUE</code>. The former is recommended as initializing <code>snowfall</code> takes some time and only needs to be done once if you run <code>fit.mpt</code> multiple times. If there are any problems with multicore fitting, first try to initialize <code>snowfall</code> outside MPTinR (e.g., <code>sfInit( parallel=TRUE, cpus=2 )</code>). If this does not work, the problem is not related to MPTinR but to snowfall (for support and references visit: <a href="https://www.imbi.uni-freiburg.de/parallel/">https://www.imbi.uni-freiburg.de/parallel/</a>).<br>
+Note that you should  <em>close</em> snowfall via <code>sfStop()</code> after using MPTinR.
+</p>
+<p>The fitting/optimization is achieved via <code>nlminb</code> (Fox, Hall, &amp; Schryer, 1978) a Newton based algorithm using the analytically derived gradient. In some cases (e.g., in case of empty cells) <code>nlminb</code> will not converge successfully in which <code>fit.mpt</code> will retry fitting using a numerically estimated gradient (with warning). 
+</p>
+<p><code>fit.mpt</code> is just a comfortable wrapper around the workhorse <code>fit.mptinr</code>. <code>fit.mpt</code> produces the appropriate objective function, gradient function, hessian function, and prediction function that are handed over to <code>fit.mptinr</code> (functions are produced by symbolical derivation, see <code>D</code>). A function similar to <code>fit.mpt</code> is <code>fit.model</code> which has the additional arguments <code>lower.bound</code> and <code>upper.bound</code> allowing to fit other models than just MPTs and the possibility to indicate whether or not to use the analytically derived gradient or hessian for fitting (here this is automatically handled). Note that for MPTs (where upper and lower bounds of parameters are set to 0 and 1, respectively) <code>fit.mpt</code> is probably faster as the objective function is slightly faster (i.e., more optimized). However, for datasets with many empty cells trying <code>fit.model</code> with or without gradient or hessian can be worth a try.
+</p>
+<p>Note that <code>fit.mptinr</code> can fit models with arbitrary (i.e., custom) objective functions.
+</p>
+<p>The old version of this function using <code>optim</code>'s L-BFGS-B algorithm is <code>fit.mpt.old</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>For individual fits (i.e., <code>data</code> is a <code>vector</code>) a <code>list</code> containing one or more of the following components from the best fitting model:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>goodness.of.fit</code></td>
+<td>
+<p>A <code>data.frame</code> containing the goodness of fit values for the model. <code>Log.Likelihood</code> is the Log-Likelihood value. <code>G.Squared</code>, <code>df</code>, and <code>p.value</code> are the <code class="reqn">G^2</code> goodness of fit statistic.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>information.criteria</code></td>
+<td>
+<p>A <code>data.frame</code> containing model information criteria based on the <code class="reqn">G^2</code> value. The FIA values(s) are presented if <code>fia</code> is not <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.info</code></td>
+<td>
+<p>A <code>data.frame</code> containing other information about the model. If the rank of the Fisher matrix (<code>rank.fisher</code>) <em>does not</em> correspond to the number of parameters in the model (<code>n.parameters</code>) this indicates a serious issue with the identifiability of the model. A common reason is that one of the parameter estimates lies on the bound of the parameter space (i.e., 0 or 1).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parameters</code></td>
+<td>
+<p>A data.frame containing the parameter estimates and corresponding confidence intervals. If a restriction file was present, the restricted parameters are marked.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A <code>list</code> of two matrices; the first one (<code>observed</code>) contains the entered data, the second one (<code>predicted</code>) contains the predicted values.</p>
+</td>
+</tr>
+</table>
+<p>For multi-dataset fits (i.e., <code>data</code> is a <code>matrix</code> or <code>data.frame</code>) a <code>list</code> with similar elements, but the following differences:<br>
+The first elements, <code>goodness.of.fit</code>, <code>information.criteria</code>, and <code>model.info</code>, contain the same information as for individual fits, but each are <code>lists</code> with three elements containing the respective values for: each individual in the list element <code>individual</code>, the sum of the individual values in the list element <code>sum</code>, and the values corresponding to the fit for the aggregated data in the list element <code>aggregated</code>.<br><code>parameters</code> is a list containing:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>individual</code></td>
+<td>
+<p>A 3-dimensional array containing the parameter estimates ([,1,]), confidence intervals [,2:3,], and, if restrictions not <code>NULL</code>, column 4 [,4,] is 0 for non-restricted parameters, 1 for equality restricted parameters, and 2 for inequality restricted parameters. The first dimension refers to the parameters, the second to the information on each parameter, and the third to the individual/dataset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mean</code></td>
+<td>
+<p>A <code>data.frame</code> with the mean parameter estimates from the individual estimates. No confidence intervals can be provided for these values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>aggregated</code></td>
+<td>
+<p>A data.frame containing the parameter estimates and corresponding confidence intervals for the aggregated data. If a restriction file was present, the restricted parameters are marked.</p>
+</td>
+</tr>
+</table>
+<p>The element <code>data</code> contains two matrices, one with the <code>observed</code>, and one with the <code>predicted</code> data (or is a list containing lists with <code>individual</code> and <code>aggregated</code> <code>observed</code> and <code>predicted</code> data).
+</p>
+<p>If <code>n.optim</code> &gt; 1, the <code>summary</code> of the vector (matrix for multi-individual fit) containing the Log-Likelihood values returned by each run of <code>optim</code> is added to the output: <code>fitting.runs</code>
+</p>
+<p>When <code>output == "full"</code> the list contains the additional items:<br></p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>optim.runs</code></td>
+<td>
+<p>A list (or list of lists for multiple datasets) containing the outputs from all runs by <code>nlminb</code> (including those runs produced when fitting did not converge)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>best.fits</code></td>
+<td>
+<p>A list (or list of lists for multiple datasets) containing the outputs from the runs by <code>nlminb</code> that had the lowest likelihood (i.e., the successful runs)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hessian</code></td>
+<td>
+<p>A list  containing the Hessian matrix or matrices of the final parameter estimates.</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>Warnings may relate to the optimization routine (e.g., <code>Optimization routine [...] did not converge successfully</code>).<br>
+In these cases it is recommended to rerun fit.mpt to check if the results are stable.
+</p>
+
+
+<h3>Note</h3>
+
+<p>All (model or restriction) files should end with an empty line, otherwise a warning will be shown.
+</p>
+<p>The likelihood returned does not include the factorial constants of the multinomial probability-mass functions.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Henrik Singmann and David Kellen with help from Karl Christoph Klauer.
+</p>
+
+
+<h3>References</h3>
+
+<p>Baldi, P. &amp; Batchelder, W. H. (2003). Bounds on variances of estimators for multinomial processing tree models. <em>Journal of Mathematical Psychology</em>, 47, 467-470. 
+</p>
+<p>Broeder, A., &amp; Schuetz, J. (2009). Recognition ROCs are curvilinear-or are they? On premature arguments against the two-high-threshold model of recognition. <em>Journal of Experimental Psychology: Learning, Memory, and Cognition</em>, 35(3), 587. doi:10.1037/a0015279
+</p>
+<p>Byrd, R. H., Lu, P., Nocedal, J., &amp; Zhu, C. (1995). A limited memory algorithm for bound constrained optimization. <em>SIAM J. Scientific Computing</em>, 16, 1190-1208.
+</p>
+<p>Fox, P. A., Hall, A. P., &amp; Schryer, N. L. (1978). The PORT Mathematical Subroutine Library. <em>CM Trans. Math. Softw.</em>, 4, 104-126. <a href="https://doi.org/10.1145/355780.355783">doi:10.1145/355780.355783</a>
+</p>
+<p>Knapp, B. R., &amp; Batchelder, W. H. (2004). Representing parametric order constraints in multi-trial applications of multinomial processing tree models. <em>Journal of Mathematical Psychology</em>, 48, 215-229.
+</p>
+<p>Moshagen, M. (2010). multiTree: A computer program for the analysis of multinomial processing tree models. <em>Behavior Research Methods</em>, 42, 42-54.
+</p>
+<p>Navarro, D. J. (2004). A Note on the Applied Use of MDL Approximations. <em>Neural Computation</em>, 16(9), 1763-1768.
+</p>
+<p>Purdy, B. P., &amp; Batchelder, W. H. (2009). A context-free language for binary multinomial processing tree models. <em>Journal of Mathematical Psychology</em>, 53, 547-561.
+</p>
+<p>Riefer, D. M., &amp; Batchelder, W. H. (1988). Multinomial modeling and the measurement of cognitive processes. <em>Psychological Review</em>, 95, 318-339.
+</p>
+<p>Stahl, C. &amp; Klauer, K. C. (2007). HMMTree: A computer program for latent-class hierarchical multinomial processing tree models. <em>Behavior Research Methods</em>, 39, 267- 273.
+</p>
+<p>Wu, H., Myung, J.I., &amp; Batchelder, W.H. (2010a). Minimum description length model selection of multinomial processing tree models. <em>Psychonomic Bulletin &amp; Review</em>, 17, 275-286.
+</p>
+<p>Wu, H., Myung, J.I., &amp; Batchelder, W.H. (2010b). On the minimum description length complexity of multinomial processing trees. <em>Journal of Mathematical Psychology</em>, 54, 291-303.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>check.mpt</code> for a function that can help in constructing models.
+</p>
+<p><code>select.mpt</code> for the function that performs model selection on results from <code>fit.mpt</code>.
+</p>
+<p><code>fit.model</code> for a similar wrapper for which you can specify upper and lower bounds of parameters (and whether or not <code>nlminb</code> uses the symbolically derived gradient and hessian)
+</p>
+<p><code>fit.mptinr</code> is the workhorse with which you can also fit your own objective functions.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># The first example fits the MPT model presented in Riefer and Batchelder (1988, Figure 1)
+# to the data presented in Riefer and Batchelder (1988, Table 1)
+# Note that Riefer and Batchelder (1988, pp. 328) did some hypotheses tests not replicated here.
+# Instead, we use each condition (i.e., row in Table 1) as a different dataset.
+
+# load the data
+data(rb.fig1.data, package = "MPTinR")
+
+#get the character string with the position of the model:
+model1 &lt;- system.file("extdata", "rb.fig1.model", package = "MPTinR")
+model1.eqn &lt;- system.file("extdata", "rb.fig1.model.eqn", package = "MPTinR")
+
+# just fit the first dataset:
+fit.mpt(rb.fig1.data[1,], model1, n.optim = 1)
+fit.model(rb.fig1.data[1,], model1, n.optim = 1)
+
+#fit all datasets:
+fit.mpt(rb.fig1.data, model1, n.optim = 1)
+fit.model(rb.fig1.data, model1, n.optim = 1)
+
+#fit all datasets using the .EQN model file:
+fit.mpt(rb.fig1.data, model1.eqn, n.optim = 1)
+
+#fit using a textConnection (i.e., you can specify the model in your script/code):
+model1.txt &lt;- "p * q * r
+p * q * (1-r)
+p * (1-q) * r
+p * (1-q) * (1-r) + (1-p)"
+fit.mpt(rb.fig1.data, textConnection(model1.txt), n.optim = 1)
+
+
+
+# The second example fits the MPT model presented in Riefer and Batchelder (1988, Figure 2)
+# to the data presented in Riefer and Batchelder (1988, Table 3)
+# First, the model without restrictions is fitted: ref.model
+# Next, the model with all r set equal is fitted: r.equal
+# Then, the model with all c set equal is fitted: c.equal
+# Finally, the inferential tests reported by Riefer &amp; Batchelder, (1988, p. 332) are executed.
+
+# get the data
+data(rb.fig2.data, package = "MPTinR")
+
+# positions of model and restriction files:
+model2 &lt;- system.file("extdata", "rb.fig2.model", package = "MPTinR")
+model2r.r.eq &lt;- system.file("extdata", "rb.fig2.r.equal", package = "MPTinR")
+model2r.c.eq &lt;- system.file("extdata", "rb.fig2.c.equal", package = "MPTinR")
+
+# The full (i.e., unconstrained) model
+(ref.model &lt;- fit.mpt(rb.fig2.data, model2))
+
+# All r equal
+(r.equal &lt;- fit.mpt(rb.fig2.data, model2, model2r.r.eq))
+
+# All c equal
+(c.equal &lt;- fit.mpt(rb.fig2.data, model2, model2r.c.eq))
+
+# is setting all r equal a good idea?
+(g.sq.r.equal &lt;- r.equal[["goodness.of.fit"]][["G.Squared"]] - 
+				ref.model[["goodness.of.fit"]][["G.Squared"]])
+(df.r.equal &lt;- r.equal[["goodness.of.fit"]][["df"]] - 
+				ref.model[["goodness.of.fit"]][["df"]])
+(p.value.r.equal &lt;- pchisq(g.sq.r.equal, df.r.equal , lower.tail = FALSE))
+
+# is setting all c equal a good idea?
+(g.sq.c.equal &lt;- c.equal[["goodness.of.fit"]][["G.Squared"]] - 
+				ref.model[["goodness.of.fit"]][["G.Squared"]])
+(df.c.equal &lt;- c.equal[["goodness.of.fit"]][["df"]] - 
+				ref.model[["goodness.of.fit"]][["df"]])
+(p.value.c.equal &lt;- pchisq(g.sq.c.equal, df.c.equal , lower.tail = FALSE))
+
+# You can specify restrictions also via a list instead of an external file:
+# All r equal
+r.equal.2 &lt;- fit.mpt(rb.fig2.data, model2, list("r0 = r1 = r2= r3 = r4"), n.optim = 5)
+all.equal(r.equal, r.equal.2)
+
+# All c equal
+c.equal.2 &lt;- fit.mpt(rb.fig2.data, model2, list("c0 = c1 = c2 = c3= c4"))
+all.equal(c.equal, c.equal.2)
+
+
+## Not run: 
+
+# Example from Broder &amp; Schutz (2009)
+# We fit the data from the 40 individuals from their Experiment 3
+# We fit three different models:
+# 1. Their 2HTM model: br.2htm
+# 2. A restricted 2HTM model with Dn = Do: br.2htm.res
+# 3. A 1HTM model (i.e., Dn = 0): br.1htm
+# We fit the models with, as well as without, applied inequality restrictions (see Details)
+# that is, for some models (.ineq) we impose: G1 &lt; G2 &lt; G3 &lt; G4 &lt; G5 
+# As will be apparent, the inequality restrictions do not hold for all individuals.
+# Finally, we compute the FIA for all models, taking inequalities into account.
+
+data(d.broeder, package = "MPTinR")
+m.2htm &lt;- system.file("extdata", "5points.2htm.model", package = "MPTinR")
+r.2htm &lt;- system.file("extdata", "broeder.2htm.restr", package = "MPTinR")
+r.1htm &lt;- system.file("extdata", "broeder.1htm.restr", package = "MPTinR")
+i.2htm &lt;- system.file("extdata", "broeder.2htm.ineq", package = "MPTinR")
+ir.2htm &lt;- system.file("extdata", "broeder.2htm.restr.ineq", package = "MPTinR")
+ir.1htm &lt;- system.file("extdata", "broeder.1htm.restr.ineq", package = "MPTinR")
+
+# fit the original 2HTM
+br.2htm &lt;- fit.mpt(d.broeder, m.2htm)
+br.2htm.ineq &lt;- fit.mpt(d.broeder, m.2htm, i.2htm)
+
+# do the inequalities hold for all participants?
+br.2htm.ineq[["parameters"]][["individual"]][,"estimates",]
+br.2htm[["parameters"]][["individual"]][,"estimates",]
+# See the difference between forced and non-forced inequality restrictions:
+round(br.2htm[["parameters"]][["individual"]][,"estimates",] -
+		br.2htm.ineq[["parameters"]][["individual"]][,"estimates",],2)
+
+# The same for the other two models
+# The restricted 2HTM
+br.2htm.res &lt;- fit.mpt(d.broeder, m.2htm, r.2htm)
+br.2htm.res.ineq &lt;- fit.mpt(d.broeder, m.2htm, ir.2htm)
+round(br.2htm.res[["parameters"]][["individual"]][,"estimates",] - 
+		br.2htm.res.ineq[["parameters"]][["individual"]][,"estimates",],2)
+# The 1HTM
+br.1htm &lt;- fit.mpt(d.broeder, m.2htm, r.1htm)
+br.1htm.ineq &lt;- fit.mpt(d.broeder, m.2htm, ir.1htm)
+round(br.2htm.res[["parameters"]][["individual"]][,"estimates",] - 
+		br.2htm.res.ineq[["parameters"]][["individual"]][,"estimates",],2)
+
+# identical to the last fit of the 1HTM (using a list as restriction):
+br.1htm.ineq.list &lt;- fit.mpt(d.broeder, m.2htm, list("G1 &lt; G2 &lt; G3 &lt; G4 &lt; G5", "Dn = 0"))
+all.equal(br.1htm.ineq, br.1htm.ineq.list)  # TRUE
+
+# These results show that inequality restrictions do not hold for all datasets.
+# (It would look differently if we excluded critical cases, 
+# i.e., 2, 6, 7, 10, 18, 21, 25, 29, 32, 34, 35, 37, 38)
+# Therefore, we get the FIA for the models as computed above 
+
+br.2htm.fia &lt;- fit.mpt(d.broeder, m.2htm, fia = 200000)
+br.2htm.ineq.fia &lt;- fit.mpt(d.broeder, m.2htm, i.2htm, fia = 200000)
+br.2htm.res.fia &lt;- fit.mpt(d.broeder, m.2htm, r.2htm, fia = 200000 )
+br.2htm.res.ineq.fia &lt;- fit.mpt(d.broeder, m.2htm, ir.2htm, fia = 200000)
+br.1htm.fia &lt;- fit.mpt(d.broeder, m.2htm, r.1htm, fia = 200000)
+br.1htm.ineq.fia &lt;- fit.mpt(d.broeder, m.2htm, ir.1htm, fia = 200000)
+
+# Model selection using the FIA
+(br.select &lt;- select.mpt(list(br.2htm.fia, br.2htm.ineq.fia, br.2htm.res.fia, 
+                              br.2htm.res.ineq.fia, br.1htm.fia, br.1htm.ineq.fia)))
+                              
+# The same results, ordered by FIA
+br.select[order(br.select[,"delta.FIA.sum"]),]
+
+# Note that FIA for individual data (.sum) is not consistent (i.e., the penalty
+# for the nested model br.1htm.ineq.fia is not really smaller than the penalty
+# for the superordinate model br.2htm.ineq.fia).
+# Hence, one should use the aggregated data for this analysis (not shown here)! 
+
+# Compare this with the model selection not using FIA:
+select.mpt(list(br.2htm, br.2htm.ineq, br.2htm.res, br.2htm.res.ineq, br.1htm, br.1htm.ineq))
+
+# Only use the aggregated data:
+d.broeder.agg &lt;- colSums(d.broeder)
+br.2htm.agg &lt;- fit.mpt(d.broeder.agg, m.2htm)
+br.2htm.res.agg &lt;- fit.mpt(d.broeder.agg, m.2htm, r.2htm)
+br.1htm.agg &lt;- fit.mpt(d.broeder.agg, m.2htm, r.1htm)
+
+select.mpt(list(br.2htm.agg, br.2htm.res.agg, br.1htm.agg), output = "full")
+
+
+# compare speed of no multicore versus multicore for multiple datasets:
+
+require(snowfall)
+# change number of CPUs if more are available
+nCPU = 2
+sfInit( parallel=TRUE, cpus=nCPU, type = "SOCK" )
+
+# NO multicore
+system.time(fit.mpt(d.broeder, m.2htm))
+
+# multicore:
+system.time(fit.mpt(d.broeder, m.2htm, multicore = "individual"))
+
+sfStop()
+
+## End(Not run)
+
+  </code></pre>
+
+
+</div>

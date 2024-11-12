@@ -1,0 +1,322 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>cpoApplyFunRegrTarget</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Transform a Regression Target Variable</h2>
+
+<h3>Description</h3>
+
+<p>This is a <code>CPOConstructor</code> to be used to create a
+<code>CPO</code>. It is called like any R function and returns
+the created <code>CPO</code>.
+</p>
+<p>Apply a given function to the target column of a regression <code>Task</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">cpoApplyFunRegrTarget(
+  trafo,
+  invert.response = NULL,
+  invert.se = NULL,
+  param = NULL,
+  vectorize = TRUE,
+  gauss.points = 23,
+  id,
+  export = "export.default",
+  affect.type = NULL,
+  affect.index = integer(0),
+  affect.names = character(0),
+  affect.pattern = NULL,
+  affect.invert = FALSE,
+  affect.pattern.ignore.case = FALSE,
+  affect.pattern.perl = FALSE,
+  affect.pattern.fixed = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>trafo</code></td>
+<td>
+<p>[<code>function</code>]<br>
+A function transforming the target column. If <code>vectorize</code> is <code>TRUE</code>,
+the argument is a vector of the whole column, <code>trafo</code> must vectorize over it
+and return a vector of the same length; otherwise, the function gets called once
+for every data item, and both the function argument and the return value
+must have length 1.
+</p>
+<p>The function must take one or two arguments. If it takes two arguments, the second argument
+will be <code>param</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>invert.response</code></td>
+<td>
+<p>[<code>function</code>]<br>
+If a model is trained on data that was transformed by <code>trafo</code>, this function
+should invert a prediction made by this model back to the space of the original data.
+In most cases, this will be the inverse of <code>trafo</code>, so that <code>invert.response(trafo(x)) == x</code>.
+</p>
+<p>Similarly to <code>trafo</code>, this function takes / produces single elements or the whole
+column, depending on <code>vectorize</code>. The return value should be a <code>numeric</code>
+in both cases.
+</p>
+<p>This can also be <code>NULL</code>, in which case using this <code>CPO</code> for
+<code>invert</code> with <code>predict.type = "response"</code> is not possible.
+</p>
+<p>Default is <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>invert.se</code></td>
+<td>
+<p>[<code>function</code>]<br>
+Similarly to <code>invert.response</code>, this is a function that inverts a <code>"se"</code>
+prediction made after training on <code>trafo</code>'d data. This function should take
+at least two arguments, <code>mean</code> and <code>se</code>, and return a numeric vector of length
+2 if <code>vectorize</code> is <code>FALSE</code>, or a <code>data.frame</code> or <code>matrix</code> with
+two numeric columns if <code>vectorize</code> is <code>TRUE</code>. The function may also take a third
+argument, which will be set to <code>param</code>.
+</p>
+<p><code>invert.se</code> may also be <code>NULL</code>, in which case “se” inversion is done
+by numeric integration using Gauss-Hermite quadrature.
+</p>
+<p>Default is <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>param</code></td>
+<td>
+<p>[any]<br>
+Optional argument to be given to <code>trafo</code> and / or <code>invert</code>. If both of
+them only take one argument, this is ignored. Default is <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vectorize</code></td>
+<td>
+<p>[<code>logical(1)</code>]<br>
+Whether to call <code>trafo</code>, <code>invert.response</code> and <code>invert.se</code> once
+with the whole data column (or response <em>and</em> se column if <code>predict.type == "se"</code>),
+or once for each element. If the functions vectorize, it is recommended to have this
+set to <code>TRUE</code> for better performance. Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gauss.points</code></td>
+<td>
+<p>[<code>numeric(1)</code>]<br>
+Number of points at which to evaluate <code>invert.response</code> for Gauss-Hermite quadrature integration.
+Only used if <code>invert.se</code> is <code>NULL</code>. Default is <code>23</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>[<code>character(1)</code>]<br>
+id to use as prefix for the CPO's hyperparameters. this
+must be used to avoid name clashes when composing two
+CPOs of the same type, or with learners or other CPOS
+with hyperparameters with clashing names.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>export</code></td>
+<td>
+<p>[<code>character</code>]<br>
+Either a character vector indicating the parameters to
+export as hyperparameters, or one of the special values
+“export.all” (export all parameters),
+“export.default” (export all parameters that are exported by default),
+“export.set” (export all parameters that were set during construction),
+“export.default.set” (export the intersection of the “default” and “set” parameters),
+“export.unset” (export all parameters that were <em>not</em> set during construction) or
+“export.default.unset” (export the intersection of the “default” and “unset” parameters).
+Default is “export.default”.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>affect.type</code></td>
+<td>
+<p>[<code>character</code> | <code>NULL</code>]<br>
+Type of columns to affect. A subset of “numeric”, “factor”, “ordered”, “other”, or <code>NULL</code>
+to not match by column type. Default is <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>affect.index</code></td>
+<td>
+<p>[<code>numeric</code>]<br>
+Indices of feature columns to affect. The order of indices given is respected. Target column indices are not counted
+(since target columns are always included). Default is <code>integer(0)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>affect.names</code></td>
+<td>
+<p>[<code>character</code>]<br>
+Feature names of feature columns to affect. The order of names given is respected. Default is <code>character(0)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>affect.pattern</code></td>
+<td>
+<p>[<code>character(1)</code> | <code>NULL</code>]<br><code>grep</code> pattern to match feature names by. Default is <code>NULL</code> (no pattern matching)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>affect.invert</code></td>
+<td>
+<p>[<code>logical(1)</code>]<br>
+Whether to affect all features <em>not</em> matched by other <code>affect.*</code> parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>affect.pattern.ignore.case</code></td>
+<td>
+<p>[<code>logical(1)</code>]<br>
+Ignore case when matching features with <code>affect.pattern</code>; see <code>grep</code>. Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>affect.pattern.perl</code></td>
+<td>
+<p>[<code>logical(1)</code>]<br>
+Use Perl-style regular expressions for <code>affect.pattern</code>; see <code>grep</code>. Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>affect.pattern.fixed</code></td>
+<td>
+<p>[<code>logical(1)</code>]<br>
+Use fixed matching instead of regular expressions for <code>affect.pattern</code>; see <code>grep</code>. Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>[<code>CPO</code>].
+</p>
+
+
+<h3>Details</h3>
+
+<p>When both <code>mean</code> and <code>se</code> prediction is available, it may be possible to
+make more accurate mean inversion than for the <code>response</code> <code>predict.type</code>,
+using integrals or approximations like the <em>delta method</em>. In such cases it may be
+advisable to prepend this <code>CPO</code> with the <code>cpoResponseFromSE</code>
+<code>CPO</code>.
+</p>
+<p>Note when <code>trafo</code> or <code>invert.response</code> take more than one argument, the
+second argument will be set to the value of <code>param</code>. This may lead to unexpected
+results when using functions with rarely used parameters, e.g. <code>log</code>.
+In these cases, it may be necessary to wrap the function:
+<code>trafo = function(x) log(x)</code>.
+</p>
+
+
+<h3>General CPO info</h3>
+
+<p>This function creates a CPO object, which can be applied to
+<code>Task</code>s, <code>data.frame</code>s, <code>link{Learner}</code>s
+and other CPO objects using the <code>%&gt;&gt;%</code> operator.
+</p>
+<p>The parameters of this object can be changed after creation
+using the function <code>setHyperPars</code>. The other
+hyper-parameter manipulating functins, <code>getHyperPars</code>
+and <code>getParamSet</code> similarly work as one expects.
+</p>
+<p>If the “id” parameter is given, the hyperparameters
+will have this id as aprefix; this will, however, not change
+the parameters of the creator function.
+</p>
+
+
+<h3>Calling a <code>CPOConstructor</code>
+</h3>
+
+<p>CPO constructor functions are called with optional values of parameters, and additional “special” optional values.
+The special optional values are the <code>id</code> parameter, and the <code>affect.*</code> parameters. The <code>affect.*</code> parameters
+enable the user to control which subset of a given dataset is affected. If no <code>affect.*</code> parameters are given, all
+data features are affected by default.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other CPOs: 
+<code>cpoApplyFun()</code>,
+<code>cpoAsNumeric()</code>,
+<code>cpoCache()</code>,
+<code>cpoCbind()</code>,
+<code>cpoCollapseFact()</code>,
+<code>cpoDropConstants()</code>,
+<code>cpoDropMostlyConstants()</code>,
+<code>cpoDummyEncode()</code>,
+<code>cpoFilterAnova()</code>,
+<code>cpoFilterCarscore()</code>,
+<code>cpoFilterChiSquared()</code>,
+<code>cpoFilterFeatures()</code>,
+<code>cpoFilterGainRatio()</code>,
+<code>cpoFilterInformationGain()</code>,
+<code>cpoFilterKruskal()</code>,
+<code>cpoFilterLinearCorrelation()</code>,
+<code>cpoFilterMrmr()</code>,
+<code>cpoFilterOneR()</code>,
+<code>cpoFilterPermutationImportance()</code>,
+<code>cpoFilterRankCorrelation()</code>,
+<code>cpoFilterRelief()</code>,
+<code>cpoFilterRfCImportance()</code>,
+<code>cpoFilterRfImportance()</code>,
+<code>cpoFilterRfSRCImportance()</code>,
+<code>cpoFilterRfSRCMinDepth()</code>,
+<code>cpoFilterSymmetricalUncertainty()</code>,
+<code>cpoFilterUnivariate()</code>,
+<code>cpoFilterVariance()</code>,
+<code>cpoFixFactors()</code>,
+<code>cpoIca()</code>,
+<code>cpoImpactEncodeClassif()</code>,
+<code>cpoImpactEncodeRegr()</code>,
+<code>cpoImputeConstant()</code>,
+<code>cpoImputeHist()</code>,
+<code>cpoImputeLearner()</code>,
+<code>cpoImputeMax()</code>,
+<code>cpoImputeMean()</code>,
+<code>cpoImputeMedian()</code>,
+<code>cpoImputeMin()</code>,
+<code>cpoImputeMode()</code>,
+<code>cpoImputeNormal()</code>,
+<code>cpoImputeUniform()</code>,
+<code>cpoImpute()</code>,
+<code>cpoLogTrafoRegr()</code>,
+<code>cpoMakeCols()</code>,
+<code>cpoMissingIndicators()</code>,
+<code>cpoModelMatrix()</code>,
+<code>cpoOversample()</code>,
+<code>cpoPca()</code>,
+<code>cpoProbEncode()</code>,
+<code>cpoQuantileBinNumerics()</code>,
+<code>cpoRegrResiduals()</code>,
+<code>cpoResponseFromSE()</code>,
+<code>cpoSample()</code>,
+<code>cpoScaleMaxAbs()</code>,
+<code>cpoScaleRange()</code>,
+<code>cpoScale()</code>,
+<code>cpoSelect()</code>,
+<code>cpoSmote()</code>,
+<code>cpoSpatialSign()</code>,
+<code>cpoTransformParams()</code>,
+<code>cpoWrap()</code>,
+<code>makeCPOCase()</code>,
+<code>makeCPOMultiplex()</code>
+</p>
+
+
+</div>

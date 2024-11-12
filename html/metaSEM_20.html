@@ -1,0 +1,138 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Becker92</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Six Studies of Correlation Matrices reported by Becker (1992; 1995)</h2>
+
+<h3>Description</h3>
+
+<p>This data set includes six studies of correlation matrices reported by Becker (1992; 1995).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">data(Becker92)</code></pre>
+
+
+<h3>Details</h3>
+
+<p>A list of data with the following structure:
+</p>
+
+<dl>
+<dt>data</dt>
+<dd>
+<p>A list of 6 studies of correlation matrices. The
+variables are <em>Math</em> (math aptitude), <em>Spatial</em> (spatial
+ability), and <em>Verbal</em> (verbal ability)</p>
+</dd>
+<dt>n</dt>
+<dd>
+<p>A vector of sample sizes</p>
+</dd>
+</dl>
+<h3>Source</h3>
+
+<p>Becker, B. J. (1992). Using results from replicated studies to estimate linear models. <em>Journal of Educational Statistics</em>, <b>17(4)</b>, 341-362. doi:10.3102/10769986017004341
+</p>
+<p>Becker, B. J. (1995). Corrections to "Using Results from Replicated Studies to Estimate Linear Models." <em>Journal of Educational and Behavioral Statistics</em>, <b>20(1)</b>, 100-102. doi:10.2307/1165390
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data(Becker92)
+
+#### Fixed-effects model
+## First stage analysis
+## Replicate Becker's (1992) analysis using 4 studies only
+
+fixed1 &lt;- tssem1(Becker92$data[1:4], Becker92$n[1:4], method="FEM")
+summary(fixed1)
+
+## ## Prepare a regression model using create.mxMatrix()
+## A1 &lt;- create.mxMatrix(c(0,0,0,"0.2*Spatial2Math",
+##                         0,0,"0.2*Verbal2Math",0,0), type="Full",
+##                         ncol=3, nrow=3, as.mxMatrix=FALSE)
+
+## var.names &lt;- c("Math_aptitude","Spatial","Verbal") 
+
+## ## This step is not necessary but it is useful for inspecting the model.
+## dimnames(A1)[[1]] &lt;- dimnames(A1)[[2]] &lt;- var.names
+
+## ## Display A1
+## A1
+
+## S1 &lt;- create.mxMatrix(c("0.2*ErrorVarMath",0,0,1,"0.2*CorSpatialVerbal",1),
+##                         type="Symm", as.mxMatrix=FALSE)
+
+## ## This step is not necessary but it is useful for inspecting the model.
+## dimnames(S1)[[1]] &lt;- dimnames(S1)[[2]] &lt;- var.names
+
+## ## Display S1
+## S1
+
+################################################################################
+## Alternative model specification in lavaan model syntax
+model &lt;- "## Regression paths
+          Math ~ Spatial2Math*Spatial + Verbal2Math*Verbal
+          Spatial ~~ CorSpatialVerbal*Verbal
+          ## Fix the variances of Spatial and Verbal at 1
+          Spatial ~~ 1*Spatial
+          Verbal ~~ 1*Verbal
+          ## Label the error variance of Math
+          Math ~~ ErrorVarMath*Math + start(0.2)*Math"
+
+## Display the model
+plot(model)
+
+RAM &lt;- lavaan2RAM(model, obs.variables=c("Math", "Spatial", "Verbal"))
+RAM
+
+################################################################################
+
+## Fixed-effects model: Second stage analysis
+## Two equivalent versions to calculate the R2 and its 95% LBCI
+fixed2 &lt;- tssem2(fixed1, RAM=RAM, intervals.type="LB",
+                 mx.algebras=list(R1=mxAlgebra(Spatial2Math^2+Verbal2Math^2
+                        +2*CorSpatialVerbal*Spatial2Math*Verbal2Math, name="R1"),
+                        R2=mxAlgebra(One-Smatrix[1,1], name="R2"),
+                        One=mxMatrix("Iden", ncol=1, nrow=1, name="One")))
+summary(fixed2)
+
+## Display the model with the parameter estimates
+plot(fixed2)
+
+#### Random-effects model
+## First stage analysis
+## No random effects for off-diagonal elements
+random1 &lt;- tssem1(Becker92$data, Becker92$n, method="REM", RE.type="Diag")
+summary(random1)
+
+## Random-effects model: Second stage analysis
+random2 &lt;- tssem2(random1, RAM=RAM)
+summary(random2)
+
+## Display the model with the parameter estimates
+plot(random2, color="yellow")
+
+#### Similar to conventional fixed-effects GLS approach
+## First stage analysis
+## No random effects
+## Replicate Becker's (1992) analysis using 4 studies only
+gls1 &lt;- tssem1(Becker92$data[1:4], Becker92$n[1:4], method="REM", RE.type="Zero",
+               model.name="Fixed effects GLS Stage 1")
+summary(gls1)
+
+## Fixed-effects GLS model: Second stage analysis
+gls2 &lt;- tssem2(gls1, RAM=RAM, model.name="Fixed effects GLS Stage 2")
+summary(gls2)
+
+</code></pre>
+
+
+</div>

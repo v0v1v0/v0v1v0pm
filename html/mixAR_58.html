@@ -1,0 +1,194 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>fit_mixAR-methods</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Fit mixture autoregressive models
+</h2>
+
+<h3>Description</h3>
+
+<p>Estimate a MixAR model for a time series. This is a generic function.
+The methods defined in package <span class="pkg">mixAR</span> are described here.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">fit_mixAR(x, model, init, fix, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a time series.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>model, object inheriting from MixAR class.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+<p>what initializations to do, see Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fix</code></td>
+<td>
+<p>which parameters to fix, see Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments for the methods.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Method dispatch is done on the first three arguments:
+<code>x</code>, <code>model</code> and <code>init</code>.
+</p>
+<p><code>model</code> specifies the model to fit. If <code>model</code> inherits from
+<code>"MixAR"</code>, it is used as a template.  If <code>init</code> is missing,
+the parameters of <code>model</code> are also used as initial values. 
+<code>model</code> can also be a numeric vector specifying the order of a
+MixAR model with Gaussian components. 
+</p>
+<p>Argument <code>init</code> can be used to give initial values in  variety of
+ways. If it is a MixAR object it doesn't need to be of the same class
+as <code>model</code>, to allow using as initial values common parameters
+of different MixAR models. A positive integer value of <code>init</code>
+asks to run the fitting procedure <code>init</code> times, each time
+generating random initial values.  
+</p>
+<p><code>init</code> can also be a list. In that case, each component of the
+list should itself be an acceptable value for <code>init</code> and the
+fitting procedure is run with each component of <code>init</code>.
+</p>
+<p>Argument <code>fix</code> can be given in a number of ways. Note however
+that currently there is no method dispatch on it.
+</p>
+<p>Currently the default method for <code>fit_mixAR</code> just throws error,
+since there seems no suitable default task to do. 
+</p>
+<p>See individual methods for further details.
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>a MixAR model or a list of MixAR models, depending on the arguments.
+</p>
+
+
+<h3>Methods</h3>
+
+
+<dl>
+<dt><code>signature(x = "ANY", model = "ANY", init = "ANY")</code></dt>
+<dd>
+<p>The default method throws error.
+</p>
+</dd>
+<dt><code>signature(x = "ANY", model = "MixAR", init = "missing")</code></dt>
+<dd>
+<p>This is equivalent to setting <code>init = model</code>.
+</p>
+</dd>
+<dt><code>signature(x = "ANY", model = "MixAR", init = "MixAR")</code></dt>
+<dd>
+<p><code>model</code> is a template for the result, <code>init</code> specifies
+initial values for the parameters. In principle, <code>model</code> and
+<code>init</code> may be from different classes, to allow for example
+using AR coefficients from a Gaussian fit for other distributions.
+</p>
+
+
+</dd>
+<dt><code>signature(x = "ANY", model = "MixAR", init = "numeric")</code></dt>
+<dd>
+<p><code>init</code> must be a single positive integer here. The model is
+fitted <code>init</code> times, each time starting with a new set of
+randomly generated initial values. If <code>select</code> is <code>TRUE</code>,
+the default, the model with the largest likelihood is returned,
+otherwise a list containing the <code>init</code> fitted models is
+returned.
+</p>
+</dd>
+<dt><code>signature(x = "ANY", model = "MixAR", init = "list")</code></dt>
+<dd>
+<p>Each element of the list <code>init</code> should be an acceptable value
+for <code>init</code>. The model is fitted with the initial value  set to each
+element of <code>init</code>. A list containing the fitted models is
+returned. 
+</p>
+</dd>
+<dt><code>signature(x = "ANY", model = "MixARGaussian", init = "MixAR")</code></dt>
+<dd>
+
+</dd>
+<dt><code>signature(x = "ANY", model = "numeric", init = "missing")</code></dt>
+<dd>
+<p>This is equivalent to setting <code>init = 1</code>.
+</p>
+</dd>
+<dt><code>signature(x = "ANY", model = "numeric", init = "numeric")</code></dt>
+<dd>
+<p>A numeric <code>model</code> should be a vector of non-negative integers
+specifying the order of the MixAR model. The distribution of the
+components is assumed Gaussian.
+</p>
+</dd>
+</dl>
+<h3>Examples</h3>
+
+<pre><code class="language-R">## model coefficients from Wong&amp;Li (IBM fit)
+prob  &lt;- exampleModels$WL_ibm@prob     # c(0.5439, 0.4176, 0.0385)
+sigma &lt;- exampleModels$WL_ibm@scale    # c(4.8227, 6.0082, 18.1716)
+ar    &lt;- exampleModels$WL_ibm@arcoef@a # list(c(0.6792, 0.3208), c(1.6711, -0.6711), 1)
+
+## data(ibmclose, package = "fma")  # `ibmclose'
+
+mot30 &lt;- new("MixARgen", prob = prob, scale = sigma, arcoef = ar,
+             dist = distlist("stdt", c(30, 30, 30)))
+
+mot20_30_40 &lt;- new("MixARgen", prob = prob, scale = sigma, arcoef = ar,
+                   dist = distlist("stdt", c(20, 30, 40)))
+
+mo_t20_t30_norm &lt;- new("MixARgen", prob = prob, scale = sigma, arcoef = ar,
+                   dist = distlist(c("stdt", "stdt", "stdnorm"), c(20, 30)))
+
+## Gaussian components
+fi0 &lt;- fit_mixAR(fma::ibmclose, exampleModels$WL_ibm, fix = "shift", crit = 1e-4)
+fi0$model
+
+if(FALSE){ # don't run on CRAN to save a couple of seconds
+## remove minniter/maxniter below for realistic results.
+
+## std-t components
+fi1 &lt;- fit_mixAR(fma::ibmclose, mot30, fix = "shift",
+                 crit = 1e-4, minniter = 1, maxniter = 3)
+fi1$model
+
+## 1st and 2nd components std-t, 3rd Gaussian
+fi2 &lt;- fit_mixAR(fma::ibmclose, mo_t20_t30_norm, fix = "shift",
+                 crit = 1e-4, minniter = 1, maxniter = 3)
+fi2$model
+}
+</code></pre>
+
+
+</div>

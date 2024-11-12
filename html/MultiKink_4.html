@@ -1,0 +1,181 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mkqr.bea</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit the multi-kink quantile regression in the absence of the number of change points.</h2>
+
+<h3>Description</h3>
+
+<p>Fit the multi-kink quantile regression in the absence of the number of change points.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mkqr.bea(
+  y,
+  thre.x,
+  cont.z,
+  id,
+  tau = 0.5,
+  Cn = 1,
+  bandwidth_type = "Hall-Sheather",
+  control = fit.control(),
+  est.type = "WI",
+  wi.type = "general",
+  wc.type = "cs"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>A numeric vector of response.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thre.x</code></td>
+<td>
+<p>A numeric vector of scalar covariate with threshold effect.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cont.z</code></td>
+<td>
+<p>A numeric matrix of design with constant slopes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>A numeric vector of index used for longitudinal data; can be missing or NULL for iid data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tau</code></td>
+<td>
+<p>The quantile level that belongs to (0,1). Default is 0.5.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Cn</code></td>
+<td>
+<p>A positive number corresponding to different types of BIC. Default is 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bandwidth_type</code></td>
+<td>
+<p>The bandwidth type. Specify one from "Hall-Sheather", "Bofinger", and "Chamberlain". Default is "Hall-Sheather".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>A list returned by fit.control.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est.type</code></td>
+<td>
+<p>The estimation type for the longitudinal data. Specify one from "WI", "WC", corresponding to the working independence (WI) estimator and working correlation (WC) estimator. Default is "WI".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wi.type</code></td>
+<td>
+<p>If est.type = "WI", then set the error structure of the variance-covariance matrix estimation. Specify one from "Compound", "AR", and "general".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wc.type</code></td>
+<td>
+<p>If est.type = "WC", then set the correlation structure within subject. Specify one from "ar" and "cs". Default is "cs".</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list containing the estimated number of kink points (n.psi), the fitted quantile objective value (rho), estimated regression coefficients with intercept (bet.est), the estimated standard error of the regression coefficients (bet.se), the estimated change points (psi.est), and the estimated standard errors of threshold parameters (psi.se).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Simple examples for iid data type
+n &lt;- 500
+Z1 &lt;- rexp(n,1)
+Z2 &lt;- rbinom(n,1,0.5)
+Z &lt;- cbind(Z1,Z2)
+epsilon &lt;- rnorm(n,0,1)
+X &lt;- runif(n,-2,1)
+psi &lt;- c(-1,0)
+k &lt;- length(psi)
+PSI &lt;- matrix(rep(psi,rep(n,k)),ncol=k)
+XP &lt;- matrix(rep(X,k),nrow=n)
+XR &lt;- cbind(1,X,pmax((XP-PSI),0),Z)
+bet &lt;- c(1,-1,3,-3,sqrt(3),-sqrt(3))
+Y &lt;- XR %*% bet + epsilon
+
+# Estimation setting
+tau &lt;- 0.5
+K.max &lt;- 5
+control &lt;- fit.control(K.max = K.max)
+Cn &lt;- 1
+mkqr.bea(y = Y, thre.x = X, cont.z = Z, tau = tau, Cn = Cn, control = control)
+
+# Simple examples for longitudinal data
+N &lt;- 200
+T &lt;- 5
+subject &lt;- rep(1:N, each = T)
+NT &lt;- N * T
+Z1 &lt;- rexp(NT, 1)
+Z2 &lt;- rbinom(NT, 1, 0.5)
+Z &lt;- cbind(Z1, Z2)
+epsilon &lt;- rnorm(NT, 0, 1)
+X &lt;- runif(NT, -2, 1)
+psi &lt;- c(-1, 0)
+k &lt;- length(psi)
+PSI &lt;- matrix(rep(psi, rep(NT, k)), ncol = k)
+a &lt;- rnorm(N, 0, 1)
+A &lt;- rep(a, each = T)
+XP &lt;- matrix(rep(X, k), nrow = NT)
+XR &lt;- cbind(1, X, pmax((XP - PSI), 0), Z)
+bet &lt;- c(1, -1, 3, -3, sqrt(3), -sqrt(3))
+Y &lt;- XR %*% bet + A + epsilon
+tau &lt;- 0.5
+k &lt;- 2
+
+# Example 1: the working independence estimator; the error structure is "general"
+est.type &lt;- "WI"
+wi.type &lt;- "Compound"
+tau &lt;- 0.5
+K.max &lt;- 5
+control &lt;- fit.control(K.max = K.max)
+Cn &lt;- 1
+mkqr.bea(y = Y, thre.x = X, cont.z = Z, id = subject, tau = tau, Cn = Cn,
+         control = control, est.type = est.type, wi.type = wi.type)
+
+# Example 2: the working correlated estimator; the correlation structure is "cs"
+est.type &lt;- "WC"
+wc.type &lt;- "cs"
+tau &lt;- 0.5
+K.max &lt;- 5
+control &lt;- fit.control(K.max = K.max)
+Cn &lt;- 1
+mkqr.bea(y = Y, thre.x = X, cont.z = Z, id = subject, tau = tau, Cn = Cn,
+         control = control, est.type = est.type, wc.type = wc.type)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

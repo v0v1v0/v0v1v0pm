@@ -1,0 +1,271 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>neModel</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit a natural effect model</h2>
+
+<h3>Description</h3>
+
+<p><code>neModel</code> is used to fit a natural effect model on the expanded dataset.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">neModel(
+  formula,
+  family = gaussian,
+  expData,
+  xFit,
+  se = c("bootstrap", "robust"),
+  nBoot = 1000,
+  parallel = c("no", "multicore", "snow"),
+  ncpus = getOption("boot.ncpus", 1L),
+  progress = TRUE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a <code>formula</code> object providing a symbolic description of the natural effect model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>a description of the error distribution and link
+function to be used in the model.  For <code>glm</code> this can be a
+character string naming a family function, a family function or the
+result of a call to a family function.  For <code>glm.fit</code> only the
+third option is supported.  (See <code>family</code> for details of
+family functions.)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expData</code></td>
+<td>
+<p>the expanded dataset (of class <code>"expData"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xFit</code></td>
+<td>
+<p>fitted model object representing a model for the exposure (used for inverse treatment (exposure) probability weighting).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>se</code></td>
+<td>
+<p>character string indicating the type of standard errors to be calculated. The default type is based on the bootstrap (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nBoot</code></td>
+<td>
+<p>number of bootstrap replicates (see <code>R</code> argument of <code>boot</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>(only for bootstrap) The type of parallel operation to be used (if any). If missing, the default is taken from the option <code>"boot.parallel"</code> (and if that is not set, <code>"no"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncpus</code></td>
+<td>
+<p>(only for bootstrap) integer: number of processes to be used in parallel operation: typically one would chose this to the number of available CPUs (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>(only for bootstrap) logical value indicating whether or not a progress bar should be displayed. Progress bars are automatically disabled for multicore processing.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments (passed to <code>glm</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function is a wrapper for <code>glm</code>, providing unbiased bootstrap (<code>se = "bootstrap"</code>, the default) or robust (<code>se = "robust"</code>) standard errors for the parameter estimates (see below for more details).
+</p>
+<p>The <code>formula</code> argument requires to be specified in function of the variables from the expanded dataset (specified in <code>expData</code>) whose corresponding parameters index the direct and indirect effect.
+Stratum-specific natural effects can be estimated by additionally modeling the relation between the outcome and baseline covariates.
+If the set of baseline covariates adjusted for in the <code>formula</code> argument is not sufficient to control for confounding (e.g. when fitting a population-average natural effect model),
+an adequate model for the exposure (conditioning on a sufficient set of baseline covariates) should be specified in the <code>xFit</code> argument.
+In this case, such a model for the exposure distribution is needed to weight by the reciprocal of the probability (density) of the exposure (i.e. inverse probability weighting) in order to adjust for confounding.
+Just as for ratio-of-mediator probability weighting (see paragraph below), this kind of weighting is done internally.
+</p>
+<p>Quadratic or higher-order polynomial terms can be included in the <code>formula</code> by making use of the <code>I</code> function or by using the <code>poly</code> function.
+However, we do not recommend the use of orthogonal polynomials (i.e. using the default argument specification <code>raw = FALSE</code> in <code>poly</code>), as these are not compatible with the <code>neEffdecomp</code> function.
+</p>
+<p>In contrast to <code>glm</code>, the <code>expData</code> argument (rather than <code>data</code> argument) requires specification of a data frame that inherits from class <code>"expData"</code>,
+which contains additional information about e.g. the fitted working model, the variable types or terms of this working model 
+and possibly ratio-of-mediator probability weights.
+The latter are automatically extracted from the <code>expData</code> object and weighting is done internally.
+</p>
+<p>As the default <code>glm</code> standard errors fail to reflect the uncertainty inherent to the working model(s) (i.e. either a model for the mediator or an imputation model for the outcome and possibly a model for the exposure),
+bootstrap standard errors (using the <code>boot</code> function from the <span class="pkg">boot</span> package) or robust standard errors are calculated. The default type of standard errors is bootstrap standard errors. 
+Robust standard errors (based on the sandwich estimator) can be requested (to be calculated) instead by specifying <code>se = "robust"</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>"neModel"</code> (which additionally inherits from class <code>"neModelBoot"</code> if the bootstrap is used) consisting of a list of 3 objects:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>neModelFit</code></td>
+<td>
+<p>the fitted natural model object (of class <code>"glm"</code>) with downwardly biased standard errors</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td>
+<code>bootRes</code>, <code>vcov</code>
+</td>
+<td>
+<p>the bootstrap results (of class <code>"boot"</code>; if <code>se = "bootstrap"</code>) or the robust variance-covariance matrix (if <code>se = "robust"</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>terms</code></td>
+<td>
+<p>the <code>neTerms</code> (internal class) object used. This object is equivalent to the <code>terms</code> object returned by the <code>glm</code> function, 
+but has an additional <code>"vartype"</code> attribute, a list including pointers to the names of the outcome variable (<code>Y</code>), exposure (<code>X</code>), mediator (<code>M</code>), covariates (<code>C</code>) and auxiliary hypothetical variables <em>x</em> and <em>x*</em> (<code>Xexp</code>).</p>
+</td>
+</tr>
+</table>
+<p>See <code>neModel-methods</code> for methods for <code>neModel</code> objects.
+</p>
+
+
+<h3>Bootstrap standard errors</h3>
+
+<p>The bootstrap procedure entails refitting all working models on each bootstrap sample, reconstructing the expanded dataset and subsequently refitting the specified natural effect model on this dataset.
+In order to obtain stable standard errors, the number of bootstrap samples (specified via the <code>nBoot</code> argument) should be chosen relatively high (default is 1000).
+</p>
+<p>To speed up the bootstrap procedure, parallel processing can be used by specifying the desired type of parallel operation via the <code>parallel</code> argument (for more details, see <code>boot</code>).
+The number of parallel processes (<code>ncpus</code>) is suggested to be specified explicitly (its default is 1, unless the global option <code>options("boot.cpus")</code> is specified). 
+The function <code>detectCores</code> from the <span class="pkg">parallel</span> package can be helpful at determining the number of available cores (although this may not always correspond to the number of <em>allowed</em> cores).
+</p>
+
+
+<h3>Robust standard errors</h3>
+
+<p>Robust variance-covariance matrices for the model parameters, based on the sandwich estimator, are calculated using core functions from the <span class="pkg">sandwich</span> package.
+Additional details and derivations for the sandwich estimator for natural effect models can be found in the corresponding vignette that can be obtained by the command <code>vignette("sandwich", package = "medflex")</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>It is important to note that the original mediator(s) should not be specified in the <code>formula</code> argument, as the natural indirect effect in natural effect models
+should be captured solely by parameter(s) corresponding to the auxiliary hypothetical variable <em>x*</em> in the expanded dataset (see <code>expData</code>).
+</p>
+
+
+<h3>References</h3>
+
+<p>Lange, T., Vansteelandt, S., &amp; Bekaert, M. (2012). A Simple Unified Approach for Estimating Natural Direct and Indirect Effects. <em>American Journal of Epidemiology</em>, <b>176</b>(3), 190-195.
+</p>
+<p>Vansteelandt, S., Bekaert, M., &amp; Lange, T. (2012). Imputation Strategies for the Estimation of Natural Direct and Indirect Effects. <em>Epidemiologic Methods</em>, <b>1</b>(1), Article 7.
+</p>
+<p>Loeys, T., Moerkerke, B., De Smet, O., Buysse, A., Steen, J., &amp; Vansteelandt, S. (2013). Flexible Mediation Analysis in the Presence of Nonlinear Relations: Beyond the Mediation Formula. <em>Multivariate Behavioral Research</em>, <b>48</b>(6), 871-894.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>neModel-methods</code>, <code>plot.neModel</code>, <code>neImpute</code>, <code>neWeight</code>, <code>neLht</code>, <code>neEffdecomp</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(UPBdata)
+
+##############################
+## weighting-based approach ##
+##############################
+weightData &lt;- neWeight(negaff ~ att + gender + educ + age, 
+                       data = UPBdata)
+
+## stratum-specific natural effects
+# bootstrap SE
+## Not run: 
+weightFit1b &lt;- neModel(UPB ~ att0 * att1 + gender + educ + age, 
+                       family = binomial, expData = weightData)
+summary(weightFit1b)
+
+## End(Not run)
+# robust SE
+weightFit1r &lt;- neModel(UPB ~ att0 * att1 + gender + educ + age, 
+                       family = binomial, expData = weightData, se = "robust")
+summary(weightFit1r)
+
+## population-average natural effects
+expFit &lt;- glm(att ~ gender + educ + age, data = UPBdata)
+# bootstrap SE
+## Not run: 
+weightFit2b &lt;- neModel(UPB ~ att0 * att1, family = binomial, 
+                       expData = weightData, xFit = expFit)
+summary(weightFit2b)
+
+## End(Not run)
+# robust SE
+weightFit2r &lt;- neModel(UPB ~ att0 * att1, family = binomial, 
+                       expData = weightData, xFit = expFit, se = "robust")
+summary(weightFit2r)
+
+###############################
+## imputation-based approach ##
+###############################
+impData &lt;- neImpute(UPB ~ att * negaff + gender + educ + age, 
+                    family = binomial, data = UPBdata)
+
+## stratum-specific natural effects
+# bootstrap SE
+## Not run: 
+impFit1b &lt;- neModel(UPB ~ att0 * att1 + gender + educ + age, 
+                    family = binomial, expData = impData)
+summary(impFit1b)
+
+## End(Not run)
+# robust SE
+impFit1r &lt;- neModel(UPB ~ att0 * att1 + gender + educ + age, 
+                    family = binomial, expData = impData, se = "robust")
+summary(impFit1r)
+
+## population-average natural effects
+# bootstrap SE
+## Not run: 
+impFit2b &lt;- neModel(UPB ~ att0 * att1, family = binomial, 
+                    expData = impData, xFit = expFit)
+summary(impFit2b)
+
+## End(Not run)
+# robust SE
+impFit2r &lt;- neModel(UPB ~ att0 * att1, family = binomial, 
+                    expData = impData, xFit = expFit, se = "robust")
+summary(impFit2r)
+
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,264 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MARSSkf</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Kalman Filtering and Smoothing </h2>
+
+<h3>Description</h3>
+
+<p>Provides Kalman filter and smoother output for MARSS models with (or without) time-varying parameters. <code>MARSSkf()</code> is a small helper function to select which Kalman filter/smoother function to use based on the value in <code>MLEobj$fun.kf</code>.  The choices are <code>MARSSkfas()</code> which uses the filtering and smoothing algorithms in the <a href="https://CRAN.R-project.org/package=KFAS">KFAS</a> package based on algorithms in Koopman and Durbin (2001-2003), and <code>MARSSkfss()</code> which uses the algorithms in Shumway and Stoffer. The default function is <code>MARSSkfas()</code> which is faster and generally more stable (fewer matrix inversions), but there are some cases where <code>MARSSkfss()</code> might be more stable and it returns a variety of diagnostics that <code>MARSSkfas()</code> does not.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MARSSkf(MLEobj, only.logLik = FALSE, return.lag.one = TRUE, return.kfas.model = FALSE, 
+           newdata = NULL, smoother = TRUE)
+MARSSkfss(MLEobj, smoother=TRUE)
+MARSSkfas(MLEobj, only.logLik=FALSE, return.lag.one=TRUE, return.kfas.model=FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code> MLEobj </code></td>
+<td>
+<p> A <code>marssMLE</code> object with the <code>par</code> element of estimated parameters, <code>marss</code> element with the model description (in marss form) and data, and <code>control</code> element for the fitting algorithm specifications.  <code>control$debugkf</code> specifies that detailed error reporting will be returned (only used by <code>MARSSkf()</code>).  <code>model$diffuse=TRUE</code> specifies that a diffuse prior be used (only used by <code>MARSSkfas()</code>). See KFS documentation. When the diffuse prior is set, <code>V0</code> should be non-zero since the diffuse prior variance is <code>V0*kappa</code>, where kappa goes to infinity.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> smoother </code></td>
+<td>
+<p> Used by <code>MARSSkfss()</code>.  If set to FALSE, only the Kalman filter is run. The output <code>xtT</code>, <code>VtT</code>, <code>x0T</code>, <code>Vtt1T</code>, <code>V0T</code>, and <code>J0</code> will be NULL. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> only.logLik </code></td>
+<td>
+<p> Used by <code>MARSSkfas()</code>.  If set, only the log-likelihood is returned using the KFAS package function <code>logLik.SSModel</code>.  This is much faster if only the log-likelihood is needed. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> return.lag.one </code></td>
+<td>
+<p> Used by <code>MARSSkfas()</code>.  If set to FALSE, the smoothed lag-one covariance  values are not returned (output <code>Vtt1T</code> is set to NULL).  This speeds up <code>MARSSkfas()</code> because to return the smoothed lag-one covariance a stacked MARSS model is used with twice the number of state vectors—thus the state matrices are larger and take more time to work with. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> return.kfas.model </code></td>
+<td>
+<p> Used by <code>MARSSkfas()</code>.  If set to TRUE, it returns the MARSS model in KFAS model form (class <code>SSModel</code>).  This is useful if you want to use other KFAS functions or write your own functions to work with <code>optim()</code> to do optimization.  This can speed things up since there is a bit of code overhead in <code>MARSSoptim()</code> associated with the <code>marssMODEL</code> model specification needed for the constrained EM algorithm (but not strictly needed for <code>optim()</code>; useful but not required.). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> newdata </code></td>
+<td>
+<p> A new matrix of data to use in place of the data used to fit the model (in the <code>model$data</code> and <code>marss$data</code> elements of a <code>marssMLE</code> object). If the initial <code class="reqn">x</code> was estimated (in <code>x0</code>) then this estimate will be used for <code>newdata</code> and this may not be appropriate. </p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For state-space models, the Kalman filter and smoother provide optimal (minimum mean square error) estimates of the hidden states. The Kalman filter is a forward recursive algorithm which computes estimates of the states <code class="reqn">\mathbf{x}_t</code> conditioned on the data up to time <code class="reqn">t</code> (<code>xtt</code>). The Kalman smoother is a backward recursive algorithm which starts at time <code class="reqn">T</code> and works backwards to <code class="reqn">t = 1</code> to provide estimates of the states conditioned on all data (<code>xtT</code>).    The data may contain missing values (NAs).  All parameters may be time varying.
+</p>
+<p>The initial state is either an estimated parameter or treated as a prior (with mean and variance). The initial state can be specified at <code class="reqn">t=0</code> or <code class="reqn">t=1</code>.  The EM algorithm in the MARSS package (<code>MARSSkem()</code>) provides both Shumway and Stoffer's derivation that uses <code class="reqn">t=0</code> and Ghahramani et al algorithm which uses <code class="reqn">t=1</code>.  The <code>MLEobj$model$tinitx</code> argument specifies whether the initial states (specified with <code>x0</code> and <code>V0</code> in the <code>model</code> list) is at <code class="reqn">t=0</code> (<code>tinitx=0</code>) or <code class="reqn">t=1</code> (<code>tinitx=1</code>). If <code>MLEobj$model$tinitx=0</code>, <code>x0</code> is defined as <code class="reqn">\textrm{E}[\mathbf{X}_0|\mathbf{y}_0]</code> and <code>V0</code> is defined as <code class="reqn">\textrm{E}[\mathbf{X}_0\mathbf{X}_0|\mathbf{y}_0]</code> which appear in the Kalman filter at <code class="reqn">t=1</code> (first set of equations). If <code>MLEobj$model$tinitx=1</code>, <code>x0</code> is defined as <code class="reqn">\textrm{E}[\mathbf{X}_1|\mathbf{y}_0]</code> and <code>V0</code> is defined as <code class="reqn">\textrm{E}[\mathbf{X}_1\mathbf{X}_1|\mathbf{y}_0]</code> which appear in the Kalman filter at <code class="reqn">t=1</code> (and the filter starts at t=1 at the 3rd and 4th equations in the Kalman filter recursion). Thus if <code>MLEobj$model$tinitx=1</code>, <code>x0=xtt1[,1]</code> and <code>V0=Vtt1[,,1]</code> in the Kalman filter output while if <code>MLEobj$model$tinitx=0</code>, the initial condition will not be in the filter output since time starts at 1 not 0 in the output.
+</p>
+<p><code>MARSSkfss()</code> is a native R implementation based on the Kalman filter and smoother equation as shown in Shumway and Stoffer (sec 6.2, 2006).  The equations have been altered to allow the initial state distribution to be to be specified at <code class="reqn">t=0</code> or <code class="reqn">t=1</code> (data starts at <code class="reqn">t=1</code>) per per Ghahramani and Hinton (1996).  In addition, the filter and smoother equations have been altered to allow partially deterministic models (some or all elements of the <code class="reqn">\mathbf{Q}</code> diagonals equal to 0), partially perfect observation models (some or all elements of the <code class="reqn">\mathbf{R}</code> diagonal equal to 0) and fixed (albeit unknown) initial states (some or all elements of the <code class="reqn">\mathbf{V0}</code> diagonal equal to 0) (per Holmes 2012).  The code includes numerous checks to alert the user if matrices are becoming ill-conditioned and the algorithm unstable.  
+</p>
+<p><code>MARSSkfas()</code> uses the (Fortran-based) Kalman filter and smoother function (<code>KFS()</code>) in the <a href="https://cran.r-project.org/package=KFAS">KFAS</a> package (Helske 2012) based on the algorithms of Koopman and Durbin (2000, 2001, 2003).  The Koopman and Durbin algorithm is faster and more stable since it avoids matrix inverses.  Exact diffuse priors are also allowed in the KFAS Kalman filter function.  The standard output from the KFAS functions do not include the lag-one covariance smoother needed for the EM algorithm.  <code>MARSSkfas</code> computes the smoothed lag-one covariance  using the Kalman filter applied to a stacked MARSS model as described on page 321 in Shumway and Stoffer (2000). Also the KFAS model specification only has the initial state at <code class="reqn">t=1</code> (as <code class="reqn">\mathbf{X}_1</code> conditioned on <code class="reqn">\mathbf{y}_0</code>, which is missing).  When the initial state is specified at <code class="reqn">t=0</code> (as <code class="reqn">\mathbf{X}_0</code> conditioned on <code class="reqn">\mathbf{y}_0</code>), <code>MARSSkfas()</code> computes the required  <code class="reqn">\textrm{E}[\mathbf{X}_1|\mathbf{y}_0</code> and <code class="reqn">\textrm{var}[\mathbf{X}_1|\mathbf{y}_0</code> using the Kalman filter equations per Ghahramani and Hinton (1996).  
+</p>
+<p>The likelihood returned for both functions is the exact likelihood when there are missing values rather than the approximate likelihood sometimes presented in texts for the missing values case.  The functions return the same filter, smoother and log-likelihood values.  The differences are that <code>MARSSkfas()</code> is faster (and more stable) but <code>MARSSkfss()</code> has many internal checks and error messages which can help debug numerical problems (but slow things down).  Also  <code>MARSSkfss()</code> returns some output specific to the traditional filter algorithm (<code>J</code> and <code>Kt</code>).  
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with the following components. <code class="reqn">m</code> is the number of state processes and <code class="reqn">n</code> is the number of observation time series. "V" elements are called "P" in Shumway and Stoffer (2006, eqn 6.17 with s=T).  The output is referenced against equations in Shumway and Stoffer (2006) denoted S&amp;S; the Kalman filter and smoother implemented in MARSS is for a more general MARSS model than that shown in S&amp;S but the output has the same meaning.  In the expectations below, the parameters are left off; <code class="reqn">\textrm{E}[\mathbf{X} | \mathbf{y}_1^t]</code> is really <code class="reqn">\textrm{E}[\mathbf{X} | \Theta, \mathbf{Y}_1^t=\mathbf{y}_1^t]</code> where <code class="reqn">\Theta</code> is the parameter list. <code class="reqn">\mathbf{y}_1^t</code> denotes the data from <code class="reqn">t=1</code> to <code class="reqn">t=t</code>.
+</p>
+<p>The notation for the conditional expectations is <code class="reqn">\mathbf{x}_t^t</code> = <code class="reqn">\textrm{E}[\mathbf{X} | \mathbf{y}_1^t]</code>, <code class="reqn">\mathbf{x}_t^{t-1}</code> = <code class="reqn">\textrm{E}[\mathbf{X} | \mathbf{y}_1^{t-1}]</code> and <code class="reqn">\mathbf{x}_t^T</code> = <code class="reqn">\textrm{E}[\mathbf{X} | \mathbf{y}_1^T]</code>. The conditional variances and covariances use similar notation. Note that in the Holmes (2012), the EM Derivation, <code class="reqn">\mathbf{x}_t^T</code> and <code class="reqn">\mathbf{V}_t^T</code> are given special symbols because they appear repeatedly: <code class="reqn">\tilde{\mathbf{x}}_t</code> and <code class="reqn">\tilde{\mathbf{V}}_t</code> but here the more general notation is used.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>xtT</code></td>
+<td>
+ <p><code class="reqn">\mathbf{x}_t^T</code> State first moment conditioned on <code class="reqn">\mathbf{y}_1^T</code>: <code class="reqn">\textrm{E}[\mathbf{X}_t|\mathbf{y}_1^T]</code> (m x T matrix). Kalman smoother output.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>VtT</code></td>
+<td>
+ <p><code class="reqn">\mathbf{V}_t^T</code> State variance matrix conditioned on  <code class="reqn">\mathbf{y}_1^T</code>: <code class="reqn">\textrm{E}[(\mathbf{X}_t-\mathbf{x}_t^T)(\mathbf{X}_t-\mathbf{x}_t^T)^\top|\mathbf{y}_1^T]</code> (m x m x T array). Kalman smoother output. Denoted <code class="reqn">P_t^T</code> in S&amp;S (S&amp;S eqn 6.18 with <code class="reqn">s=T</code>, <code class="reqn">t1=t2=t</code>). The state second moment <code class="reqn">\textrm{E}[\mathbf{X}_t\mathbf{X}_t^\top|\mathbf{y}_1^T]</code> is equal to <code class="reqn">\mathbf{V}_t^T + \mathbf{x}_t^T(\mathbf{x}_t^T)^\top</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Vtt1T</code></td>
+<td>
+ <p><code class="reqn">\mathbf{V}_{t,t-1}^T</code> State lag-one cross-covariance matrix <code class="reqn">\textrm{E}[(\mathbf{X}_t-\mathbf{x}_t^T)(\mathbf{X}_{t-1}-\mathbf{x}_{t-1}^T)^\top|\mathbf{y}_1^T]</code> (m x m x T). Kalman smoother output. <code class="reqn">P_{t,t-1}^T</code> in S&amp;S (S&amp;S eqn 6.18 with <code class="reqn">s=T</code>, <code class="reqn">t1=t</code>, <code class="reqn">t2=t-1</code>). State lag-one second moments <code class="reqn">\textrm{E}[\mathbf{X}_t\mathbf{X}_{t-1}^\top|\mathbf{y}_1^T]</code> is equal to <code class="reqn">\mathbf{V}_{t, t-1}^T + \mathbf{x}_t^T(\mathbf{x}_{t-1}^T)^\top</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x0T</code></td>
+<td>
+<p> Initial smoothed state estimate <code class="reqn">\textrm{E}[\mathbf{X}_{t0}|\mathbf{y}_1^T</code> (m x 1). If <code>model$tinitx=0</code>, <code class="reqn">t0=0</code>; if <code>model$tinitx=1</code>, <code class="reqn">t0=1</code>. Kalman smoother output.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x01T</code></td>
+<td>
+<p> Smoothed state estimate <code class="reqn">\textrm{E}[\mathbf{X}_1|\mathbf{y}_1^T</code> (m x 1). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x00T</code></td>
+<td>
+<p> Smoothed state estimate <code class="reqn">\textrm{E}[\mathbf{X}_0 |\mathbf{y}_1^T</code> (m x 1). If <code>model$tinitx=1</code>, this will be NA. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>V0T</code></td>
+<td>
+<p> Initial smoothed state covariance matrix <code class="reqn">\textrm{E}[\mathbf{X}_{t0}\mathbf{X}_0^\top | \mathbf{y}_1^T</code> (m x m). If <code>model$tinitx=0</code>, <code class="reqn">t0=0</code> and <code>V0T=V00T</code>; if <code>model$tinitx=1</code>, <code class="reqn">t0=1</code> and <code>V0T=V10T</code>.  In the case of <code>tinitx=0</code>, this is <code class="reqn">P_0^T</code> in S&amp;S.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>V10T</code></td>
+<td>
+<p> Smoothed state covariance matrix <code class="reqn">\textrm{E}[\mathbf{X}_1\mathbf{X}_0^\top | \mathbf{y}_1^T</code> (m x m). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>V00T</code></td>
+<td>
+<p> Smoothed state covariance matrix <code class="reqn">\textrm{E}[\mathbf{X}_0\mathbf{X}_0^\top | \mathbf{y}_1^T</code> (m x m). If <code>model$tinitx=1</code>, this will be NA. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>J</code></td>
+<td>
+<p> (m x m x T) Kalman smoother output.  Only for <code>MARSSkfss()</code>. (ref S&amp;S eqn 6.49) </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>J0</code></td>
+<td>
+<p> J at the initial time (t=0 or t=1) (m x m x T). Kalman smoother output. Only for <code>MARSSkfss()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xtt</code></td>
+<td>
+<p> State first moment conditioned on <code class="reqn">\mathbf{y}_1^t</code>: <code class="reqn">\textrm{E}[\mathbf{X}_t | \mathbf{y}_1^t</code> (m x T).  Kalman filter output. (S&amp;S eqn 6.17 with <code class="reqn">s=t</code>) </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xtt1</code></td>
+<td>
+<p> State first moment conditioned on <code class="reqn">\mathbf{y}_1^{t-1}</code>: <code class="reqn">\textrm{E}[\mathbf{X}_t | \mathbf{y}_1^{t-1}</code> (m x T).  Kalman filter output. (S&amp;S eqn 6.17 with <code class="reqn">s=t-1</code>) </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Vtt</code></td>
+<td>
+<p> State variance conditioned on <code class="reqn">\mathbf{y}_1^t</code>: <code class="reqn">\textrm{E}[(\mathbf{X}_t-\mathbf{x}_t^t)(\mathbf{X}_t-\mathbf{x}_t^t)^\top|\mathbf{y}_1^t]</code> (m x m x T array). Kalman filter output. <code class="reqn">P_t^t</code> in S&amp;S (S&amp;S eqn 6.18 with s=t, t1=t2=t). The state second moment <code class="reqn">\textrm{E}[\mathbf{X}_t\mathbf{X}_t^\top|\mathbf{y}_1^t]</code> is equal to <code class="reqn">\mathbf{V}_t^t + \mathbf{x}_t^t(\mathbf{x}_t^t)^\top</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Vtt1</code></td>
+<td>
+<p>  State variance conditioned on <code class="reqn">\mathbf{y}_1^{t-1}</code>: <code class="reqn">\textrm{E}[(\mathbf{X}_t-\mathbf{x}_t^{t-1})(\mathbf{X}_t-\mathbf{x}_t^{t-1})^\top|\mathbf{y}_1^{t-1}]</code> (m x m x T array). Kalman filter output. The state second moment <code class="reqn">\textrm{E}[\mathbf{X}_t\mathbf{X}_t^\top|\mathbf{y}_1^{t-1}]</code> is equal to <code class="reqn">\mathbf{V}_t^{t-1} + \mathbf{x}_t^{t-1}(\mathbf{x}_t^{t-1})^\top</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Kt</code></td>
+<td>
+<p> Kalman gain (m x m x T). Kalman filter output (ref S&amp;S eqn 6.23). Only for <code>MARSSkfss()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Innov</code></td>
+<td>
+<p> Innovations <code class="reqn">\mathbf{y}_t-\textrm{E}[\mathbf{Y}_t|\mathbf{y}_1^{t-1}]</code> (n x T). Kalman filter output. Only returned with <code>MARSSkfss()</code>. (ref page S&amp;S 339). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Sigma</code></td>
+<td>
+<p> Innovations covariance matrix. Kalman filter output. Only returned with <code>MARSSkfss()</code>. (ref S&amp;S eqn 6.61)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logLik</code></td>
+<td>
+<p> Log-likelihood logL(y(1:T) | Theta) (ref S&amp;S eqn 6.62)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kfas.model</code></td>
+<td>
+<p> The model in KFAS model form (class <code>SSModel</code>). Only for <code>MARSSkfas</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>errors</code></td>
+<td>
+<p> Any error messages. </p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+ 
+<p>Eli Holmes, NOAA, Seattle, USA.  
+</p>
+
+
+<h3>References</h3>
+
+<p>A. C. Harvey (1989).  Chapter 5, Forecasting, structural time series models and the Kalman filter.  Cambridge University Press.
+</p>
+<p>R. H. Shumway and D. S. Stoffer (2006).  Time series analysis and its applications: with R examples.  Second Edition. Springer-Verlag, New York.
+</p>
+<p>Ghahramani, Z. and Hinton, G.E. (1996) Parameter estimation for linear dynamical systems.  University of Toronto Technical Report CRG-TR-96-2.
+</p>
+<p>Holmes, E. E. (2012).  Derivation of the EM algorithm for constrained and unconstrained multivariate autoregressive
+state-space (MARSS) models.  Technical Report. arXiv:1302.3919 [stat.ME] <code>RShowDoc("EMDerivation",package="MARSS")</code> to open a copy.
+</p>
+<p>Jouni Helske (2012). KFAS: Kalman filter and smoother for exponential family state space models. <a href="https://CRAN.R-project.org/package=KFAS">https://CRAN.R-project.org/package=KFAS</a>
+</p>
+<p>Koopman, S.J. and Durbin J. (2000). Fast filtering and smoothing for non-stationary time series models, Journal of American Statistical Association, 92, 1630-38.
+</p>
+<p>Koopman, S.J. and Durbin J. (2001). Time series analysis by state space methods. Oxford: Oxford University Press.
+</p>
+<p>Koopman, S.J. and Durbin J. (2003). Filtering and smoothing of state vector for diffuse state space models, Journal of Time Series Analysis, Vol. 24, No. 1.
+</p>
+<p>The MARSS User Guide:  Holmes, E. E., E. J. Ward, and M. D. Scheuerell (2012) Analysis of multivariate time-series using the MARSS package. NOAA Fisheries, Northwest Fisheries Science Center, 2725 Montlake Blvd E., Seattle, WA 98112   Type <code>RShowDoc("UserGuide",package="MARSS")</code> to open a copy.     
+</p>
+
+
+<h3>See Also</h3>
+
+ 
+<p><code>MARSS()</code>, <code>marssMODEL</code>, <code>MARSSkem()</code>, <code>KFAS()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">dat &lt;- t(harborSeal)
+dat &lt;- dat[2:nrow(dat), ]
+# you can use MARSS to construct a marssMLE object
+# MARSS calls MARSSinits to construct default initial values
+# with fit = FALSE, the $par element of the marssMLE object will be NULL
+fit &lt;- MARSS(dat, fit = FALSE)
+# MARSSkf needs a marssMLE object with the par element set
+fit$par &lt;- fit$start
+# Compute the kf output at the params used for the inits
+kfList &lt;- MARSSkf(fit)
+</code></pre>
+
+
+</div>

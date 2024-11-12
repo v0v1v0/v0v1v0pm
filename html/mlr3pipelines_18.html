@@ -1,0 +1,173 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>CnfFormula</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>CNF Formulas</h2>
+
+<h3>Description</h3>
+
+<p>A <code>CnfFormula</code> is a conjunction of <code>CnfClause</code> objects. It represents a statement
+that is true if all of the clauses are true. These are for example of the form
+</p>
+<div class="sourceCode r"><pre>  (X %among% "a" | Y %among% "d") &amp; Z %among% "g"
+</pre></div>
+<p><code>CnfFormula</code> objects can be constructed explicitly, using the <code>CnfFormula()</code> constructor,
+or implicitly, by using the <code>&amp;</code> operator on <code>CnfAtom</code>s, <code>CnfClause</code>s, or other <code>CnfFormula</code> objects.
+</p>
+<p>To get individual clauses from a formula, <code>[[</code> should not be used; instead, use <code>as.list()</code>.
+Note that the simplified form of a formula containing a tautology is the empty list.
+</p>
+<p>Upon construction, the <code>CnfFormula</code> is simplified by using various heuristics.
+This includes unit propagation, subsumption elimination, self/hidden subsumption elimination,
+hidden tautology elimination, and resolution subsumption elimination (see examples).
+Note that the order of clauses in a formula is not preserved.
+</p>
+<p>Using <code>CnfFormula()</code> on lists that contain other <code>CnfFormula</code> objects will create
+a formula that is the conjunction of all clauses in all formulas.
+This may be somewhat more efficient than applying <code>&amp;</code> many times in a row.
+</p>
+<p>If a <code>CnfFormula</code> contains no clauses, or only <code>TRUE</code> clauses, it evaluates to <code>TRUE</code>.
+If it contains at least one clause that is, by itself, always false, the formula evaluates to <code>FALSE</code>.
+Not all contradictions between clauses are recognized, however.
+These values can be converted to, and from, <code>logical(1)</code> values using <code>as.logical()</code>
+and <code>as.CnfFormula()</code>.
+</p>
+<p><code>CnfFormula</code> objects can be negated using the <code>!</code> operator. Beware that this
+may lead to an exponential blow-up in the number of clauses.
+</p>
+<p>This is part of the CNF representation tooling, which is currently considered
+experimental; it is for internal use.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">CnfFormula(clauses)
+
+as.CnfFormula(x)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>clauses</code></td>
+<td>
+<p>(<code>list</code> of <code>CnfClause</code>) <br>
+A list of <code>CnfClause</code> objects. The formula represents the conjunction of these clauses.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>(any) <br>
+The object to be coerced to a <code>CnfFormula</code> by <code>as.CnfFormula</code>.
+Only <code>logical(1)</code>, <code>CnfAtom</code>, <code>CnfClause</code>, and <code>CnfFormula</code> itself are currently supported.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A new <code>CnfFormula</code> object.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other CNF representation objects: 
+<code>CnfAtom()</code>,
+<code>CnfClause()</code>,
+<code>CnfSymbol()</code>,
+<code>CnfUniverse()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">u = CnfUniverse()
+X = CnfSymbol(u, "X", c("a", "b", "c"))
+Y = CnfSymbol(u, "Y", c("d", "e", "f"))
+Z = CnfSymbol(u, "Z", c("g", "h", "i"))
+
+frm = (X %among% c("a", "b") | Y %among% c("d", "e")) &amp;
+  Z %among% c("g", "h")
+frm
+
+# retrieve individual clauses
+as.list(frm)
+
+# Negation of a formula
+# Note the parentheses, otherwise `!` would be applied to the first clause only.
+!((X %among% c("a", "b") | Y %among% c("d", "e")) &amp;
+   Z %among% c("g", "h"))
+
+## unit propagation
+# The second clause can not be satisfied when X is "b", so "b" can be
+# removed from the possibilities in the first clause.
+(X %among% c("a", "b") | Y %among% c("d", "e")) &amp;
+  X %among% c("a", "c")
+
+## subsumption elimination
+# The first clause is a subset of the second clause; whenever the
+# first clause is satisfied, the second clause is satisfied as well, so the
+# second clause can be removed.
+(X %among% "a" | Y %among% c("d", "e")) &amp;
+  (X %among% c("a", "b") | Y %among% c("d", "e") | Z %among% "g")
+
+## self subsumption elimination
+# If the first clause is satisfied but X is not "a", then Y must be "e".
+# The `Y %among% "d"` part of the first clause can therefore be removed.
+(X %among% c("a", "b") | Y %among% "d") &amp;
+  (X %among% "a" | Y %among% "e")
+
+## resolution subsumption elimination
+# The first two statements can only be satisfied if Y is either "d" or "e",
+# since when X is "a" then Y must be "e", and when X is "b" then Y must be "d".
+# The third statement is therefore implied by the first two, and can be
+# removed.
+(X %among% "a" | Y %among% "d") &amp;
+  (X %among% "b" | Y %among% "e") &amp;
+  (Y %among% c("d", "e"))
+
+## hidden tautology elimination / hidden subsumption elimination
+# When considering the first two clauses only, adding another atom
+# `Z %among% "i"` to the first clause would not change the formula, since
+# whenever Z is "i", the second clause would need to be satisfied in a way
+# that would also satisfy the first clause, making this atom redundant
+# ("hidden literal addition"). Considering the pairs of clause 1 and 3, and
+# clauses 1 and 4, one could likewise add `Z %among% "g"` and
+#' `Z %among% "h"`, respectively. This would reveal the first clausee to be
+# a "hidden" tautology: it is equivalent to a clause containing the
+# atom `Z %among% c("g", "h", "i")` == TRUE.
+# Alternatively, one could perform "hidden" resolution subsumption using
+# clause 4 after having added the atom `Z %among% c("g", "i")` to the first
+# clause by using clauses 2 and 3.
+(X %among% c("a", "b") | Y %among% c("d", "e")) &amp;
+  (X %among% "a" | Z %among% c("g", "h")) &amp;
+  (X %among% "b" | Z %among% c("h", "i")) &amp;
+  (Y %among% c("d", "e") | Z %among% c("g", "i"))
+
+## Simple contradictions are recognized:
+(X %among% "a") &amp; (X %among% "b")
+# Tautologies are preserved
+(X %among% c("a", "b", "c")) &amp; (Y %among% c("d", "e", "f"))
+
+# But not all contradictions are recognized.
+# Builtin heuristic CnfFormula preprocessing is not a SAT solver.
+contradiction = (X %among% "a" | Y %among% "d") &amp;
+  (X %among% "b" | Y %among% "e") &amp;
+  (X %among% "c" | Y %among% "f")
+contradiction
+
+# Negation of a contradiction results in a tautology, which is recognized
+# and simplified to TRUE. However, note that this operation (1) generally has
+# exponential complexity in the number of terms and (2) is currently also not
+# particularly well optimized
+!contradiction
+</code></pre>
+
+
+</div>

@@ -1,0 +1,1064 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>GLMM_MCMC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+MCMC estimation of a (multivariate) generalized linear mixed model
+with a normal mixture in the distribution of random effects
+</h2>
+
+<h3>Description</h3>
+
+<p>This function runs MCMC for a generalized linear mixed model
+with possibly several response variables and possibly normal
+mixtures in the distributions of random effects.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">GLMM_MCMC(y, dist = "gaussian", id, x, z, random.intercept,
+     prior.alpha, init.alpha, init2.alpha,                      
+     scale.b,     prior.b,    init.b,      init2.b,
+     prior.eps,   init.eps,   init2.eps,
+     nMCMC = c(burn = 10, keep = 10, thin = 1, info = 10),
+     tuneMCMC = list(alpha = 1, b = 1),
+     store = c(b = FALSE), PED = TRUE, keep.chains = TRUE,
+     dens.zero = 1e-300, parallel = FALSE, cltype, silent = FALSE)
+
+## S3 method for class 'GLMM_MCMC'
+print(x, ...)
+
+## S3 method for class 'GLMM_MCMClist'
+print(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>vector, matrix or data frame with responses. If <code>y</code> is vector then
+there is only one response in the model. If <code>y</code> is matrix or data frame then
+each column gives values of one response. Missing values are allowed.
+</p>
+<p>If there are several responses specified then 
+continuous responses must be put in the first columns and
+discrete responses in the subsequent columns.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dist</code></td>
+<td>
+<p>character (vector) which determines distribution (and a link function)
+for each response variable. Possible values are:
+“gaussian” for gaussian (normal) distribution (with identity link),
+“binomial(logit)” for binomial (0/1) distribution with a logit link.
+“poisson(log)” for Poisson distribution with a log link.     
+Single value is recycled if necessary.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>vector which determines longitudinally or otherwise dependent observations. If not given then it is assumed
+that there are no clusters and all observations of one response are
+independent.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>matrix or a list of matrices with covariates (intercept not included) for fixed effects.
+If there is more than one response, this must always be a list. Note that intercept in included
+in all models. Use a character value “empty” as a component of the list <code>x</code>
+if there are no covariates for a particular response.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>z</code></td>
+<td>
+<p>matrix or a list of matrices with covariates (intercept not included) for random effects.
+If there is more than one response, this must always be a list. Note that random intercept
+is specified using the argument <code>random.intercept</code>.
+</p>
+<p>REMARK: For a particular response, matrices <code>x</code> and <code>z</code>
+may not have the same columns. That is, matrix <code>x</code> includes
+covariates which are not involved among random effects and matrix
+<code>z</code> includes covariates which are involved among random effects
+(and implicitely among fixed effects as well).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random.intercept</code></td>
+<td>
+<p>logical (vector) which determines for which responses random intercept
+should be included.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior.alpha</code></td>
+<td>
+<p>a list which specifies prior distribution for fixed
+effects (not the means of random effects). The prior distribution is
+normal and the user can specify the mean and variances.
+The list <code>prior.alpha</code> can have the components listed below.
+</p>
+
+<dl>
+<dt>mean</dt>
+<dd>
+<p>a vector with prior means, defaults to zeros.</p>
+</dd>
+<dt>var</dt>
+<dd>
+<p>a vector with prior variances, defaults to 10000 for
+all components.</p>
+</dd>      
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init.alpha</code></td>
+<td>
+<p>a numeric vector with initial values of fixed effects
+(not the means of random effects) for the first chain. A sensible value is determined using the
+maximum-likelihood fits (using <code>lmer</code> functions)
+and does not have to be given by the user.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init2.alpha</code></td>
+<td>
+<p>a numeric vector with initial values of fixed
+effects for the second chain.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale.b</code></td>
+<td>
+<p>a list specifying how to scale the random effects during
+the MCMC. A sensible value is determined using the
+maximum-likelihood fits (using <code>lmer</code> functions)
+and does not have to be given by the user.
+</p>
+<p>If the user wishes to influence the shift and scale constants, these
+are given as components of the list <code>scale.b</code>. The components
+are named:
+</p>
+
+<dl>
+<dt>shift</dt>
+<dd>
+<p>see vignette <a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+<dt>scale</dt>
+<dd>
+<p>see vignette <a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior.b</code></td>
+<td>
+<p>a list which specifies prior distribution for (shifted
+and scaled) random effects. The prior is in principle a normal
+mixture (being a simple normal distribution if we restrict the
+number of mixture components to be equal to one).
+</p>
+<p>The list <code>prior.b</code> can have the components listed below. Their
+meaning is analogous to the components of the same name of the
+argument <code>prior</code> of function <code>NMixMCMC</code> (see
+therein for details).
+</p>
+
+<dl>
+<dt>distribution</dt>
+<dd>
+<p>a character string which specifies the assumed
+prior distribution for random effects. It can be either
+“normal” (multivaruate normal - default) or “MVT”
+(multivariate Student t distribution).</p>
+</dd>
+<dt>priorK</dt>
+<dd>
+<p>a character string which specifies the type of the
+prior for <code class="reqn">K</code> (the number of mixture components).
+</p>
+</dd>
+<dt>priormuQ</dt>
+<dd>
+<p>a character string which specifies the type of the
+prior for mixture means and mixture variances.
+</p>
+</dd>
+<dt>Kmax</dt>
+<dd>
+<p>maximal number of mixture components.</p>
+</dd>
+<dt>lambda</dt>
+<dd>
+<p>see vignette
+<a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+<dt>delta</dt>
+<dd>
+<p>see vignette
+<a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+<dt>xi</dt>
+<dd>
+<p>see vignette
+<a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+<dt>ce</dt>
+<dd>
+<p>see vignette
+<a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+<dt>D</dt>
+<dd>
+<p>see vignette
+<a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+<dt>zeta</dt>
+<dd>
+<p>see vignette
+<a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+<dt>gD</dt>
+<dd>
+<p>see vignette
+<a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+<dt>hD</dt>
+<dd>
+<p>see vignette
+<a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+<dt>gdf</dt>
+<dd>
+<p>shape parameter of the prior distribution for the
+degrees of freedom if the random effects are assumed to follow
+the MVT distribution</p>
+</dd>
+<dt>hdf</dt>
+<dd>
+<p>rate parameter of the prior distribution for the
+degrees of freedom if the random effects are assumed to follow
+the MVT distribution</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init.b</code></td>
+<td>
+<p>a list with initial values of the first chain for parameters related to the
+distribution of random effects and random effects
+themselves. Sensible initial values are determined by the function
+itself and do not have to be given by the user.
+</p>
+
+<dl>
+<dt>b</dt>
+<dd></dd>
+<dt>K</dt>
+<dd></dd>
+<dt>w</dt>
+<dd></dd>
+<dt>mu</dt>
+<dd></dd>
+<dt>Sigma</dt>
+<dd></dd>
+<dt>Li</dt>
+<dd></dd>
+<dt>gammaInv</dt>
+<dd></dd>
+<dt>df</dt>
+<dd></dd>
+<dt>r</dt>
+<dd></dd>                  
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init2.b</code></td>
+<td>
+<p>a list with initial values of the second chain for parameters related to the
+distribution of random effects and random effects
+themselves.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior.eps</code></td>
+<td>
+<p>a list specifying prior distributions for
+error terms for continuous responses. The list <code>prior.eps</code> can
+have the components listed below. For all components, a sensible
+value leading to weakly informative prior distribution can be
+determined by the function.
+</p>
+
+<dl>
+<dt>zeta</dt>
+<dd>
+<p>see vignette
+<a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+<dt>g</dt>
+<dd>
+<p>see vignette
+<a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>
+<dt>h</dt>
+<dd>
+<p>see vignette
+<a href="http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf">PBCseq.pdf</a> for details</p>
+</dd>       
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init.eps</code></td>
+<td>
+<p>a list with initial values of the first chain for parameters related to the
+distribution of error terms of continuous responses. The list
+<code>init.eps</code> can have the components listed below. For all
+components, a sensible value can be determined by the function.
+</p>
+
+<dl>
+<dt>sigma</dt>
+<dd>
+<p>a numeric vector with the initial values for residual
+standard deviations for each continuous response.</p>
+</dd>
+<dt>gammaInv</dt>
+<dd>
+<p>a numeric vector with the initial values for the
+inverted components of the hyperparameter gamma for each
+continuous response.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init2.eps</code></td>
+<td>
+<p>a list with initial values of the second chain for parameters related to the
+distribution of error terms of continuous responses.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nMCMC</code></td>
+<td>
+<p>numeric vector of length 4 giving parameters of the MCMC
+simulation. Its components may be named (ordering is then unimportant) as:
+</p>
+
+<dl>
+<dt>burn</dt>
+<dd>
+<p>length of the burn-in (after discarding the thinned
+values), can be equal to zero as well.</p>
+</dd>
+<dt>keep</dt>
+<dd>
+<p>length of the kept chains (after discarding the
+thinned values), must be positive.</p>
+</dd>
+<dt>thin</dt>
+<dd>
+<p>thinning interval, must be positive.</p>
+</dd>
+<dt>info</dt>
+<dd>
+<p>interval in which the progress information is printed
+on the screen.</p>
+</dd>      
+</dl>
+<p>In total <code class="reqn">(M_{burn} + M_{keep}) \cdot M_{thin}</code> MCMC scans are performed.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tuneMCMC</code></td>
+<td>
+<p>a list with tuning scale parameters for proposal
+distribution of fixed and random effects. It is used only when there
+are some discrete response profiles. The components of the list have
+the following meaning:
+</p>
+
+<dl>
+<dt>alpha</dt>
+<dd>
+<p>scale parameters by which we multiply the proposal
+covariance matrix when updating the fixed effects pertaining to
+the discrete response profiles. There is one scale parameter for
+each DISCRETE profile. A single value is recycled if necessary.</p>
+</dd>
+<dt>b</dt>
+<dd>
+<p>a scale parameter by which we multiply the proposal
+covariance matrix when updating the random effects. It is used
+only when there are some discrete response profiles in the model.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>store</code></td>
+<td>
+<p>logical vector indicating whether the chains of
+parameters should be stored. Its components may be named (ordering
+is then unimportant) as:
+</p>
+
+<dl>
+<dt>b</dt>
+<dd>
+<p>if <code>TRUE</code> then the sampled values of random effects
+are stored. Defaults to <code>FALSE</code>.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>PED</code></td>
+<td>
+<p>a logical value which indicates whether the penalized
+expected deviance (see Plummer, 2008 for more details)
+is to be computed (which requires two parallel
+chains).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep.chains</code></td>
+<td>
+<p>logical. If <code>FALSE</code>, only summary statistics
+are returned in the resulting object. This might be useful in the
+model searching step to save some memory.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dens.zero</code></td>
+<td>
+<p>a small value used instead of zero when computing
+deviance related quantities.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>a logical value which indicates whether parallel
+computation (based on a package <code>parallel</code>)
+should be used when running two chains for the purpose of <code>PED</code>
+calculation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cltype</code></td>
+<td>
+<p>optional argument applicable if <code>parallel</code> is
+<code>TRUE</code>. If <code>cltype</code> is given, it is passed as the
+<code>type</code> argument into the call to <code>makeCluster</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>silent</code></td>
+<td>
+<p>a logical value indicating whether the information on
+the MCMC progress is to be supressed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments passed to the default <code>print</code> method.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>See accompanying papers (Komárek et al., 2010, Komárek and Komárková, 2013).  
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>GLMM_MCMClist</code> (if <code>PED</code> argument is
+<code>TRUE</code>) or <code>GLMM_MCMC</code> (if <code>PED</code> argument is
+<code>FALSE</code>).
+</p>
+
+
+<h3>Object of class GLMM_MCMC</h3>
+
+<p>Object of class <code>GLMM_MCMC</code> can have the following
+components (some of them may be missing according to the context
+of the model):
+</p>
+  
+<dl>
+<dt>iter</dt>
+<dd>
+<p>index of the last iteration performed.</p>
+</dd>
+<dt>nMCMC</dt>
+<dd>
+<p>used value of the argument <code>nMCMC</code>.</p>
+</dd>
+<dt>dist</dt>
+<dd>
+<p>a character vector of length R corresponding to the
+<code>dist</code> argument.</p>
+</dd>  
+<dt>R</dt>
+<dd>
+<p>a two component vector giving the number of continuous
+responses and the number of discrete responses.</p>
+</dd>
+<dt>p</dt>
+<dd>
+<p>a numeric vector of length R giving the number of
+non-intercept alpha parameters for each response.</p>
+</dd>
+<dt>q</dt>
+<dd>
+<p>a numeric vector of length R giving the number of
+non-intercept random effects for each response.</p>
+</dd>
+<dt>fixed.intercept</dt>
+<dd>
+<p>a logical vector of length R which indicates
+inclusion of fixed intercept for each response.</p>
+</dd>
+<dt>random.intercept</dt>
+<dd>
+<p>a logical vector of length R which indicates
+inclusion of random intercept for each response.</p>
+</dd>  
+<dt>lalpha</dt>
+<dd>
+<p>length of the vector of fixed effects.</p>
+</dd>
+<dt>dimb</dt>
+<dd>
+<p>dimension of the distribution of random effects.</p>
+</dd>
+<dt>prior.alpha</dt>
+<dd>
+<p>a list containing the used value of the
+argument <code>prior.alpha</code>.</p>
+</dd>
+<dt>prior.b</dt>
+<dd>
+<p>a list containing the used value of the
+argument <code>prior.b</code>.</p>
+</dd>
+<dt>prior.eps</dt>
+<dd>
+<p>a list containing the used value of the
+argument <code>prior.eps</code>.</p>
+</dd>
+<dt>init.alpha</dt>
+<dd>
+<p>a numeric vector with the used value of the
+argument <code>init.alpha</code>.</p>
+</dd>
+<dt>init.b</dt>
+<dd>
+<p>a list containing the used value of the
+argument <code>init.b</code>.</p>
+</dd>
+<dt>init.eps</dt>
+<dd>
+<p>a list containing the used value of the
+argument <code>init.eps</code>.</p>
+</dd>
+<dt>state.first.alpha</dt>
+<dd>
+<p>a numeric vector with the first stored (after burn-in) value
+of fixed effects <code class="reqn">\alpha</code>.</p>
+</dd>
+<dt>state.last.alpha</dt>
+<dd>
+<p>a numeric vector with the last sampled value
+of fixed effects <code class="reqn">\alpha</code>. It can be used as argument
+<code>init.alpha</code> to restart MCMC.</p>
+</dd>
+<dt>state.first.b</dt>
+<dd>
+<p>a list with the first stored (after burn-in) values of parameters
+related to the distribution of random effects. It has components
+named <code>b</code>, <code>K</code>, <code>w</code>, <code>mu</code>, <code>Sigma</code>, <code>Li</code>, <code>Q</code>,
+<code>gammaInv</code>, <code>r</code>.</p>
+</dd>
+<dt>state.last.b</dt>
+<dd>
+<p>a list with the last sampled values of parameters
+related to the distribution of random effects. It has components
+named <code>b</code>, <code>K</code>, <code>w</code>, <code>mu</code>, <code>Sigma</code>, <code>Li</code>, <code>Q</code>,
+<code>gammaInv</code>, <code>r</code>. It can be used as argument
+<code>init.b</code> to restart MCMC.</p>
+</dd>
+<dt>state.first.eps</dt>
+<dd>
+<p>a list with the first stored (after burn-in) values of parameters
+related to the distribution of residuals of continuous responses. It
+has components named <code>sigma</code>, <code>gammaInv</code>.</p>
+</dd>
+<dt>state.last.eps</dt>
+<dd>
+<p>a list with the last sampled values of parameters
+related to the distribution of residuals of continuous responses. It
+has components named <code>sigma</code>, <code>gammaInv</code>. It can be used as argument
+<code>init.eps</code> to restart MCMC.</p>
+</dd>
+<dt>prop.accept.alpha</dt>
+<dd>
+<p>acceptance proportion from the
+Metropolis-Hastings algorithm for fixed effects
+(separately for each response type). Note that the acceptance
+proportion is equal to one for continuous responses since the Gibbs
+algorithm is used there.</p>
+</dd>
+<dt>prop.accept.b</dt>
+<dd>
+<p>acceptance proportion from the
+Metropolis-Hastings algorithm for random effects
+(separately for each cluster). Note that the acceptance
+proportion is equal to one for models with continuous responses only
+since the Gibbs algorithm is used there.</p>
+</dd>  
+<dt>scale.b</dt>
+<dd>
+<p>a list containing the used value of the argument
+<code>scale.b</code>.</p>
+</dd>
+<dt>summ.Deviance</dt>
+<dd>
+<p>a <code>data.frame</code> with posterior summary
+statistics for the deviance (approximated using the Laplacian
+approximation) and conditional (given random effects) devience.</p>
+</dd>
+<dt>summ.alpha</dt>
+<dd>
+<p>a <code>data.frame</code> with posterior summary statistics for fixed effects.</p>
+</dd>
+<dt>summ.b.Mean</dt>
+<dd>
+<p>a matrix with posterior summary statistics for
+means of random effects.</p>
+</dd>
+<dt>summ.b.SDCorr</dt>
+<dd>
+<p>a matrix with posterior summary statistics for
+standard deviations of random effects and correlations of each pair
+of random effects.</p>
+</dd>
+<dt>summ.sigma_eps</dt>
+<dd>
+<p>a matrix with posterior summary statistics for
+standard deviations of the error terms in the (mixed) models of
+continuous responses.</p>
+</dd>
+<dt>poster.comp.prob_u</dt>
+<dd>
+<p>a matrix which is present in the output object
+if the number of mixture components in the distribution of random
+effects is fixed and equal to <code class="reqn">K</code>. In that case,
+<code>poster.comp.prob_u</code> is a matrix with <code class="reqn">K</code> columns and <code class="reqn">I</code>
+rows (<code class="reqn">I</code> is the number of subjects defining the longitudinal
+profiles or correlated observations) with estimated posterior component probabilities
+– posterior means of the components of the underlying 0/1
+allocation vector.
+</p>
+<p><b>WARNING:</b> By default, the labels of components are based on artificial
+identifiability constraints based on ordering of the mixture means
+in the first margin. Very often, such identifiability constraint is
+not satisfactory!
+</p>
+
+
+</dd>
+<dt>poster.comp.prob_b</dt>
+<dd>
+<p>a matrix which is present in the output object
+if the number of mixture components in the distribution of random
+effects is fixed and equal to <code class="reqn">K</code>. In that case,
+<code>poster.comp.prob_b</code> is a matrix with <code class="reqn">K</code> columns and <code class="reqn">I</code>
+rows (<code class="reqn">I</code> is the number of subjects defining the longitudinal
+profiles or correlated observations)
+with estimated posterior component probabilities
+– posterior mean over model parameters including random effects.
+</p>
+<p><b>WARNING:</b> By default, the labels of components are based on artificial
+identifiability constraints based on ordering of the mixture means
+in the first margin. Very often, such identifiability constraint is
+not satisfactory!
+</p>
+
+
+</dd>    
+<dt>freqK_b</dt>
+<dd>
+<p>frequency table for the MCMC sample of the number of
+mixture components in the distribution of the random effects.</p>
+</dd>
+<dt>propK_b</dt>
+<dd>
+<p>posterior probabilities for the numbers of mixture
+components in the distribution of random effects.</p>
+</dd>
+<dt>poster.mean.y</dt>
+<dd>
+<p>a list with <code>data.frame</code>s, one
+<code>data.frame</code> per response profile. Each <code>data.frame</code>
+with columns labeled <code>id</code>, <code>observed</code>,
+<code>fitted</code>, <code>stres</code>,
+<code>eta.fixed</code> and <code>eta.random</code> holding
+identifier for clusters of grouped observations,
+observed values and
+posterior means for fitted values (response expectation given fixed and random effects),
+standardized residuals (derived from fitted values),
+fixed effect part of the linear predictor and the random effect part of
+the linear predictor. In each column, there are first all values for
+the first response, then all values for the second response etc.</p>
+</dd>
+<dt>poster.mean.profile</dt>
+<dd>
+<p>a <code>data.frame</code> with columns labeled
+<code>b1</code>, ..., <code>bq</code>, <code>Logpb</code>, <code>Cond.Deviance</code>, <code>Deviance</code> with
+posterior means of random effects for each cluster, posterior
+means of <code class="reqn">\log\bigl\{p(\boldsymbol{b})\bigr\}</code>,
+conditional deviances, i.e., minus twice the conditional (given
+random effects) log-likelihood for each cluster
+and GLMM deviances, i.e., minus twice the marginal (random effects
+integrated out) log-likelihoods for each cluster. The value of the
+marginal (random effects integrated out) log-likelihood at each MCMC
+iteration is obtained using the Laplacian approximation.</p>
+</dd>
+<dt>poster.mean.w_b</dt>
+<dd>
+<p>a numeric vector with posterior means of mixture
+weights after re-labeling. It is computed only if <code class="reqn">K_b</code> is fixed
+and even then I am not convinced that these are useful posterior
+summary statistics (see label switching problem mentioned above).
+In any case, they should be used with care.</p>
+</dd>
+<dt>poster.mean.mu_b</dt>
+<dd>
+<p>a matrix with posterior means of mixture
+means after re-labeling. It is computed only if <code class="reqn">K_b</code> is fixed
+and even then I am not convinced that these are useful posterior
+summary statistics (see label switching problem mentioned above).
+In any case, they should be used with care.</p>
+</dd>
+<dt>poster.mean.Q_b</dt>
+<dd>
+<p>a list with posterior means of mixture inverse
+variances after re-labeling. It is computed only if <code class="reqn">K_b</code> is fixed
+and even then I am not convinced that these are useful posterior
+summary statistics (see label switching problem mentioned above).
+In any case, they should be used with care.</p>
+</dd>
+<dt>poster.mean.Sigma_b</dt>
+<dd>
+<p>a list with posterior means of mixture
+variances after re-labeling. It is computed only if <code class="reqn">K_b</code> is fixed
+and even then I am not convinced that these are useful posterior
+summary statistics (see label switching problem mentioned above).
+In any case, they should be used with care.</p>
+</dd>
+<dt>poster.mean.Li_b</dt>
+<dd>
+<p>a list with posterior means of Cholesky
+decompositions of mixture inverse
+variances after re-labeling. It is computed only if <code class="reqn">K_b</code> is fixed
+and even then I am not convinced that these are useful posterior
+summary statistics (see label switching problem mentioned above).
+In any case, they should be used with care.</p>
+</dd>
+<dt>Deviance</dt>
+<dd>
+<p>numeric vector with a chain for the GLMM deviances,
+i.e., twice the marginal (random effects integrated out)
+log-likelihoods of the GLMM. The marginal log-likelihood is obtained
+using the Laplacian approximation at each iteration of MCMC.
+</p>
+</dd>
+<dt>Cond.Deviance</dt>
+<dd>
+<p>numeric vector with a chain for the conditional deviances,
+i.e., twice the conditional (given random effects)
+log-likelihoods.
+</p>
+</dd>  
+<dt>K_b</dt>
+<dd>
+<p>numeric vector with a chain for <code class="reqn">K_b</code> (number of
+mixture components in the distribution of random effects).</p>
+</dd>
+<dt>w_b</dt>
+<dd>
+<p>numeric vector or matrix with a chain for <code class="reqn">w_b</code> (mixture
+weights for the distribution of random effects). It is a matrix with
+<code class="reqn">K_b</code> columns when <code class="reqn">K_b</code> is fixed.
+Otherwise, it is a vector with weights put sequentially after each other.</p>
+</dd>
+<dt>mu_b</dt>
+<dd>
+<p>numeric vector or matrix with a chain for <code class="reqn">\mu_b</code> (mixture
+means for the distribution of random effects). It is a matrix with
+<code class="reqn">dimb\cdot K_b</code> columns when <code class="reqn">K_b</code> is
+fixed. Otherwise, it is a vector with means put sequentially after
+each other.</p>
+</dd>
+<dt>Q_b</dt>
+<dd>
+<p>numeric vector or matrix with a chain for lower triangles of <code class="reqn">\boldsymbol{Q}_b</code> (mixture
+inverse variances for the distribution of random effects). It is a matrix with <code class="reqn">\frac{dimb(dimb+1)}{2}\cdot K_b</code>
+columns when <code class="reqn">K_b</code> is fixed. Otherwise, it is a vector with lower
+triangles of <code class="reqn">\boldsymbol{Q}_b</code> matrices put sequentially after each other.</p>
+</dd>
+<dt>Sigma_b</dt>
+<dd>
+<p>numeric vector or matrix with a chain for lower triangles of <code class="reqn">\Sigma_b</code> (mixture
+variances for the distribution of random effects). It is a matrix with <code class="reqn">\frac{dimb(dimb+1)}{2}\cdot K_b</code>
+columns when <code class="reqn">K_b</code> is fixed. Otherwise, it is a vector with lower
+triangles of <code class="reqn">\Sigma_b</code> matrices put sequentially after each other.</p>
+</dd>
+<dt>Li_b</dt>
+<dd>
+<p>numeric vector or matrix with a chain for lower triangles of
+Cholesky decompositions of <code class="reqn">\boldsymbol{Q}_b</code> matrices.
+It is a matrix with <code class="reqn">\frac{dimb(dimb+1)}{2}\cdot K_b</code>
+columns when <code class="reqn">K_b</code> is fixed. Otherwise, it is a vector with lower
+triangles put sequentially after each other.</p>
+</dd>  
+<dt>gammaInv_b</dt>
+<dd>
+<p>matrix with <code class="reqn">dimb</code> columns with a chain for inverses
+of the hyperparameter <code class="reqn">\boldsymbol{\gamma}_b</code>.</p>
+</dd>
+<dt>order_b</dt>
+<dd>
+<p>numeric vector or matrix with order indeces of mixture
+components in the distribution of random effects related to artificial identifiability constraint
+defined by ordering of the first component of the mixture means.
+</p>
+<p>It is a matrix with <code class="reqn">K_b</code> columns when <code class="reqn">K_b</code> is
+fixed. Otherwise it is a vector with orders put sequentially after
+each other.</p>
+</dd>
+<dt>rank_b</dt>
+<dd>
+<p>numeric vector or matrix with rank indeces of mixture
+components in the distribution of random effects related to artificial identifiability constraint
+defined by ordering of the first component of the mixture means.
+</p>
+<p>It is a matrix with <code class="reqn">K_b</code> columns when <code class="reqn">K_b</code> is
+fixed. Otherwise it is a vector with ranks put sequentially after
+each other.</p>
+</dd>
+<dt>mixture_b</dt>
+<dd>
+<p><code>data.frame</code> with columns labeled
+<code>b.Mean.*</code>, <code>b.SD.*</code>, <code>b.Corr.*.*</code>
+containing the chains for the means, standard deviations and correlations of the
+distribution of the random effects based on a normal mixture at each
+iteration.</p>
+</dd>
+<dt>b</dt>
+<dd>
+<p>a matrix with the MCMC chains for random effects. It is
+included only if <code>store[b]</code> is <code>TRUE</code>.</p>
+</dd>
+<dt>alpha</dt>
+<dd>
+<p>numeric vector or matrix with the MCMC chain(s) for fixed effects.</p>
+</dd>
+<dt>sigma_eps</dt>
+<dd>
+<p>numeric vector or matrix with the MCMC chain(s) for
+standard deviations of the error terms in the (mixed) models for
+continuous responses.</p>
+</dd>
+<dt>gammaInv_eps</dt>
+<dd>
+<p>matrix with <code class="reqn">dimb</code> columns with MCMC chain(s) for inverses
+of the hyperparameter <code class="reqn">\boldsymbol{\gamma}_b</code>.</p>
+</dd>
+<dt>relabel_b</dt>
+<dd>
+<p>a list which specifies the algorithm used to re-label
+the MCMC output to compute <code>order_b</code>, <code>rank_b</code>, <code>poster.comp.prob_u</code>,
+<code>poster.comp.prob_b</code>, <code>poster.mean.w_b</code>,
+<code>poster.mean.mu_b</code>, <code>poster.mean.Q_b</code>,
+<code>poster.mean.Sigma_b</code>, <code>poster.mean.Li_b</code>. 
+</p>
+</dd>
+<dt>Cpar</dt>
+<dd>
+<p>a list with components useful to call underlying C++ functions (not
+interesting for ordinary users).</p>
+</dd>
+</dl>
+<h3>Object of class GLMM_MCMClist</h3>
+
+<p>Object of class <code>NMixMCMClist</code> is the list having two components
+of class <code>NMixMCMC</code> representing two parallel chains and
+additionally the following components:
+</p>
+
+<dl>
+<dt>PED</dt>
+<dd>
+<p>values of penalized expected deviance and related
+quantities. It is a vector with five components: <code>D.expect</code> <code class="reqn">=</code>
+estimated expected deviance, where the estimate is based on two
+parallel chains; <code>popt</code> <code class="reqn">=</code> estimated penalty, where the
+estimate is based on simple MCMC average based on two parallel
+chains; <code>PED</code> <code class="reqn">=</code> estimated penalized expected deviance
+<code class="reqn">=</code> <code>D.expect</code> <code class="reqn">+</code> <code>popt</code>; <code>wpopt</code> <code class="reqn">=</code>
+estimated penalty, where the estimate is based on weighted MCMC average
+(through importance sampling) based on two parallel chains;
+<code>wPED</code> <code class="reqn">=</code> estimated penalized expected deviance <code class="reqn">=</code>
+<code>D.expect</code> <code class="reqn">+</code> <code>wpopt</code>.</p>
+</dd>
+<dt>D</dt>
+<dd>
+<p>posterior mean of the deviance for each subject.</p>
+</dd>
+<dt>popt</dt>
+<dd>
+<p>contributions to the unweighted penalty from each subject.</p>
+</dd>
+<dt>wpopt</dt>
+<dd>
+<p>contributions to the weighted penalty from each subject.</p>
+</dd>
+<dt>inv.D</dt>
+<dd>
+<p>for each subject, number of iterations (in both chains), where the
+deviance was in fact equal to infinity (when the corresponding
+density was lower than <code>dens.zero</code>) and was not taken into account when
+computing <code>D.expect</code>.</p>
+</dd>
+<dt>inv.popt</dt>
+<dd>
+<p>for each subject, number of iterations, where the
+penalty was in fact equal to infinity and was not taken into account
+when computing <code>popt</code>.
+</p>
+</dd>
+<dt>inv.wpopt</dt>
+<dd>
+<p>for each subject, number of iterations, where the
+importance sampling weight was in fact equal to infinity and was not taken into account
+when computing <code>wpopt</code>.</p>
+</dd>
+<dt>sumISw</dt>
+<dd>
+<p>for each subject, sum of importance sampling
+weights.</p>
+</dd>
+<dt>Deviance1</dt>
+<dd>
+<p>sampled value of the observed data deviance from
+chain 1</p>
+</dd>
+<dt>Deviance2</dt>
+<dd>
+<p>sampled values of the obserbed data deviance from
+chain 2</p>
+</dd>
+<dt>Deviance_repl1_ch1</dt>
+<dd>
+<p>sampled values of the deviance of data
+replicated according to the chain 1 evaluated under the parameters
+from chain 1</p>
+</dd>
+<dt>Deviance_repl1_ch2</dt>
+<dd>
+<p>sampled values of the deviance of data
+replicated according to the chain 1 evaluated under the parameters
+from chain 2</p>
+</dd>
+<dt>Deviance_repl2_ch1</dt>
+<dd>
+<p>sampled values of the deviance of data
+replicated according to the chain 2 evaluated under the parameters
+from chain 1</p>
+</dd>
+<dt>Deviance_repl2_ch2</dt>
+<dd>
+<p>sampled values of the deviance of data
+replicated according to the chain 2 evaluated under the parameters
+from chain 2</p>
+</dd>  
+</dl>
+<h3>Author(s)</h3>
+
+<p>Arnošt Komárek <a href="mailto:arnost.komarek@mff.cuni.cz">arnost.komarek@mff.cuni.cz</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Komárek, A. and Komárková, L. (2013).
+Clustering for multivariate continuous and discrete longitudinal data.
+<em>The Annals of Applied Statistics</em>, <b>7</b>(1), 177–200.
+</p>
+<p>Komárek, A. and Komárková, L. (2014).
+Capabilities of R package mixAK for clustering based on multivariate continuous and discrete longitudinal data.
+<em>Journal of Statistical Software</em>, <b>59</b>(12), 1–38.
+<a href="https://doi.org/10.18637/jss.v059.i12">doi:10.18637/jss.v059.i12</a>.
+</p>
+<p>Komárek, A., Hansen, B. E., Kuiper, E. M. M., van Buuren, H. R., and Lesaffre, E. (2010).
+Discriminant analysis using a multivariate linear mixed model with a normal mixture in the random effects distribution.
+<em>Statistics in Medicine</em>, <b>29</b>(30), 3267–3283.
+</p>
+<p>Plummer, M. (2008).
+Penalized loss functions for Bayesian model comparison.
+<em>Biostatistics</em>, <b>9</b>(3), 523–539.  
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>NMixMCMC</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## See also additional material available in 
+## YOUR_R_DIR/library/mixAK/doc/
+## or YOUR_R_DIR/site-library/mixAK/doc/
+## - files http://www.karlin.mff.cuni.cz/~komarek/software/mixAK/PBCseq.pdf,
+##         PBCseq.R
+## ==============================================
+</code></pre>
+
+
+</div>

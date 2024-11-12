@@ -1,0 +1,149 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>with_mock</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Mock functions in a package.</h2>
+
+<h3>Description</h3>
+
+<p>Mocking allows you to temporary replace the implementation of functions
+within a package, which useful for testing code that relies on functions
+that are slow, have unintended side effects or access resources that may
+not be available when testing.
+</p>
+<p>Up until recently, such capability was offered via <code>testthat::with_mock()</code>,
+but with release of version 3.0.0 and introduction of edition 3, this was
+deprecated from 'testthat', leaving it to third party packages to replace
+this feature. Powered by <code>utils::assignInNamespace()</code>, this mocking
+implementation can be used to stub out both exported and non-exported
+functions from a package, as well as functions explicitly imported from
+other packages using either <code>importFrom</code> directives or namespaced function
+calls using <code>::</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">with_mock(..., mock_env = pkg_env(), eval_env = parent.frame())
+
+local_mock(
+  ...,
+  mock_env = pkg_env(),
+  eval_env = parent.frame(),
+  local_env = eval_env
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Named parameters redefine mocked functions, unnamed parameters
+will be evaluated after mocking the functions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mock_env</code></td>
+<td>
+<p>The environment in which to patch the functions,
+defaults to either the package namespace when the environment variable
+<code>TESTTHAT_PKG</code> is set pr the calling environment. A string is interpreted
+as package
+name.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eval_env</code></td>
+<td>
+<p>Environment in which expressions passed as <code>...</code> are
+evaluated, defaults to <code>base::parent.frame()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>local_env</code></td>
+<td>
+<p>Passed to <code>withr::defer()</code> as <code>envir</code> argument (defaults
+to the values passed as <code>eval_env</code>)</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Borrowing the API from the now-deprecated <code>testthat::with_mock()</code>, named
+arguments passed as <code>...</code> are used to define functions to be mocked, where
+names specify the target functions and the arguments themselves are used as
+replacement functions. Unnamed arguments passed as <code>...</code> will be evaluated
+in the environment specified as <code>eval_env</code> using the mocked functions.
+Functions to be stubbed should be specified as they would be used in package
+core. This means that when a function from a third party package is
+imported, prefixing the function name with <code style="white-space: pre;">⁠pkg_name::⁠</code> will not give the
+desired result. Conversely, if the function is not imported, the package
+prefix is of course required. On exit of <code>with_mock()</code>, the mocked functions
+are reverted to their original state.
+</p>
+<p>Replacement functions can either be specified as complete functions, or as
+either quoted expressions, subsequently used as function body or objects
+used as return values. If functions are created from return values or
+complete function bodies, they inherit the signatures from the respective
+functions they are used to mock, alongside the ability to keep track of
+how they are subsequently called. A constructor for such mock-objects is
+available as <code>mock()</code>, which quotes the expression passed as <code>expr</code>.
+</p>
+<p>If mocking is desirable for multiple separate calls to the function being
+tested, <code>local_mock()</code> is available, which holds onto the mocked state for
+the lifetime of the environment passed as <code>local_env</code> using
+<code>withr::defer()</code>. Unlike <code>with_mock()</code>, which returns the result of
+evaluating the last unnamed argument passed as <code>...</code>, <code>local_mock()</code>
+(invisibly) returns the functions used for mocking, which if not fully
+specified as functions, will be mock-objects described in the previous
+paragraph.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The result of the last unnamed argument passed as <code>...</code> (evaluated in the
+environment passed as <code>eval_env</code>) in the case of <code>local_mock()</code> and a list
+of functions or <code>mock_fun</code> objects (invisibly) for calls to <code>local_mock()</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+url &lt;- "https://eu.httpbin.org/get?foo=123"
+mok &lt;- function(...) "mocked request"
+
+with_mock(
+  `curl::curl_fetch_memory` = mok,
+  curl::curl_fetch_memory(url)
+)
+
+dl_fun &lt;- function(x) curl::curl_fetch_memory(x)
+
+with_mock(
+  `curl::curl_fetch_memory` = mok,
+  dl_fun(url)
+)
+
+with_mock(
+  `curl::curl_fetch_memory` = "mocked request",
+  dl_fun(url)
+)
+
+dl &lt;- function(x) curl::curl(x)
+
+local({
+  mk &lt;- local_mock(`curl::curl` = "mocked request")
+  list(dl(url), mock_arg(mk, "url"))
+})
+
+</code></pre>
+
+
+</div>

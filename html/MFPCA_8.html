@@ -1,0 +1,155 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>dctBasis2D</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate a cosine basis representation for functional data on two- or
+three-dimensional domains</h2>
+
+<h3>Description</h3>
+
+<p>These functions calculate  a tensor cosine basis representation for
+functional data on two- or three-dimensional domains based on a
+discrete cosine transformation (DCT) using the C-library <code>fftw3</code>
+(<a href="http://www.fftw.org/">http://www.fftw.org/</a>). Coefficients under a given threshold are
+set to 0 to reduce complexity and for denoising.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">dctBasis2D(funDataObject, qThresh, parallel = FALSE)
+
+dctBasis3D(funDataObject, qThresh, parallel = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>funDataObject</code></td>
+<td>
+<p>An object of class <code>funData</code>
+containing the observed functional data samples and for which the
+basis representation is calculated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>qThresh</code></td>
+<td>
+<p>A numeric with value in <code class="reqn">[0,1]</code>, giving the quantile
+for thresholding the coefficients. See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, the coefficients for the basis
+functions are calculated in parallel. The implementation is based on
+the <code>foreach</code> function and requires a parallel
+backend that must be registered before; see
+<code>foreach</code> for details. Defaults to <code>FALSE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Given the (discretized) observed functions <code class="reqn">X_i</code>, the function
+<code>dctBasis2D</code> calculates a basis representation </p>
+<p style="text-align: center;"><code class="reqn">X_i(s,t) =
+\sum_{m = 0}^{K_1-1} \sum_{n = 0}^{K_2-1} \theta_{mn} f_{mn}(s,t)</code>
+</p>
+<p> of a
+two-dimensional function <code class="reqn">X_i(s,t)</code> in terms of (orthogonal) tensor
+cosine basis functions </p>
+<p style="text-align: center;"><code class="reqn">f_{mn}(s,t) = c_m c_n \cos(ms) \cos(nt),
+\quad (s,t) \in \mathcal{T}</code>
+</p>
+<p> with <code class="reqn">c_m = \frac{1}{\sqrt{\pi}}</code> for
+<code class="reqn">m=0</code> and <code class="reqn">c_m = \sqrt{\frac{2}{\pi}}</code> for <code class="reqn">m=1,2,\ldots</code>
+based on a discrete cosine transform (DCT).
+</p>
+<p>If not thresholded (<code>qThresh = 0</code>), the function returns all
+non-zero coefficients <code class="reqn">\theta_{mn}</code> in the basis representation in
+a <code>sparseMatrix</code> (package <span class="pkg">Matrix</span>) called
+<code>scores</code>. Otherwise, coefficients with </p>
+<p style="text-align: center;"><code class="reqn">|\theta_{mn}| &lt;= q </code>
+</p>
+
+<p>are set to zero, where <code class="reqn">q</code> is the <code>qThresh</code>-quantile of
+<code class="reqn">|\theta_{mn}|</code>.
+</p>
+<p>For functions <code class="reqn">X_i(s,t,u)</code> on three-dimensional domains, the
+function <code>dctBasis3D</code> calculates a basis representation
+</p>
+<p style="text-align: center;"><code class="reqn">X_i(s,t,u) = \sum_{m = 0}^{K_1-1} \sum_{n = 0}^{K_2-1} \sum_{k =
+0}^{K_3-1} \theta_{mnk} f_{mnk}(s,t,u)</code>
+</p>
+<p> in terms of (orthogonal) tensor
+cosine basis functions </p>
+<p style="text-align: center;"><code class="reqn">f_{mnk}(s,t,u) = c_m c_n c_k \cos(ms)
+\cos(nt) \cos(ku), \quad (s,t,u) \in \mathcal{T}</code>
+</p>
+<p> again with
+<code class="reqn">c_m = \frac{1}{\sqrt{pi}}</code> for <code class="reqn">m=0</code> and <code class="reqn">c_m =
+\sqrt{\frac{2}{pi}}</code> for <code class="reqn">m=1,2,\ldots</code> based on a discrete cosine
+transform (DCT). The thresholding works analogous as for the
+two-dimensional case.
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>scores</code></td>
+<td>
+<p>A <code>sparseMatrix</code> of scores
+(coefficients) with dimension <code>N x K</code>, reflecting the weights
+<code class="reqn">\theta_{mn}</code> (<code class="reqn">\theta_{mnk}</code>) for each basis function in
+each observation, where <code>K</code> is the total number of basis
+functions used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>B</code></td>
+<td>
+<p>A diagonal matrix, giving the norms of the
+different basis functions used (as they are orthogonal).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ortho</code></td>
+<td>
+<p>Logical, set to <code>FALSE</code>, as basis functions are
+orthogonal, but in general not orthonormal.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>functions</code></td>
+<td>
+<p><code>NULL</code>, as basis functions are known.</p>
+</td>
+</tr>
+</table>
+<h3>Warning</h3>
+
+<p>If the C-library <code>fftw3</code> is not available when
+the package <code>MFPCA</code> is installed, this function is disabled an
+will throw an error. For full functionality install the C-library
+<code>fftw3</code> from <a href="http://www.fftw.org/">http://www.fftw.org/</a> and reinstall
+<code>MFPCA</code>. This function has not been tested with
+ATLAS/MKL/OpenBLAS.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>univDecomp</code>, <code>dct2D</code>,
+<code>dct3D</code>
+</p>
+
+
+</div>

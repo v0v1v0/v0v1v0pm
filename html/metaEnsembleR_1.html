@@ -1,0 +1,203 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ensembler.classifier</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Ensemble Classifiers Training &amp; Prediction, Model Result Evaluation
+</h2>
+
+<h3>Description</h3>
+
+<p>This function uses the base learners, and the final top layer learner to produce an ensemble prediction. The user can input the number of base learners and specify the final learner along with the train-validation-test data partition split ratio. The predictions on the unseen new data is the resultant of the ensemble meta-learning of the heterogeneous learners aimed to reduce the generalization error in the predictive models. Functions from <span class="pkg">caret</span> are used for training and prediction of the base learners and the final learner. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ensembler.classifier(data
+  , outcomeVARIABLEINDEX
+  , IndividualModels
+  , TopLayerModel
+  , dstr
+  , dsv
+  , dst
+  , unseen_new_data
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Data to be used for training, validation, and test.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outcomeVARIABLEINDEX</code></td>
+<td>
+<p>Index of the response/outcome variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>IndividualModels</code></td>
+<td>
+<p>Training of base learners.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>TopLayerModel</code></td>
+<td>
+<p>Top layer final learner.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dstr</code></td>
+<td>
+<p>Training data split ratio.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dsv</code></td>
+<td>
+<p>Validation data split ratio.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dst</code></td>
+<td>
+<p>Testing data split ratio.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>unseen_new_data</code></td>
+<td>
+<p>Prediction on unseen new data.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Complete data or the indexed data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outcomeVARIABLEINDEX</code></td>
+<td>
+<p>Integer value of the response/outcome variable index.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>IndividualModels</code></td>
+<td>
+<p>A vector of base learners or standalone individual learner.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>TopLayerModel</code></td>
+<td>
+<p>Name of the Top layer learner.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dstr</code></td>
+<td>
+<p>fraction integer. Not greater than 1. Total sum of dstr, dsv, dst should be equal to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dsv</code></td>
+<td>
+<p>fraction integer. Not greater than 1. Total sum of dstr, dsv, dst should be equal to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dst</code></td>
+<td>
+<p>fraction integer. Not greater than 1. Total sum of dstr, dsv, dst should be equal to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>unseen_new_data</code></td>
+<td>
+<p>Unseen new data provided either as a csv file or imported dataframe.</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>The function <code>ensembler.classifier</code>), returns a list with the following elements:
+ensembler_return[1]Test data predictions.
+ensembler_return[2]Prediction labels.
+ensembler_return[3]Model Result.
+ensembler_return[4]Unseen data predictions.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Ajay Arunachalam
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library("metaEnsembleR")
+attach(iris)
+data("iris")
+unseen_new_data_testing &lt;- iris[130:150,]
+#write.csv(unseen_new_data_testing
+#       , 'unseen_check.csv'
+#              , fileEncoding = 'UTF-8'
+#                     , row.names = FALSE)
+ensembler_return &lt;- ensembler.classifier(iris[1:130,]
+  , 5
+     , c('rpart') #c('treebag','rpart')
+        , 'rf'             # 'gbm'
+            , 0.60
+                , 0.20
+                   , 0.20
+                        , unseen_new_data_testing)  
+# or
+#ensembler_return &lt;- ensembler.classifier(iris[1:130,]
+#  , 5
+#     , c('treebag','rpart')
+#          , 'gbm'
+#              , 0.60
+#                , 0.20
+#                  , 0.20
+ #                      , read.csv('./unseen_check.csv'))  
+
+testpreddata &lt;- data.frame(ensembler_return[1])
+table(testpreddata$actual_label)
+table(ensembler_return[2])
+
+#### Performance comparison #####
+modelresult &lt;- ensembler_return[3]
+modelresult
+act_mybar &lt;- qplot(testpreddata$actual_label, geom="bar")
+act_mybar
+pred_mybar &lt;- qplot(testpreddata$predictions, geom='bar')
+pred_mybar
+act_tbl &lt;- tableGrob(t(summary(testpreddata$actual_label)))
+pred_tbl &lt;- tableGrob(t(summary(testpreddata$predictions)))
+#ggsave("testdata_actual_vs_predicted_chart.pdf",grid.arrange(act_tbl, pred_tbl))
+#ggsave("testdata_actual_vs_predicted_plot.pdf",grid.arrange(act_mybar, pred_mybar))
+
+#### unseen data ###
+unseenpreddata &lt;- data.frame(ensembler_return[4])
+table(unseenpreddata$unseenpreddata)
+
+</code></pre>
+
+
+</div>

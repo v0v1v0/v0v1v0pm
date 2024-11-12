@@ -1,0 +1,129 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mf_get_opt_param</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Precompute the parameter <code>opt_param</code> of the function mf_get_url</h2>
+
+<h3>Description</h3>
+
+<p>Precompute the parameter <code>opt_param</code> to further provide as input of the mf_get_url function. Useful to speed-up the overall processing time.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mf_get_opt_param(collection, roi, credentials = NULL, verbose = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>collection</code></td>
+<td>
+<p>string. mandatory. Collection of interest (see details of mf_get_url).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>roi</code></td>
+<td>
+<p>object of class <code>sf</code>. mandatory. Area of region of interest. Must be a Simple feature collection with geometry type POLYGON, composed of one or several rows (i.e. one or several ROIs), and with at least two columns: 'id' (an identifier for the roi) and 'geom' (the geometry).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>credentials</code></td>
+<td>
+<p>vector string of length 2 with username and password. optional if the function mf_login was previously executed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>boolean. optional. Verbose (default TRUE)</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>When it is needed to loop the function mf_get_url over several time frames, it is advised to previously run the function <code>mf_get_opt_param</code> and provide the output as input <code>opt_param</code> parameter of the mf_get_url function.
+This will save much time, as internal parameters will be calculated only once.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list with the following named objects :
+</p>
+
+<dl>
+<dt>roiSpatialIndexBound</dt>
+<dd>
+<p>OPeNDAP indices for the spatial coordinates of the bounding box of the ROI (minLat, maxLat, minLon, maxLon)</p>
+</dd>
+<dt>availableVariables</dt>
+<dd>
+<p>Variables available for the collection of interest</p>
+</dd>
+<dt>roiSpatialBound</dt>
+<dd>
+<p>The spatial coordinates of the bounding box of the ROI expressed in the CRS of the collection</p>
+</dd>
+<dt>OpenDAPXVector</dt>
+<dd>
+<p>The X (longitude) vector</p>
+</dd>
+<dt>OpenDAPYVector</dt>
+<dd>
+<p>The Y (longitude) vector</p>
+</dd>
+<dt>OpenDAPtimeVector</dt>
+<dd>
+<p>The time vector, or NULL if the collection does not have a time vector</p>
+</dd>
+<dt>modis_tile</dt>
+<dd>
+<p>The MODIS tile(s) number(s) for the ROI or NULL if the collection is not MODIS</p>
+</dd>
+</dl>
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+
+# Login to Earthdata
+
+log &lt;- mf_login(credentials = c("earthdata_un","earthdata_pw"))
+
+# Get the optional parameters for the collection MOD11A1.061 and the following roi :
+roi &lt;- sf::st_as_sf(data.frame(
+id = "roi_test",
+geom="POLYGON ((-5.82 9.54, -5.42 9.55, -5.41 8.84, -5.81 8.84, -5.82 9.54))"),
+wkt="geom",crs = 4326)
+
+opt_param_mod11a1 &lt;- mf_get_opt_param("MOD11A1.061",roi)
+str(opt_param_mod11a1)
+
+# Now we can provide opt_param_mod11a1 as input parameter of the function mf_get_url().
+
+time_ranges &lt;- list(as.Date(c("2016-01-01","2016-01-31")),
+                   as.Date(c("2017-01-01","2017-01-31")),
+                   as.Date(c("2018-01-01","2018-01-31")),
+                   as.Date(c("2019-01-01","2019-01-31")))
+
+(urls_mod11a1 &lt;- map(.x = time_ranges, ~mf_get_url(
+ collection = "MOD11A1.061",
+ variables = c("LST_Day_1km","LST_Night_1km","QC_Day","QC_Night"),
+ roi = roi,
+ time_range = .x,
+ opt_param = opt_param_mod11a1)
+))
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

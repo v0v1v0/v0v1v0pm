@@ -1,0 +1,386 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>OU_phylreg</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Performs a phylogenetic regression under a given OU model of evolution
+</h2>
+
+<h3>Description</h3>
+
+<p>The <code>OU_phylreg</code> function does a phylogenetic regression
+for given response and design matrices under a multivariate OU model evolving on the phylogeny. 
+The user is recommended to install the suggested package 
+<span class="pkg">PCMBaseCpp</span> which significantly speeds up the calculations (see Details).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">OU_phylreg(mY, mD, phyltree, modelParams, regimes = NULL, kY = NULL, M.error = NULL,
+signif_level = 0.05, regimes.times = NULL, root.regime = NULL, b_GLSB = FALSE, 
+b_GLSX0 = FALSE, signsB = NULL, signsvX0 = NULL, estimate.root.state = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>mY</code></td>
+<td>
+
+<p>A matrix with the rows corresponding to the tip species while the columns correspond to the traits.
+The rows should be named by species <br> (field <code>phyltree$tip.label</code>), if not, then a warning
+is thrown and the order of the species is assumed to be the same as the order in which the 
+species are in the phylogeny (i.e. correspond to the node indices <code>1:n</code>, 
+where <code class="reqn">n</code> is the number of tips). The columns should be named by traits, otherwise
+a warning is thrown and generic names are generated.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mD</code></td>
+<td>
+
+<p>A design matrix with the rows corresponding to the traits in the tips species while the columns correspond to 
+the unknown regression variables. The number or rows have to correspond to the number of elements in
+<code>mY</code>, the data are assumed to be stacked by species. If <code>NA</code> it is assumed to be the 
+design matrix to estimate regression parameters under the given model of evolution, see Details.
+If it is <code>"phylaverage"</code>, then a phylogenetically weighted average is calculated, see Details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>phyltree</code></td>
+<td>
+
+<p>The phylogeny in <code>phylo</code> format. The tree can be obtained from e.g. a <code>nexus</code> file 
+by the <code>read.nexus()</code> function from the <span class="pkg">ape</span> package. The "standard" <span class="pkg">ape</span> node
+indexing is assumed: for a tree with <code class="reqn">n</code> tips, the tips should have indices <code>1:n</code> 
+and the root index <code>n+1</code>. The <code>root.edge</code> field is ignored.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modelParams</code></td>
+<td>
+
+<p>List of model parameters of the BM/OUOU/OUBM model as <code>ParamsInModel</code> part of output of 
+<code>BrownianMotionModel</code>/<code>ouchModel</code>/<code>mvslouchModel</code>. Some of them can be <code>NA</code>
+in order to be estimated by the regression procedure, see Details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regimes</code></td>
+<td>
+
+<p>A vector or list of regimes. If vector then each entry corresponds to each of the branches of <code>phyltree</code>,
+i.e. to each row of <code>phyltree$edge</code>. If list then each list entry corresponds to a tip node
+and is a vector for regimes on that lineage. If <code>NULL</code>, then a constant regime is assumed on
+the whole tree.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kY</code></td>
+<td>
+<p>Number of "Y" (response) variables if the considered model is an OUBM one. The first <code>kY</code>
+columns of <code>mY</code> are the "OU" ones, while the rest the "BM" ones.
+In more detail this value determines the number of columns of the <code>mY</code> matrix to treat as response variables ("OU" ones). For example, a 
+value of 1 means that only the first column is treated as a response variable, while a value of 3 means the first three 
+columns are treated as response variables. Any predictor variables ("BM" ones) the user is interested in setting for a particular model 
+should therefore be placed in the final columns of the <code>mY</code> matrix, allowing for selecting select <code>kY</code> columns before 
+this as response variables ("OU" ones).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M.error</code></td>
+<td>
+
+<p>An optional measurement error covariance structure. The measurement errors between species are assumed 
+independent. The program tries to recognize the structure of the passed matrix and accepts the following 
+possibilities :
+</p>
+
+<ul>
+<li>
+<p>a single number that is a common measurement error for all tips and species,
+</p>
+</li>
+<li>
+<p>a m element vector with each value corresponding to a variable, measurement errors are independent
+between variables and each species is assumed to have the same measurement errors,
+</p>
+</li>
+<li>
+<p>a m x m ((number of variables) x (number of variables)) matrix, all species will
+have the same measurement error,
+</p>
+</li>
+<li>
+<p>a list of length n (number of species), each list element is the covariance structure 
+for the appropriate (numbering according to tree) species, either a single number 
+(each variable has same variance), vector (of length m for each variable), or m x m matrix, 
+the order of the list has to correspond to the order of the nodes in the <code>phyltree</code> object,
+</p>
+</li>
+<li>
+<p>NULL no measurement error.
+</p>
+</li>
+</ul>
+<p>From version <code>2.0.0</code> of <span class="pkg">mvSLOUCH</span> it is impossible to pass a single joint measurement error matrix 
+for all the species and traits.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>signif_level</code></td>
+<td>
+
+<p>The significance level to be taken when calculating regression confidence intervals, i.e. 
+<code class="reqn">(1-signif_level)\cdot 100</code> percent confidence intervals are returned.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regimes.times</code></td>
+<td>
+
+<p>A list of vectors for each tree node, it starts with <code class="reqn">0</code> and ends with the current time of the species.
+In between are the times where the regimes (niches) changed. If <code>NULL</code> then each branch is
+considered to be a regime.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>root.regime</code></td>
+<td>
+
+<p>The regime at the root of the tree. If not given, then it is taken as the regime that is present
+on the daughter lineages stemming from the root and is the most frequent one in the <code>regimes</code> 
+vector. If more than one regime has the same maximum frequency, then alphabetically first one of 
+the maximum ones is taken.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b_GLSB</code></td>
+<td>
+
+<p>If the evolutionary model is an OUBM one (and <code>mD</code> is <code>NA</code>), then should the <code class="reqn">B</code>
+matrix be also estimated. If <code class="reqn">B</code> is completely provided in <code>modelParams</code>, then that 
+value is taken as an initial guess for the regression estimation procedure (as the 
+between-species-between-traits variance-covariance matrix depends on <code>B</code>).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b_GLSX0</code></td>
+<td>
+
+<p>If the evolutionary model is an OUBM or BM one (and <code>mD</code> is <code>NA</code>), then should the <code class="reqn">X_{0}</code>
+ancestral vector  also be estimated. If <code class="reqn">X_{0}</code> is completely provided in <code>modelParams</code>, then that 
+value is taken as an initial guess for the regression estimation procedure (as in the OUBM the design matrix
+depends on <code>vX0</code>, in the BM case this value is ignored).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>signsB</code></td>
+<td>
+
+<p>A matrix of constraints on the estimation of <code>B</code>, with the same dimensions as <code>B</code>, 
+if <code>b_GLBS</code> is <code>TRUE</code>.  Inside this matrix the possible values are <code>"+"</code> 
+if the given entry is to be positive,  <code>"-"</code> if the given entry is to be negative, 
+<code>x</code>, where <code>x</code> is a number, if the entry is to be set to specified value or <code>NA</code> if the entry is 
+to be freely estimated.  This option  is still in an experimental stage so some setups might not work (please report).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>signsvX0</code></td>
+<td>
+
+<p>A matrix of constraints on the estimation of <code>vX0</code>, with the same dimensions as <code>vX0</code>, 
+if <code>b_GLBX0</code> is <code>TRUE</code>.  Inside this matrix the possible values are <code>"+"</code> 
+if the given entry is to be positive,  <code>"-"</code> if the given entry is to be negative, 
+<code>x</code>, where <code>x</code> is a number, if the entry is to be set to specified value or <code>NA</code> if the entry is 
+to be freely estimated.  This option  is still in an experimental stage so some setups might not work (please report).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimate.root.state</code></td>
+<td>
+
+<p>Should the root state be estimate <code>TRUE</code> (not recommended) or set at the optimum 
+<code>FALSE</code> (recommended). Root state estimation is usually unreliable hence
+if fossil measurements are available prediction based on them and the estimated
+model will probably be more accurate. If there is only one regime, then 
+estimation of the root state separately is impossible and will not be allowed.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The matrix algebra calculations are done using the likelihood function offerred by the <span class="pkg">PCMBase</span> package. 
+However, there is a C++ backend, <span class="pkg">PCMBaseCpp</span>. If it is not available, then the likelihood is calculated
+slower using pure R. However, with the calculations in C++ up to a 100-fold increase in
+speed is possible (more realistically 10-20 times). The <span class="pkg">PCMBaseCpp</span> package is available
+from <a href="https://github.com/venelin/PCMBaseCpp">https://github.com/venelin/PCMBaseCpp</a>.
+</p>
+<p>For a given input data matrix, <code>mY</code>, the function considers the stacking of it by rows
+(i.e. stacking species by species). Let Y = vec(<code>mY</code>), i.e. <code>Y&lt;-c(t(mY))</code>,
+V be the between-species-between-traits variance-covariance matrix (under the parameters passed
+in <code>modelParams</code>). The function calculates the value of the generalized least squares 
+estimator (not directly, but as a transformation of the likelihood provided by <span class="pkg">PCMBase</span>)
+</p>
+<p style="text-align: center;"><code class="reqn">v=(D^{T}V^{-1}D)^{-1}D^{T}V^{-1}Y.</code>
+</p>
+
+<p>The user can provide the design matrix directly or if <code>mD</code> is <code>NA</code>, then the design matrix
+induced by the evolutionary model in <code>modelParams</code> is assumed. The following parameters
+can be estimated: <code>vX0</code> (if <code>b_GLSX0</code> is <code>TRUE</code>, BM model); <code>mPsi</code>, 
+<code>vY0</code> (if <code>estimate.root.state</code> is <code>TRUE</code>, otherwise set at optimum) for OUOU model; 
+<code>vX0</code> (if <code>b_GLSX0</code> is <code>TRUE</code>) <code>mPsi</code>, <code>vY0</code> (if <code>estimate.root.state</code> 
+is <code>TRUE</code>, otherwise set at optimum), <code>B</code> (if <code>b_GLSB</code> is <code>TRUE</code>). One can
+constrain (some of) the elements of the matrices to be estimated to be postive, negative or 
+equal to some value. For <code>B</code> and <code>vX0</code> this was described in the description of the 
+arguments of <code>signsB</code> and <code>signsvX0</code>. For <code>mPsi</code> and <code>vY0</code> one does this
+in the respective entries of <code>modelParams</code>. There matrix entries can be set to <code>"+"</code>,
+<code>"-"</code>, <code>NA</code> or some specific value. In the OUBM case the model specfic design matrix
+is not derived from the conditional expectation of all of the responses on all of the predictors,
+but from the conditional expectations of each tip species independently (as if V were block
+diagonal). This is as the joint condtional expecation design matrix cannot be calculated 
+at the moment in an efficient manner and would cause a serious computational bottleneck.
+However this only makes a difference if <code>B</code> is to be estimated inside the GLS. 
+</p>
+<p>Special support is given if one wants to compute a phylogenetically weighted mean.
+If <code>mD</code> is set to <code>"phylaverage"</code>, then it is calculated as 
+</p>
+<p style="text-align: center;"><code class="reqn">D_p=1_{n}\otimes Id_{k}, </code>
+</p>
+
+<p>where <code class="reqn">1_{n}</code> is a column vector of n ones and <code class="reqn">Id_{k}</code> is
+the identity matrix with rows and columns equalling the number or columns of <code>mY</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with the following entries
+</p>
+
+<dl>
+<dt>vGLSest </dt>
+<dd>
+<p>The regression estimates</p>
+</dd>
+<dt>regression.covariance.matrix </dt>
+<dd>
+<p>The covariance matrix between regression estimates.</p>
+</dd>
+<dt>regression.confidence.intervals </dt>
+<dd>
+<p>The confidence intervals for each estimated parameter.</p>
+</dd>
+<dt>modelParams </dt>
+<dd>
+<p>The model parameters updated if anything was estimated from them in the procedure.</p>
+</dd>
+<dt>mD </dt>
+<dd>
+<p>The used or calculated design matrix.</p>
+</dd>
+<dt>RSS </dt>
+<dd>
+<p>The residual sum of squares.</p>
+</dd>
+<dt>R2_average </dt>
+<dd>
+<p>R2, where the alternative model is the sample average.</p>
+</dd>
+<dt>R2_phylaverage </dt>
+<dd>
+<p>R2, where the alternative model is the phylogenetically weighted sample average, i.e. the design matrix
+is <code class="reqn">D_p </code>.</p>
+</dd>
+<dt>RSS_average </dt>
+<dd>
+<p>The RSS with respect to the sample average.</p>
+</dd>
+<dt>RSS_phylaverage </dt>
+<dd>
+<p>The RSS with respect to the phylogenetically weighted sample average.</p>
+</dd>
+<dt>phyltree </dt>
+<dd>
+<p>The phylogeny used, returned as in the estimation procedure some additional fields are calculated. This could 
+help in a speed up if the <code>OU_phylreg</code> is used in some iterative procedure.</p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>Krzysztof Bartoszek</p>
+
+
+<h3>References</h3>
+
+<p>Bartoszek, K. and Pienaar, J. and Mostad. P. and Andersson, S. and Hansen, T. F. (2012)
+A phylogenetic comparative method for studying  multivariate adaptation.
+Journal of Theoretical Biology 314:204-215.
+</p>
+<p>Hansen, T.F. and Bartoszek, K. (2012)
+Interpreting the evolutionary regression: the interplay between observational and 
+biological errors in phylogenetic comparative studies.
+Systematic Biology 61(3):413-425.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">RNGversion(min(as.character(getRversion()),"3.6.1"))
+set.seed(12345, kind = "Mersenne-Twister", normal.kind = "Inversion")
+### We will first simulate a small phylogenetic tree using functions from ape.
+### For simulating the tree one could also use alternative functions, e.g. sim.bd.taxa 
+### from the TreeSim package
+phyltree&lt;-ape::rtree(5)
+
+## The line below is not necessary but advisable for speed
+phyltree&lt;-phyltree_paths(phyltree)
+
+### Define a vector of regimes.
+regimes&lt;-c("small","small","large","small","small","large","large","large")
+
+### Define SDE parameters to be able to simulate data under the OUOU model.
+## 3D model
+## OUOUparameters&lt;-list(vY0=matrix(c(1,-1,0.5),nrow=3,ncol=1),
+## A=rbind(c(9,0,0),c(0,5,0),c(0,0,1)),mPsi=cbind("small"=c(1,-1,0.5),"large"=c(-1,1,0.5)),
+## Syy=rbind(c(1,0.25,0.3),c(0,1,0.2),c(0,0,1)))
+## 2D model used to reduce running time on CRAN
+OUOUparameters&lt;-list(vY0=matrix(c(1,-1),nrow=2,ncol=1),
+A=rbind(c(9,0),c(0,5)),mPsi=cbind("small"=c(1,-1),"large"=c(-1,1)),
+Syy=rbind(c(1,0.25),c(0,1)))
+
+### Now simulate the data.
+OUOUdata&lt;-simulOUCHProcPhylTree(phyltree,OUOUparameters,regimes,NULL)
+OUOUdata&lt;-OUOUdata[phyltree$tip.label,,drop=FALSE]
+
+OUOUparameters_reg&lt;-OUOUparameters
+OUOUparameters_reg$mPsi&lt;-apply(OUOUparameters_reg$mPsi,c(1,2),function(x){NA})
+OUOUparameters_reg$vY0&lt;-apply(OUOUparameters_reg$vY0,c(1,2),function(x){NA})
+## estimate parameters under OUOU model
+OU_phylreg(OUOUdata, NA, phyltree, OUOUparameters_reg, regimes=regimes, 
+kY=NULL, M.error=NULL)
+
+</code></pre>
+
+
+</div>

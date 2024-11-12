@@ -1,0 +1,371 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>linda</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Linear (Lin) Model for Differential Abundance (DA) Analysis of High-dimensional Compositional Data</h2>
+
+<h3>Description</h3>
+
+<p>The function implements a simple, robust and highly scalable approach to tackle
+the compositional effects in differential abundance analysis of high-dimensional compositional data. 
+It fits linear regression models on the centered log2-ratio transformed data, identifies a bias term due to the transformation
+and compositional effect, and corrects the bias using the mode of the regression coefficients.
+It could fit mixed-effect models for analysis of correlated data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">linda(
+  feature.dat,
+  meta.dat,
+  formula,
+  feature.dat.type = c('count', 'proportion'),
+  prev.filter = 0,
+  mean.abund.filter = 0, 
+  max.abund.filter = 0,
+  is.winsor = TRUE,
+  outlier.pct = 0.03,
+  adaptive = TRUE,
+  zero.handling = c('pseudo-count', 'imputation'),
+  pseudo.cnt = 0.5,
+  corr.cut = 0.1,
+  p.adj.method = "BH",
+  alpha = 0.05,
+  n.cores = 1, 
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>feature.dat</code></td>
+<td>
+<p>a matrix of counts/proportions, row - features (OTUs, genes, etc) , column - samples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meta.dat</code></td>
+<td>
+<p>a data frame containing the sample meta data. If there are NAs, the corresponding samples
+will be removed in the analysis.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a character string for the formula. The formula should conform to that used by <code>lm</code> (independent 
+data) or <code>lmer</code> (correlated data).
+For example: <code>formula = '~x1*x2+x3+(1|id)'</code>. At least one fixed effect is required.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>feature.dat.type</code></td>
+<td>
+<p>the type of the feature data. It could be "count" or "proportion".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prev.filter</code></td>
+<td>
+<p>the prevalence (percentage of non-zeros) cutoff, under which the features will  be filtered. The default is 0. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mean.abund.filter</code></td>
+<td>
+<p>the mean relative abundance cutoff, under which the features will  be filtered. The default is 0.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max.abund.filter</code></td>
+<td>
+<p>the max relative abundance cutoff, under which the features will  be filtered. The default is 0.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>is.winsor</code></td>
+<td>
+<p>a logical value indicating whether winsorization should be performed to replace outliers (high values).
+The default is TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outlier.pct</code></td>
+<td>
+<p>the expected percentage of outliers. These outliers will be winsorized. The default is 0.03.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>adaptive</code></td>
+<td>
+<p>a logical value indicating whether the approach to handle zeros (pseudo-count or imputation)
+will be determined based on the correlations between the log(sequencing depth) and the explanatory variables
+in <code>formula</code> when <code>feature.dat</code> is 'count'. If TRUE and the correlation p-value for any explanatory variable 
+is smaller than or equal to <code>corr.cut</code>, the imputation approach will be used; otherwise, the pseudo-count approach will be used. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>zero.handling</code></td>
+<td>
+<p>a character string of 'pseudo-count' or 'imputation' indicating the zero handling method
+used when <code>feature.dat</code> is 'count'.  If 'pseudo-count', a<code>pseudo.cnt</code> will be added to each value in <code>feature.dat</code>. 
+If 'imputation', then we use the imputation approach using the formula in the referenced paper. Basically,
+zeros are imputed with values proportional to the sequencing depth. When <code>feature.dat</code> is 'proportion',
+this parameter will be ignored and zeros will be imputed by half of the minimum for each feature.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pseudo.cnt</code></td>
+<td>
+<p>a positive numeric value for the pseudo-count to be added if <code>zero.handling</code>
+is 'pseudo-count'. Default is 0.5. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>corr.cut</code></td>
+<td>
+<p>a numerical value between 0 and 1, indicating the significance level used for determining
+the zero-handling approach when <code>adaptive</code> is TRUE. Default is 0.1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.adj.method</code></td>
+<td>
+<p>a character string indicating the p-value adjustment approach for 
+addressing multiple testing. See R function <code>p.adjust</code>. Default is 'BH'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>a numerical value between 0 and 1 indicating the significance level 
+for declaring differential features. Default is 0.05.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.cores</code></td>
+<td>
+<p>a positive integer. If <code>n.cores &gt; 1</code> and formula is in a form of mixed-effect model,
+<code>n.cores</code> parallels will be conducted. Default is 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>a logical value indicating whether the trace information should be printed out.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list with the elements
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>variables</code></td>
+<td>
+<p>A vector of variable names of all fixed effects in <code>formula</code>. For example: <code>formula = '~x1*x2+x3+(1|id)'</code>.
+Suppose <code>x1</code> and <code>x2</code> are numerical, and <code>x3</code> is a categorical variable of three levels: a, b and c.
+Then the elements of <code>variables</code> would be <code>('x1', 'x2', 'x3b', 'x3c', 'x1:x2')</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bias</code></td>
+<td>
+<p>numeric vector; each element corresponds to one variable in <code>variables</code>;
+the estimated bias of the regression coefficients due to the compositional effect.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output</code></td>
+<td>
+<p>a list of data frames with columns 'baseMean', 'log2FoldChange', 'lfcSE', 'stat', 'pvalue', 'padj', 'reject',
+'df'; <code>names(output)</code> is equal to <code>variables</code>; the rows of the data frame corresponds to taxa.
+Note: if there are taxa being excluded due to <code>prev.cut</code>, the number of the rows of the output data frame
+will be not equal to the number of the rows of <code>otu.tab</code>. Taxa are identified by the rownames.
+If the rownames of <code>otu.tab</code> are NULL, then <code>1 : nrow(otu.tab)</code> is set as the rownames of <code>otu.tab</code>.
+</p>
+
+<dl>
+<dt>baseMean:</dt>
+<dd>
+<p> 2 to the power of the intercept coefficients (normalized by one million)</p>
+</dd>
+<dt>log2FoldChange:</dt>
+<dd>
+<p> bias-corrected coefficients</p>
+</dd>
+<dt>lfcSE:</dt>
+<dd>
+<p> standard errors of the coefficients</p>
+</dd>
+<dt>stat:</dt>
+<dd> <p><code>log2FoldChange / lfcSE</code></p>
+</dd>
+<dt>pvalue:</dt>
+<dd> <p><code>2 * pt(-abs(stat), df)</code></p>
+</dd>
+<dt>padj:</dt>
+<dd> <p><code>p.adjust(pvalue, method = p.adj.method)</code></p>
+</dd>
+<dt>reject:</dt>
+<dd> <p><code>padj &lt;= alpha</code></p>
+</dd>
+<dt>df:</dt>
+<dd>
+<p> degrees of freedom. The number of samples minus the number of explanatory variables (intercept included) for
+fixed-effect models; estimates from R package <code>lmerTest</code> with Satterthwaite method of approximation for mixed-effect models.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covariance</code></td>
+<td>
+<p>a list of data frames; the data frame records the covariances between a regression coefficient with other coefficients;
+<code>names(covariance)</code> is equal to <code>variables</code>; the rows of the data frame corresponds to taxa. If the length of <code>variables</code>
+is equal to 1, then the <code>covariance</code> is NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>otu.tab.use</code></td>
+<td>
+<p>the OTU table used in the abundance analysis (the <code>otu.tab</code> after the preprocessing:
+samples that have NAs in the variables in <code>formula</code> or have less than <code>lib.cut</code> read counts are removed;
+taxa with prevalence less than <code>prev.cut</code> are removed and data is winsorized if <code>!is.null(winsor.quan)</code>;
+and zeros are treated, i.e., imputed or pseudo-count added).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meta.use</code></td>
+<td>
+<p>the meta data used in the abundance analysis (only variables in <code>formula</code> are stored; samples that have NAs
+or have less than <code>lib.cut</code> read counts are removed; numerical variables are scaled).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wald</code></td>
+<td>
+<p>a list for use in Wald test. If the fitting model is a linear model, then it includes
+</p>
+
+<dl>
+<dt>beta:</dt>
+<dd>
+<p> a matrix of the biased regression coefficients including intercept and all fixed effects; the culumns correspond to taxa</p>
+</dd>
+<dt>sig:</dt>
+<dd>
+<p> the standard errors; the elements corresponding to taxa</p>
+</dd>
+<dt>X:</dt>
+<dd>
+<p> the design matrix of the fitting model</p>
+</dd>
+<dt>bias:</dt>
+<dd>
+<p> the estimated biases of the regression coefficients including intercept and all fixed effects</p>
+</dd>
+</dl>
+<p>If the fitting model is a linear mixed-effect model, then it includes
+</p>
+
+<dl>
+<dt>beta:</dt>
+<dd>
+<p> a matrix of the biased regression coefficients including intercept and all fixed effects; the culumns correspond to taxa</p>
+</dd>
+<dt>beta.cov:</dt>
+<dd>
+<p> a list of covariance matrices of <code>beta</code>; the elements corresponding to taxa</p>
+</dd>
+<dt>rand.cov:</dt>
+<dd>
+<p> a list with covariance matrices of variance parameters of random effects; the elements corresponding to taxa; see more details in the paper of 'lmerTest'</p>
+</dd>
+<dt>Joc.beta.cov.rand:</dt>
+<dd>
+<p> a list of a list of Jacobian matrices of <code>beta.cov</code> with respect to the variance parameters; the elements corresponding to taxa</p>
+</dd>
+<dt>bias:</dt>
+<dd>
+<p> the estimated biases of the regression coefficients including intercept and all fixed effects</p>
+</dd>
+</dl>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Huijuan Zhou,
+Jun Chen,
+Xianyang Zhang
+</p>
+
+
+<h3>References</h3>
+
+<p>Zhou, H., He, K., Chen, J., Zhang, X. (2022). LinDA: linear models for differential abundance analysis of microbiome compositional data. Genome biology, 23(1), 95.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data(smokers)
+
+ind &lt;- smokers$meta$AIRWAYSITE == 'Throat'
+otu.tab &lt;- as.data.frame(smokers$otu[, ind])
+depth &lt;- colSums(otu.tab)
+meta &lt;- cbind.data.frame(Smoke = factor(smokers$meta$SMOKER[ind]),
+                         Sex = factor(smokers$meta$SEX[ind]),
+                         Site = factor(smokers$meta$SIDEOFBODY[ind]),
+                         SubjectID = factor(smokers$meta$HOST_SUBJECT_ID[ind]))
+
+# Differential abundance analysis using the left throat data                       
+ind1 &lt;- meta$Site == 'Left' &amp; depth &gt;= 1000
+linda.obj  &lt;- linda(otu.tab[, ind1], meta[ind1, ], formula = '~Smoke+Sex', 
+           feature.dat.type = 'count', 
+           prev.filter = 0.1, is.winsor = TRUE, outlier.pct = 0.03,
+           p.adj.method = "BH", alpha = 0.1)
+           
+           
+
+
+linda.plot(linda.obj, c('Smokey', 'Sexmale'),
+           titles = c('Smoke: n v.s. y', 'Sex: female v.s. male'), 
+           alpha = 0.1, lfc.cut = 1, legend = TRUE, directory = NULL,
+            width = 11, height = 8)
+            
+rownames(linda.obj $output[[1]])[which(linda.obj $output[[1]]$reject)]
+
+
+# Differential abundance analysis pooling both the left and right throat data 
+# Mixed effects model is used 
+
+ind  &lt;- depth &gt;= 1000
+linda.obj &lt;- linda(otu.tab[, ind], meta[ind, ], formula = '~Smoke+Sex+(1|SubjectID)',
+           feature.dat.type = 'count', 
+           prev.filter = 0.1, is.winsor = TRUE, outlier.pct = 0.03,
+           p.adj.method = "BH", alpha = 0.1)
+
+       
+    
+# For proportion data   
+otu.tab.p &lt;- t(t(otu.tab) / colSums(otu.tab))
+ind1 &lt;- meta$Site == 'Left' &amp; depth &gt;= 1000
+lind.obj  &lt;- linda(otu.tab[, ind1], meta[ind1, ], formula = '~Smoke+Sex', 
+           feature.dat.type = 'proportion', 
+           prev.filter = 0.1, is.winsor = TRUE, outlier.pct = 0.03,
+           p.adj.method = "BH", alpha = 0.1)
+
+</code></pre>
+
+
+</div>

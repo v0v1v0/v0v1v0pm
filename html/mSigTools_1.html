@@ -1,0 +1,145 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>find_best_reconstruction_QP</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Find "best" reconstruction of a target signature or spectrum from a set of signatures.</h2>
+
+<h3>Description</h3>
+
+<p>Find "best" reconstruction of a target signature or spectrum from a set of signatures.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">find_best_reconstruction_QP(
+  target.sig,
+  sig.universe,
+  max.subset.size = NULL,
+  method = "cosine",
+  trim.less.than = 1e-10
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>target.sig</code></td>
+<td>
+<p>The signature or spectrum to reconstruct;
+a non-negative numeric vector or 1-column matrix-like object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sig.universe</code></td>
+<td>
+<p>The universe of signatures from which to reconstruct
+<code>target.sig</code>; a non-negative numeric matrix-like object with
+<code>nrow(sig.universe) == length(target.sig)</code>. The sums of each column
+must be 1. Must not contain duplicate columns or have other
+non-unique quadratic programming solutions (not checked, but will generate
+an error from <code>solve.QP</code> in package <code>quadprog</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max.subset.size</code></td>
+<td>
+<p>Maximum number of signatures to use to
+reconstruct <code>target.sig</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>As in <code>dist_one_one</code> in
+package <code>philentropy</code>, and used only
+to find the final "best" reconstruction. The optimized exposures from which
+to selected the "best" reconstruction are calculated using
+<code>optimize_exposure_QP</code>, which uses <code>solve.QP</code>
+in package <code>quadprog</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trim.less.than</code></td>
+<td>
+<p>After optimizing exposures with
+<code>optimize_exposure_QP</code>, remove exposures less than
+<code>trim.less.than</code> and then re-optimize.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function should be fast if you do not specify <code>max.subset.size</code>,
+but it will be combinatorially slow if <code>max.subset.size</code> is large
+and <code>trim.less.than</code> is small or negative. So do not do that.
+If <code>max.subset.size</code> is <code>NULL</code>, then the function just uses <code>optimize_exposure_QP</code>.
+and then excludes exposures &lt; <code>trim.less.than</code>, and then re-runs
+<code>optimize_exposure_QP</code>. Otherwise, after excluding
+exposures &lt; <code>trim.less.than</code>, then the function runs <code>optimize_exposure_QP</code> on
+subsets of signatures of size &lt;= <code>max.subset.size</code>, removes exposures &lt; <code>trim.less.than</code>,
+reruns <code>optimize_exposure_QP</code>, calculates the reconstruction and
+similarity between the reconstruction and the <code>target.sig</code> and returns the information for
+the exposures that have the greatest similarity.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with elements:
+</p>
+
+<ul>
+<li> <p><code>optimized.exposure</code> A numerical vector of the exposures that
+give the "best" reconstruction. This vector is empty if there is
+an error.
+</p>
+</li>
+<li> <p><code>similarity</code> The similarity between the <code>reconstruction</code>
+(see below) and <code>target.sig</code> according to the distance
+or similarity provided by the <code>method</code> argument.
+</p>
+</li>
+<li> <p><code>method</code> The value specified for the <code>method</code> argument,
+or an error message if <code>optimize.exposure</code> is empty.
+</p>
+</li>
+<li> <p><code>reconstruction</code> The reconstruction of <code>target.sig</code> according to
+<code>optimized.exposure</code>.
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(888)
+sig.u &lt;-
+  do.call(
+    cbind,
+    lapply(1:6, function(x) {
+      col &lt;- runif(n = 96)
+      col / sum(col)
+    })
+  )
+rr &lt;- find_best_reconstruction_QP(
+  target.sig = sig.u[, 1, drop = FALSE],
+  sig.universe = sig.u[, 2:6]
+)
+names(rr)
+rr$optimized.exposure
+rr$similarity
+rr &lt;- find_best_reconstruction_QP(
+  target.sig = sig.u[, 1, drop = FALSE],
+  sig.universe = sig.u[, 2:6],
+  max.subset.size = 3
+)
+rr$optimized.exposure
+rr$similarity
+
+</code></pre>
+
+
+</div>

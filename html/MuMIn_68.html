@@ -1,0 +1,137 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>QAIC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Quasi AIC or AICc</h2>
+
+<h3>Description</h3>
+
+<p>Calculate a modification of Akaike's Information Criterion for overdispersed
+count data (or its version corrected for small sample,
+“quasi-AIC<code class="reqn">_{c}</code>”), for one or several fitted model objects.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">QAIC(object, ..., chat, k = 2, REML = NULL)
+QAICc(object, ..., chat, k = 2, REML = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>a fitted model object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p> optionally, more fitted model objects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chat</code></td>
+<td>
+ <p><code class="reqn">\hat{c}</code>, the variance inflation factor. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>the ‘penalty’ per parameter. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>REML</code></td>
+<td>
+<p> optional logical value, passed to the <code>logLik</code> method
+indicating whether the restricted log-likelihood or log-likelihood should be
+used. The default is to use the method used for model estimation.
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>If only one object is provided, returns a numeric value with the
+corresponding QAIC or QAIC<code class="reqn">_{c}</code>; otherwise returns a
+<code>data.frame</code> with rows corresponding to the objects.
+</p>
+
+
+<h3>Note</h3>
+
+<p><code class="reqn">\hat{c}</code> is the dispersion parameter estimated from the global
+model, and can be calculated by dividing model's deviance by the number of
+residual degrees of freedom.
+</p>
+<p>In calculation of QAIC, the number of model parameters is increased by 1 to
+account for estimating the overdispersion parameter. Without overdispersion,
+<code class="reqn">\hat{c} = 1</code> and QAIC is equal to AIC.
+</p>
+<p>Note that <code>glm</code> does not compute maximum-likelihood estimates in models
+within the <em>quasi-</em> family. In case it is justified, it can be worked 
+around by ‘borrowing’ the <code>aic</code> element from the corresponding
+‘non-quasi’ family (see ‘Example’).
+</p>
+<p>Consider using negative binomial family with overdispersed count data.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kamil Bartoń</p>
+
+
+<h3>See Also</h3>
+
+<p><code>AICc</code>, <code>quasi</code> family used for models with
+over-dispersion.
+</p>
+<p>Tests for overdispersion in GLM[M]: <code>check_overdispersion</code>. 
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+options(na.action = "na.fail")
+
+# Based on "example(predict.glm)", with one number changed to create
+# overdispersion
+budworm &lt;- data.frame(
+    ldose = rep(0:5, 2), sex = factor(rep(c("M", "F"), c(6, 6))),
+    numdead = c(10, 4, 9, 12, 18, 20, 0, 2, 6, 10, 12, 16))
+budworm$SF = cbind(numdead = budworm$numdead,
+    numalive = 20 - budworm$numdead)
+
+budworm.lg &lt;- glm(SF ~ sex*ldose, data = budworm, family = binomial)
+(chat &lt;- deviance(budworm.lg) / df.residual(budworm.lg))
+
+dredge(budworm.lg, rank = "QAIC", chat = chat)
+dredge(budworm.lg, rank = "AIC")
+
+
+## Not run: 
+# A 'hacked' constructor for quasibinomial family object that allows for
+# ML estimation
+hacked.quasibinomial &lt;- function(...) {
+    res &lt;- quasibinomial(...)
+    res$aic &lt;- binomial(...)$aic
+    res
+}
+QAIC(update(budworm.lg, family = hacked.quasibinomial), chat = chat)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

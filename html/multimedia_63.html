@@ -1,0 +1,120 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sensitivity_pathwise</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Sensitivity Analysis for Pathwise Indirect Effects</h2>
+
+<h3>Description</h3>
+
+<p>For causal identification, mediation analysis relies on several untestable
+assumptions. One important one is that there is no confounding between the
+counterfactual mediator and outcome variables. Even though we can never know
+whether this exists, we can measure the sensitivity of our conclusions to the
+existence/strength of such a confounder. In this function, we approach this
+by inducing (unallowable) correlation between the mediator and outcome model
+residuals, simulate forward, and see how the estimated pathwise indirect
+effects change.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">sensitivity_pathwise(
+  model,
+  exper,
+  confound_ix = NULL,
+  rho_seq = NULL,
+  n_bootstrap = 100,
+  progress = TRUE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>A <code>multimedia</code> object containing the fitted models for
+sensitivity analysis. Note that since our approach relies on correlating
+simulated residual error, it is only applicable to models of class
+<code>lm_model()</code>, <code>glmnet_model()</code> and <code>rf_model()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exper</code></td>
+<td>
+<p>The original <code>mediation_data</code> class object used to fit <code>model</code>.
+These observations will be resampled to support bootstrap confidence
+interval construction of the sensitivity curve.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>confound_ix</code></td>
+<td>
+<p>A data.frame specifying which mediator/outcome should
+be allowed to be correlated. Should have two columns: 'mediator' and
+'outcome' specifying which pairs of mediators and outcomes should be
+correlated. Defaults to NULL, which creates a data.frame with no rows (and
+so enforcing independence between mediators and outcomes)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho_seq</code></td>
+<td>
+<p>We will evaluate correlations Cor(e', e) between mediation and
+outcome model errors ranging along this grid. Defaults to NULL, which
+internally sets the sequence to rho = (-0.9, -0.7 ..., 0.7, 0.9).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_bootstrap</code></td>
+<td>
+<p>The number of bootstrap resamples used to build confidence
+bands around the sensitivity curves. Defaults to 100.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>A logical indicating whether to show a progress bar.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments passed to indirect_pathwise.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A <code>date.frame</code> giving the outputs of <code>indirect_overall</code> across many
+values of the correlation rho.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">xy_data &lt;- demo_spline()
+exper &lt;- mediation_data(
+    xy_data, starts_with("outcome"), "treatment", "mediator"
+)
+model &lt;- multimedia(
+    exper,
+    outcome_estimator = glmnet_model(lambda = 1e-2)
+) |&gt;
+    estimate(exper)
+rho_seq &lt;- c(-0.2, 0, 0.2)
+subset_indices &lt;- expand.grid(
+    mediator = n_mediators(model), outcome = n_outcomes(model)
+)
+sensitivity_pathwise(model, exper, subset_indices, rho_seq, n_bootstrap = 2)
+</code></pre>
+
+
+</div>

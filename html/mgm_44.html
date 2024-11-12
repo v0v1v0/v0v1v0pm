@@ -1,0 +1,290 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>tvmgmsampler</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Sample from time-varying k-order Mixed Graphical Model
+</h2>
+
+<h3>Description</h3>
+
+<p>Generates samples from a time-varying k-order Mixed Graphical Model
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">tvmgmsampler(factors, interactions, thresholds, sds, type,
+             level, nIter = 250, pbar = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>factors</code></td>
+<td>
+
+<p>The same object as <code>factors</code> in <code>mgmsampler()</code>. An interaction is specified in <code>factors</code> if it should be nonzero at least at one time point in the time series. The values of each parameter at each time point is specified via <code>interactions</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>interactions</code></td>
+<td>
+
+<p>The same object as <code>factors</code> in <code>mgmsampler()</code>, except that each array indicating the parameters of an interaction has an additional (the last) dimension, indicating time. Corresponding to the time vector in <code>factors</code>, the time vector has to be a sequence of integers {1, 2, ..., N}. For an illustration see the examples below.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thresholds</code></td>
+<td>
+
+<p>A list with p entries for p variables, each of which contains a N x m matrix. The columns contain the m thresholds for m categories (for continuous variables m = 1 and the entry contains the threshold/intercept). The rows indicate how the thresholds change over time.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sds</code></td>
+<td>
+
+<p>N x p matrix indicating the standard deviations of Gaussians specified in <code>type</code> for {1, ..., N} time points. Entries not referring to Gaussians are ignored.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+
+<p>p character vector indicating the type of variable for each column in <code>data</code>. "g" for Gaussian, "p" for Poisson, "c" of each variable.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>level</code></td>
+<td>
+
+<p>p integer vector indicating the number of categories of each variable. For continuous variables set to 1.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nIter</code></td>
+<td>
+
+<p>Number of iterations in the Gibbs sampler until a sample is drawn.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pbar</code></td>
+<td>
+
+<p>If <code>pbar = TRUE</code> a progress bar is shown. Defaults to <code>pbar = TRUE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Additional arguments.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>tvmgmsampler</code> is a wrapper function around <code>mgmsampler</code>. Its input is the same as for <code>mgmsampler</code>, except that each object has an additional dimension for time. The number of time points is specified via entries in the additional time dimension.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+
+<p>Contains all provided input arguments.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>The N x p data matrix of sampled values
+</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Jonas Haslbeck &lt;jonashaslbeck@gmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Haslbeck, J. M. B., &amp; Waldorp, L. J. (2020). mgm: Estimating time-varying Mixed Graphical Models in high-dimensional Data. Journal of Statistical Software, 93(8), pp. 1-46. DOI: 10.18637/jss.v093.i08
+</p>
+<p>Yang, E., Baker, Y., Ravikumar, P., Allen, G. I., &amp; Liu, Z. (2014, April). Mixed Graphical Models via Exponential Families. In AISTATS (Vol. 2012, pp. 1042-1050).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+## Not run: 
+
+# --------- Example 1: p = 4 dimensional Gaussian ---------
+
+# ----- 1) Specify Model -----
+
+# a) General Graph Info
+type = c("g", "g", "g", "g") # Four Gaussians
+level = c(1, 1, 1, 1)
+n_timepoints = 500 #  Number of time points
+
+# b) Define Interaction
+factors &lt;- list()
+factors[[1]] &lt;- array(NA, dim=c(2, 2)) # two pairwise interactions
+factors[[1]][1, 1:2] &lt;- c(3,4)
+factors[[1]][2, 1:2] &lt;- c(1,2)
+
+# Two parameters, one linearly increasing from 0 to 0.8, another one lin decreasing from 0.8 to 0
+interactions &lt;- list()
+interactions[[1]] &lt;- vector("list", length = 2)
+interactions[[1]][[1]] &lt;- array(0, dim = c(level[1], level[2], n_timepoints))
+interactions[[1]][[1]][1,1, ] &lt;- seq(.8, 0, length = n_timepoints)
+interactions[[1]][[2]] &lt;- array(0, dim = c(level[1], level[2], n_timepoints))
+interactions[[1]][[2]][1,1, ] &lt;- seq(0, .8, length = n_timepoints)
+
+# c) Define Thresholds
+thresholds &lt;- vector("list", length = 4)
+thresholds &lt;- lapply(thresholds, function(x) matrix(0, ncol = level[1], nrow = n_timepoints))
+
+# d) Define Standard deviations
+sds &lt;- matrix(1, ncol = length(type), nrow = n_timepoints) # constant across variables and time
+
+
+# ----- 2) Sample cases -----
+
+set.seed(1)
+dlist &lt;- tvmgmsampler(factors = factors,
+                      interactions = interactions,
+                      thresholds = thresholds,
+                      sds = sds,
+                      type = type,
+                      level = level,
+                      nIter = 75,
+                      pbar = TRUE)
+
+
+# ----- 3) Recover model from sampled cases -----
+
+set.seed(1)
+tvmgm_obj &lt;- tvmgm(data = dlist$data,
+                   type = type,
+                   level = level,
+                   estpoints = seq(0, 1, length = 15),
+                   bandwidth = .2,
+                   k = 2,
+                   lambdaSel = "CV",
+                   ruleReg = "AND")
+
+# How well did we recover those two time-varying parameters?
+plot(tvmgm_obj$pairwise$wadj[3,4,], type="l", ylim=c(0,.8))
+lines(tvmgm_obj$pairwise$wadj[1,2,], type="l", col="red")
+# Looks quite good
+
+
+# --------- Example 2: p = 5 binary; one 3-way interaction ---------
+
+# ----- 1) Specify Model -----
+
+# a) General Graph Info
+p &lt;- 5 # number of variables
+type = rep("c", p) # all categorical
+level = rep(2, p) # all binary
+n_timepoints &lt;- 1000
+
+# b) Define Interaction
+factors &lt;- list()
+factors[[1]] &lt;- NULL # no pairwise interactions
+factors[[2]] &lt;- array(NA, dim = c(1,3)) # one 3-way interaction
+factors[[2]][1, 1:3] &lt;- c(1, 2, 3)
+
+interactions &lt;- list()
+interactions[[1]] &lt;- NULL # no pairwise interactions
+interactions[[2]] &lt;- vector("list", length = 1)  # one 3-way interaction
+# 3-way interaction no1
+interactions[[2]][[1]] &lt;- array(0, dim = c(level[1], level[2], level[3], n_timepoints))
+theta &lt;- 2
+interactions[[2]][[1]][1, 1, 1, ] &lt;- seq(0, 2, length = n_timepoints) # fill in nonzero entries
+
+# c) Define Thresholds
+thresholds &lt;- list()
+for(i in 1:p) thresholds[[i]] &lt;- matrix(0, nrow = n_timepoints, ncol = level[i])
+
+
+# ----- 2) Sample cases -----
+
+set.seed(1)
+dlist &lt;- tvmgmsampler(factors = factors,
+                      interactions = interactions,
+                      thresholds = thresholds,
+                      type = type,
+                      level = level,
+                      nIter = 150,
+                      pbar = TRUE)
+
+
+# ----- 3) Check Marginals -----
+
+dat &lt;- dlist$data[1:round(n_timepoints/2),]
+table(dat[,1], dat[,2], dat[,3])
+
+dat &lt;- dlist$data[round(n_timepoints/2):n_timepoints,]
+table(dat[,1], dat[,2], dat[,3])
+
+# Observation: much stronger effect in second hald of the time-series,
+# which is what we expect
+
+
+# ----- 4) Recover model from sampled cases -----
+
+set.seed(1)
+tvmgm_obj &lt;- tvmgm(data = dlist$data,
+                   type = type,
+                   level = level,
+                   estpoints = seq(0, 1, length = 15),
+                   bandwidth = .2,
+                   k = 3,
+                   lambdaSel = "CV",
+                   ruleReg = "AND")
+
+tvmgm_obj$interactions$indicator
+# Seems very difficult to recover this time-varying 3-way binary interaction
+# See also the corresponding problems in the examples of ?mgmsampler
+
+
+# For more examples see https://github.com/jmbh/mgmDocumentation
+
+
+
+## End(Not run)
+
+
+</code></pre>
+
+
+</div>

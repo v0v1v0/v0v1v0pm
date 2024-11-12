@@ -1,0 +1,220 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>dateRange</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create a POSIXct date range</h2>
+
+<h3>Description</h3>
+
+<p>Uses incoming parameters to return a pair of <code>POSIXct</code> times in the
+proper order. The first returned time will be midnight of the desired
+starting date. The second returned time will represent the "end of the day"
+of the requested or calculated <code>enddate</code> boundary.
+</p>
+<p>Note that the returned end date will be one <code>unit</code> prior to the start
+of the requested <code>enddate</code> unless <code>ceilingEnd = TRUE</code> in
+which case the entire <code>enddate</code> will be included up to the last
+<code>unit</code>.
+</p>
+<p>The <code>ceilingEnd</code> argument addresses the ambiguity of a phrase like:
+"August 1-8". With <code>ceilingEnd = FALSE</code> (default) this pharse means
+"through the beginning of Aug 8". With <code>ceilingEnd = TRUE</code> it means
+"through the end of Aug 8".
+</p>
+<p>So, to get 24 hours of data staring on Jan 01, 2019 you would specify:
+</p>
+<pre>
+&gt; MazamaCoreUtils::dateRange(20190101, 20190102, timezone = "UTC")
+[1] "2019-01-01 00:00:00 UTC" "2019-01-01 23:59:59 UTC"
+</pre>
+<p>or
+</p>
+<pre>
+&gt; MazamaCoreUtils::dateRange(20190101, 20190101,
+                             timezone = "UTC", ceilingEnd = TRUE)
+[1] "2019-01-01 00:00:00 UTC" "2019-01-01 23:59:59 UTC"
+</pre>
+<p>The required <code>timezone</code> parameter must be one of those found in
+<code>OlsonNames</code>.
+</p>
+<p>Dates can be anything that is understood by
+<code>lubrdiate::parse_date_time()</code> using the <code>Ymd[HMS]</code> orders. This
+includes:
+</p>
+
+<ul>
+<li>
+<p><code>"YYYYmmdd"</code>
+</p>
+</li>
+<li>
+<p><code>"YYYYmmddHHMMSS"</code>
+</p>
+</li>
+<li>
+<p><code>"YYYY-mm-dd"</code>
+</p>
+</li>
+<li>
+<p><code>"YYYY-mm-dd H"</code>
+</p>
+</li>
+<li>
+<p><code>"YYYY-mm-dd H:M"</code>
+</p>
+</li>
+<li>
+<p><code>"YYYY-mm-dd H:M:S"</code>
+</p>
+</li>
+</ul>
+<h3>Usage</h3>
+
+<pre><code class="language-R">dateRange(
+  startdate = NULL,
+  enddate = NULL,
+  timezone = NULL,
+  unit = "sec",
+  ceilingStart = FALSE,
+  ceilingEnd = FALSE,
+  days = 7
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>startdate</code></td>
+<td>
+<p>Desired start datetime (ISO 8601).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>enddate</code></td>
+<td>
+<p>Desired end datetime (ISO 8601).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>timezone</code></td>
+<td>
+<p>Olson timezone used to interpret dates (required).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>unit</code></td>
+<td>
+<p>Units used to determine time at end-of-day.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ceilingStart</code></td>
+<td>
+<p>Logical instruction to apply
+<code>ceiling_date</code> to the <code>startdate</code> rather than
+<code>floor_date</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ceilingEnd</code></td>
+<td>
+<p>Logical instruction to apply
+<code>ceiling_date</code> to the <code>enddate</code> rather than
+<code>floor_date</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>days</code></td>
+<td>
+<p>Number of days of data to include.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A vector of two <code>POSIXct</code>s.
+</p>
+
+
+<h3>Default Arguments</h3>
+
+<p>In the case when either <code>startdate</code> or <code>enddate</code> is missing, it is
+created from the non-missing values plus/minus <code>days</code>. If both
+<code>startdate</code> and <code>enddate</code> are misssing, <code>enddate</code> is set to
+<code>now</code> (with the given <code>timezone</code>), and then
+<code>startdate</code> is calculated using <code>enddate - days</code>.
+</p>
+
+
+<h3>End-of-Day Units</h3>
+
+<p>The second of the returned <code>POSIXct</code>s will end one <code>unit</code> before
+the specified <code>enddate</code>. Acceptable units are <code>"day",
+"hour", "min", "sec"</code>.
+</p>
+<p>The aim is to quickly calculate full-day date ranges for time series whose
+values are binned at different units. Thus, if <code>unit = "min"</code>, the
+returned value associated with <code>enddate</code> will always be at 23:59:00
+in the requested time zone.
+</p>
+
+
+<h3>POSIXct inputs</h3>
+
+<p>When <code>startdate</code> or <code>enddate</code> are already <code>POSIXct</code> values,
+they are converted to the timezone specified by <code>timezone</code> without
+altering the physical instant in time the input represents. This is different
+from the behavior of <code>parse_date_time</code> (which powers
+this function), which will force <code>POSIXct</code> inputs into a new timezone,
+altering the physical moment of time the input represents.
+</p>
+
+
+<h3>Parameter precedence</h3>
+
+<p>It is possible to supply input paramters that are in conflict. For example:
+</p>
+<p><code>dateRange("2019-01-01", "2019-01-08", days = 3, timezone = "UTC")</code>
+</p>
+<p>The <code>startdate</code> and <code>enddate</code> parameters would imply a 7-day range
+which is in conflict with <code>days = 3</code>. The following rules resolve
+conflicts of this nature:
+</p>
+
+<ol>
+<li>
+<p>When <code>startdate</code> and <code>enddate</code> are both specified, the
+<code>days</code> parameter is ignored.
+</p>
+</li>
+<li>
+<p>When <code>startdate</code> is missing, <code>ceilingStart</code> is ignored and
+the first returned time will depend on the combination of <code>enddate</code>,
+<code>days</code> and <code>ceilingEnd</code>.
+</p>
+</li>
+<li>
+<p>When <code>enddate</code> is missing, <code>ceilingEnd</code> is ignored and the
+second returned time depends on <code>ceilingStart</code> and <code>days</code>.
+</p>
+</li>
+</ol>
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(MazamaCoreUtils)
+
+dateRange("2019-01-08", timezone = "UTC")
+dateRange("2019-01-08", unit = "min", timezone = "UTC")
+dateRange("2019-01-08", unit = "hour", timezone = "UTC")
+dateRange("2019-01-08", unit = "day", timezone = "UTC")
+dateRange("2019-01-08", "2019-01-11", timezone = "UTC")
+dateRange(enddate = 20190112, days = 3,
+          unit = "day", timezone = "America/Los_Angeles")
+</code></pre>
+
+
+</div>

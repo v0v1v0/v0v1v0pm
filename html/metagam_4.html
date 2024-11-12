@@ -1,0 +1,176 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>metagam</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Meta-analysis of generalized additive models</h2>
+
+<h3>Description</h3>
+
+<p>Meta-analysis of generalized additive models
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">metagam(
+  models,
+  grid = NULL,
+  grid_size = 100,
+  type = "iterms",
+  terms = NULL,
+  method = "FE",
+  nsim = NULL,
+  ci_alpha = 0.05,
+  restrict_range = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>models</code></td>
+<td>
+<p>List of generalized additive models, each of which has been
+returned by <code>strip_rawdata</code>. If the list is named, the names
+will be used in the output.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grid</code></td>
+<td>
+<p>Grid of values of the explanatory variables over which to compute
+the estimated smooth terms. Defaults to <code>NULL</code>, which means that a
+grid is set up for the smooth terms defined by the <code>terms</code> argument,
+with length given by <code>grid_size</code> for numeric variables and a single
+value of each factor variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grid_size</code></td>
+<td>
+<p>Numeric value giving the number of elements to use in the
+grid of explanatory variables when <code>grid=NULL</code>. When multiple terms
+are supplied, each combination of values of explanatory variables are
+generated, and the number of grid points becomes <code>grid_size</code> to the
+power of the number of terms.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>Type of prediction to use. Defaults to <code>"iterms"</code>. Available
+options are <code>"iterms"</code>, <code>"link"</code>, and <code>"response"</code>. See the
+documentation of <code>mgcv::predict.gam</code> for details. Note that
+<code>type="terms"</code> is not supported, since it may result in estimated zero
+standard deviation for smooth terms.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>terms</code></td>
+<td>
+<p>Character vector of terms, smooth or parametric, to be included
+in function estimate. Only used if <code>type="iterms"</code>. Defaults to
+<code>NULL</code>, which means that the first smooth term when listed in
+alphabetic order is taken.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>Method of meta analysis, passed on to <code>metafor::rma.uni</code>.
+Defaults to <code>"FE"</code>. See the documentation to <code>metafor::rma</code> for
+all available options.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nsim</code></td>
+<td>
+<p>Number of simulations to conduct in order to compute p-values and
+simultaneous confidence bands for the meta-analytic fit. Defaults to
+<code>NULL</code>, which means that no simulations are performed. Only used if
+<code>type="iterms"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ci_alpha</code></td>
+<td>
+<p>Significance level for simultaneous confidence bands. Ignored
+if <code>nsim</code> is <code>NULL</code>, and defaults to 0.05.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>restrict_range</code></td>
+<td>
+<p>Character vector of explanatory variables to restrict
+such that only values within the range for each cohort contribute to the
+meta-analysis. Default to <code>NULL</code>, which means that each model
+contributes across the whole range specified by <code>grid</code>. Currently not
+implemented.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>It is currently assumed that all models have been fit with the same
+smooth terms, although they do not need to have the same basis functions or
+knot placement. Future versions will also include meta-analysis of
+parametric terms in the models.
+</p>
+<p>p-values are truncated below at 1e-16 before computing meta-analytic
+p-values to ensure that no values are identically zero, which would imply
+that the alternative hypothesis be true with no uncertainty.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of type metagam.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(metagam)
+library(mgcv)
+
+## Create 5 datasets
+set.seed(1234)
+datasets &lt;- lapply(1:5, function(x) gamSim(scale = 5, verbose = FALSE))
+
+## Fit a GAM in each dataset, then use strip_rawdata() to remove
+## individual participant data
+models &lt;- lapply(datasets, function(dat){
+  ## This uses the gam() function from mgcv
+  model &lt;- gam(y ~ s(x0, bs = "cr") + s(x1, bs = "cr") + s(x2, bs = "cr"), data = dat)
+  ## This uses strip_rawdata() from metagam
+  strip_rawdata(model)
+})
+
+## Next, we meta-analyze the models.
+## It is often most convenient to analyze a single term at a time. We focus on s(x1).
+meta_analysis &lt;- metagam(models, terms = "s(x1)", grid_size = 30)
+
+## We can print some information
+summary(meta_analysis)
+
+## We can plot the meta-analytic fit together with the individual fits
+plot(meta_analysis)
+plot(meta_analysis, ci = "pointwise")
+
+## We can also compute p-values and simultaneous confidence intervals, by setting the nsim argument.
+## For details, see the separate vignette.
+## Not run: 
+  meta_analysis &lt;- metagam(models, terms = "s(x0)", grid_size = 30, nsim = 1000)
+  summary(meta_analysis)
+  plot(meta_analysis, ci = "both")
+  plot(meta_analysis, ci = "simultaneous")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

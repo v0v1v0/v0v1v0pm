@@ -1,0 +1,87 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>my.index</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Arbitrary-level retrieval from and modification of recursive objects</h2>
+
+<h3>Description</h3>
+
+<p>As of R 2.12, you probably don't need these at all. But, in case you do: <code>my.index</code> and <code>my.index.assign</code> are designed to replace <code>[[</code> and <code>[[&lt;-</code> <em>within</em> a function, to allow arbitrary-depth access into any recursive object. In order to avoid conflicts with system usage and/or slowdowns, it is wise to do this only inside a function definition where they are needed. A zero-length index returns the entire object, which I think is more sensible than the default behaviour (chuck a tanty). <code>my.index.exists</code> tests whether the indexed element actually exists. Note that these functions were written in 2001; since then, base-R has extended the default behaviour of <code>[[</code> etc for recursive objects, so that <code>my.index( thing, 1, 3, 5)</code> can sometimes be achieved just by to <code>thing[[c(1,3,5)]]</code> with the system version of <code>[[</code>. However, at least as of R 2.10.1, the system versions still have limited "recursability".
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R"># Use them like this, inside a function definition:
+# assign( "[[", my.index); var[[i]]
+# assign( "[[&lt;-", my.index.assign); var[[i]] &lt;- value
+my.index( var, ...) # not normally called by name
+my.index.assign( var, ..., value) # not normally called by name
+my.index.exists( i, var)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code> var</code></td>
+<td>
+<p>a recursive object of any mode (not just <code>list</code>, but e.g. <code>call</code> too)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> value</code></td>
+<td>
+<p>anything</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> ...</code></td>
+<td>
+<p>one or more numeric index vectors, to be concatenated</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> i</code></td>
+<td>
+<p>numeric index vector</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Although R allows arbitrary-level access to lists, this does not (yet) extend to <code>call</code> objects or certain other language objects– hence these functions. They are written entirely in R, and are probably very slow as a result. Notwithstanding EXAMPLES below, it is <b>unwise</b> to replace system <code>[[</code> and <code>[[&lt;-</code> with these replacements at a global level, i.e. outside the body of a function– these replacements do not dispatch based on object class, for example.
+</p>
+<p>Note that <code>my.index</code> and <code>my.index.assign</code> distort strict R syntax, by concatenating their <code>...</code> arguments before lookup. Strictly speaking, R says that <code>x[[2,1]]</code> should extract one element from a matrix list; however, this doesn't really seem useful because the same result can always be achieved by <code>x[2,1][[1]]</code>. With <code>my.index</code>, <code>x[[2,1]]</code> is the same as <code>x[[c(2,1)]]</code>. The convenience of automatic concatentation seemed slightly preferable (at least when I wrote these, in 2001).
+</p>
+<p><code>my.index.exists</code> checks whether <code>var</code> is "deep enough" for <code>var[[i]]</code> to work. Unlike the others, it does not automatically concatenate indices.
+</p>
+<p>At present, there is no facility to use a mixture of character and numeric indexes, which you can in S+ via "list subscripting of lists".
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Mark Bravington</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">local({
+  assign( "[[", my.index)
+  assign( "[[&lt;-", my.index.assign)
+  ff &lt;- function() { a &lt;- b + c }
+  body( ff)[[2,3,2]] # as.name( "b")
+  my.index.exists( c(2,3,2), body( ff)) # TRUE
+  my.index.exists( c(2,3,2,1), body( ff)) # FALSE
+  body( ff)[[2,3,2]] &lt;- quote( ifelse( a&gt;1,2,3))
+  ff # function () { a &lt;- ifelse(a &gt; 1, 2, 3) + c }
+  my.index.exists( c(2,3,2,1), body( ff)) # now TRUE
+})
+</code></pre>
+
+
+</div>

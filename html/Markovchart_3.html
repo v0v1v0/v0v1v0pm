@@ -1,0 +1,393 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Markovchart</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Cost-efficient X-bar control charts with fixed/random shift size, random repair and random sampling time.
+</h2>
+
+<h3>Description</h3>
+
+<p>Wrapper for Markov chain-based cost optimal control charts. Includes cost calculation methods for different shift size distributions and optimisation with respect to the average cost and cost standard deviation where the free parameters are the sampling interval (<code>h</code>) and the control limit/critical value (<code>k</code>).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">Markovchart(statdist, h = NULL, k = NULL,
+            OPTIM = FALSE, p = 1, constantr = FALSE,
+            ooc_rep = 0, cs = NULL, cofun = cofun_default,
+            coparams = NULL, crfun = crfun_default, crparams = NULL,
+            cf = crparams, vcofun = vcofun_default,
+            vcoparams = c(0, 0), vcrfun = vcrfun_default,
+            vcrparams = c(0, 0), method = c("L-BFGS-B", "Nelder-Mead",
+            "BFGS", "CG", "SANN", "Brent"), parallel_opt = NULL,
+            silent = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>statdist</code></td>
+<td>
+
+<p>The stationary distribution of the Markov chain. Must be an object of class <code>Markov_stationary</code>, preferably created by <code>Markovstat</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>h</code></td>
+<td>
+
+<p>The time between samplings. Must be a positive value, can be a numeric vector. For optimisation, this is the initial value. Inherited from <code>statdist</code> if not given.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+
+<p>The control limit (critical value). Must be a positive value, can be a numeric vector. For optimisation, this is the initial value. Only one sided shifts are allowed, thus there is only one control limit. Inherited from <code>statdist</code> if not given.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>OPTIM</code></td>
+<td>
+
+<p>Logical. Should the resulting <code>G-value</code> (weighted average of the expected cost and cost standard deviation) be optimised by finding the adequate value of <code>h</code> and <code>k</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+
+<p>The weight of the cost expectation in the calculation of the <code>G-value</code>; should be
+between 0 and 1.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>constantr</code></td>
+<td>
+
+<p>Logical. Should the repair cost be assumed to constantly occur over time (<code>TRUE</code>) or assumed to only occur when there is a repair due to an alarm (<code>FALSE</code>, default)? If <code>TRUE</code>, then the repair cost should be given per unit time.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ooc_rep</code></td>
+<td>
+
+<p>Numeric value between 0 and 1. The percentage of repair cost ocurring during out-of-control operation. Default is 0. If a value greater than 0 is set, then <code>constantr</code> should be <code>TRUE</code>, but it is not forced.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cs</code></td>
+<td>
+
+<p>Sampling cost per sampling.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cofun</code></td>
+<td>
+
+<p>A function describing the relationship between the distance from the target value and the resulting out-of-control costs. Default is calculated using a base and a distance-scaling out-of-control parameter. See "Details".
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coparams</code></td>
+<td>
+
+<p>Numeric vector. Parameters of <code>cofun</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>crfun</code></td>
+<td>
+
+<p>A function describing the relationship between the distance from the target value and the resulting repair costs. The default function assumes a linear relationship between the repair cost and the distance, and uses a base and a distance-scaling repair cost parameter. See "Details".
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>crparams</code></td>
+<td>
+
+<p>Numeric vector. Parameters of <code>crfun</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cf</code></td>
+<td>
+
+<p>Numeric. The false alarm cost. Only relevant when <code>statdist</code> was created using <code>shiftfun="deg"</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vcofun</code></td>
+<td>
+
+<p>A function describing the relationship between the distance from the target value and the resulting out-of-control cost variance. For the default function see "Details".
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vcoparams</code></td>
+<td>
+
+<p>Numeric vector. Parameters of <code>vcofun</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vcrfun</code></td>
+<td>
+
+<p>A function describing the relationship between the distance from the target value and the resulting repair cost variance. For the default function see "Details".
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vcrparams</code></td>
+<td>
+
+<p>Numeric vector. Parameters of <code>vcrfun</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>Method used for optimisation. Same as the argument of <code>optim</code>, but the default here is <code>"L-BFGS-B"</code>, because it turned out to be more robust in testing.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel_opt</code></td>
+<td>
+
+<p>A list of parallel options. See e.g. the argument <code>parallel</code> in the documentation of <code>optimParallel</code>. Can be left empty, in this case the number of cores (threads) is automatically detected and all but one is used. (Single-core computers simply use one core.)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>silent</code></td>
+<td>
+
+<p>Should the call be returned? Default is <code>FALSE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Further arguments to be passed down to <code>optimParallel</code>.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <code>constantr</code> parameter is used for different repair assumptions. In traditional control chart theory, repair cost only occurs in case of an alarm signal. This is represented by <code>constantr=FALSE</code>, which is the default. In this case the repair is just a momentary cost, occurring at the time of the sampling. However this model is inappropriate in several cases in healthcare. For example there are chronic diseases that require constant medication (repair in the sense of the model). In this approach (<code>constantr=TRUE</code>) the repair cost still depends on the state of the process during sampling, but occurs even if there is no alarm and is divided by <code>h</code> to represent the constant repair through the whole sampling interval. Thus the repair cost should be given in a way which corresponds to the model used.
+</p>
+<p>The default <code>cofun</code> calculates the out-of-control (OOC) cost using a base and a distance-scaling OOC parameter:
+</p>
+<p style="text-align: center;"><code class="reqn">c_{o} = c_{ob} + c_{os} A^2(v),</code>
+</p>
+
+<p>where <code class="reqn">c_{o}</code> is the total OOC cost, <code class="reqn"> c_{ob}</code> is the base OOC cost (even without shift), <code class="reqn">c_{os}</code> is the shift-scaling cost and <code class="reqn">A^2(v)</code> is the squared distance from the target value. This latter part is defined like this because a Taguchi-type loss function is used. This <code class="reqn">A^2(v)</code> incorporates the distances (the base of the losses) incurred not just at the time of the sampling, but also between samplings (hence it dependens on h). Even if the user defines a custom cost function for the OOC cost, this <code class="reqn">A^2(v)</code> term must be included, as a closed form solution has been developed for the calculation of the squared distances in case of exponential shifts, considerably decreasing run times. Thus the arguments of the OOC cost function should look like this: function(<code class="reqn">A^2(v)</code>, other parameters contained in a vector). <code class="reqn">A^2(v)</code> is fed to the cost function as a vector, thus the function should vectorised with respect to this argument. The default function looks like this:
+</p>
+<pre>
+cofun_default	&lt;-	function(sqmudist,coparams)
+{
+  sqmudist=sqmudist
+  cob=coparams[1]
+  cos=coparams[2]
+  co		&lt;-	cob + cos*sqmudist
+  return(co)
+}
+</pre>
+<p>The default <code>vcofun</code> also uses a Taguchi-type loss function and has identical parts and requirements as <code>cofun</code>. The final standard deviation itself is calculated using the law of total variance. The default <code>vcofun</code> is:
+</p>
+<pre>
+vcofun_default	&lt;-	function(sqmudist,vcoparams)
+{
+  sqmudist=sqmudist
+  vcob=vcoparams[1]
+  vcos=vcoparams[2]
+  vco		&lt;-	vcob + vcos*sqmudist
+  return(vco)
+}
+</pre>
+<p>The defaults for the repair cost and cost variance are simple linear functions. For <code>crfun</code> it is
+</p>
+<p style="text-align: center;"><code class="reqn">c_{r} = c_{rb} + c_{rs} v,</code>
+</p>
+
+<p>where the notation are the same as before and "r" denotes repair. A custom function can be defined more freely here, but the first argument should be <code class="reqn">v</code> and the second a vector of further parameters.
+</p>
+<p>The default function are:
+</p>
+<pre>
+crfun_default	&lt;-	function(mudist,crparams)
+{
+  mudist=mudist
+  crb=crparams[1]
+  crs=crparams[2]
+  cr		&lt;-	crb + crs*mudist
+  return(cr)
+}
+</pre>
+<pre>
+vcrfun_default	&lt;-	function(mudist,vcrparams)
+{
+  mudist=mudist
+  vcrb=vcrparams[1]
+  vcrs=vcrparams[2]
+  vcr		&lt;-	vcrb + vcrs*mudist;
+  return(vcr)
+}
+</pre>
+
+
+<h3>Value</h3>
+
+<p>The value depends on the parameters:
+</p>
+<p>If either <code>h</code> or <code>k</code> have length greater than 1, then the <code>G-value</code> (weighted average of average cost and cost standard deviation) is calculated for all given values without optimisation. The value of the function in this case is a data frame of class codeMarkov_grid with <code>length(h)*length(k)</code> number of rows and three columns for <code>h</code>, <code>k</code> and the <code>G-value</code>.
+</p>
+<p>If <code>h</code> and <code>k</code> are both of length 1 (they may be inherited from <code>statdist</code>), then the value of the function is a <code>Markov_chart</code> object, which is a list of length 4, detailing the properties of the control chart setup.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Results </code></td>
+<td>
+<p>Vector of <code>G-value</code>, expected cost, cost standard deviation and further process moments. Note that these further moments only take into account the process variation (i.e. the standard deviation of the process itself), while the "Total cost std. dev." takes into account all sources of variance (e.g. the different costs that can occur due to being out-of-control). The "Total cost std. dev." is only relevant and calculated for non-degenerate distributions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Subcosts </code></td>
+<td>
+<p>Vector of sub-costs that are parts of the total expected cost.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Parameters </code></td>
+<td>
+<p>A vector that contains the time between samplings (<code>h</code>) and critical value (<code>k</code>) which was used in the control chart setup.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Stationary_distribution </code></td>
+<td>
+<p>The stationary distribution of the Markov chain. Further information about the stationary distribution can be calculated using the <code>Markovstat</code> function.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Balazs Dobi and Andras Zempleni
+</p>
+
+
+<h3>References</h3>
+
+<p>Zempleni A, Veber M, Duarte B and Saraiva P. (2004) Control charts: a cost-optimization approach for processes with random shifts. <em>Applied Stochastic Models in Business and Industry</em>, 20(3), 185-200.
+</p>
+<p>Dobi B and Zempleni A. (2019) Markov chain-based cost-optimal
+control charts for health care data. <em>Quality and Reliability Engineering
+International</em>, 35(5), 1379-1395.
+</p>
+<p>Dobi B and Zempleni A. (2019) Markov chain-based cost-optimal
+control charts with different shift size distributions. <em>Annales Univ. Sci.
+Budapest., Sect. Comp.</em>, 49, 129-146.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#Defining parallel_opt parallel settings.
+#parallel_opt can also be left empty to be defined automatically by the function.
+require(parallel)
+num_workers &lt;-  min(c(detectCores(),2))
+parall	    &lt;-  list(cl=makeCluster(num_workers), forward=FALSE, loginfo=TRUE)
+
+
+#Fixed shift size (essentially Duncan's cycle model) - no optimisation.
+stat_deg &lt;- Markovstat(shiftfun="deg", h=1, k=1, sigma=1, s=0.2, delta=2.5)
+res1     &lt;- Markovchart(statdist=stat_deg, cs=1, crparams=20, coparams=50)
+res1
+
+#Fixed shift size (essentially Duncan's cycle model) - with optimisation.
+res2 &lt;-  Markovchart(statdist=stat_deg, OPTIM=TRUE, cs=1, crparams=20, coparams=50,
+                    lower = c(0.01,0.01), upper = c(5,5),
+                    parallel_opt=parall)
+res2
+
+#Exponential shift - no optimisation - default cost functions.
+stat_exp &lt;- Markovstat(shiftfun="exp", h=0.5, k=2, sigma=1, s=0.2, delta=2,
+                       RanRep=FALSE, Vd=30, V=18)
+res3     &lt;- Markovchart(stat_exp, p=0.9, cs=1, coparams=c(10,3), crparams=c(1,2))
+res3
+
+#Exponential shift - with optimisation - default cost functions.
+stat_exp2 &lt;- Markovstat(shiftfun="exp", h=1, k=1, sigma=1, s=0.2, delta=2,
+                        RanRep=TRUE, alpha=1, beta=3, Vd=30, V=18)
+parall    &lt;- list(cl=makeCluster(num_workers), forward=FALSE, loginfo=TRUE)
+res4      &lt;- Markovchart(statdist=stat_exp2, OPTIM=TRUE, p=0.9, cs=1,
+                         coparams=c(10,3), crparams=c(1,2), vcoparams=c(8,1.5),
+                         vcrparams=c(5,2), parallel_opt=parall)
+res4
+
+#Exponential-geometric mixture shift - no optimisation -
+#random sampling - custom repair variance function.
+stat_expgeo &lt;- Markovstat(shiftfun="exp-geo",h=1.5, k=2, sigma=1,
+                          s=0.2, delta=1.2, probmix=0.7, probnbin=0.8,
+                          disj=2, RanRep=TRUE, alpha=1, beta=3, RanSam=TRUE,
+                          StateDep=TRUE, a=1, b=15, Vd=100, V=8)
+
+vcrfun_new	&lt;-	function(mudist,vcrparams)
+{
+  mudist=mudist
+  vcrb=vcrparams[1]
+  vcrs=vcrparams[2]
+  vcrs2=vcrparams[3]
+
+  vcr		&lt;-	vcrb + vcrs/(mudist + vcrs2)
+  return(vcr)
+}
+
+res5 &lt;- Markovchart(statdist=stat_expgeo, p=0.9, cs=1,
+                   coparams=c(10,6), crparams=c(20,3),
+                   vcoparams=c(10000,100), vcrfun=vcrfun_new,
+                   vcrparams=c(50000,-600000,1.5))
+res5
+
+#Exponential shift - no optimisation  - vectorised.
+parall &lt;- list(cl=makeCluster(num_workers), forward=FALSE, loginfo=TRUE)
+Gmtx   &lt;-	Markovchart(statdist=stat_exp2, h=seq(1,10,by=(10-1)/5),
+                      k=seq(0.1,5,by=(5-0.1)/5), p=0.9, cs=1,
+                      coparams=c(10,3), crparams=c(1,2),
+                      vcoparams=c(8,1.5), vcrparams=c(5,2),
+                      V=18, parallel_opt=parall)
+Gmtx
+
+</code></pre>
+
+
+</div>

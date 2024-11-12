@@ -1,0 +1,141 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>link_gaps</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Link gaps to (ESM) data</h2>
+
+<h3>Description</h3>
+
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt="[Stable]"></a>
+</p>
+<p>Gaps in mobile sensing data typically occur when the app is stopped by the operating system or
+the user. While small gaps may not pose problems with analyses, greater gaps may cause bias or
+skew your data. As a result, gap data should be considered in order to inspect and limit their
+influence. This function, analogous to <code>link()</code>, allows you to connect gaps to other data
+(usually ESM/EMA data) within a user-specified time range.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">link_gaps(
+  data,
+  gaps,
+  by = NULL,
+  offset_before = 0,
+  offset_after = 0,
+  raw_data = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A data frame or an extension to a data frame (e.g. a tibble). While gap data can be
+linked to any other type of data, ESM data is most commonly used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gaps</code></td>
+<td>
+<p>A data frame (extension) containing the gap data. See <code>identify_gaps()</code> for
+retrieving gap data from an mpathsenser database. It should at least contain the columns <code>from</code>
+and <code>to</code> (both in a date-time format), as well as any specified columns in <code>by</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>A character vector indicating the variable(s) to match by, typically the participant
+IDs. If NULL, the default, <code style="white-space: pre;">⁠*_join()⁠</code> will perform a natural join, using all variables in
+common across <code>x</code> and <code>y</code>. Therefore, all data will be mapped to each other based on the time
+stamps of <code>x</code> and <code>y</code>. A message lists the variables so that you can check they're correct;
+suppress the message by supplying by explicitly.
+</p>
+<p>To join by different variables on <code>x</code> and <code>y</code>, use a named vector. For example, <code>by = c('a' = 'b')</code> will match <code>x$a</code> to <code>y$b</code>.
+</p>
+<p>To join by multiple variables, use a vector with <code>length &gt; 1</code>. For example, <code>by = c('a', 'b')</code>
+will match <code>x$a</code> to <code>y$a</code> and <code>x$b</code> to <code>y$b</code>. Use a named vector to match different variables
+in <code>x</code> and <code>y</code>. For example, <code>by = c('a' = 'b', 'c' = 'd')</code> will match <code>x$a</code> to <code>y$b</code> and <code>x$c</code>
+to <code>y$d</code>.
+</p>
+<p>To perform a cross-join (when <code>x</code> and <code>y</code> have no variables in common), use <code>by = character()</code>.
+Note that the <code>split</code> argument will then be set to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offset_before</code></td>
+<td>
+<p>The time before each measurement in <code>x</code> that denotes the period in which <code>y</code>
+is matched. Must be convertible to a period by <code>lubridate::as.period()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offset_after</code></td>
+<td>
+<p>The time after each measurement in <code>x</code> that denotes the period in which <code>y</code>
+is matched. Must be convertible to a period by <code>lubridate::as.period()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>raw_data</code></td>
+<td>
+<p>Whether to include the raw data (i.e. the matched gap data) to the output as
+gap_data.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The original <code>data</code> with an extra column <code>duration</code> indicating the gap during within the
+interval in seconds (if <code>duration</code>  is <code>TRUE</code>), or an extra column called <code>gap_data</code> containing
+the gaps within the interval. The function ensures all durations and gap time stamps are within
+the range of the interval.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>bin_data()</code> for linking two sets of intervals to each other; <code>identify_gaps()</code> for
+finding gaps in the sampling; <code>add_gaps()</code> for adding gaps to sensor data;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Create some data
+x &lt;- data.frame(
+  time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 3), 2),
+  participant_id = c(rep("12345", 3), rep("23456", 3)),
+  item_one = rep(c(40, 50, 60), 2)
+)
+
+# Create some gaps
+gaps &lt;- data.frame(
+  from = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:00:00")),
+  to = as.POSIXct(c("2021-11-14 13:30:00", "2021-11-14 14:30:00")),
+  participant_id = c("12345", "23456")
+)
+
+# Link the gaps to the data
+link_gaps(x, gaps, by = "participant_id", offset_before = 0, offset_after = 1800)
+
+# Link the gaps to the data and include the raw data
+link_gaps(
+  x,
+  gaps,
+  by = "participant_id",
+  offset_before = 0,
+  offset_after = 1800,
+  raw_data = TRUE
+)
+</code></pre>
+
+
+</div>

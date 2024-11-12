@@ -1,0 +1,411 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MEDseq_fit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MEDseq: Mixtures of Exponential-Distance Models with Covariates</h2>
+
+<h3>Description</h3>
+
+<p>Fits MEDseq models: mixtures of Exponential-Distance models with gating covariates and sampling weights. Typically used for clustering categorical/longitudinal life-course sequences. Additional arguments are available via the function <code>MEDseq_control</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MEDseq_fit(seqs, 
+           G = 1L:9L, 
+           modtype = c("CC", "UC", "CU", "UU", 
+                       "CCN", "UCN", "CUN", "UUN"), 
+           gating = NULL, 
+           weights = NULL, 
+           ctrl = MEDseq_control(...), 
+           covars = NULL, 
+           ...)
+
+## S3 method for class 'MEDseq'
+summary(object,
+        classification = TRUE,
+        parameters = FALSE,
+        network = FALSE,
+        SPS = FALSE,
+        ...)
+
+## S3 method for class 'MEDseq'
+print(x,
+      digits = 3L,
+      ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>seqs</code></td>
+<td>
+<p>A state-sequence object of class <code>"stslist"</code> as created by the <code>seqdef</code> function in the <span class="pkg">TraMineR</span> package (which is reexported by <span class="pkg">MEDseq</span> for convenience). Note that the data set must have equal sequence lengths, the intervals are assumed to be evenly spaced, and missingness is not allowed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>G</code></td>
+<td>
+<p>A positive integer vector specifying the numbers of mixture components (clusters) to fit. Defaults to <code>G=1:9</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modtype</code></td>
+<td>
+<p>A vector of character strings indicating the type of MEDseq models to be fitted, in terms of the constraints or lack thereof on the precision parameters. By default, all valid model types are fitted (except some only where <code>G &gt; 1</code> or <code>G &gt; 2</code>, see <code>Note</code>). 
+The models are named <code>"CC"</code>, <code>"CU"</code>, <code>"UC"</code>, <code>"UU"</code>, <code>"CCN"</code>, <code>"CUN"</code>, <code>"UCN"</code>, and <code>"UUN"</code>. The first letter denotes whether the precision parameters are constrained/unconstrained across clusters. The second letter denotes whether the precision parameters are constrained/unconstrained across sequence positions (i.e. time points). The third letter denotes whether one of the components is constrained to have zero-precision/infinite variance. Such a noise component assumes sequences in that cluster follow a uniform distribution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gating</code></td>
+<td>
+<p>A <code>formula</code> for determining the model matrix for the multinomial logistic regression in the gating network when fixed covariates enter the mixing proportions. Defaults to <code>~1</code>, i.e. no covariates. This will be ignored where <code>G=1</code>. Continuous, categorical, and/or ordinal covariates are allowed. Logical covariates will be coerced to factors. Interactions, transformations, and higher order terms are permitted: the latter <strong>must</strong> be specified explicitly using the <code>AsIs</code> operator (<code>I</code>). The specification of the LHS of the formula is ignored. Intercept terms are included by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>Optional numeric vector containing observation-specific sampling weights, which are accounted for in the model fitting and other functions where applicable. <code>weights</code> are always internally normalised to sum to the sample size. See the <code>unique</code> argument to <code>MEDseq_control</code> to see how incorporating weights also yields computational benefits. Note that <code>weights</code> must <strong>always</strong> be explicitly supplied here; it is not enough to use weights when constructing the state sequence object via <code>seqdef</code> (reexported by <span class="pkg">MEDseq</span> for convenience). If you <em>are</em> using a weighted <code>"stslist"</code> state sequence object and do not specify <code>weights</code>, you will be prompted to explicitly specify <code>weights=attr(seqs, "weights")</code> for a weighted model or <code>weights=NULL</code> for an unweighted model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ctrl</code></td>
+<td>
+<p>A list of control parameters for the EM/CEM and other aspects of the algorithm. The defaults are set by a call to <code>MEDseq_control</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covars</code></td>
+<td>
+<p>An optional data frame (or a matrix with named columns) in which to look for the covariates in the <code>gating</code> network formula, if any. If not found in <code>covars</code>, any supplied <code>gating</code> covariates are taken from the environment from which <code>MEDseq_fit</code> is called. Try to ensure the names of variables in <code>covars</code> do not match any of those in <code>seqs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Catches unused arguments (see <code>MEDseq_control</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x, object, digits, classification, parameters, network, SPS</code></td>
+<td>
+<p>Arguments required for the <code>print</code> and <code>summary</code> functions: <code>x</code> and <code>object</code> are objects of class <code>"MEDseq"</code> resulting from a call to <code>MEDseq_fit</code>, while <code>digits</code> gives the number of decimal places to round to for printing purposes (defaults to <code>3</code>). <code>classification</code>, <code>parameters</code>, and <code>network</code> are logicals which govern whether a table of the MAP classification of observations, the mixture component parameters, and the gating network coefficients are printed, respectively. <code>SPS</code> governs the printing of the relevant quantities in <code>"summaryMEDseq"</code> objects when any of <code>classification</code>, <code>parameters</code>, &amp;/or <code>network</code> are <code>TRUE</code> (see <code>MEDseq_clustnames</code> and <code>seqformat</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function effectively allows 8 different MEDseq precision parameter settings for models with or without gating network covariates. By constraining the mixing proportions to be equal (see <code>equalPro</code> in <code>MEDseq_control</code>) an extra special case is facilitated in the latter case. 
+</p>
+<p>While model selection in terms of choosing the optimal number of components and the MEDseq model type is performed within <code>MEDseq_fit</code>, using one of the <code>criterion</code> options within <code>MEDseq_control</code>, choosing between multiple fits with different combinations of covariates or different initialisation settings can be done by supplying objects of class <code>"MEDseq"</code> to <code>MEDseq_compare</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list (of class <code>"MEDseq"</code>) with the following named entries (of which some may be missing, depending on the <code>criterion</code> employed), mostly corresponding to the chosen optimal model (as determined by the <code>criterion</code> within <code>MEDseq_control</code>):
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>The matched call.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>The input data, <code>seqs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modtype</code></td>
+<td>
+<p>A character string denoting the MEDseq model type at which the optimal <code>criterion</code> occurs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>G</code></td>
+<td>
+<p>The optimal number of mixture components according to <code>criterion</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>params</code></td>
+<td>
+<p>A list with the following named components:
+</p>
+
+<dl>
+<dt><code>theta</code></dt>
+<dd>
+<p>A matrix with <code>G</code> rows and T columns, where T is the number of sequence positions, giving the central sequences of each cluster. The mean of the noise component is not reported, as it does not contribute in any way to the likelihood. A dedicated <code>print</code> function is provided.</p>
+</dd>
+<dt><code>lambda</code></dt>
+<dd>
+<p>A matrix of precision parameters. Will contain <code>1</code> row if the 1st letter of <code>modtype</code> is "C" and <code>G</code> columns otherwise. Will contain <code>1</code> column if the 2nd letter of <code>modtype</code> is "C" and T columns otherwise, where T is the number of sequence positions. Precision parameter values of zero are reported for the noise component, if any. Note that values of <code>Inf</code> are also possible, corresponding to zero-variance, which is most likely under the <code>"UU"</code> or <code>"UUN"</code> models. A dedicated <code>print</code> function is provided.</p>
+</dd>
+<dt><code>tau</code></dt>
+<dd>
+<p>The mixing proportions: either a vector of length <code>G</code> or, if <code>gating</code> covariates were supplied, a matrix with an entry for each observation (rows) and component (columns).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gating</code></td>
+<td>
+<p>An object of class <code>"MEDgating"</code> (for which dedicated <code>print</code>, <code>summary</code>, and <code>predict</code> methods exist) and either <code>"multinom"</code> or <code>"glm"</code> (only for single-component models) giving the <code>multinom</code> regression coefficients of the <code>gating</code> network. If <code>gating</code> covariates were <em>NOT</em> supplied (or the best model has just one component), this corresponds to a RHS of <code>~1</code>, otherwise the supplied <code>gating</code> formula. As such, a fitted <code>gating</code> network is always returned even in the absence of supplied covariates or clusters. If there is a noise component (and the option <code>noise.gate=TRUE</code> is invoked), its coefficients are those for the <em>last</em> component. <strong>Users are cautioned against making inferences about statistical significance from summaries of the coefficients in the gating network. Users are instead advised to use the function <code>MEDseq_stderr</code></strong>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>z</code></td>
+<td>
+<p>The final responsibility matrix whose <code>[i,k]</code>-th entry is the probability that observation <em>i</em> belongs to the <em>k</em>-th component. If there is a noise component, its values are found in the <em>last</em> column.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MAP</code></td>
+<td>
+<p>The vector of cluster labels for the chosen model corresponding to <code>z</code>, i.e. <code>max.col(z)</code>. Observations belonging to the noise component, if any, will belong to component <code>0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>BIC</code></td>
+<td>
+<p>A matrix of <em>all</em> BIC values with <code>length{G}</code> rows and <code>length(modtype)</code> columns. See <code>Note</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ICL</code></td>
+<td>
+<p>A matrix of <em>all</em> ICL values with <code>length{G}</code> rows and <code>length(modtype)</code> columns. See <code>Note</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>AIC</code></td>
+<td>
+<p>A matrix of <em>all</em> AIC values with <code>length{G}</code> rows and <code>length(modtype)</code> columns. See <code>Note</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>DBS</code></td>
+<td>
+<p>A matrix of <em>all</em> (weighted) mean/median DBS values with <code>length{G}</code> rows and <code>length(modtype)</code> columns. See <code>Note</code> and <code>dbs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>DBSvals</code></td>
+<td>
+<p>A list of lists giving the observation-specific DBS values for <em>all</em> fitted models. The first level of the list corresponds to numbers of components, the second to the MEDseq model types.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dbs</code></td>
+<td>
+<p>The (weighted) mean/median DBS value corresponding to the optimal model. May not necessarily be the optimal DBS.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dbsvals</code></td>
+<td>
+<p>Observation-specific DBS values corresponding to the optimum model, which may not be optimal in terms of DBS.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ASW</code></td>
+<td>
+<p>A matrix of <em>all</em> (weighted) mean/median ASW values with <code>length{G}</code> rows and <code>length(modtype)</code> columns. See <code>Note</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ASWvals</code></td>
+<td>
+<p>A list of lists giving the observation-specific ASW values for <em>all</em> fitted models. The first level of the list corresponds to numbers of components, the second to the MEDseq model types.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>asw</code></td>
+<td>
+<p>The (weighted) mean/median ASW value corresponding to the optimal model. May not necessarily be the optimal ASW.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>aswvals</code></td>
+<td>
+<p>Observation-specific ASW values corresponding to the optimum model, which may not be optimal in terms of ASW.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>LOGLIK</code></td>
+<td>
+<p>A matrix of <em>all</em> maximal log-likelihood values with <code>length{G}</code> rows and <code>length(modtype)</code> columns. See <code>Note</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>DF</code></td>
+<td>
+<p>A matrix giving the numbers of estimated parameters (i.e. the number of 'used' degrees of freedom) for <em>all</em> visited models, with <code>length{G}</code> rows and <code>length(modtype)</code> columns. Subtract these numbers from the sample size to get the degrees of freedom. See <code>Note</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ITERS</code></td>
+<td>
+<p>A matrix giving the total number of EM/CEM iterations for <em>all</em> visited models, with <code>length{G}</code> rows and <code>length(modtype)</code> columns. See <code>Note</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CV</code></td>
+<td>
+<p>A matrix of <em>all</em> cross-validated log-likelihood values with <code>length{G}</code> rows and <code>length(modtype)</code> columns, if available. See <code>Note</code> and the arguments <code>do.cv</code> and <code>nfolds</code> to <code>MEDseq_control</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>NEC</code></td>
+<td>
+<p>A matrix of <em>all</em> NEC values with <code>length{G}</code> rows and <code>length(modtype)</code> columns, if available. See <code>Note</code> and the argument <code>do.nec</code> to <code>MEDseq_control</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bic</code></td>
+<td>
+<p>The BIC value corresponding to the optimal model. May not necessarily be the optimal BIC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>icl</code></td>
+<td>
+<p>The ICL value corresponding to the optimal model. May not necessarily be the optimal ICL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>aic</code></td>
+<td>
+<p>The AIC value corresponding to the optimal model. May not necessarily be the optimal AIC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loglik</code></td>
+<td>
+<p>The vector of increasing log-likelihood values for every EM/CEM iteration under the optimal model. The last element of this vector is the maximum log-likelihood achieved by the parameters returned at convergence.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>The number of estimated parameters in the optimal model (i.e. the number of 'used' degrees of freedom). Subtract this number from the sample size to get the degrees of freedom.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iters</code></td>
+<td>
+<p>The total number of EM/CEM iterations for the optimal model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv</code></td>
+<td>
+<p>The cross-validated log-likelihood value corresponding to the optimal model, if available. May not necessarily be the optimal one.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nec</code></td>
+<td>
+<p>The NEC value corresponding to the optimal model, if available. May not necessarily be the optimal NEC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ZS</code></td>
+<td>
+<p>A list of lists giving the <code>z</code> matrices for <em>all</em> fitted models. The first level of the list corresponds to numbers of components, the second to the MEDseq model types.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>uncert</code></td>
+<td>
+<p>The uncertainty associated with the <code>classification</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covars</code></td>
+<td>
+<p>A data frame gathering the set of covariates used in the <code>gating</code> network, if any. Will contain zero columns in the absence of gating covariates. Supplied gating covariates will be excluded if the optimal model has only one component. May have fewer columns than covariates supplied via the <code>covars</code> argument also, as only the included covariates are gathered here.</p>
+</td>
+</tr>
+</table>
+<p>Dedicated <code>plot</code>, <code>print</code>, and <code>summary</code> functions exist for objects of class <code>"MEDseq"</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Where <code>BIC</code>, <code>ICL</code>, <code>AIC</code>, <code>DBS</code>, <code>ASW</code>, <code>LOGLIK</code>, <code>DF</code>, <code>ITERS</code>, <code>CV</code>, and <code>NEC</code> contain <code>NA</code> entries, this corresponds to a model which was not run; for instance a UU model is never run for single-component models as it is equivalent to CU, while a UCN model is never run for two-component models as it is equivalent to CCN. As such, one can consider the value as not really missing, but equivalent to the corresponding value. On the other hand, <code>-Inf</code> represents models which were terminated due to error, for which a log-likelihood could not be estimated. These objects all inherit the class <code>"MEDCriterion"</code> for which dedicated <code>print</code> and <code>summary</code> methods exist. For plotting, please see <code>plot</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Keefe Murphy - &lt;<a href="mailto:keefe.murphy@mu.ie">keefe.murphy@mu.ie</a>&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Murphy, K., Murphy, T. B., Piccarreta, R., and Gormley, I. C. (2021). Clustering longitudinal life-course sequences using mixtures of exponential-distance models. <em>Journal of the Royal Statistical Society: Series A (Statistics in Society)</em>, 184(4): 1414-1451. &lt;<a href="https://doi.org/10.1111/rssa.12712">doi:10.1111/rssa.12712</a>&gt;.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>seqdef</code> (reexported by <span class="pkg">MEDseq</span> for convenience), <code>MEDseq_control</code>, <code>MEDseq_compare</code>, <code>plot.MEDseq</code>, <code>predict.MEDgating</code>, <code>MEDseq_stderr</code>, <code>I</code>, <code>MEDseq_clustnames</code>, <code>seqformat</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Load the MVAD data
+data(mvad)
+mvad$Location &lt;- factor(apply(mvad[,5:9], 1L, function(x) 
+                 which(x == "yes")), labels = colnames(mvad[,5:9]))
+mvad          &lt;- list(covariates = mvad[c(3:4,10:14,87)],
+                      sequences = mvad[,15:86], 
+                      weights = mvad[,2])
+mvad.cov      &lt;- mvad$covariates
+
+# Create a state sequence object with the first two (summer) time points removed
+states        &lt;- c("EM", "FE", "HE", "JL", "SC", "TR")
+labels        &lt;- c("Employment", "Further Education", "Higher Education", 
+                   "Joblessness", "School", "Training")
+mvad.seq      &lt;- seqdef(mvad$sequences[-c(1,2)], states=states, labels=labels)
+
+# Fit a range of exponential-distance models without clustering
+mod0          &lt;- MEDseq_fit(mvad.seq, G=1)
+
+
+# Fit a range of unweighted mixture models without covariates
+# Only consider models with a noise component
+# Supply some MEDseq_control() arguments
+# mod1        &lt;- MEDseq_fit(mvad.seq, G=9:10, modtype=c("CCN", "CUN", "UCN", "UUN"),
+#                           algo="CEM", init.z="kmodes", criterion="icl")
+
+# Fit a model with weights and a gating covariate
+# Have the probability of noise-component membership be constant
+mod2          &lt;- MEDseq_fit(mvad.seq, G=11, modtype="UUN", weights=mvad$weights, 
+                            gating=~ gcse5eq, covars=mvad.cov, noise.gate=FALSE)
+                            
+# Examine this model in greater detail
+summary(mod2, classification=TRUE, parameters=TRUE)
+summary(mod2$gating, SPS=TRUE)
+print(mod2$params$theta, SPS=TRUE)
+plot(mod2, "clusters")
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,319 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mcemGLMM</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Generalized Linear Mixed Models Estimation</h2>
+
+<h3>Description</h3>
+
+<p>Maximum likelihood estimation for logistic, Poisson, and negative binomial models with random effects using a Monte Carlo EM algorithm.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mcemGLMM(fixed, random, data, family = c("bernoulli", "poisson", 
+    "negbinom", "gamma"), vcDist = c("normal", "t"), df, 
+    controlEM = list(), controlTrust = list(), initial)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>fixed</code></td>
+<td>
+<p>the fixed effects model. This is specified 
+by a <code>formula</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random</code></td>
+<td>
+<p>the random effects models. This is specified
+by a <code>formula</code> object or a list of <code>formula</code> objects.
+See details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>an optional data frame containing the variables in 
+the model. If missing the variables are taken from the current 
+environment.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>a string indicating the type of model to be fitted. 
+The options are "bernoulli" for logistic regression, "Poisson"
+for Poisson count regression, and "negbinom" for negative 
+binomial count regression.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vcDist</code></td>
+<td>
+<p>a string indicating the distribution of the marginal 
+variance components. The options are "normal" and "t" for normal 
+and t distributed random effects respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>a vector of degrees of freedom of the random effects 
+when these are t distributed. The length of the vector must be
+equal to the number of variance components in the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>controlEM</code></td>
+<td>
+<p>a list of options for the algorithm. See Details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>controlTrust</code></td>
+<td>
+<p>a list of options to be passed to the <code>trust</code>
+optimizer. See details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial</code></td>
+<td>
+<p>optional initial values for the parameters. If missing 
+the initial values for the fixed effects are taken from a generalized 
+linear model fitted without random effects and the initial values for 
+the variance components are set to 5.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function <code>mcemGLMM</code> allows the fitting of generalized linear 
+mixed models when the random effects are normal or a t distributed.
+The supported models are the logistic, Poisson and negative binomial. 
+The degrees of freedom for the t case must be supplied by the user 
+with a vector in the <code>df</code> argument. The length of the vector 
+must be equal to the number of variance components. For normal random 
+effects the argument <code>df</code> does not need to be included.
+</p>
+<p>To fit a model with one random effect a formula must be supplied in 
+the <code>random</code> argument. Note that it is necessary that the 
+variable is a factor and to specify that there is no intercept for 
+the random part of the model. To use more than one random effects a 
+list of formulas must be supplied. Each member must be formula with 
+in which the variables involved must be factors and it also it is 
+necessary to specify that there is no intercept. To fit crossed 
+random effects each variable must no appear in its own formula. To 
+fit nested random effects a formula with the highest level variable 
+must be specified and each subsequent variable must be specified with 
+an interaction of the variables above it. See examples below.
+</p>
+<p>A note on the negative binomial overdispersion:
+</p>
+<p>The variance for the negative binomial model is set equal to
+<code class="reqn">(1 + \mu/\alpha)</code> so we have that there is no overdispersion
+as <code class="reqn">\alpha</code> goes to infinity.
+</p>
+<p>The variance for the gamma distribution is set to <code class="reqn">\mu^2/\alpha</code>. The value
+of <code class="reqn">\alpha = 1</code> corresponds to an exponential regression.
+</p>
+<p>Stopping rules and convergence criteria:
+</p>
+<p>The algorithm runs for a maximum of <code>EMit</code> iterations or until
+the criteria 
+</p>
+<p style="text-align: center;"><code class="reqn">\max_i \left\{ \frac{ |\theta_i^{(t)} - \theta_i^{(t-1)}|}{|\theta_i^{(t)}| + \delta}\right\} &lt; \epsilon</code>
+</p>
+
+<p>is satisfied three times in a row for pre-defined values of 
+<code class="reqn">\epsilon</code> and <code class="reqn">\delta</code>. Once this criterion has been achieved 
+two times we increase the Monte Carlo sample size more rapidly to 
+have a better estimation of the model's information matrix. For 
+a detailed discussion on convergence diagnostics see Neath R.C. (2012). 
+After fitting a model it is recommended to plot the EM estimates 
+at each step to assess convergence.
+</p>
+<p>Control options for EM:
+</p>
+
+<dl>
+<dt>EMit</dt>
+<dd>
+<p>maximum number of EM iterations.</p>
+</dd>
+<dt>MCit</dt>
+<dd>
+<p>initial number of Monte Carlo iterations for the MCMC 
+step.</p>
+</dd>
+<dt>MCf</dt>
+<dd>
+<p>factor in which the MC iterations increase in each EM 
+iteration.</p>
+</dd>
+<dt>verb</dt>
+<dd>
+<p>logical. If TRUE at each EM iteration the function will 
+print convergence information and a trace plot for on of the random 
+effects. This is useful to assess the performance of the algorithm 
+but it can impact the actual running time.</p>
+</dd>
+<dt>MCsd</dt>
+<dd>
+<p>initial standard deviation for the proposal density of 
+the MCMC step. If zero (default) an auto-tuning step will be 
+performed.</p>
+</dd>
+<dt>EMdelta</dt>
+<dd>
+<p>constant for the EM error assessment.</p>
+</dd>
+<dt>EMepsilon</dt>
+<dd>
+<p>constant for the EM error assessment.</p>
+</dd>
+</dl>
+<p>Control options for trust, see <code>help(trust)</code> for more details:
+</p>
+
+<dl>
+<dt>rinit</dt>
+<dd>
+<p>starting trust region radius. Default value set to 20.</p>
+</dd>
+<dt>rmax</dt>
+<dd>
+<p>maximum allowed trust region radius. Default value set to 200.</p>
+</dd>
+<dt>iterlim</dt>
+<dd>
+<p>maximum number of iterations. Default value set to 100.</p>
+</dd>
+</dl>
+<h3>Value</h3>
+
+<p>A list of class "mcemGLMM" with the following items:
+</p>
+
+<dl>
+<dt>mcemEST</dt>
+<dd>
+<p>a matrix with the value of the maximum likelihood 
+estimators at the end of each EM step.</p>
+</dd>
+<dt>iMatrix</dt>
+<dd>
+<p>Fisher's information matrix.</p>
+</dd>
+<dt>QfunVal</dt>
+<dd>
+<p> value (up to a constant) of the Q function. 
+Used to perform likelihood ratio tests.</p>
+</dd>
+<dt>QfunMCMC</dt>
+<dd>
+<p>Q function MCMC sample.</p>
+</dd>
+<dt>randeff</dt>
+<dd>
+<p>a sample from the conditional distribution of the 
+random effects given the data and the maximum likelihood estimators.</p>
+</dd>
+<dt>y</dt>
+<dd>
+<p>vector of observations.</p>
+</dd>
+<dt>x</dt>
+<dd>
+<p>design matrix for the fixed effects.</p>
+</dd>
+<dt>z</dt>
+<dd>
+<p>design matrix for the random effects.</p>
+</dd>
+<dt>EMerror</dt>
+<dd>
+<p>relative error at the last iteration. See details.</p>
+</dd>
+<dt>MCsd</dt>
+<dd>
+<p>last value for MCMC step size.</p>
+</dd>
+<dt>call</dt>
+<dd>
+<p>original call.</p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>Felipe Acosta Archila &lt;acosta@umn.edu&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Neath, R. C. (2012) On Convergence Properties of the 
+Monte Carlo EM Algorithm In Advances in Modern Statistical 
+Theory and Applications: A Festschrift in Honor of Morris 
+L. Eaton. <em>Institute of Mathematical Statistics</em> 43–62  
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Data set for a logistic model with one binary fixed effects and two 
+# possible random effects.
+# Initial values and MC iterations are given to speed up the examples 
+# but these are not necessary in general.
+set.seed(0123210)
+data(exdata)
+
+# To fit a model with one random effect
+fit.1 &lt;- mcemGLMM(obs ~ x, random = ~ 0 + z1, data = exdata, 
+                family = "bernoulli", vcDist = "normal", 
+                controlEM = list(MCit = 10000), 
+                initial = c(0.27, -0.13, 0.003))
+summary(fit.1)
+
+# We can assess convergence by looking at a trace plot of the EM estimates
+# and the loglikelihood values
+ts.plot(fit.1$mcemEST)
+ts.plot(fit.1$QfunVal)
+
+# To fit a model with crossed random effects
+fit.crossed &lt;- mcemGLMM(obs ~ x, random = list(~ 0 + z1, ~ 0 + z2), 
+                data = exdata, 
+                family = "bernoulli", vcDist = "normal", 
+                controlEM = list(EMit = 10, MCit = 10000), 
+                initial = c(0.28, -0.15, 0.001, 0.4))
+summary(fit.crossed)
+
+
+# To fit a model with crossed random effects
+fit.nested &lt;- mcemGLMM(obs ~ x, random = list(~ 0 + z2, ~ 0 + z2:z1), 
+                data = exdata, 
+                family = "bernoulli", vcDist = "normal", 
+                controlEM = list(EMit = 10, MCit = 10000), 
+                initial = c(0.31, -0.15, 0.29, 0.27))
+summary(fit.nested)
+
+# Fit a Poisson model
+fit.pois &lt;- mcemGLMM(obs2 ~ x, random = ~ 0 + z1, data = exdata, 
+                family = "poisson", vcDist = "normal", 
+                controlEM = list(EMit = 10, MCit = 10000), 
+                initial = c(1.95, 0.03, 0.003))
+summary(fit.pois)
+
+</code></pre>
+
+
+</div>

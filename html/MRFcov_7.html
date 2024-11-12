@@ -1,0 +1,184 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MRFcov_spatial</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Spatially structured Markov Random Fields with covariates</h2>
+
+<h3>Description</h3>
+
+<p>This function calls the <code>MRFcov</code> function to fit
+separate penalized regressions for each node and approximate parameters of
+Markov Random Fields (MRF) graphs. Supplied GPS coordinates are used to
+account for spatial autocorrelation via Gaussian Process spatial regression
+splines.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MRFcov_spatial(
+  data,
+  symmetrise,
+  prep_covariates,
+  n_nodes,
+  n_cores,
+  n_covariates,
+  family,
+  coords,
+  prep_splines = TRUE,
+  bootstrap = FALSE,
+  progress_bar = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A <code>dataframe</code>. The input data where the <code>n_nodes</code>
+left-most variables are variables that are to be represented by nodes in the graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>symmetrise</code></td>
+<td>
+<p>The method to use for symmetrising corresponding parameter estimates
+(which are taken from separate regressions). Options are <code>min</code> (take the coefficient with the
+smallest absolute value), <code>max</code> (take the coefficient with the largest absolute value)
+or <code>mean</code> (take the mean of the two coefficients). Default is <code>mean</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prep_covariates</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, covariate columns will be cross-multiplied
+with nodes to prep the dataset for MRF models. Note this is only useful when additional
+covariates are provided. Therefore, if <code>n_nodes &lt; NCOL(data)</code>,
+default is <code>TRUE</code>. Otherwise, default is <code>FALSE</code>. See
+<code>prep_MRF_covariates</code> for more information</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_nodes</code></td>
+<td>
+<p>Positive integer. The index of the last column in <code>data</code>
+which is represented by a node in the final graph. Columns with index
+greater than n_nodes are taken as covariates. Default is the number of
+columns in <code>data</code>, corresponding to no additional covariates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_cores</code></td>
+<td>
+<p>Positive integer. The number of cores to spread the job across using
+<code>makePSOCKcluster</code>. Default is 1 (no parallelisation)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_covariates</code></td>
+<td>
+<p>Positive integer. The number of covariates in <code>data</code>, before cross-multiplication.
+Default is <code>NCOL(data) - n_nodes</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>The response type. Responses can be quantitative continuous (<code>family = "gaussian"</code>),
+non-negative counts (<code>family = "poisson"</code>) or binomial 1s and 0s (<code>family = "binomial"</code>).
+If using (<code>family = "binomial"</code>), please note that if nodes occur in less than 5 percent
+of observations this can make it generally difficult to
+estimate occurrence probabilities (on the extreme end, this can result in intercept-only
+models being fitted for the nodes in question). The function will issue a warning in this case.
+If nodes occur in more than 95 percent of observations, this will return an error as the cross-validation
+step will generally be unable to proceed. For <code>family = 'poisson'</code> models, all returned
+coefficients are estimated on the identity scale AFTER using a nonparanormal transformation.
+See <code>vignette("Gaussian_Poisson_CRFs")</code> for details of interpretation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coords</code></td>
+<td>
+<p>A two-column <code>dataframe</code> (with <code>nrow(coords) == nrow(data)</code>)
+representing the spatial coordinates of each observation in <code>data</code>. Ideally, these
+coordinates will represent Latitude and Longitude GPS points for each observation. The coordinates
+are used to create smoothed Gaussian Process spatial regression splines via
+<code>smooth.construct2</code>.
+Here, the basis dimension of the smoothed term
+is chosen based on the number of unique GPS coordinates in <code>coords</code>.
+If this number is less than <code>100</code>, then this number is used. If the number of
+unique coordiantes is more than <code>100</code>, a value of <code>100</code> is used
+(this parameter needs to be large in order to ensure enough degrees of freedom
+for estimating 'wiggliness' of the smooth term; see
+<code>choose.k</code> for details).
+These splines will be included in each node-wise regression as additional penalized covariates.
+This ensures that resulting node interaction parameters are estimated after accounting for
+possible spatial autocorrelation. Note that interpretation of spatial autocorrelation is difficult,
+and so it is recommended to compare predictive capacities spatial and non-spatial CRFs through
+the <code>predict_MRF</code> function</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prep_splines</code></td>
+<td>
+<p>Logical. If spatial splines are already included in  <code>data</code>, set to
+<code>FALSE</code>. Default is <code>TRUE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bootstrap</code></td>
+<td>
+<p>Logical. Used by <code>bootstrap_MRF</code> to reduce memory usage</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress_bar</code></td>
+<td>
+<p>Logical. Progress bar in pbapply is used if <code>TRUE</code>, but this slows estimation.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A <code>list</code> of all elements contained in a returned <code>MRFcov</code> object, with
+the inclusion of a <code>dataframe</code> called <code>mrf_data</code>. This contains all prepped covariates
+including the added spatial regression
+splines, and should be used as <code>data</code> when generating predictions
+via <code>predict_MRF</code> or <code>predict_MRFnetworks</code>
+</p>
+
+
+<h3>References</h3>
+
+<p>Kammann, E. E. and M.P. Wand (2003) Geoadditive Models.
+Applied Statistics 52(1):1-18.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See <code>smooth.construct2</code> and <code>smooth.construct.gp.smooth.spec</code>
+for details of Gaussian process spatial regression splines. Worked examples to showcase
+this function can be found using <code>vignette("Bird_Parasite_CRF")</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data("Bird.parasites")
+Latitude &lt;- sample(seq(120, 140, length.out = 100), nrow(Bird.parasites), TRUE)
+Longitude &lt;- sample(seq(-19, -22, length.out = 100), nrow(Bird.parasites), TRUE)
+coords &lt;- data.frame(Latitude = Latitude, Longitude = Longitude)
+CRFmod_spatial &lt;- MRFcov_spatial(data = Bird.parasites, n_nodes = 4,
+                                family = 'binomial', coords = coords)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,128 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>multiselect</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Selecting Combinations of Predictors by Leveraging Multiple AUCs for an Ordered Multilevel Outcome
+
+</h2>
+
+<h3>Description</h3>
+
+<p>When several predictors are available, there is often interest in combining a subset of predictors to diagnose disease or predict risk of a clinical outcome, <code class="reqn">D</code>. In the context of an ordered outcome with <code class="reqn">K</code> levels, where interest is in predicting <code class="reqn">D = K</code>, there are multiple ways to select a combination. The traditional approach involves dichotomizing the outcome and using logistic regression to construct the combinations, then selecting a combination based on the estimated AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> for each fitted combination. An alternative approach, implemented here, constructs the combinations in the same way, but uses both the AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> and the AUC for <code class="reqn">D = K-1</code> vs. <code class="reqn">D &lt; K-1</code>. The combination with the best combined performance is then chosen. This function provides (i) the best combination defined solely by the AUC for <code class="reqn">D=K</code> vs. <code class="reqn">D &lt; K</code> and (ii) the best combination defined by both the AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> and the AUC for <code class="reqn">D = K-1</code> vs. <code class="reqn">D &lt; K-1</code>. In the context where <code class="reqn">D</code> indicates no, mild, or severe disease (<code class="reqn">K</code>=3), this is equivalent to (i) selecting a combination in terms of its ability to discriminate between individuals with severe vs. no or mild disease and (ii) selecting a combination in terms of its ability to discriminate between individuals with severe vs. no or mild disease and its ability to discriminate between individuals with mild vs. no disease.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">multiselect(data, size=2, Breps=40, nummod=10)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>The name of the dataset to be used. An object of class ‘data.frame’ where the first column is the outcome, and the subsequent columns are the predictors. All columns must be numeric. The outcome must be take values 1,...,<code class="reqn">K</code>, where <code class="reqn">K \geq 3</code>. Missing observations are not allowed. If the columns of <code>data</code> are not named, the outcome (first column) will be named "D", and the predictors (subsequent columns) will be named "V1","V2",....
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>size</code></td>
+<td>
+
+<p>The size of the combinations. The function considers all possible subsets of the predictors of size <code>size</code>. Default 2 (all possible pairs).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Breps</code></td>
+<td>
+
+<p>The number of bootstrap replicates used to estimate the optimism due to resubstitution bias in the AUCs. For each combination, the function estimates the apparent AUCs for each fitted combination. These apparent AUCs are then corrected by substracting the optimism due to resubstitution bias, which is estimated using a bootstrap procedure. Default 40.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nummod</code></td>
+<td>
+
+<p>The number of predictor combinations to return. Using the optimism-corrected estimate of the AUC for <code class="reqn">D=K</code> vs. <code class="reqn">D &lt; K</code>, the function returns the top <code>nummod</code> predictor combinations. Default 10.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For each possible predictor combination of size <code>size</code>, the function fits the predictor combination using logistic regression comparing outcome <code class="reqn">D = K</code> to <code class="reqn">D &lt; K</code>. The apparent AUCs for (a) <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> and (b) <code class="reqn">D = K-1</code> vs. <code class="reqn">D &lt; K-1</code> are calculated. A bootstrapping procedure is then used to estimate the optimism due to resubstitution bias in these apparent AUCs. The AUCs are corrected by subtracting the estimated optimism due to resubstitution bias. Two combinations are then selected: the combination with the highest AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> ("single AUC" approach) and the combination with the best sum of ranks for the AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> and the AUC for <code class="reqn">D = K-1</code> vs. <code class="reqn">D &lt; K-1</code> ("multi-AUC" approach). The selected combinations may be the same for the two approaches. The top <code>nummod</code> combinations, in terms of the AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> (corrected for optimism due to resubstitution bias), are also provided.
+</p>
+<p>If more than one combination is "best" in terms of either the AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> or the sum of ranks for the AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> and the AUC for <code class="reqn">D = K-1</code> vs. <code class="reqn">D &lt; K-1</code> (i.e., in the event of ties) the first combination is returned. The order of the combinations for <code class="reqn">p</code> candidate predictors is given by <code>combn(1:p, size)</code>. If ties occur for either (i) the AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> or (ii) the sum of ranks for the AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> and the AUC for <code class="reqn">D = K-1</code> vs. <code class="reqn">D &lt; K-1</code>, a warning is given.
+</p>
+<p>A given bootstrap sample may not have observations from each of the <code class="reqn">K</code> outcome levels; if this occurs, a warning is given and the estimated optimism for that bootstrap sample for both the AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> and the AUC for <code class="reqn">D = K-1</code> vs. <code class="reqn">D &lt; K-1</code> will be NA. NAs are removed in the calculation of the mean optimism (used to correct the AUC estimates for resubstitution bias), and the total number of NAs across the <code>Breps</code> (for either the AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> or the AUC for <code class="reqn">D = K-1</code> vs. <code class="reqn">D &lt; K-1</code>) is indicated by "numNA" in the output.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Best.Single </code></td>
+<td>
+<p>The best predictor combination as chosen by the "single AUC" approach. The first <code>size</code> elements give the names of the included predictors (under "Var1","Var2",...), the next is the estimated AUC <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> ("AUC1"), the next is the estimated AUC for <code class="reqn">D = K-1</code> vs. <code class="reqn">D &lt; K-1</code> ("AUC2"), the next is number of NAs across the <code>Brep</code> bootstrap replicates ("numNA"; see 'Details'), and the final <code>size</code> elements give the estimated coefficients for each of the included predictors ("Coef1","Coef2",...). Both AUCs are corrected for optimism due to resubstitution bias. Recall that if the columns of <code>data</code> are unnamed, the predictors will be named "V1","V2",....</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Best.Multi </code></td>
+<td>
+<p>The best predictor combination as chosen by the "multi-AUC" approach. The elements of <code>Best.Multi</code> are the same as <code>Best.Single</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Ranked.Rslts </code></td>
+<td>
+<p>The results for the <code>nummod</code> best combinations, as ranked by the AUC for <code class="reqn">D = K</code> vs. <code class="reqn">D &lt; K</code> (after correcting for optimism due to resubstitution bias). The columns are the same as the elements of <code>Best.Single</code> and <code>Best.Multi</code>.
+</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Meisner, A., Parikh, C.R., and Kerr, K.F. (2017). Using multilevel outcomes to construct and select biomarker combinations for single-level prediction. UW Biostatistics Working Paper Series, Working Paper 423.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">  
+  
+  library(MASS)
+  ## example takes ~1 minute to run
+
+  set.seed(15)
+  p = 16 ## number of predictors
+  matX &lt;- matrix(rep(0.3,p*p), nrow=p, ncol=p) ## covariance matrix for the predictors
+  diag(matX) &lt;- rep(1,p)
+
+  simD &lt;- apply(rmultinom(400, 1, c(0.6,0.335,0.065)),2,which.max)
+  simDord &lt;- simD[order(simD)]
+  numobs &lt;- table(simDord)
+
+  simX1 &lt;- mvrnorm(numobs[1], rep(0,p), 2*matX)
+  simX2 &lt;- mvrnorm(numobs[2], c(1.5, 1, rep(0.5,(p-2)/2), rep(0.1,(p-2)/2)), 2*matX)
+  simX3 &lt;- mvrnorm(numobs[3], c(rep(2,2), rep(0.8,(p-2)/2), rep(0.1,(p-2)/2)), 2*matX)
+  simX &lt;- rbind(simX1, simX2, simX3)
+
+  exdata &lt;- data.frame("D"=simDord, simX)
+
+  multiselect(data=exdata, size=2, Breps=20, nummod=10)
+  
+</code></pre>
+
+
+</div>

@@ -1,0 +1,151 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>jack.se</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Jackknife Standard Error</h2>
+
+<h3>Description</h3>
+
+<p><code>jack.se</code> — gives jackknife standard error (SE=estimated standard deviation)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">jack.se(x, theta, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>vector of data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>theta</code></td>
+<td>
+<p>— function (statistic) applied to the data (e.g., mean, median, var)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments to be passed</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The code was modified from code associated with the appendix of Efron and Tibshirani (1993)
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns the jackknife standard error of theta(x)
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Dennis Boos, Kevin Matthew, Jason Osborne
+</p>
+
+
+<h3>References</h3>
+
+<p>Efron and Tibshirani (1993), *An Introduction to the Bootstrap*.
+</p>
+<p>Boos, D. D., and Osborne, J. A. (2015), "Assessing Variability of Complex Descriptive
+Statistics in Monte Carlo Studies using Resampling Methods," 
+International Statistical Review, 25, 775-792.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>boot.se</code> — <code>mc.se.vector</code> — <code>mc.se.matrix</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# simple example, data from Boos and Osborne (2015, Table 3)
+# using theta = coefficient of variation = mean/sd
+
+x=c(1,2,79,5,17,11,2,15,85)
+cv=function(x){sd(x)/mean(x)}
+cv(x)
+# [1] 1.383577
+
+jack.se(x,theta=cv)
+# [1] 0.3435321
+
+# More complex example using two samples, se for ratio of means
+# data from Higgins (2003, problem 4.4, p. 142), LDH readings on 7 patients
+
+before=c(89,90,87,98,120,85,97)
+after=c(76,101,84,86,105,84,93)
+
+# requires function using row index as "data,"
+# real data is extra parameter xdata
+
+ratio.means &lt;- function(index,xdata){
+ mean(xdata[index,1])/mean(xdata[index,2])}
+
+# ratio of means for before-after data
+
+ratio.means(index=1:7,xdata=data.frame(before,after))
+# [1] 1.058824
+
+# jackknife SE for ratio of means
+
+jack.se(x=1:7,theta=ratio.means,xdata=data.frame(before,after))
+# [1] 0.03913484
+
+# To illustrate use with Monte Carlo output, first create some sample data
+# 10,000 samples of size 15 from the Laplace (double exp) distribution
+
+N&lt;-10000
+set.seed(450)
+z1 &lt;- matrix(rexp(N*15),nrow=N)
+z2 &lt;- matrix(rexp(N*15),nrow=N)
+z&lt;-(z1-z2)/sqrt(2)              # subtract standard exponentials
+out.m.15   &lt;- apply(z,1,mean)
+out.t20.15 &lt;- apply(z,1,mean,trim=0.20)
+out.med.15 &lt;- apply(z,1,median)
+
+# The three datasets (out.m.15,out.t20.15,out.med.15) each contain 10,000 values.
+# If we want use the variance of each column in a table, then to get
+# the Monte Carlo standard error of those 3 variances,
+
+jack.se(out.m.15,theta = var)
+# [1] 0.0009612314
+
+jack.se(out.t20.15,theta = var)
+# [1] 0.0007008859
+
+jack.se(out.med.15,theta = var)
+# [1] 0.0008130531
+
+# Function Code
+
+jack.se=function(x, theta, ...){
+ call &lt;- match.call()
+ n &lt;- length(x)
+ u &lt;- rep(0, n)
+ for(i in 1:n) {u[i] &lt;- theta(x[ - i], ...)}
+ jack.se &lt;- sqrt(((n - 1)/n) * sum((u - mean(u))^2))
+ return(jack.se)}
+
+</code></pre>
+
+
+</div>

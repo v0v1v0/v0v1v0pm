@@ -1,0 +1,163 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>expectedRank</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate the expected rank of random coefficients that account for
+uncertainty.</h2>
+
+<h3>Description</h3>
+
+<p><code>expectedRank</code> calculates the expected rank and the percentile expected
+rank of any random term in a merMod object.  A simple ranking of the estimated
+random effects (as produced by <code>ranef</code>) is not satisfactory
+because it ignores any amount of uncertainty.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">expectedRank(merMod, groupFctr = NULL, term = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>merMod</code></td>
+<td>
+<p>An object of class merMod</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>groupFctr</code></td>
+<td>
+<p>An optional character vector specifying the name(s) the grouping factor(s)
+over which the random coefficient of interest varies.  This is the
+variable to the right of the pipe, <code>|</code>, in the [g]lmer formula.
+This parameter is optional. If none is specified all terms will be returned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>term</code></td>
+<td>
+<p>An optional character vector specifying the name(s) of the random coefficient of interest. This is the
+variable to the left of the pipe, <code>|</code>, in the [g]lmer formula. Partial
+matching is attempted on the intercept term so the following character
+strings will all return rankings based on the intercept (<em>provided that
+they do not match the name of another random coefficient for that factor</em>):
+<code>c("(Intercept)", "Int", "intercep", ...)</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Inspired by Lingsma et al. (2010, see also Laird and Louis 1989),
+expectedRank sums the probability that each level of the grouping factor is
+greater than every other level of the grouping factor, similar to a
+two-sample t-test.
+</p>
+<p>The formula for the expected rank is:
+</p>
+<p style="text-align: center;"><code class="reqn">ExpectedRank_i = 1 + \sum \phi((\theta_i - \theta_k) / \sqrt(var(\theta_i)+var(\theta_k))</code>
+</p>
+
+<p>where <code class="reqn">\phi</code> is the standard normal distribution function, <code class="reqn">\theta</code>
+is the estimated random effect and <code class="reqn">var(\theta)</code> is the posterior
+variance of the estimated random effect. We add one to the sum so that the
+minimum rank is one instead of zero so that in the case where there is no
+overlap between the variances of the random effects (or if the variances are
+zero), the expected rank equals the actual rank.  The ranks are ordered such
+that the winners have ranks that are greater than the losers.
+</p>
+<p>The formula for the percentile expected rank is:
+</p>
+<p style="text-align: center;"><code class="reqn">100 * (ExpectedRank_i - 0.5) / N_grps</code>
+</p>
+
+<p>where <code class="reqn">N_grps</code> is the number of grouping factor levels. The percentile
+expected rank can be interpreted as the fraction of levels that score at or
+below the given level.
+</p>
+<p>NOTE: <code>expectedRank</code> will only work under conditions that <code>lme4::ranef</code>
+will work. One current example of when this is <em>not</em> the case is for
+models when there are multiple terms specified per factor (e.g. uncorrelated random
+coefficients for the same term, e.g.
+<code>lmer(Reaction ~ Days + (1 | Subject) + (0 + Days | Subject), data = sleepstudy)</code>)
+</p>
+
+
+<h3>Value</h3>
+
+<p>A data.frame with the following five columns:
+</p>
+
+<dl>
+<dt>groupFctr</dt>
+<dd>
+<p>a character representing name of the grouping factor</p>
+</dd>
+<dt>groupLevel</dt>
+<dd>
+<p>a character representing the level of the grouping factor</p>
+</dd>
+<dt>term</dt>
+<dd>
+<p>a character representing the formula term for the group</p>
+</dd>
+<dt>estimate</dt>
+<dd>
+<p>effect estimate from <code>lme4::ranef(, condVar=TRUE)</code>).</p>
+</dd>
+<dt>std.error</dt>
+<dd>
+<p>the posterior variance of the estimate random effect
+(from <code>lme4::ranef(, condVar=TRUE)</code>); named "<code>term</code>"_var.</p>
+</dd>
+<dt>ER</dt>
+<dd>
+<p>The expected rank.</p>
+</dd>
+<dt>pctER</dt>
+<dd>
+<p>The percentile expected rank.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Laird NM and Louis TA. Empirical Bayes Ranking Methods. <em>Journal of
+Education Statistics</em>. 1989;14(1)29-46. Available at
+<a href="http://www.jstor.org/stable/1164724">http://www.jstor.org/stable/1164724</a>.
+</p>
+<p>Lingsma HF, Steyerberg EW, Eijkemans MJC, et al. Comparing and
+ranking hospitals based on outcome: results from The Netherlands Stroke Survey.
+<em>QJM: An International Journal of Medicine</em>. 2010;103(2):99-108.
+doi:10.1093/qjmed/hcp169
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+#For a one-level random intercept model
+m1 &lt;- lmer(Reaction ~ Days + (1 | Subject), sleepstudy)
+(m1.er &lt;- expectedRank(m1))
+
+#For a one-level random intercept model with multiple random terms
+m2 &lt;- lmer(Reaction ~ Days + (Days | Subject), sleepstudy)
+#ranked by the random slope on Days
+(m2.er1 &lt;- expectedRank(m2, term="Days"))
+#ranked by the random intercept
+(m2.er2 &lt;- expectedRank(m2, term="int"))
+
+#For a two-level model with random intercepts
+m3 &lt;- lmer(y ~ service * dept + (1|s) + (1|d), InstEval)
+#Ranked by the random intercept on 's'
+(m3.er1 &lt;- expectedRank(m3, groupFctr="s", term="Intercept"))
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,255 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>multiROC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Build a ROC curve for a multivariate marker with dimension <code class="reqn">p</code>
+</h2>
+
+<h3>Description</h3>
+
+<p>This is one of the main functions of the movieROC package.
+It builds a multivariate ROC curve by considering one of these methods:
+i) fitting a binary logistic regression model with a particular combination
+(fixed by the user) of the two components on the right-hand side,
+ii) linear combinations with fixed parameters, or
+iii) linear combinations with dynamic parameters, or
+iv) estimating optimal transformation based on kernel density estimation, or
+v) quadratic combinations with fixed parameters (if <code class="reqn">p=2</code>).
+It returns a ‘multiroc’ object, a list of class ‘multiroc’.
+This object can be <code>print</code>ed or <code>plot</code>ted. It may be also 
+passed to <code>plot_buildROC()</code> and <code>movieROC()</code> function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">multiROC(X, D, ...)
+## Default S3 method:
+multiROC(X, D, 
+    method = c("lrm", "fixedLinear", "fixedQuadratic", "dynamicEmpirical", 
+                "dynamicMeisner", "kernelOptimal"),
+    formula.lrm = "D ~ X.1 + I(X.1^2) + X.2 + I(X.2^2) + I(X.1*X.2)",
+    stepModel = TRUE, 
+    methodLinear = c("coefLinear", "SuLiu", "PepeThompson", "logistic", "minmax"), 
+    coefLinear = rep(1,ncol(X)), coefQuadratic = c(1,1,0,1,1), 
+    K = 201, alpha = 0.5, approxh = 0.5, multiplier = 2, 
+    kernelOptimal.H = c("Hbcv", "Hscv", "Hpi", "Hns", "Hlscv", "Hbcv.diag", 
+                        "Hscv.diag", "Hpi.diag", "Hlscv.diag"), 
+    eps = sqrt(.Machine$double.eps), verbose = FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+
+<p>Matrix (dimension <code class="reqn">n \times p</code>) of marker values where <code class="reqn">n</code> is the sample size and <code class="reqn">p</code> is the dimension of the multivariate marker.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>D</code></td>
+<td>
+
+<p>Vector of response values. Two levels; if more, the two first ones are used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>Method used to build the classification regions. One of <code>"lrm"</code> (fitting a binary logistic regression model by the input parameter <code>formula</code>), <code>"fixedLinear"</code> (linear frontiers with fixed parameters given in <code>coefLinear</code> or estimated by the method in <code>methodLinear</code>), <code>"fixedQuadratic"</code> (quadratic frontiers with fixed parameters given in <code>coefQuadratic</code>, only available for <code class="reqn">p=2</code>), <code>"dynamicMeisner"</code> (linear frontiers with dynamic parameters reported by Meisner et al. (2021) method), <code>"dynamicEmpirical"</code> (linear frontiers with dynamic parameters reported by the empirical method, only available for <code class="reqn">p=2</code>), or <code>"kernelOptimal"</code> (estimating optimal transformation based on bivariate kernel density estimation by Martínez-Camblor et al. (2021) using the <code>kde()</code> function in the <a href="https://CRAN.R-project.org/package=ks"><span class="pkg">ks</span></a> package). Default: <code>"lrm"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula.lrm</code></td>
+<td>
+
+<p>If <code>method = "lrm"</code>, the transformation employed in the right-hand side of the logistic regression model (in terms of <code>X.1</code>, <code>X.2</code> <code>dots</code>, <code>X.p</code>, and <code>D</code>). Default: quadratic formula for the two first components <code>X.1</code> and <code>X.2</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stepModel</code></td>
+<td>
+
+<p>If TRUE and <code>method = "lrm"</code>, a model selection is performed based on the AIC (Akaike information criterion) in a stepwise algorithm (see <code>step()</code> function in <span class="pkg">stats</span> package for more information). Default: TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>methodLinear</code></td>
+<td>
+
+<p>If <code>method = "fixedLinear"</code>, method used to build the classification regions. One of <code>"coefLinear"</code> (particular fixed coefficients in <code>coefLinear</code>), <code>"SuLiu"</code> (Su and Liu, 1993), <code>"PepeThompson"</code> (Pepe and Thompson, 2000), <code>"logistic"</code> (logistic regression model), <code>"minmax"</code> (Liu et al., 2011). Default: <code>"coefLinear"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coefLinear</code></td>
+<td>
+
+<p>If <code>method = "fixedLinear"</code> and <code>methodLinear = "coefLinear"</code>, a vector of length <code class="reqn">p</code> with the coefficients <code class="reqn">\beta_i</code> (<code class="reqn">i \in  \{1, \dots, p\}</code>) used to <code class="reqn">\mathcal{L}_{\boldsymbol{\beta}}(\boldsymbol{X}) = \beta_1 X_1 + \dots + \beta_p X_p</code>. Default: <code class="reqn">(1,\dots,1)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coefQuadratic</code></td>
+<td>
+
+<p>If <code>method = "fixedQuadratic"</code>, a vector of length 5 with coefficients <code class="reqn">\beta_1, \dots, \beta_5</code> used to <code class="reqn">\mathcal{Q}_{\boldsymbol{\beta}}(\boldsymbol{X}) = \beta_1 X_1 + \beta_2 X_2 + \beta_3 X_1 X_2 + \beta_4 X_1^2 + \beta_5 X_2^2</code>. Default: <code class="reqn">(1,1,0,1,1)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha, approxh, multiplier</code></td>
+<td>
+
+<p>If <code>method = "dynamicMeisner"</code>, input parameters used in the <code>maxTPR()</code> function of the <span class="pkg">maxTPR</span> package (internally integrated because the library is no longer available in CRAN). Default: <code>alpha = 0.5</code>, <code>approxh = 0.5</code> and <code>multiplier = 2</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>K</code></td>
+<td>
+
+<p>If <code>method = "dynamicEmpirical"</code>, the number of equally spaced <code class="reqn">\alpha \in (-1,1)</code> studied. Default: 201.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kernelOptimal.H</code></td>
+<td>
+
+<p>If <code>method = "kernelOptimal"</code>, the bandwidth matrix <code>H</code> used in the <code>kde()</code> function of the <a href="https://CRAN.R-project.org/package=ks"><span class="pkg">ks</span></a> package. Default: <code>"Hbcv"</code> (biased cross-validation (BCV) bandwidth matrix selector for bivariate data) if <code class="reqn">p = 2</code>, <code>"Hpi"</code> (plug-in bandwidth selector) if <code class="reqn">p &gt; 2</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+
+<p>Epsilon value to consider. Default: <code>sqrt(.Machine$double.eps)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+
+<p>If TRUE, a progress bar is displayed for computationally intensive methods. Default: FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Other parameters to be passed. Not used.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list of class ‘multiroc’ with the following fields:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>controls, cases</code></td>
+<td>
+<p>Marker values of negative and positive subjects, respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>levels</code></td>
+<td>
+<p>Levels of response values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t</code></td>
+<td>
+<p>Vector of false-positive rates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>roc</code></td>
+<td>
+<p>Vector of values of the ROC curve for <code>t</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>auc</code></td>
+<td>
+<p>Area under the curve estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Z</code></td>
+<td>
+<p>If <code>method</code> <code class="reqn">\neq</code> <code>"dynamicMeisner"</code> and <code>method</code> <code class="reqn">\neq</code> <code>"dynamicEmpirical"</code>, resulting univariate marker values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>c</code></td>
+<td>
+<p>If <code>method</code> <code class="reqn">\neq</code> <code>"dynamicMeisner"</code> and <code>method</code> <code class="reqn">\neq</code> <code>"dynamicEmpirical"</code>, vector of final marker thresholds resulting in (<code>t</code>, <code>roc</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CoefTable</code></td>
+<td>
+<p>If <code>method = "dynamicMeisner"</code> or <code>"dynamicEmpirical"</code>, a list of length equal to length of vector <code>t</code>. Each element of the list keeps the linear coefficients (<code>coef</code>), threshold for such linear combination (<code>c</code>), the corresponding point in the ROC curve (<code>t</code>, <code>roc</code>), the resulting univariate marker values (<code>Z</code>) and a matrix of dimension 100 <code class="reqn">\times</code> 100 with the marker values over a grid of (<code class="reqn">X_1</code>, <code class="reqn">X_2</code>) bivariate values (<code>f</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Dependencies</h3>
+
+<p>If <code>method = "lrm"</code>, the <code>glm()</code> function in the <span class="pkg">stats</span> package is used.
+</p>
+<p>If <code>method = "kernelOptimal"</code>, the <code>kde()</code> function in the <a href="https://CRAN.R-project.org/package=ks"><span class="pkg">ks</span></a> package is used.
+</p>
+
+
+<h3>References</h3>
+
+<p>J. Q. Su and J. S. Liu. (1993) “Linear combinations of multiple diagnostic markers”. <em>Journal of the American Statistical Association</em>, <b>88</b>(424): 1350–1355. DOI: <a href="https://doi.org/10.1080/01621459.1993.10476417">doi:10.1080/01621459.1993.10476417</a>.
+</p>
+<p>M. S. Pepe and M. L. Thompson (2000) “Combining diagnostic test results to increase accuracy”. <em>Biostatistics</em>, <b>1</b>
+(2):123–140. DOI: <a href="https://doi.org/10.1093/biostatistics/1.2.123">doi:10.1093/biostatistics/1.2.123</a>.
+</p>
+<p>C. Liu, A. Liu, and S. Halabi (2011) “A min–max combination of biomarkers to improve diagnostic accuracy”. <em>Statistics in Medicine</em>, <b>30</b>(16): 2005–2014. DOI: <a href="https://doi.org/10.1002/sim.4238">doi:10.1002/sim.4238</a>.
+</p>
+<p>P. Martínez-Camblor, S. Pérez-Fernández, and S. Díaz-Coto (2021) “Optimal classification scores based on multivariate marker transformations”. <em>AStA Advances in Statistical Analysis</em>, <b>105</b>(4): 581–599. DOI: <a href="https://doi.org/10.1007/s10182-020-00388-z">doi:10.1007/s10182-020-00388-z</a>.
+</p>
+<p>A. Meisner, M. Carone, M. S. Pepe, and K. F. Kerr (2021) “Combining biomarkers by maximizing the true positive rate for a fixed false positive rate”. <em>Biometrical Journal</em>, 63(6): 1223–1240. DOI: <a href="https://doi.org/10.1002/bimj.202000210">doi:10.1002/bimj.202000210</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(HCC)
+
+# ROC curve for genes 20202438 and 18384097 (p=2) to identify tumor by 4 different methods:
+X &lt;- cbind(HCC$cg20202438, HCC$cg18384097); D &lt;- HCC$tumor
+## 1. Linear combinations with fixed parameters by Pepe and Thompson (2000)
+multiROC(X, D, method = "fixedLinear", methodLinear = "PepeThompson")
+## 2.Linear combinations with dynamic parameters by Meisner et al. (2021)
+### Time consuming
+multiROC(X, D, method = "dynamicMeisner")
+## 3. Logistic regression model with quadratic formula by default
+multiROC(X, D)
+## 4. Optimal transformation with multivariate KDE by Martínez-Camblor et al. (2021)
+multiROC(X, D, method = "kernelOptimal")
+
+# ROC curve for genes 20202438, 18384097, and 03515901 (p=3) to identify tumor
+# by 4 different methods:
+X &lt;- cbind(HCC$cg20202438, HCC$cg18384097, HCC$cg03515901); D &lt;- HCC$tumor
+## 1. Linear combinations with fixed parameters by Pepe and Thompson (2000)
+multiROC(X, D, method = "fixedLinear", methodLinear = "PepeThompson")
+## 2.Linear combinations with dynamic parameters by Meisner et al. (2021)
+### Time consuming
+multiROC(X, D, method = "dynamicMeisner")
+## 3. Logistic regression model with quadratic formula by default
+multiROC(X, D)
+## 4. Optimal transformation with multivariate KDE by Martínez-Camblor et al. (2021)
+multiROC(X, D, method = "kernelOptimal")
+</code></pre>
+
+
+</div>

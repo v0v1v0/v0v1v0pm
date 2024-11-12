@@ -1,0 +1,200 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>conditional_effects.mvgam</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Display Conditional Effects of Predictors</h2>
+
+<h3>Description</h3>
+
+<p>Display conditional effects of one or more numeric and/or categorical
+predictors in <code>mvgam</code> models, including two-way interaction effects.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'mvgam'
+conditional_effects(
+  x,
+  effects = NULL,
+  type = "response",
+  points = TRUE,
+  rug = TRUE,
+  ...
+)
+
+## S3 method for class 'mvgam_conditional_effects'
+plot(x, plot = TRUE, ask = FALSE, ...)
+
+## S3 method for class 'mvgam_conditional_effects'
+print(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Object of class <code>mvgam</code> or <code>mvgam_conditional_effects</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>effects</code></td>
+<td>
+<p>An optional character vector naming effects (main effects or
+interactions) for which to compute conditional plots. Interactions are
+specified by a <code>:</code> between variable names. If <code>NULL</code> (the
+default), plots are generated for all main effects and two-way interactions
+estimated in the model. When specifying <code>effects</code> manually, <em>all</em>
+two-way interactions (including grouping variables) may be plotted
+even if not originally modeled.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p><code>character</code> specifying the scale of predictions.
+When this has the value <code>link</code> (default) the linear predictor is calculated on the link scale.
+If <code>expected</code> is used, predictions reflect the expectation of the response (the mean)
+but ignore uncertainty in the observation process. When <code>response</code> is used,
+the predictions take uncertainty in the observation process into account to return
+predictions on the outcome scale. Two special cases are also allowed:
+type <code>latent_N</code> will return the estimated latent abundances from an N-mixture distribution,
+while type <code>detection</code> will return the estimated detection probability from an N-mixture distribution</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>points</code></td>
+<td>
+<p><code>Logical</code>. Indicates if the original data points should be added,
+but only if <code>type == 'response'</code>. Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rug</code></td>
+<td>
+<p><code>Logical</code>. Indicates if displays tick marks should be plotted on the
+axes to mark the distribution of raw data, but only if <code>type == 'response'</code>.
+Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other arguments to pass to <code>plot_predictions</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot</code></td>
+<td>
+<p>Logical; indicates if plots should be
+plotted directly in the active graphic device.
+Defaults to <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ask</code></td>
+<td>
+<p><code>Logical</code>. Indicates if the user is prompted before a new page is plotted.
+Only used if plot is <code>TRUE</code>. Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function acts as a wrapper to the more
+flexible <code>plot_predictions</code>.
+When creating <code>conditional_effects</code> for a particular predictor
+(or interaction of two predictors), one has to choose the values of all
+other predictors to condition on. By default, the mean is used for
+continuous variables and the reference category is used for factors. Use
+<code>plot_predictions</code> to change these
+and create more bespoke conditional effects plots.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>conditional_effects</code> returns an object of class
+<code>mvgam_conditional_effects</code> which is a
+named list with one slot per effect containing a <code>ggplot</code> object,
+which can be further customized using the <span class="pkg">ggplot2</span> package.
+The corresponding <code>plot</code> method will draw these plots in the active graphic device
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nicholas J Clark
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>plot_predictions</code>, <code>plot_slopes</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Simulate some data
+simdat &lt;- sim_mvgam(family = poisson(),
+                    seasonality = 'hierarchical')
+
+# Fit a model
+mod &lt;- mvgam(y ~ s(season, by = series, k = 5) + year:series,
+             family = poisson(),
+             data = simdat$data_train,
+             chains = 2)
+
+# Plot all main effects on the response scale
+conditional_effects(mod)
+
+# Change the prediction interval to 70% using plot_predictions() argument
+# 'conf_level'
+conditional_effects(mod, conf_level = 0.7)
+
+# Plot all main effects on the link scale
+conditional_effects(mod, type = 'link')
+
+# Works the same for smooth terms, including smooth interactions
+set.seed(0)
+dat &lt;- mgcv::gamSim(1, n = 200, scale = 2)
+mod &lt;- mvgam(y ~ te(x0, x1, k = 5) + s(x2, k = 6) + s(x3, k = 6),
+            data = dat,
+            family = gaussian(),
+            chains = 2)
+conditional_effects(mod)
+conditional_effects(mod, conf_level = 0.5, type = 'link')
+
+## Not run: 
+# ggplot objects can be modified and combined with the help of many
+# additional packages. Here is an example using the patchwork package
+
+# Simulate some nonlinear data
+dat &lt;- mgcv::gamSim(1, n = 200, scale = 2)
+mod &lt;- mvgam(y ~ s(x1, bs = 'moi') +
+               te(x0, x2),
+             data = dat,
+             family = gaussian())
+
+# Extract the list of ggplot conditional_effect plots
+m &lt;- plot(conditional_effects(mod), plot = FALSE)
+
+# Add custom labels and arrange plots together using patchwork::wrap_plots()
+library(patchwork)
+library(ggplot2)
+wrap_plots(m[[1]] + labs(title = 's(x1, bs = "moi")'),
+           m[[2]] + labs(title = 'te(x0, x2)'))
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

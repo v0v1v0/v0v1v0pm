@@ -1,0 +1,165 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sampling_nonlinear</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Posterior Sampling for Multinomial Models with Nonlinear Inequalities</h2>
+
+<h3>Description</h3>
+
+<p>A Gibbs sampler that draws posterior samples of probability parameters
+conditional on a (possibly nonlinear) indicator function defining a
+restricted parameter space that is convex.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">sampling_nonlinear(
+  k,
+  options,
+  inside,
+  prior = rep(1, sum(options)),
+  M = 1000,
+  start,
+  burnin = 10,
+  eps = 1e-06,
+  progress = TRUE,
+  cpu = 1
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>vector of observed response frequencies.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>options</code></td>
+<td>
+<p>number of observable categories/probabilities for each item
+type/multinomial distribution, e.g., <code>c(3,2)</code> for a ternary and binary item.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inside</code></td>
+<td>
+<p>an indicator function that takes a vector with probabilities
+<code>p=c(p11,p12,  p21,p22,...)</code> (where the last probability for each
+multinomial is dropped) as input and returns <code>1</code> or <code>TRUE</code>
+if the order constraints are satisfied and <code>0</code> or <code>FALSE</code> otherwise
+(see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>a vector with two positive numbers defining the shape parameters
+of the beta prior distributions for each binomial rate parameter.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M</code></td>
+<td>
+<p>number of posterior samples drawn from the encompassing model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p>only relevant if <code>steps</code> is defined or <code>cmin&gt;0</code>:
+a vector with starting values in the interior of the polytope.
+If missing, an approximate maximum-likelihood estimate is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p>number of burnin samples that are discarded. Can be chosen to be
+small if the maxmimum-a-posteriori estimate is used as the (default) starting value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>precision of the bisection algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>whether a progress bar should be shown (if <code>cpu=1</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpu</code></td>
+<td>
+<p>either the number of CPUs used for parallel sampling, or a parallel
+cluster  (e.g., <code>cl &lt;- parallel::makeCluster(3)</code>).
+All arguments of the function call are passed directly to each core,
+and thus the total number of samples is <code>M*number_cpu</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Inequality constraints are defined via an indicator function <code>inside</code>
+which returns <code>inside(x)=1</code> (or <code>0</code>) if the vector of free parameters
+<code>x</code> is inside (or outside) the model space. Since the vector <code>x</code>
+must include only free (!) parameters, the last probability for each
+multinomial must not be used in the function <code>inside(x)</code>!
+</p>
+<p>Efficiency can be improved greatly if the indicator function is defined as C++
+code via the function cppXPtr in the package RcppXPtrUtils
+(see below for examples). In this case, please keep in mind that indexing in C++
+starts with 0,1,2... (not with 1,2,3,... as in R)!
+</p>
+<p>For each parameter, the Gibbs sampler draws a sample from the
+conditional posterior distribution (a scaled, truncated beta).
+The conditional truncation boundaries are computed with a bisection algorithm.
+This requires that the restricted parameteter space defined by the indicator
+function is convex.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># two binomial success probabilities: x = c(x1, x2)
+# restriction to a circle:
+model &lt;- function(x) {
+  (x[1] - .50)^2 + (x[2] - .50)^2 &lt;= .15
+}
+
+# draw prior samples
+mcmc &lt;- sampling_nonlinear(
+  k = 0, options = c(2, 2),
+  inside = model, M = 1000
+)
+head(mcmc)
+plot(c(mcmc[, 1]), c(mcmc[, 2]), xlim = 0:1, ylim = 0:1)
+
+
+##### Using a C++ indicator function (much faster)
+cpp_code &lt;- "SEXP inside(NumericVector x){
+  return wrap( sum(pow(x-.50, 2)) &lt;= .15);}"
+# NOTE: Uses Rcpp sugar syntax (vectorized sum &amp; pow)
+
+# define function via C++ pointer:
+model_cpp &lt;- RcppXPtrUtils::cppXPtr(cpp_code)
+mcmc &lt;- sampling_nonlinear(
+  k = 0, options = c(2, 2),
+  inside = model_cpp
+)
+head(mcmc)
+plot(c(mcmc[, 1]), c(mcmc[, 2]), xlim = 0:1, ylim = 0:1)
+
+</code></pre>
+
+
+</div>

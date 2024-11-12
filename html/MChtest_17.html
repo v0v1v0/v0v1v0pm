@@ -1,0 +1,186 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MCtest</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Perform Monte Carlo hypothesis tests.</h2>
+
+<h3>Description</h3>
+
+<p>Performs Monte Carlo hypothesis test with either a fixed number of resamples or a sequential stopping boundary on
+the number of resamples. Outputs p-value and confidence 
+interval for p-value. The program is very general and different bootstrap or permutation tests may be done 
+by defining the statistic function and the resample function. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MCtest(x, statistic, resample, bound, extreme = "geq", seed = 1234325)
+MCtest.fixed(x, statistic, resample, Nmax, extreme = "geq", 
+    conf.level=.99, seed = 1234325)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>data object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>statistic</code></td>
+<td>
+<p>function that inputs data object, x, and outputs a scalar numeric</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resample</code></td>
+<td>
+<p>function that inputs data object,x, and outputs a "resampling" of x, 
+an object of the same type as x</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Nmax</code></td>
+<td>
+<p>the number of resamples for the fixed boundary</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bound</code></td>
+<td>
+<p>a object of class MCbound, can be created by <code>MCbound</code> see that help</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>extreme</code></td>
+<td>
+<p>character value either "geq" or "leq". 
+Defines which Monte Carlo outputs from statistic (T1,T2,...) are denoted extreme with respect to the original 
+output (T0) ; extreme values are either all Ti &gt;= T0 ("geq") or all Ti &lt;= T0 ("leq"). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf.level</code></td>
+<td>
+<p>confidence level for interval about p-value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>a numeric value used in set.seed</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Performs Monte Carlo hypothesis test. <code>MCtest</code> allows any types of Monte Carlo boundary created by <code>MCbound</code>,
+while <code>MCtest.fixed</code> only performs Monte Carlo tests using fixed boundaries. The only advantage of <code>MCtest.fixed</code>
+is that one can do the test without first creating the fixed stopping boundary through <code>MCbound</code>. The default boundary 
+is described in <code>MCbound.precalc1</code>. 
+</p>
+<p>Let T0=statistic(x) and let T1,T2,... be statistic(resample(x)). Then in the simplest type of boundary, 
+the "fixed" type, then the resulting p-value is p=(S+1)/(N+1), where S=(\# Ti &gt;= T0) (if extreme is "geq") or  
+S=(\# Ti &lt;= T0) (if extreme is "leq"). The confidence interval on the p-value is calculated by an exact method.  
+</p>
+<p>There are several different types of MC designs that may be used for the MCtest. These are described in the 
+<code>MCbound</code> help.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A LIST of class "MCtest",with elements:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Ti </code></td>
+<td>
+<p>an N vector of the outputs of the resampled statistic</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>type of boundary: "fixed", "tsprt", "Bvalue" or "BC"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parms</code></td>
+<td>
+<p>vector of parameters that define boundary specified by type</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>T0</code></td>
+<td>
+<p>the value of the test statistic applied to the original data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.value</code></td>
+<td>
+<p>p.value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pvalue.ci</code></td>
+<td>
+<p>confidence interval about the p-value</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>M.P. Fay</p>
+
+
+<h3>References</h3>
+
+ 
+<p>Fay, M.P., Kim, H-J. and Hachey, M. (2007). Using truncated sequential probability ratio test boundaries 
+for Monte Carlo implementation of hypothesis tests. Journal of Computational and Graphical 
+Statistics. 16(4):946-967. 
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MCbound</code>,<code>MCbound.precalc1</code> </p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">x&lt;-data.frame(y=1:100,z=rnorm(100),group=c(rep(1,50),rep(2,50)))
+stat&lt;-function(x){ cor(x[,1],x[,2]) }
+### nonparametric bootstrap test on correlation between y and z
+### low p-value means that such a large correlation unlikely due to chance
+resamp&lt;-function(x){ n&lt;-dim(x)[[1]] ; x[sample(1:n,replace=TRUE),] }
+out&lt;-MCtest(x,stat,resamp,extreme="geq") 
+out$p.value
+out$p.value.ci
+### permutation test, permuting y only within group
+resamp&lt;-function(x){ 
+    ug&lt;-unique(x[,"group"])
+    y&lt;- x[,"y"]
+    for (i in 1:length(ug)){
+         pick.strata&lt;- x[,"group"]==ug[i]
+         y[pick.strata]&lt;-sample(y[pick.strata],replace=FALSE)
+    }
+    x[,1]&lt;-y
+    x 
+}
+
+out&lt;-MCtest.fixed(x,stat,resamp,N=199) 
+out$p.value
+out$p.value.ci
+</code></pre>
+
+
+</div>

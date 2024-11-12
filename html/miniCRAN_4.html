@@ -1,0 +1,219 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>addOldPackage</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Add old package versions to a miniCRAN repository.</h2>
+
+<h3>Description</h3>
+
+<p>Will download and add older source package versions. Older binary versions
+are not normally available on CRAN and should be built from source on the
+platform for which they are required. As such, specifying <code>type!="source"</code>
+will likely fail as the download will not be successful.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">addOldPackage(
+  pkgs = NULL,
+  path = NULL,
+  vers = NULL,
+  repos = getOption("repos"),
+  type = "source",
+  Rversion = R.version,
+  writePACKAGES = TRUE,
+  deps = FALSE,
+  quiet = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>pkgs</code></td>
+<td>
+<p>Character vector of packages to download</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>path</code></td>
+<td>
+<p>Destination download path. This path is the root folder of your
+new repository.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vers</code></td>
+<td>
+<p>The package version to install.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>repos</code></td>
+<td>
+<p>URL(s) of the 'contrib' sections of the repositories, e.g.
+<code>"https://cran.us.r-project.org"</code>. Passed to <code>available.packages()</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>Possible values are (currently) "source", "mac.binary" and
+"win.binary": the binary types can be listed and downloaded but not
+installed on other platforms.  Passed to <code>download.packages()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Rversion</code></td>
+<td>
+<p>Version of R (only used if <code>type</code> is not <code>source</code>.) Defaults to R.version, but this can be specified as any of the following formats:
+</p>
+
+<ul>
+<li>
+<p> a character string with the two digit R version, e.g. "3.1"
+</p>
+</li>
+<li>
+<p> a list with components <code>major</code> and <code>minor</code>
+</p>
+</li>
+<li>
+<p> the result of <code>getRversion()</code>
+</p>
+</li>
+<li>
+<p> the result of R.version
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>writePACKAGES</code></td>
+<td>
+<p>If TRUE, calls <code>write_PACKAGES()</code> to update the
+repository PACKAGES file.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>deps</code></td>
+<td>
+<p>logical indicating whether the package dependencies should be
+added (default <code>TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quiet</code></td>
+<td>
+<p>If TRUE, suppress status messages (if any), and the progress bar
+during download.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Adds the packages, rebuilds the package index, and invisibly returns
+the number of packages written to the index files.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Dependencies for old package versions cannot be determined
+automatically and must be specified by the user in <code>pkgs</code> and <code>vers</code>. Thus,
+<code>deps=FALSE</code> is the default for this function.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other update repo functions: 
+<code>addPackage()</code>,
+<code>checkVersions()</code>,
+<code>makeRepo()</code>,
+<code>updatePackages()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">### `checkVersions` and `add.packages.miniCRAN` require an existing miniCRAN repo
+
+# Specify list of packages to download
+mirror &lt;- c(CRAN = "https://cloud.r-project.org")
+mirror
+pkgs &lt;- c("foreach")
+pkgTypes &lt;- c("source", "win.binary")
+
+if (interactive()) {
+  if (!is.online()) {
+    message("p3m seems to be not available.  Check your internet connection.")
+  } else {
+    pdb &lt;- pkgAvail(repos = mirror, type = "source")
+  }
+} else {
+  pdb &lt;- cranJuly2014
+}
+
+
+if (interactive()) {
+  if (!is.online()) {
+    message("p3m seems to be not available.  Check your internet connection.")
+  } else {
+    pkgList &lt;- pkgDep(pkgs, availPkgs = pdb, repos = mirror, type = "source", suggests = FALSE)
+    pkgList
+  }
+}
+
+# Create temporary folder for miniCRAN
+
+if (interactive()) {
+  if (!is.online()) {
+    message("p3m seems to be not available.  Check your internet connection.")
+  } else {
+    dir.create(pth &lt;- file.path(tempdir(), "miniCRAN"))
+    
+    # Make repo for source and win.binary
+    makeRepo(pkgList, path = pth, repos = mirror, type = pkgTypes)
+    
+    # Add other versions of a package (and assume these were added previously)
+    oldVers &lt;- data.frame(
+      package = c("foreach", "codetools", "iterators"),
+      version = c("1.4.0", "0.2-7", "1.0.5"),
+      stringsAsFactors = FALSE
+    )
+    pkgs &lt;- oldVers$package
+    addOldPackage(pkgs, path = pth, vers = oldVers$version, repos = mirror, type = "source")
+    # NOTE: older binary versions would need to be build from source
+    
+    # List package versions in the miniCRAN repo (produces warning about duplicates)
+    pkgVersionsSrc &lt;- checkVersions(pkgs, path = pth, type = "source")
+    pkgVersionsBin &lt;- checkVersions(pkgs, path = pth, type = "win.binary")
+    
+    # After inspecting package versions, remove old versions
+    basename(pkgVersionsSrc$source) # "foreach_1.4.0.tar.gz"  "foreach_1.4.2.tar.gz"
+    basename(pkgVersionsBin$win.binary) # "foreach_1.4.0.zip"     "foreach_1.4.2.zip"
+    file.remove(c(pkgVersionsSrc$source[1], pkgVersionsBin$win.binary[1]))
+    
+    # Rebuild package index after adding/removing files
+    updateRepoIndex(pth, type = pkgTypes, Rversion = R.version)
+    
+    pkgAvail(pth, type = "source")
+    
+    # Add new packages (from CRAN) to the miniCRAN repo
+    addPackage("Matrix", path = pth, repos = mirror, type = pkgTypes)
+    
+    # Delete temporary folder
+    unlink(pth, recursive = TRUE)
+  }
+}
+</code></pre>
+
+
+</div>

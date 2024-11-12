@@ -1,0 +1,215 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>maxLik</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Maximum likelihood estimation</h2>
+
+<h3>Description</h3>
+
+<p>This is the main interface for the <span class="pkg">maxLik</span> package, and the
+function that performs Maximum
+Likelihood estimation.  It is a wrapper for different optimizers
+returning an object
+of class "maxLik".  Corresponding methods handle the
+likelihood-specific properties of the estimates,  including standard
+errors. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">maxLik(logLik, grad = NULL, hess = NULL, start, method,
+constraints=NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>logLik</code></td>
+<td>
+<p>log-likelihood function.  Must have the parameter vector
+as the first argument.  Must return either a single log-likelihood
+value, or a numeric vector where each component is log-likelihood
+of the corresponding individual observation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grad</code></td>
+<td>
+<p>gradient of log-likelihood.  Must have the parameter
+vector as the first argument.  Must return either a single gradient
+vector with length equal to the number of parameters, or a matrix
+where each row is the gradient vector of the corresponding individual
+observation.  If <code>NULL</code>, numeric gradient will be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hess</code></td>
+<td>
+<p>hessian of log-likelihood.  Must have the parameter
+vector as the first argument.  Must return a square matrix.  If
+<code>NULL</code>, numeric Hessian will be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p>numeric vector, initial value of parameters.  If it has
+names, these will also be used for naming the results.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>maximisation method, currently either 
+"NR" (for Newton-Raphson),
+"BFGS" (for Broyden-Fletcher-Goldfarb-Shanno), 
+"BFGSR" (for the BFGS algorithm implemented in <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span>),
+"BHHH" (for Berndt-Hall-Hall-Hausman), 
+"SANN" (for Simulated ANNealing), 
+"CG" (for Conjugate Gradients), 
+or "NM" (for Nelder-Mead).  
+Lower-case letters (such as "nr" for Newton-Raphson) are allowed.
+The default method is "NR" for unconstrained problems, and "NM" or
+"BFGS" for constrained problems, depending on if the <code>grad</code>
+argument was provided.  "BHHH" is a good alternative given the
+likelihood is returned observation-wise (see <code>maxBHHH</code>).
+</p>
+<p>Note that stochastic gradient ascent (SGA) is currently not supported
+as this method seems to be rarely used for maximum likelihood estimation.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>constraints</code></td>
+<td>
+<p>either <code>NULL</code> for unconstrained maximization
+or a list, specifying the constraints.  See <code>maxBFGS</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments, such as <code>control</code>,
+<code>iterlim</code>, or <code>tol</code>,
+are passed to the selected maximisation routine,
+i.e. <code>maxNR</code>, <code>maxBFGS</code>, <code>maxBFGSR</code>,
+<code>maxBHHH</code>, <code>maxSANN</code>, <code>maxCG</code>,
+or <code>maxNM</code>
+(depending on argument <code>method</code>).  Arguments not used by the
+optimizers are forwarded to <code>logLik</code>, <code>grad</code> and
+<code>hess</code>.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>maxLik</code> supports constrained optimization in the sense that
+constraints are passed further to the underlying optimization
+routines, and suitable default method is selected.  However, no
+attempt is made to correct the resulting variance-covariance matrix.
+Hence the inference may be wrong.  A corresponding warning is issued
+by the summary method.
+</p>
+
+
+<h3>Value</h3>
+
+<p>object of class 'maxLik' which inherits from class 'maxim'.
+Useful methods
+include
+</p>
+
+<ul>
+<li> <p><code>AIC</code>: estimated parameter value
+</p>
+</li>
+<li> <p><code>coef</code>: estimated parameter value
+</p>
+</li>
+<li> <p><code>logLik</code>: log-likelihood value
+</p>
+</li>
+<li> <p><code>nIter</code>: number of iterations
+</p>
+</li>
+<li> <p><code>stdEr</code>: standard errors
+</p>
+</li>
+<li> <p><code>summary</code>: print summary table
+with estimates, standard errors, p, and z-values.
+</p>
+</li>
+<li> <p><code>vcov</code>: variance-covariance matrix
+</p>
+</li>
+</ul>
+<h3>Warning</h3>
+
+<p>The constrained maximum likelihood estimation should
+be considered experimental.  In particular, the variance-covariance
+matrix is not corrected for constrained parameter space.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Ott Toomet, Arne Henningsen</p>
+
+
+<h3>See Also</h3>
+
+<p><code>maxNR</code>, <code>nlm</code> and <code>optim</code>
+for different non-linear optimisation routines, see
+<code>maxBFGS</code> for the constrained maximization examples.</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Estimate the parameter of exponential distribution
+t &lt;- rexp(100, 2)
+loglik &lt;- function(theta) log(theta) - theta*t
+gradlik &lt;- function(theta) 1/theta - t
+hesslik &lt;- function(theta) -100/theta^2
+## Estimate with numeric gradient and hessian
+a &lt;- maxLik(loglik, start=1, control=list(printLevel=2))
+summary( a )
+##
+## Estimate with analytic gradient and hessian.
+## require much smaller tolerance
+## setting 'tol=0' or negative essentially disables this stopping criterion
+a &lt;- maxLik(loglik, gradlik, hesslik, start=1,
+            control=list(tol=-1, reltol=1e-12, gradtol=1e-12))
+summary( a )
+##
+## Next, we give an example with vector argument:
+## fit normal distribution by estimating mean and standard deviation
+## by maximum likelihood
+##
+loglik &lt;- function(param) {
+                           # param: vector of 2, c(mean, standard deviation)
+   mu &lt;- param[1]
+   sigma &lt;- param[2]
+   ll &lt;- -0.5*N*log(2*pi) - N*log(sigma) - sum(0.5*(x - mu)^2/sigma^2)
+                           # can use dnorm(x, mu, sigma, log=TRUE) instead
+   ll
+}
+x &lt;- rnorm(100, 1, 2) # use mean=1, stdd=2
+N &lt;- length(x)
+res &lt;- maxLik(loglik, start=c(0,1)) # use 'wrong' start values
+summary(res)
+##
+## Same example, but now with named parameters and a fixed value
+##
+resFix &lt;- maxLik(loglik, start=c(mu=0, sigma=1), fixed="sigma")
+summary(resFix)  # 'sigma' is exactly 1.000 now.
+</code></pre>
+
+
+</div>

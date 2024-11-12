@@ -1,0 +1,909 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>BuildBorderGroup</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Building new border groups for Linked Micromap created by the micromapST package</h2>
+
+<h3>Description</h3>
+
+<p>The package's <var>micromapST</var> function created linked micromaps for 
+any geographic region. The information related to the selected 
+regions is provided to the <var>micromapST</var> function via a <var>bordergrp</var> 
+dataset.  This dataset contains all of the operational information, the 
+needed boundary dataset and a name table required for <var>micromapST</var> to
+draw the linked micromaps for the desired region of the world or elsewhere.
+The dataset must contain the general information data.frame (areaParms), the 
+area boundary data.frame (list of points for each area in the boundery) and 
+a name table that provide the the "Name", "Abbr", and "ID" location names for 
+each area in the boundary group.  The Name Table also assists in providing
+the L2 and Regional features. The border groups were originally created 
+manually, one by one. <br>
+The <var>BuildBorderGroup</var> function is a compilation 
+of the learning from building past border groups. The function 
+tries to provide a common foundation to address many of the unique 
+situations discovered building the border groups manually. However, there
+are still some situations that required the builder's intervention in 
+order to produce a usable map for linked micromaps. <br>
+The <var>BuildBorderGroup</var> function accepts a shape file (ESRI format)
+and a user built name table.  The name table provides the location ids 
+(name, abbreviation or id) to allow the micromapST user ways to specify 
+the identity of individual area using one of several forms of identifier.
+The forms used by the <var>BuildBorderGroup</var> and <var>micromapST</var> functions 
+are "Name", "Abbr" (abbreviation), and the numerical "ID" identifiers
+that have been assigned and accepted over time for the area as the 
+primary location identifiers. <br>
+In two special cases <var>micromapST</var> has been extended to support an 
+"Alt_Abbr" and an "Alias" form of the location identifiers.  The "Alt_abbr"
+form was added to handle geographic area that have two sets of commonly 
+used abbreviations.  The name table was expanded to contain both sets 
+of abbreviations and allows the user of the border group to select the 
+abbreviation that matches data frame location ids.  The "Alias" identifier 
+was implement to handle a special case where the source of the statistical 
+data did not use the accepted "Name" or "Abbr" location ids, but used 
+a more generallized string.  To keep the matching as flexiable 
+as possible, a wildcard matching alias was introduced.  As each 
+identifier in the data is examined, it is compared against the alias 
+string with leading and traiing "*" matching character.  As long as 
+the Alias strings are unique and do not appear in two data rows,
+the matching provide the link between the data and the geographical 
+area. Over the past 10 years, the source program has been changed many 
+times, but the location id label matches has continued to work.<br>
+The user created name table also provides additional information 
+regional identification and sub-setting of the map, and area labeling. 
+During the border group building process, the name table 
+The Name Table also provides parameters to the <var>BuildBorderGroup</var> 
+function to make specific modifications to areas. The modifications to 
+areas include shifting it location, scaling it size, and rotating 
+the area. These modifiers were used to scale Alaska to 35
+it's normal size and move it to below California to reduce the size 
+of the total map.  Hawaii was also moved below the U. S. to reduce 
+the total size of the map. <br>  
+The name table also allows the builder to assocate areas with regions 
+in their map and Level 2 border outlining. Check the <var>micromapST</var> 
+documentation on how the Level 2 and Region boundaries are to be used.  
+The most important task the name table does is help provide the linkage 
+between the rows in the user's data frames to the an area's collection 
+of polygons from the shapefile.  The Name Table also provide multiple 
+location ids to allow the user to provide the full formal name ("Name"), 
+one of two abbreviates (if available), or the numerical ID 
+assigned to each area.<br>
+When the processing is completed, the user has a border group .RDA file 
+ready for use with <var>micromapST</var> with boundaries usable in the 
+small maps in linked micromaps and the name table documentation for 
+the border group.
+</p>
+<p>The <var>BuildBorderGroup</var> function validates all of the call parameters,
+inspects the information provided by the builder in the name table,
+inspects the shape file provided, inspects the projections used or 
+requested, ensures the +unit= parameter in the projection is set to 
+meters, The function performs the following steps to construct a border 
+group: may different spatial areas by using different border groups.
+</p>
+<p>In Version 3.0.0 of the <var>BuildBorderGroup</var> function, the function was 
+upgraded to retire and package functions from the rgdal, rgeos and 
+maptools packages as of October 16th, 2023.  The spatial functions are 
+not done by the "sf" package.
+</p>
+<p>The following describes the process of conconstructing a border group dataset:
+</p>
+
+<ul>
+<li>
+<p>1. Validate all of the calling parameters provided on the 
+function call and provide targeted error and warning messages.
+
+</p>
+</li>
+<li>
+<p>2. Read the shape file to gather initial shape file variables.  The 
+shape file can be read prior to the call to the BuildBorderGroup function, 
+modified, and passed as a structure using the ShapeFile call parameter.
+
+</p>
+</li>
+<li>
+<p>3. Read the name table file and verifies all required columns 
+are present.  The Name Table data can also be pre-read and passed to 
+BuildBorderGroup function as a data.frame .
+
+</p>
+</li>
+<li>
+<p>4. Validate the data in the name table columns: characters vs. 
+numeric vs. NA; duplicate valids, and range of values.  
+
+</p>
+</li>
+<li>
+<p>5. Validate the geometry in the shape file data.
+
+</p>
+</li>
+<li>
+<p>6. Simplify the shape file geometry to provide a caricatured 
+map with minimal vectex, but maintaining the ability to recognize 
+the areas. This generally reduces the size of the boundary 
+information to between 1
+using the <var>rmapshaper</var> package.
+
+</p>
+</li>
+<li>
+<p>7. Preform a union the polygons in the shape file to organize  
+polygons by their associated area.  In SP, it would be collecting all 
+polygon data for an area as a list of polygons as one group.  In sf, it 
+is collecting all of the polygons for an area and forming a multipolygon of 
+the data. Since we have moved entirely to sf operation, this union is 
+preformed by the aggregate.sf features in sf.
+
+</p>
+</li>
+<li>
+<p>8. Match the name table rows (entries) with the area polygons 
+in the spatial structure.  Once the match is established, a key is assigned 
+for the area and set in both the name table and spatial structure.  
+The abbreviation id is normally used for the key, but if the abbreviation 
+is not provided, a short key is created.   Abbreviation for areas are not 
+always available.
+
+</p>
+</li>
+<li>
+<p>9. The projection of the map makes a difference in how usable the
+map in making linked micromap.  It was desided to no use longitute/latitude 
+in the final resulting map.  Therefore, the user has three choices: specify a 
+non-long/lat projection on the original shape file; specify final projection 
+parameters in the "proj4" call parameter, or let the function construct a
+Albers Equal Area projection about the centroid of the map with the north and 
+south latitudes half the distance from the middle to the north and south 
+limits of the map. If there are any map labels 
+requested, their location points are transformed.  Any needed transformation
+is done at this time.
+
+</p>
+</li>
+<li>
+<p>10. The areaParms data.frame table is constructed to permit
+restarting the build process and to save all of the other call 
+parameters and operation parameters needed by <var>micromapST</var>.  
+The <span class="option">MapHdrs</span>, <span class="option">IDHdrs</span>, <span class="option">MapMinH</span>, 
+<span class="option">MapMaxH</span>, and <span class="option">LabelCex</span> variables are saved in 
+the areaParms data.frame.
+
+</p>
+</li>
+<li>
+<p>11. The name table, areaParms, and the 4 boundary data.frame 
+structures are check pointed to disk for possible manual editing.  
+If manual editing of the shape file or name table is done, 
+they result of the edits must be saved using the original file 
+name and the file placed in the original check point directory. 
+The check point files will be read when the BuildBorderGroup is 
+call with the checkPointRestart parameter set to <var>TRUE</var> the 
+name table directory provided is the same, and the check pointed 
+files are located. Manual editing should be done very carefully.  
+
+</p>
+</li>
+<li>
+<p>12. On a "checkPointReStart=TRUE" the <var>BuildBorderGroup</var>
+function reloads all of the check pointed data.frame to pick up 
+the Border Group building process from where it left off.
+
+</p>
+</li>
+<li>
+<p>13. On either a restart or a normal run, the function gathers 
+the boundary information for the area boundaries, layer 2 boundaries, 
+regional boundaries, and a map outline boundary (Layer 3).
+
+</p>
+</li>
+<li>
+<p>14. The name table becomes the areaNamesAbbrsIDs data.frame 
+and any working columns not needed in the final name table are deleted.
+
+</p>
+</li>
+<li>
+<p>15. The name table to aggregate the area boundaries to form the 
+regional boundary spatial structure, the Level 2 spatial structure, and the 
+Lever 3 spatial structure (outline of the entire set of areas.)  This is 
+done to make sure all of the layers of boundaries correctly overlay each other.
+
+</p>
+</li>
+<li>
+<p>16. Each set of spatial images are converted into the <var>micomapST</var> 
+boundary data.frame structures (not sp or sf) that are compatiable 
+with the R polygon drawing function.
+
+</p>
+</li>
+<li>
+<p>17. The final collection data.frames for the border group are: 
+areaParms, areaNamesAbbrsID, areaVisBorders, L2VisBorders, RegVisBorders, 
+and L3VisBorders data.frames are written out to a single .RDA 
+dataset file as the completed border group dataset.
+
+</p>
+</li>
+</ul>
+<p>Each border group is a different dataset containing the unique boundaries 
+and operational information to allow <var>micromapST</var> to work in a 
+different spatial area. The structure of each border group dataset is 
+identical with the same variable names and types of structures.  
+A user can build their own border group dataset to meet their 
+specific spatial area needs.  Because the package contains several border 
+group datasets each one using  the same data.frame names and structure, 
+the use of lazydata or lazyloading had to be disabled.  This means the 
+R system cannot preload the datasets and have them waiting for use, 
+they would effectively overlay each other.
+</p>
+<p>The name of the border group is specified in the bordGrp call parameter.
+To permit a user to reference a border group dataset not contained 
+in the package, and reside in a user's folder, the bordDir must be 
+used to direct the package to the border group.  The border group must be 
+saved under R using the <var>save</var> function with the file extension of 
+".rda". <br>
+For example: <code>bordGrp="private", bordDir="c:/SavedBorderGroups"</code>
+</p>
+<p>Each border group contain six (6) datasets by the same data.frame names.  
+This allows the micromapST package the ability to quickly load a 
+particular border group and create the requested micromaps.  
+The six data.frames are:  areaParms, areaNamesAbbrsIDs, areaVisBorders, 
+L2VisBorders, RegVisBorders, and L3VisBorders. Since the same data.frame 
+names are reused in each border group, the R lazyload feature is 
+disabled in the package.
+</p>
+<p>Several border group <span class="option">bordGrp</span> examples are contained 
+in the package and include the 51 states and DC of the United States, 
+the counties of Kansas, Maryland, New York, Utah, the countries and provinces 
+of the U.K. and China, and the U. S. Seer Registries used by the 
+National Cancer Institute.  
+</p>
+<p>The example in this section shows how to build the Kentucky County 
+border group using a simple name table and the U. S. Census Bureau 
+Kentucky county 2000 boundary data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">BuildBorderGroup(ShapeFile         = NULL,   # required	       
+                         ShapeFileDir      = NULL,   # defaults to NameTableDir
+                         # required if not the default value of "link"
+                         ShapeLinkName     = NULL,   
+                         NameTableFile     = NULL,   # required
+                         NameTableDir      = NULL,   # required
+                         # required if not the default value of "link"   
+                         NameTableLink     = NULL,       
+                         BorderGroupName   = NULL,   # required
+                         # defaults to NameTableDir	
+                         BorderGroupDir    = NULL,  	
+                         MapHdr            = NULL,   # optional		
+                         MapMinH           = NULL,   # optional           
+                         MapMaxH           = NULL,   # optional      
+                         # required, default is the BorderGroupName and "Areas"
+                         IDHdr             = NULL,  		
+                         LabelCex          = NULL,   # optional      
+                         # optional, but highly recommended 
+                         ReducePC          = 1.25,   # percent value	
+                         proj4             = NULL,   # optional		
+                         checkPointReStart = NULL,   # optional
+                         debug             = 0	     # debug only	
+                      ) 
+ 			     
+ </code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>ShapeFile</code></td>
+<td>
+<p>a character string of the name of the ERSI formated 
+shape file.  Only the main part of the shape file name should be 
+provided.  The .shp, .shx, .dbf extensions should be omitted.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ShapeFileDir</code></td>
+<td>
+<p>a character string defining the path to the folder
+containing the ERSI shape file. If the ShapeFileDir parameter is not 
+provided or empty, the Name Table Directory will be used.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ShapeLinkName</code></td>
+<td>
+<p>a character string defining the name of the 
+variable within the shape file @data slot to use to match the 
+polygons in the shape file with the area's row in the Name Table.  
+The default value is "__Link". 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>NameTableDir</code></td>
+<td>
+<p>a character string defining the path to the folder 
+containing the Name Table File. There is no default value for this 
+parameter.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>NameTableFile</code></td>
+<td>
+<p>a character string defining the name of the 
+excel spreadsheet file or a .csv file containing the user built 
+Name Table columns and information.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>NameTableLink</code></td>
+<td>
+<p>a character string defining the Name Table 
+column name that should be used to match the <var>ShapeFileLink</var> 
+variable to link the Name Table to the area's collection of 
+polygons. The default value is "link".
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>BorderGroupName</code></td>
+<td>
+<p>a character string to use as the border group's 
+name and dataset name.  If the string ends with a "BG", it will be 
+striped and re-added when the border group is built. If the string 
+does not end with "BG", "BG" will be added to designate the file is
+a border group.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>BorderGroupDir</code></td>
+<td>
+<p>a character string defining the path to the 
+folder where the border group dataset will be written at the end of 
+the processing.  If this parameter is not provided or "NA", the 
+<var>NameTableDir</var> parameter will be used as the 
+<var>BorderGroupDir</var> parameter.  If the <var>BorderGroupDir</var> path does not
+exist, the <var>BuildBorderGroup</var> function will create the directory.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MapHdr</code></td>
+<td>
+<p>is a two element character vector used to modify the 
+pre-defined map header labels in <var>micromapST</var> for map type glyphs. 
+The value is entered as <br><code>MapHdr = c("1stHdr", "2ndHdr")</code>. 
+Check the <var>micromapST</var> documentation for more details.
+The first element (MapHdr[1]) is not implemented and is reserved for 
+a future release.  The MapHdr[2] element is used to generated the 
+map headers for all of the map glyph tyeps.  It should
+specify the type of area being mapped.  For example for the US States
+map, it was set to "States". The default value is 
+MapHdr=c(&lt;border group name&gt;,"Areas").
+This call parameter is not required.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MapMinH</code></td>
+<td>
+<p>is a numerical variable specifying the minimum height 
+the maps should be in the group/rows in a linked micromap graphic.  
+The default value is 0.5.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MapMaxH</code></td>
+<td>
+<p>is a numerical variable specifying the maximum height 
+the maps should be in the group/rows in a linked micromap graphic.  
+The default value is 1.75. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>IDHdr</code></td>
+<td>
+<p>is a two element character vector used to modify the id 
+glyph headers in <var>micromapST</var>. The two values are entered as 
+<code>IDHdr=c("1stHdr","2ndHdr")</code>. The defaults for this parameter 
+are <var>""</var> and <var>"States</var>.  See <var>micromapST</var> documentation 
+for more details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>LabelCex</code></td>
+<td>
+<p>a numerical value indicating the cex multiplier to 
+use when drawing the Map Labels (MapL) on the first map in a linked 
+micromap graphic.  The default value is 0.4 to match the micromapST maps.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ReducePC</code></td>
+<td>
+<p>a numerical value between .01 and 100 
+tell the package to not reduce the number vertex in the shapefile. This is 
+change from earlier releases where 0 to 1 could be used to represent 0 to 100
+With the use of smaller keep values, the scale of the parameter can't be 
+determined. Reduced percentage below 1 are common.  Therefore, 0.65 is not
+65 
+that be remaining in the shape file after simplification by rmapshaper. 
+The default value is 1.25 
+to even 0.65
+BuildBorderGroup to determine how this factor attects your boundary 
+data. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>proj4</code></td>
+<td>
+<p>is a character string representing a projection using the 
+Proj4 notation. The transformation to this projection is done as the 
+last step in the processing of the shape file before converting the 
+boundary data into the micromapST boundary data.frame. <span class="option">proj4</span> 
+is provided, the projection in the original shape file is used.
+If the projection in the original shape file is missing or Long/Lat, 
+then the function will create an Albers Equal Area protection centered
+on the centroid of the map's area.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>checkPointReStart</code></td>
+<td>
+<p>The <var>BuildBorderGroup</var> function allows for 
+the builder to manually adjust the shape file, just before building the 
+<var>micromapST</var> boundary data.frame. During the normal process, the 
+function writes check point images of the shape file, areaParms 
+data.frame, and the Name Table data.frame to the "CheckPoint" folder 
+in the <span class="option">NameTableDir</span> folder. The builder can inspect and 
+modify any of the tables and the shape file, but must be very 
+careful with what and how they are modified.  When done, the builder 
+can re-issue the <var>BuildBorderGroup</var> function call with the
+<span class="option">checkPointReStart</span> parameter set to <var>TRUE</var>.  
+The function will bypass all of the processing up to the check point,
+then read in the check point files and continue building the border 
+group. This will frequently be required when the map region contains
+many small area that will not be seen when shaped and simple scaling 
+or shifting does not produce the desired arrangement of the areas.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>debug</code></td>
+<td>
+<p>is a numerical value from 0 to 65536.  It is used by the 
+developers to turn on specific actions or information displays to
+aid in the debugging and troubleshooting this function.  The 
+developers assigned a single actions to each bit in a 16 bit integer.
+In this way, multiple actions can be requested without any posibility
+of them interferring with each other.  For example: the value
+of 512 (b'00000010 00000000') is assigned to plotting the border
+group map at each of the 4 stages of processing the shapefile.  The 
+four stages are: 1) RAW, just read; 2) after being process by rmapshaper;
+3) after the polygons are manipulated as specified in the Name Table;
+and finally 4) the boundaries after they are converted into the point
+table format (VisBorders) for use by micromapST.  The output plots 
+are saved as PDF files. All that is needed is to set debug=512.  
+Another action the developers created is to save the plots created 
+by the 512 action in PNG type files, not PDF. This can be done by 
+setting debug = 512+128 = 640, in binary: b'00000010 00000000' OR 
+b'00000000 10000000' = b'00000010 10000000'.  The integer values are 
+much easier to work with then the long 0s and 1s binary represention 
+of the bits. Default is 0. 
+</p>
+<p>The full table of assigned values is: 
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+      bit #</td>
+<td style="text-align: left;">	value</td>
+<td style="text-align: left;"> definition</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      1</td>
+<td style="text-align: left;">       1</td>
+<td style="text-align: left;">  line by line debugging is being used and some code accomodates are required.</td>
+</tr>
+<tr>
+<td style="text-align: left;"> 
+      2</td>
+<td style="text-align: left;">	  2</td>
+<td style="text-align: left;">  Outputs variable data to trace the function processes</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      3</td>
+<td style="text-align: left;">       4</td>
+<td style="text-align: left;">  Display Information related to projection processing</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      4</td>
+<td style="text-align: left;">       8</td>
+<td style="text-align: left;">  Plot intermediate Shape file, SF and SPDF (not the same plots as generated by 256 or 512)</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      5</td>
+<td style="text-align: left;">       16</td>
+<td style="text-align: left;"> Display processing and variables related to the SF</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      6</td>
+<td style="text-align: left;">       32</td>
+<td style="text-align: left;"> Display processing and variables related to the Name Table</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      7</td>
+<td style="text-align: left;">       64</td>
+<td style="text-align: left;"> Display other internal variables during processing of the data</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      8</td>
+<td style="text-align: left;">       128</td>
+<td style="text-align: left;"> = 0 sets output file type for the 512 option to PDF (default)</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+       </td>
+<td style="text-align: left;">          </td>
+<td style="text-align: left;"> = 1 sets output file type for the 512 option to PNG</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      9</td>
+<td style="text-align: left;">       254</td>
+<td style="text-align: left;"> Generate multiple plot graphics of the map using a small format similar to the image</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+       </td>
+<td style="text-align: left;">          </td>
+<td style="text-align: left;">   in the linked micromap with each plot with each plot having only 5 areas shaped.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+       </td>
+<td style="text-align: left;">          </td>
+<td style="text-align: left;">   Number of images = Areas/5 + 1.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      10</td>
+<td style="text-align: left;">      512</td>
+<td style="text-align: left;"> Generate a 4" x 4" plot of the area at key processing stage: RAW, After rmapshaping,</td>
+</tr>
+<tr>
+<td style="text-align: left;"> 
+        </td>
+<td style="text-align: left;">         </td>
+<td style="text-align: left;">   After Name Table modifications, and after transformation and the conversion </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+        </td>
+<td style="text-align: left;">         </td>
+<td style="text-align: left;">   to the micromapST VisBorder format (Final).</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      11</td>
+<td style="text-align: left;">      1024</td>
+<td style="text-align: left;"> Same as 512, but only generates 4" x 4" plots for the RAW and Final images.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      12</td>
+<td style="text-align: left;">      2048</td>
+<td style="text-align: left;"> Display the final BorderGroup map for each layer on the screen: Areas, Level 2,</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+        </td>
+<td style="text-align: left;">          </td>
+<td style="text-align: left;">   Regions, Map Outline (level 3). Each is display in a separate window and </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+        </td>
+<td style="text-align: left;">          </td>
+<td style="text-align: left;">   must be manually closed.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      13</td>
+<td style="text-align: left;">      4096</td>
+<td style="text-align: left;"> Future Use - not assigned.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      14</td>
+<td style="text-align: left;">      8192</td>
+<td style="text-align: left;"> Write to disk a PDF file of multiple area boundary maps with 5 areas colored in each</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+        </td>
+<td style="text-align: left;">          </td>
+<td style="text-align: left;">   map as done for the 256 option.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      15</td>
+<td style="text-align: left;">      16384</td>
+<td style="text-align: left;"> Future Use - not assigned.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      16</td>
+<td style="text-align: left;">      32768</td>
+<td style="text-align: left;"> Future Use - not assigned.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+     </td>
+</tr>
+</table>
+<p>Using any of these debug options will greatly increase the size of the output generated by BuildBorderGroup
+and should not be used unless requested by the package developer.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The output of this function is a single R dataset containing 6 data.frames 
+and a text report for inclusion in documentation for the border group.
+The details on each of the 6 data.frames and their contents can be found in the 
+bordGrp section.
+</p>
+<p>The default border group is <var>USStatesBG</var> to be compatible with older 
+R scripts using previous versions of the <var>micromapST</var> package.  
+</p>
+<p>Each of the border groups contained in this package have detail descriptions of
+the specific geographic area they represent. See the "xxxxx"BG section for each 
+border group:
+</p>
+<p><var>USStatesBG</var>
+<var>USSeerBG</var>
+<var>KansasBG</var>
+<var>MarylandBG</var>
+<var>NewYorkBG</var>
+<var>UtahBG</var>
+<var>UKIrelendBG</var>
+<var>ChinaBG</var>
+<var>SeoulSKoreaBG</var>
+<var>AfricaBG</var>
+</p>
+
+
+<h3>Value</h3>
+
+<p>Path to the saved Border Group file.</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jim Pearson, StatNet Consulting, LLC, Gaithersburg, MD 
+</p>
+
+
+<h3>See Also</h3>
+
+<p>micromapST,
+micromapSEER
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Load libraries needed.
+stt1 &lt;- Sys.time()
+library(stringr)
+library(readxl)
+library(sf)
+
+# Generate a Kentucky County Border Group
+#
+# Read the county boundary files.  (Set up system directories. 
+#   Replace with your directories to run.)
+TempD&lt;-"c:/projects/statnet/"  # my private test PDF directory exist, 
+                               #don't use temp.
+# get a temp directory for the output PDF files for the example.
+if (!dir.exists(TempD)) {
+     TempD &lt;- paste0(tempdir(),"/") 
+     DataD &lt;- paste0(system.file("extdata",package="micromapST"),"/")
+} else {
+     DataD &lt;- "c:/projects/statnet/r code/micromapST-3.0.2/inst/extdata/"
+}
+
+cat("Temporary Directory:",TempD,"\n")
+# get working data directory
+#cat("Working Data Directory:",DataD,"\n")
+
+KYCoBG  &lt;- "KYCountyBG"  # Border Group name
+KYCoCen &lt;- "KY_County"   # shape file name(s)
+
+KYCoShp &lt;- st_read(DataD,KYCoCen)
+st_crs(KYCoShp)  &lt;- st_crs("+proj=lonlat +datum=NAD83 +ellipse=WGS84 +no_defs")
+
+# inspect name table
+KYNTname &lt;- paste0(DataD,"/",KYCoCen,"_NameTable.xlsx")
+#cat("KYNTname:",KYNTname,"\n")
+
+KYCoNT    &lt;- as.data.frame(read_xlsx(KYNTname))
+#head(KYCoNT)
+spt1 &lt;- Sys.time()
+cat("Time to get data and boundaries for Counties:",spt1-stt1,"\n")
+## Not run: 
+#
+#  building border group for all counties in Kentucky
+#
+stt2 &lt;- Sys.time()
+# Build Border Group
+BuildBorderGroup(ShapeFile     = KYCoShp,
+                 ShapeLinkName = "NAME",
+                 NameTableLink = "Name",
+                 NameTableDir  = DataD,
+                 NameTableFile = paste0(KYCoCen,"_NameTable.xlsx"),
+                 BorderGroupName = KYCoBG,
+                 BorderGroupDir  = TempD,
+                 MapHdr        = c("","KY Counties"),
+                 IDHdr         = c("KY Co."),
+                 ReducePC      = 0.9
+                )
+                
+# Setup MicromapST graphic
+spt2 &lt;- Sys.time()
+cat("Time to build KY Co BG:",spt2-stt2,"\n")
+stt3 &lt;- spt2
+KYCoData  &lt;- as.data.frame(read_xlsx(paste0(DataD,"/",
+                           "KY_County_Population_1900-2020.xlsx")))
+#head(KYCoData)
+
+KY_Co_PD &lt;- data.frame(stringsAsFactors=FALSE,
+                 type=c("map","id","dot","dot"),
+                 lab1=c(NA,NA,"2010 Pop","2020 Pop"),
+                 col1=c(NA,NA,"2010","2020")
+              )
+
+KYCoTitle  &lt;- c("Ez23ax-Kentucky County","Pop 2010 and 2020")
+OutCoPDF   &lt;- paste0(TempD,"Ez23ax-KY Co 2010-2020 Pop.pdf")
+grDevices::pdf(OutCoPDF,width=10,height=13)   # on 11 x 14 paper.
+
+micromapST(KYCoData,KY_Co_PD,sortVar=c("2020"), ascend=FALSE,
+           rowNames="full", rowNamesCol = c("Name"),
+           bordDir = TempD, bordGrp = KYCoBG, 
+           title   = KYCoTitle
+          )
+
+x &lt;- dev.off()
+spt3 &lt;- Sys.time()
+cat("Time to micromapST KY Co graph:",spt3-stt3,"\n")
+
+## End(Not run)   # end of dontrun.
+
+stt4 &lt;- Sys.time()
+
+# Aggregate Kentucky Counties into ADD areas
+#
+# The regions in the Kentucky County Name Table (KYCoNT) are the ADD districts
+# the county was assigned to.
+# The KYCoShp has the county boundaries.
+#
+KYCoShp$NAME   &lt;- str_to_upper(KYCoShp$NAME)
+KYCoNT$NameCap &lt;- str_to_upper(KYCoNT$Name)
+
+aggInx &lt;- match(KYCoShp$NAME,KYCoNT$NameCap)
+#print(aggInx)
+
+xm     &lt;- is.na(aggInx)  # which polygons did not match the name table?
+if (any(xm)) {
+  cat("ERROR: One or more polygons/counties in the shape file did not match\n",
+      "the entries in the KY County name table. They are:\n")
+      LLMiss &lt;- KYCoNT[xm,"Name"]
+      print(LLMiss)
+      stop()
+}
+#  
+
+#####
+#  aggFUN - a function to inspect the data.frame columns and determine
+#    an appropriate aggregation method - copy or sum.
+#
+aggFUN &lt;- function(z) { ifelse (is.character(z[1]), z[1], sum(as.numeric(z))) } 
+#
+#####
+
+#
+aggList  &lt;- KYCoNT$regID[aggInx]
+#print(aggList)
+
+KYADDShp &lt;- aggregate(KYCoShp, by=list(aggList), FUN = aggFUN)
+names(KYADDShp)[1] &lt;- "regID"  # change first column name to "regNames"
+row.names(KYADDShp) &lt;- KYADDShp$regID
+
+KeepAttr &lt;- c("regID","AREA","PERIMETER","STATE","geometry")
+KYADDShp &lt;- KYADDShp[,KeepAttr]
+st_geometry(KYADDShp) &lt;- st_cast(st_geometry(KYADDShp),"MULTIPOLYGON")
+
+#plot(st_geometry(KYADDShp))
+spt4 &lt;- Sys.time()
+cat("Time to aggregate KY ADDs from Cos:",spt4-stt4,"\n")
+stt5 &lt;- spt4
+# Build Border Group
+
+BuildBorderGroup(ShapeFile       = KYADDShp,  
+        # sf structure of shapefile of combined counties into AD Districts
+                 ShapeLinkName   = "regID",
+                 NameTableFile   = "KY_ADD_NameTable.xlsx",
+                 NameTableDir    = DataD,
+                 NameTableLink   = "Index", 
+                 BorderGroupName = "KYADDBG",
+                 BorderGroupDir  = TempD,
+                 MapHdr          = c("","KY ADDs"),
+                 IDHdr           = c("KY ADDs"),
+                 ReducePC        = 0.9
+               )
+
+spt5 &lt;- Sys.time()
+cat("Time to build ADD BG:",spt5-stt5,"\n")
+stt6 &lt;- spt5
+# Test micromapST
+KYADDData &lt;- as.data.frame(readxl::read_xlsx(
+                            paste0(DataD,"KY_ADD_Population-2020.xlsx")),
+                           stringsAsFactors=FALSE)
+#
+KY_ADD_PD &lt;- data.frame(stringsAsFactors=FALSE,
+                 type=c("map","id","dot","dot"),
+                 lab1=c(NA,NA,"Pop","Proj. Pop"),
+                 lab2=c(NA,NA,"2020","2030"),
+                 col1=c(NA,NA,"DecC2020","Proj2030")
+              )
+#
+KyTitle &lt;- c("Ez23cx-KY Area Development Dist.",
+             "Pop 2020 and proj Pop 2023")
+OutPDF2 &lt;- paste0(TempD,"Ez23cx-KY ADD Pop.pdf")
+
+grDevices::pdf(OutPDF2,width=10,height=7.5)
+
+micromapST(KYADDData,KY_ADD_PD,sortVar="DecC2020",ascend=FALSE,
+           rowNames= "full", rowNamesCol = "ADD_Name",
+           bordDir = TempD,
+           bordGrp = "KYADDBG",
+           title   = KyTitle
+          )
+x &lt;- grDevices::dev.off()
+spt6 &lt;- Sys.time()
+cat("Time to do micromapST of KY ADDs:",spt6-stt6,"\n")
+</code></pre>
+
+
+</div>

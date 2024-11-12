@@ -1,0 +1,312 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>measure_diffusion_net</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Measures of network diffusion</h2>
+
+<h3>Description</h3>
+
+<p>These functions allow measurement of various features of
+a diffusion process at the network level:
+</p>
+
+<ul>
+<li> <p><code>net_transmissibility()</code> measures the average transmissibility observed
+in a diffusion simulation, or the number of new infections over
+the number of susceptible nodes.
+</p>
+</li>
+<li> <p><code>net_recovery()</code> measures the average number of time steps
+nodes remain infected once they become infected.
+</p>
+</li>
+<li> <p><code>net_reproduction()</code> measures the observed reproductive number
+in a diffusion simulation as the network's transmissibility over
+the network's average infection length.
+</p>
+</li>
+<li> <p><code>net_immunity()</code> measures the proportion of nodes that would need
+to be protected through vaccination, isolation, or recovery for herd immunity to be reached.
+</p>
+</li>
+<li> <p><code>net_hazard()</code> measures the hazard rate or instantaneous probability that
+nodes will adopt/become infected at that time
+</p>
+</li>
+</ul>
+<h3>Usage</h3>
+
+<pre><code class="language-R">net_transmissibility(diff_model)
+
+net_recovery(diff_model, censor = TRUE)
+
+net_reproduction(diff_model)
+
+net_immunity(diff_model, normalized = TRUE)
+
+net_hazard(diff_model)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>diff_model</code></td>
+<td>
+<p>A valid network diffusion model,
+as created by <code>as_diffusion()</code> or <code>play_diffusion()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>censor</code></td>
+<td>
+<p>Where some nodes have not yet recovered by the end
+of the simulation, right censored values can be replaced by the number of steps.
+By default TRUE.
+Note that this will likely still underestimate recovery.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>normalized</code></td>
+<td>
+<p>Logical scalar, whether the centrality scores are normalized.
+Different denominators are used depending on whether the object is one-mode or two-mode,
+the type of centrality, and other arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Transmissibility</h3>
+
+<p><code>net_transmissibility()</code> measures how many directly susceptible nodes
+each infected node will infect in each time period, on average.
+That is:
+</p>
+<p style="text-align: center;"><code class="reqn">T = \frac{1}{n}\sum_{j=1}^n \frac{i_{j}}{s_{j}}</code>
+</p>
+
+<p>where <code class="reqn">i</code> is the number of new infections in each time period, <code class="reqn">j \in n</code>,
+and <code class="reqn">s</code> is the number of nodes that could have been infected in that time period
+(note that <code class="reqn">s \neq S</code>, or
+the number of nodes that are susceptible in the population).
+<code class="reqn">T</code> can be interpreted as the proportion of susceptible nodes that are
+infected at each time period.
+</p>
+
+
+<h3>Recovery time</h3>
+
+<p><code>net_recovery()</code> measures the average number of time steps that
+nodes in a network remain infected.
+Note that in a diffusion model without recovery, average infection length
+will be infinite.
+This will also be the case where there is right censoring.
+The longer nodes remain infected, the longer they can infect others.
+</p>
+
+
+<h3>Reproduction number</h3>
+
+<p><code>net_reproduction()</code> measures a given diffusion's reproductive number.
+Here it is calculated as:
+</p>
+<p style="text-align: center;"><code class="reqn">R = \min\left(\frac{T}{1/L}, \bar{k}\right)</code>
+</p>
+
+<p>where <code class="reqn">T</code> is the observed transmissibility in a diffusion
+and <code class="reqn">L</code> is the observed recovery length in a diffusion.
+Since <code class="reqn">L</code> can be infinite where there is no recovery
+or there is right censoring,
+and since network structure places an upper limit on how many
+nodes each node may further infect (their degree),
+this function returns the minimum of <code class="reqn">R_0</code>
+and the network's average degree.
+</p>
+<p>Interpretation of the reproduction number is oriented around R = 1.
+Where <code class="reqn">R &gt; 1</code>, the 'disease' will 'infect' more and more
+nodes in the network.
+Where <code class="reqn">R &lt; 1</code>, the 'disease' will not sustain itself and eventually
+die out.
+Where <code class="reqn">R = 1</code>, the 'disease' will continue as endemic,
+if conditions allow.
+</p>
+
+
+<h3>Herd immunity</h3>
+
+<p><code>net_immunity()</code> estimates the proportion of a network
+that need to be protected from infection for herd immunity
+to be achieved.
+This is known as the Herd Immunity Threshold or HIT:
+</p>
+<p style="text-align: center;"><code class="reqn">1 - \frac{1}{R}</code>
+</p>
+
+<p>where <code class="reqn">R</code> is the reproduction number from <code>net_reproduction()</code>.
+The HIT indicates the threshold at which
+the reduction of susceptible members of the network means
+that infections will no longer keep increasing.
+Note that there may still be more infections after this threshold has been reached,
+but there should be fewer and fewer.
+These excess infections are called the <em>overshoot</em>.
+This function does <em>not</em> take into account the structure
+of the network, instead using the average degree.
+</p>
+<p>Interpretation is quite straightforward.
+A HIT or immunity score of 0.75 would mean that 75% of the nodes in the network
+would need to be vaccinated or otherwise protected to achieve herd immunity.
+To identify how many nodes this would be, multiply this proportion with the number
+of nodes in the network.
+</p>
+
+
+<h3>Hazard rate</h3>
+
+<p>The hazard rate is the instantaneous probability of adoption/infection at each time point (Allison 1984).
+In survival analysis, hazard rate is formally defined as:
+</p>
+<p style="text-align: center;"><code class="reqn">%
+\lambda(t)=\lim_{h\to +0}\frac{F(t+h)-F(t)}{h}\frac{1}{1-F(t)} %
+</code>
+</p>
+
+<p>By approximating <code class="reqn">h=1</code>, we can rewrite the equation as
+</p>
+<p style="text-align: center;"><code class="reqn">%
+\lambda(t)=\frac{F(t+1)-F(t)}{1-F(t)} %
+</code>
+</p>
+
+<p>If we estimate <code class="reqn">F(t)</code>,
+the probability of not having adopted the innovation in time <code class="reqn">t</code>,
+from the proportion of adopters in that time,
+such that <code class="reqn">F(t) \sim q_t/n</code>, we now have (ultimately for <code class="reqn">t&gt;1</code>):
+</p>
+<p style="text-align: center;"><code class="reqn">%
+\lambda(t)=\frac{q_{t+1}/n-q_t/n}{1-q_t/n} = \frac{q_{t+1} - q_t}{n - q_t} = \frac{q_t - q_{t-1}}{n - q_{t-1}} %
+</code>
+</p>
+
+<p>where <code class="reqn">q_i</code> is the number of adopters in time <code class="reqn">t</code>,
+and <code class="reqn">n</code> is the number of vertices in the graph.
+</p>
+<p>The shape of the hazard rate indicates the pattern of new adopters over time.
+Rapid diffusion with convex cumulative adoption curves will have
+hazard functions that peak early and decay over time.
+Slow concave cumulative adoption curves will have
+hazard functions that are low early and rise over time.
+Smooth hazard curves indicate constant adoption whereas
+those that oscillate indicate variability in adoption behavior over time.
+</p>
+
+
+<h3>Source</h3>
+
+<p><code>{netdiffuseR}</code>
+</p>
+
+
+<h3>References</h3>
+
+
+
+<h4>On epidemiological models</h4>
+
+<p>Kermack, William O., and Anderson Gray McKendrick. 1927.
+"A contribution to the mathematical theory of epidemics".
+<em>Proc. R. Soc. London A</em> 115: 700-721.
+<a href="https://doi.org/10.1098/rspa.1927.0118">doi:10.1098/rspa.1927.0118</a>
+</p>
+
+
+
+<h4>On the basic reproduction number</h4>
+
+<p>Diekmann, Odo, Hans J.A.P. Heesterbeek, and Hans J.A.J. Metz. 1990.
+"On the definition and the computation of the basic reproduction ratio R0 in models for infectious diseases in heterogeneous populations".
+<em>Journal of Mathematical Biology</em>, 28(4): 365–82.
+<a href="https://doi.org/10.1007/BF00178324">doi:10.1007/BF00178324</a>
+</p>
+<p>Kenah, Eben, and James M. Robins. 2007.
+"Second look at the spread of epidemics on networks".
+<em>Physical Review E</em>, 76(3 Pt 2): 036113.
+<a href="https://doi.org/10.1103/PhysRevE.76.036113">doi:10.1103/PhysRevE.76.036113</a>
+</p>
+
+
+
+<h4>On herd immunity</h4>
+
+<p>Garnett, G.P. 2005.
+"Role of herd immunity in determining the effect of vaccines against sexually transmitted disease".
+<em>The Journal of Infectious Diseases</em>, 191(1): S97-106.
+<a href="https://doi.org/10.1086/425271">doi:10.1086/425271</a>
+</p>
+
+
+
+<h4>On hazard rates</h4>
+
+<p>Allison, Paul D. 1984.
+<em>Event history analysis: Regression for longitudinal event data</em>.
+London: Sage Publications.
+<a href="https://doi.org/10.4135/9781412984195">doi:10.4135/9781412984195</a>
+</p>
+<p>Wooldridge, Jeffrey M. 2010.
+<em>Econometric Analysis of Cross Section and Panel Data</em> (2nd ed.).
+Cambridge: MIT Press.
+</p>
+
+
+
+<h3>See Also</h3>
+
+<p>Other measures: 
+<code>measure_attributes</code>,
+<code>measure_central_between</code>,
+<code>measure_central_close</code>,
+<code>measure_central_degree</code>,
+<code>measure_central_eigen</code>,
+<code>measure_closure</code>,
+<code>measure_cohesion</code>,
+<code>measure_diffusion_infection</code>,
+<code>measure_diffusion_node</code>,
+<code>measure_features</code>,
+<code>measure_heterogeneity</code>,
+<code>measure_hierarchy</code>,
+<code>measure_holes</code>,
+<code>measure_periods</code>,
+<code>measure_properties</code>,
+<code>member_diffusion</code>
+</p>
+<p>Other diffusion: 
+<code>make_play</code>,
+<code>measure_diffusion_infection</code>,
+<code>measure_diffusion_node</code>,
+<code>member_diffusion</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">  smeg &lt;- generate_smallworld(15, 0.025)
+  smeg_diff &lt;- play_diffusion(smeg, recovery = 0.2)
+  plot(smeg_diff)
+  # To calculate the average transmissibility for a given diffusion model
+  net_transmissibility(smeg_diff)
+  # To calculate the average infection length for a given diffusion model
+  net_recovery(smeg_diff)
+  # To calculate the reproduction number for a given diffusion model
+  net_reproduction(smeg_diff)
+  # Calculating the proportion required to achieve herd immunity
+  net_immunity(smeg_diff)
+  # To find the number of nodes to be vaccinated
+  ceiling(net_immunity(smeg_diff) * manynet::net_nodes(smeg))
+# To calculate the hazard rates at each time point
+net_hazard(play_diffusion(smeg, transmissibility = 0.3))
+</code></pre>
+
+
+</div>

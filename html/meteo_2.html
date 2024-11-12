@@ -1,0 +1,259 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>cv.rfsi</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Nested k-fold cross-validation for Random Forest Spatial Interpolation (RFSI)</h2>
+
+<h3>Description</h3>
+
+<p>Function for nested k-fold cross-validation function for Random Forest Spatial Interpolation (RFSI) (Sekulić et al. 2020). It is based on rfsi, pred.rfsi, and tune.rfsi functions. Currently, only spatial (leave-location-out) cross-validation is implemented. Temporal and spatio-temporal cross-validation will be implemented in the future.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">cv.rfsi(formula,
+        data,
+        data.staid.x.y.z = NULL,
+        use.idw = FALSE,
+        s.crs = NA,
+        p.crs = NA,
+        tgrid,
+        tgrid.n=10,
+        tune.type = "LLO",
+        k = 5,
+        seed=42,
+        out.folds,
+        in.folds,
+        acc.metric,
+        output.format = "data.frame",
+        cpus = detectCores()-1,
+        progress = 1,
+        soil3d = FALSE,
+        no.obs = 'increase',
+        ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>formula; Formula for specifying target variable and covariates (without nearest observations and distances to them). If <code>z~1</code>, an RFSI model using only nearest obsevrations and distances to them as covariates will be cross-validated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>sf-class, sftime-class, SpatVector-class or data.frame; Contains target variable (observations) and covariates used for making an RFSI model. If data.frame object, it should have next columns: station ID (staid), longitude (x), latitude (y), 3rd component - time, depth, ... (z) of the observation, observation value (obs) and covariates (cov1, cov2, ...). If covariates are missing, the RFSI model using only nearest obsevrations and distances to them as covariates (<code>formula=z~1</code>) will be cross-validated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data.staid.x.y.z</code></td>
+<td>
+<p>numeric or character vector; Positions or names of the station ID (staid), longitude (x), latitude (y) and 3rd component (z) columns in data.frame object (e.g. c(1,2,3,4)). If <code>data</code> is sf-class, sftime-class, or SpatVector-class object, <code>data.staid.x.y.z</code> is used to point staid and z position. Set z position to NA (e.g. c(1,2,3,NA)) or ommit it (e.g. c(1,2,3)) for spatial interpolation. Default is NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use.idw</code></td>
+<td>
+<p>boolean; IDW prediction as covariate - will IDW predictions from <code>n.obs</code> nearest observations be calculated and tuned (see function near.obs). Default is FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>s.crs</code></td>
+<td>
+<p>st_crs or crs; Source CRS of <code>data</code>. If <code>data</code> contains crs, <code>s.crs</code> will be overwritten. Default is NA.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.crs</code></td>
+<td>
+<p>st_crs or crs; Projection CRS for <code>data</code> reprojection. If NA, <code>s.crs</code> will be used for distance calculation. Note that observations should be in projection for finding nearest observations based on Eucleadean distances (see function near.obs). Default is NA.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tgrid</code></td>
+<td>
+<p>data.frame; Possible tuning parameters for nested folds. The column names are same as the tuning parameters. Possible tuning parameters are: <code>n.obs</code>, <code>num.trees</code>, <code>mtry</code>, <code>min.node.size</code>, <code>sample.fraction</code>, <code>splirule</code>, <code>idw.p</code>, and <code>depth.range</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tgrid.n</code></td>
+<td>
+<p>numeric; Number of randomly chosen <code>tgrid</code> combinations for nested tuning of RFSI. If larger than <code>tgrid</code>, will be set to <code>length(tgrid)</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tune.type</code></td>
+<td>
+<p>character; Type of nested cross-validation: leave-location-out ("LLO"), leave-time-out ("LTO") - TO DO, and leave-location-time-out ("LLTO") - TO DO. Default is "LLO".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>numeric; Number of random outer and inner folds (i.e. for cross-validation and nested tuning) that will be created with CreateSpacetimeFolds function. Default is 5.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>numeric; Random seed that will be used to generate outer  and inner folds with CreateSpacetimeFolds function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>out.folds</code></td>
+<td>
+<p>numeric or character vector or value; Showing outer folds column (if value) or rows (vector) of <code>data</code> observations used for cross-validation. If missing, will be created with CreateSpacetimeFolds function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>in.folds</code></td>
+<td>
+<p>numeric or character vector or value; Showing innner folds column (if value) or rows (vector) of <code>data</code> observations used for cross-validation. If missing, will be created with CreateSpacetimeFolds function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>acc.metric</code></td>
+<td>
+<p>character; Accuracy metric that will be used as a criteria for choosing an optimal RFSI model in nested tuning. Possible values for regression: "ME", "MAE", "NMAE", "RMSE" (default), "NRMSE", "R2", "CCC". Possible values for classification: "Accuracy","Kappa" (default), "AccuracyLower", "AccuracyUpper", "AccuracyNull", "AccuracyPValue", "McnemarPValue".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output.format</code></td>
+<td>
+<p>character; Format of the output, data.frame (default), sf-class, sftime-class, or SpatVector-class.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpus</code></td>
+<td>
+<p>numeric; Number of processing units. Default is detectCores()-1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>numeric; If progress bar is shown. 0 is no progress bar, 1 is outer folds results, 2 is + innner folds results, 3 is + prediction progress bar. Default is 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>soil3d</code></td>
+<td>
+<p>logical; If 3D soil modellig is performed and near.obs.soil function is used for finding n nearest observations and distances to them. In this case, z position of the <code>data.staid.x.y.z</code> points to the depth column.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>no.obs</code></td>
+<td>
+<p>character; Possible values are <code>increase</code> (default) and <code>exactly</code>. If set to <code>increase</code>, in case if there is no <code>n.obs</code> observations in <code>depth.range</code> for a specific location, the <code>depth.range</code> is increased (multiplied by 2, 3, ...) until the number of observations are larger or equal to <code>n.obs</code>. If set to <code>exactly</code>, the function will raise an error when it come to the first location with no <code>n.obs</code> observations in specified <code>depth.range</code> (see function near.obs.soil).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments passed to ranger.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A data.frame, sf-class, sftime-class, or SpatVector-class object (depends on <code>output.format</code> argument), with columns:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>obs</code></td>
+<td>
+<p>Observations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pred</code></td>
+<td>
+<p>Predictions from cross-validation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>folds</code></td>
+<td>
+<p>Folds used for cross-validation.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Aleksandar Sekulic <a href="mailto:asekulic@grf.bg.ac.rs">asekulic@grf.bg.ac.rs</a></p>
+
+
+<h3>References</h3>
+
+<p>Sekulić, A., Kilibarda, M., Heuvelink, G. B., Nikolić, M. &amp; Bajat, B. Random Forest Spatial Interpolation. Remote. Sens. 12, 1687, https://doi.org/10.3390/rs12101687 (2020).
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>near.obs</code>
+<code>rfsi</code>
+<code>pred.rfsi</code>
+<code>tune.rfsi</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(CAST)
+library(doParallel)
+library(ranger)
+library(sp)
+library(sf)
+library(terra)
+library(meteo)
+
+# prepare data
+demo(meuse, echo=FALSE)
+meuse &lt;- meuse[complete.cases(meuse@data),]
+data = st_as_sf(meuse, coords = c("x", "y"), crs = 28992, agr = "constant")
+fm.RFSI &lt;- as.formula("zinc ~ dist + soil + ffreq")
+
+# making tgrid
+n.obs &lt;- 1:6
+min.node.size &lt;- 2:10
+sample.fraction &lt;- seq(1, 0.632, -0.05) # 0.632 without / 1 with replacement
+splitrule &lt;- "variance"
+ntree &lt;- 250 # 500
+mtry &lt;- 3:(2+2*max(n.obs))
+tgrid = expand.grid(min.node.size=min.node.size, num.trees=ntree,
+                    mtry=mtry, n.obs=n.obs, sample.fraction=sample.fraction)
+
+# Cross-validation of RFSI
+rfsi_cv &lt;- cv.rfsi(formula=fm.RFSI, # without nearest obs
+                   data = data,
+                   tgrid = tgrid, # combinations for tuning
+                   tgrid.n = 2, # number of randomly selected combinations from tgrid for tuning
+                   tune.type = "LLO", # Leave-Location-Out CV
+                   k = 5, # number of folds
+                   seed = 42,
+                   acc.metric = "RMSE", # R2, CCC, MAE
+                   output.format = "sf", # "data.frame", # "SpatVector",
+                   cpus=2, # detectCores()-1,
+                   progress=1,
+                   importance = "impurity") # ranger parameter
+
+summary(rfsi_cv)
+rfsi_cv$dif &lt;- rfsi_cv$obs - rfsi_cv$pred
+plot(rfsi_cv["dif"])
+plot(rfsi_cv[, , "obs"])
+acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "R2")
+acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "RMSE")
+acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "MAE")
+acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "CCC")
+
+</code></pre>
+
+
+</div>

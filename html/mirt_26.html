@@ -1,0 +1,502 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>DRF</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Differential Response Functioning statistics</h2>
+
+<h3>Description</h3>
+
+<p>Function performs various omnibus differential item (DIF), bundle (DBF), and test (DTF)
+functioning procedures on an object
+estimated with <code>multipleGroup()</code>. The compensatory and non-compensatory statistics provided
+are described in Chalmers (2018), which generally can be interpreted as IRT generalizations
+of the SIBTEST and CSIBTEST statistics. For hypothesis tests, these measures
+require the ACOV matrix to be computed in the
+fitted multiple-group model (otherwise, sets of plausible draws from the posterior are explicitly
+required).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">DRF(
+  mod,
+  draws = NULL,
+  focal_items = 1L:extract.mirt(mod, "nitems"),
+  param_set = NULL,
+  den.type = "marginal",
+  best_fitting = FALSE,
+  CI = 0.95,
+  npts = 1000,
+  quadpts = NULL,
+  theta_lim = c(-6, 6),
+  Theta_nodes = NULL,
+  plot = FALSE,
+  DIF = FALSE,
+  DIF.cats = FALSE,
+  groups2test = "all",
+  pairwise = FALSE,
+  simplify = TRUE,
+  p.adjust = "none",
+  par.strip.text = list(cex = 0.7),
+  par.settings = list(strip.background = list(col = "#9ECAE1"), strip.border = list(col =
+    "black")),
+  auto.key = list(space = "right", points = FALSE, lines = TRUE),
+  verbose = TRUE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>mod</code></td>
+<td>
+<p>a multipleGroup object which estimated only 2 groups</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>draws</code></td>
+<td>
+<p>a number indicating how many draws to take to form a suitable multiple imputation
+or bootstrap estimate of the expected test scores (100 or more). If <code>boot = FALSE</code>,
+requires an estimated parameter information matrix. Returns a list containing the
+bootstrap/imputation distribution and null hypothesis test for the sDRF statistics</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>focal_items</code></td>
+<td>
+<p>a character/numeric vector indicating which items to include in the DRF tests. The
+default uses all of the items (note that including anchors in the focal items has no effect
+because they are exactly equal across groups). Selecting fewer items will result in tests of
+'differential bundle functioning'</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>param_set</code></td>
+<td>
+<p>an N x p matrix of parameter values drawn from the posterior (e.g., using the
+parametric sampling approach, bootstrap, of MCMC). If supplied, then these will be used to compute
+the DRF measures. Can be much more efficient to pre-compute these values if DIF, DBF, or DTF are
+being evaluated within the same model (especially when using the bootstrap method).
+See <code>draw_parameters</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>den.type</code></td>
+<td>
+<p>character specifying how the density of the latent traits is computed.
+Default is <code>'marginal'</code> to include the proportional information from both groups,
+<code>'focal'</code> for just the focal group, and <code>'reference'</code> for the reference group</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>best_fitting</code></td>
+<td>
+<p>logical; use the best fitting parametric distribution (Gaussian by default)
+that was used at the time of model estimation? This will result in much fast computations, however
+the results are more dependent upon the underlying modelling assumptions. Default is FALSE, which
+uses the empirical histogram approach</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CI</code></td>
+<td>
+<p>range of confidence interval when using draws input</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>npts</code></td>
+<td>
+<p>number of points to use for plotting. Default is 1000</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quadpts</code></td>
+<td>
+<p>number of quadrature nodes to use when constructing DRF statistics. Default is extracted from
+the input model object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>theta_lim</code></td>
+<td>
+<p>lower and upper limits of the latent trait (theta) to be evaluated, and is
+used in conjunction with <code>quadpts</code> and <code>npts</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Theta_nodes</code></td>
+<td>
+<p>an optional matrix of Theta values to be evaluated in the draws for the
+sDRF statistics. However, these values are not averaged across, and instead give the bootstrap
+confidence intervals at the respective Theta nodes. Useful when following up a large
+sDRF or uDRF statistic, for example, to determine where the difference between the test curves are large
+(while still accounting for sampling variability). Returns a matrix with observed
+variability</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot</code></td>
+<td>
+<p>logical; plot the 'sDRF' functions for the evaluated sDBF or sDTF values across the
+integration grid or, if <code>DIF = TRUE</code>, the selected items as a faceted plot of individual items?
+If plausible parameter sets were obtained/supplied then imputed confidence intervals will be included</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>DIF</code></td>
+<td>
+<p>logical; return a list of item-level imputation properties using the DRF statistics?
+These can generally be used as a DIF detection method and as a graphical display for
+understanding DIF within each item</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>DIF.cats</code></td>
+<td>
+<p>logical; same as <code>DIF = TRUE</code>, however computations will
+be performed on each item category probability functions rather than the score functions.
+Only useful for understanding DIF in polytomous items</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>groups2test</code></td>
+<td>
+<p>when more than 2 groups are being investigated which two groups
+should be used in the effect size comparisons?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pairwise</code></td>
+<td>
+<p>logical; perform pairwise computations when the applying to multi-group settings</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>simplify</code></td>
+<td>
+<p>logical; attempt to simplify the output rather than returning larger lists?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.adjust</code></td>
+<td>
+<p>string to be passed to the <code>p.adjust</code> function to adjust p-values.
+Adjustments are located in the <code>adj_pvals</code> element in the returned list. Only applicable when
+<code>DIF = TRUE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>par.strip.text</code></td>
+<td>
+<p>plotting argument passed to <code>lattice</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>par.settings</code></td>
+<td>
+<p>plotting argument passed to <code>lattice</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>auto.key</code></td>
+<td>
+<p>plotting argument passed to <code>lattice</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>logical; include additional information in the console?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments to be passed to <code>lattice</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The effect sizes estimates by the DRF function are
+</p>
+<p style="text-align: center;"><code class="reqn">sDRF = \int [S(C|\bm{\Psi}^{(R)},\theta) S(C|\bm{\Psi}^{(F)},\theta)] f(\theta)d\theta,</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">uDRF = \int |S(C|\bm{\Psi}^{(R)},\theta) S(C|\bm{\Psi}^{(F)},\theta)| f(\theta)d\theta,</code>
+</p>
+
+<p>and
+</p>
+<p style="text-align: center;"><code class="reqn">dDRF = \sqrt{\int [S(C|\bm{\Psi}^{(R)},\theta) S(C|\bm{\Psi}^{(F)},\theta)]^2 f(\theta)d\theta}</code>
+</p>
+
+<p>where <code class="reqn">S(.)</code> are the scoring equations used to evaluate the model-implied
+difference between the focal and reference group. The <code class="reqn">f(\theta)</code>
+terms can either be estimated from the posterior via an empirical
+histogram approach (default), or can use the best
+fitting prior distribution that is obtain post-convergence (default is a Guassian
+distribution). Note that, in comparison to Chalmers (2018), the focal group is
+the leftmost scoring function while the reference group is the rightmost
+scoring function. This is largely to keep consistent with similar effect
+size statistics, such as SIBTEST, DFIT, Wainer's measures of impact, etc,
+which in general can be seen as special-case estimators of this family.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Phil Chalmers <a href="mailto:rphilip.chalmers@gmail.com">rphilip.chalmers@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Chalmers, R. P. (2018). Model-Based Measures for Detecting and Quantifying Response Bias.
+<em>Psychometrika, 83</em>(3), 696-732. <a href="https://doi.org/10.1007/s11336-018-9626-9">doi:10.1007/s11336-018-9626-9</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>multipleGroup</code>, <code>DIF</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+
+set.seed(1234)
+n &lt;- 30
+N &lt;- 500
+
+# only first 5 items as anchors
+model &lt;- 'F = 1-30
+          CONSTRAINB = (1-5, a1), (1-5, d)'
+
+a &lt;- matrix(1, n)
+d &lt;- matrix(rnorm(n), n)
+group &lt;- c(rep('Group_1', N), rep('Group_2', N))
+
+## -------------
+# groups completely equal
+dat1 &lt;- simdata(a, d, N, itemtype = 'dich')
+dat2 &lt;- simdata(a, d, N, itemtype = 'dich')
+dat &lt;- rbind(dat1, dat2)
+mod &lt;- multipleGroup(dat, model, group=group, SE=TRUE,
+                     invariance=c('free_means', 'free_var'))
+plot(mod)
+plot(mod, which.items = 6:10) #DBF
+plot(mod, type = 'itemscore')
+plot(mod, type = 'itemscore', which.items = 10:15)
+
+# empirical histogram approach
+DRF(mod)
+DRF(mod, focal_items = 6:10) #DBF
+DRF(mod, DIF=TRUE)
+DRF(mod, DIF=TRUE, focal_items = 10:15)
+
+# Best-fitting Gaussian distributions
+DRF(mod, best_fitting=TRUE)
+DRF(mod, focal_items = 6:10, best_fitting=TRUE) #DBF
+DRF(mod, DIF=TRUE, best_fitting=TRUE)
+DRF(mod, DIF=TRUE, focal_items = 10:15, best_fitting=TRUE)
+
+DRF(mod, plot = TRUE)
+DRF(mod, focal_items = 6:10, plot = TRUE) #DBF
+DRF(mod, DIF=TRUE, plot = TRUE)
+DRF(mod, DIF=TRUE, focal_items = 10:15, plot = TRUE)
+
+if(interactive()) mirtCluster()
+DRF(mod, draws = 500)
+DRF(mod, draws = 500, best_fitting=TRUE)
+DRF(mod, draws = 500, plot=TRUE)
+
+# pre-draw parameter set to save computations
+#  (more useful when using non-parametric bootstrap)
+param_set &lt;- draw_parameters(mod, draws = 500)
+DRF(mod, focal_items = 6, param_set=param_set) #DIF test
+DRF(mod, DIF=TRUE, param_set=param_set) #DIF test
+DRF(mod, focal_items = 6:10, param_set=param_set) #DBF test
+DRF(mod, param_set=param_set) #DTF test
+
+DRF(mod, focal_items = 6:10, draws=500) #DBF test
+DRF(mod, focal_items = 10:15, draws=500) #DBF test
+
+DIFs &lt;- DRF(mod, draws = 500, DIF=TRUE)
+print(DIFs)
+DRF(mod, draws = 500, DIF=TRUE, plot=TRUE)
+
+DIFs &lt;- DRF(mod, draws = 500, DIF=TRUE, focal_items = 6:10)
+print(DIFs)
+DRF(mod, draws = 500, DIF=TRUE, focal_items = 6:10, plot = TRUE)
+
+DRF(mod, DIF=TRUE, focal_items = 6)
+DRF(mod, draws=500, DIF=TRUE, focal_items = 6)
+
+# evaluate specific values for sDRF
+Theta_nodes &lt;- matrix(seq(-6,6,length.out = 100))
+
+sDTF &lt;- DRF(mod, Theta_nodes=Theta_nodes)
+head(sDTF)
+sDTF &lt;- DRF(mod, Theta_nodes=Theta_nodes, draws=200)
+head(sDTF)
+
+# sDIF (isolate single item)
+sDIF &lt;- DRF(mod, Theta_nodes=Theta_nodes, focal_items=6)
+head(sDIF)
+sDIF &lt;- DRF(mod, Theta_nodes=Theta_nodes, focal_items = 6, draws=200)
+head(sDIF)
+
+## -------------
+## random slopes and intercepts for 15 items, and latent mean difference
+##    (no systematic DTF should exist, but DIF will be present)
+set.seed(1234)
+dat1 &lt;- simdata(a, d, N, itemtype = 'dich', mu=.50, sigma=matrix(1.5))
+dat2 &lt;- simdata(a + c(numeric(15), rnorm(n-15, 0, .25)),
+                d + c(numeric(15), rnorm(n-15, 0, .5)), N, itemtype = 'dich')
+dat &lt;- rbind(dat1, dat2)
+mod1 &lt;- multipleGroup(dat, 1, group=group)
+plot(mod1)
+DRF(mod1) #does not account for group differences! Need anchors
+
+mod2 &lt;- multipleGroup(dat, model, group=group, SE=TRUE,
+                      invariance=c('free_means', 'free_var'))
+plot(mod2)
+
+# significant DIF in multiple items....
+# DIF(mod2, which.par=c('a1', 'd'), items2test=16:30)
+DRF(mod2)
+DRF(mod2, draws=500) #non-sig DTF due to item cancellation
+
+## -------------
+## systematic differing slopes and intercepts (clear DTF)
+set.seed(1234)
+dat1 &lt;- simdata(a, d, N, itemtype = 'dich', mu=.50, sigma=matrix(1.5))
+dat2 &lt;- simdata(a + c(numeric(15), rnorm(n-15, 1, .25)),
+                d + c(numeric(15), rnorm(n-15, 1, .5)),
+                N, itemtype = 'dich')
+dat &lt;- rbind(dat1, dat2)
+mod3 &lt;- multipleGroup(dat, model, group=group, SE=TRUE,
+                      invariance=c('free_means', 'free_var'))
+plot(mod3) #visable DTF happening
+
+# DIF(mod3, c('a1', 'd'), items2test=16:30)
+DRF(mod3) #unsigned bias. Signed bias (group 2 scores higher on average)
+DRF(mod3, draws=500)
+DRF(mod3, draws=500, plot=TRUE) #multiple DRF areas along Theta
+
+# plot the DIF
+DRF(mod3, draws=500, DIF=TRUE, plot=TRUE)
+
+# evaluate specific values for sDRF
+Theta_nodes &lt;- matrix(seq(-6,6,length.out = 100))
+sDTF &lt;- DRF(mod3, Theta_nodes=Theta_nodes, draws=200)
+head(sDTF)
+
+# DIF
+sDIF &lt;- DRF(mod3, Theta_nodes=Theta_nodes, focal_items = 30, draws=200)
+car::some(sDIF)
+
+## ----------------------------------------------------------------
+# polytomous example
+# simulate data where group 2 has a different slopes/intercepts
+set.seed(4321)
+a1 &lt;- a2 &lt;- matrix(rlnorm(20,.2,.3))
+a2[c(16:17, 19:20),] &lt;- a1[c(16:17, 19:20),] + c(-.5, -.25, .25, .5)
+
+# for the graded model, ensure that there is enough space between the intercepts,
+# otherwise closer categories will not be selected often
+diffs &lt;- t(apply(matrix(runif(20*4, .3, 1), 20), 1, cumsum))
+diffs &lt;- -(diffs - rowMeans(diffs))
+d1 &lt;- d2 &lt;- diffs + rnorm(20)
+rownames(d1) &lt;- rownames(d2) &lt;- paste0('Item.', 1:20)
+d2[16:20,] &lt;- d1[16:20,] + matrix(c(-.5, -.5, -.5, -.5,
+                                    1, 0, 0, -1,
+                                    .5, .5, -.5, -.5,
+                                    1, .5, 0, -1,
+                                    .5, .5, .5, .5), byrow=TRUE, nrow=5)
+
+tail(data.frame(a.group1 = a1, a.group2 = a2), 6)
+list(d.group1 = d1[15:20,], d.group2 = d2[15:20,])
+
+itemtype &lt;- rep('graded', nrow(a1))
+N &lt;- 600
+dataset1 &lt;- simdata(a1, d1, N, itemtype)
+dataset2 &lt;- simdata(a2, d2, N, itemtype, mu = -.25, sigma = matrix(1.25))
+dat &lt;- rbind(dataset1, dataset2)
+group &lt;- c(rep('D1', N), rep('D2', N))
+
+# item 1-10 as anchors
+mod &lt;- multipleGroup(dat, group=group, SE=TRUE,
+                     invariance=c(colnames(dat)[1:10], 'free_means', 'free_var'))
+coef(mod, simplify=TRUE)
+plot(mod)
+plot(mod, type='itemscore')
+
+# DIF tests vis Wald method
+DIF(mod, items2test=11:20,
+   which.par=c('a1', paste0('d', 1:4)),
+   Wald=TRUE, p.adjust='holm')
+
+DRF(mod)
+DRF(mod, DIF=TRUE, focal_items=11:20)
+DRF(mod, DIF.cats=TRUE, focal_items=11:20)
+
+## ----------------------------------------------------------------
+### multidimensional DTF
+
+set.seed(1234)
+n &lt;- 50
+N &lt;- 1000
+
+# only first 5 items as anchors within each dimension
+model &lt;- 'F1 = 1-25
+          F2 = 26-50
+          COV = F1*F2
+          CONSTRAINB = (1-5, a1), (1-5, 26-30, d), (26-30, a2)'
+
+a &lt;- matrix(c(rep(1, 25), numeric(50), rep(1, 25)), n)
+d &lt;- matrix(rnorm(n), n)
+group &lt;- c(rep('Group_1', N), rep('Group_2', N))
+Cov &lt;- matrix(c(1, .5, .5, 1.5), 2)
+Mean &lt;- c(0, 0.5)
+
+# groups completely equal
+dat1 &lt;- simdata(a, d, N, itemtype = 'dich', sigma = cov2cor(Cov))
+dat2 &lt;- simdata(a, d, N, itemtype = 'dich', sigma = Cov, mu = Mean)
+dat &lt;- rbind(dat1, dat2)
+mod &lt;- multipleGroup(dat, model, group=group, SE=TRUE,
+                     invariance=c('free_means', 'free_var'))
+coef(mod, simplify=TRUE)
+plot(mod, degrees = c(45,45))
+DRF(mod)
+
+# some intercepts slightly higher in Group 2
+d2 &lt;- d
+d2[c(10:15, 31:35)] &lt;- d2[c(10:15, 31:35)] + 1
+dat1 &lt;- simdata(a, d, N, itemtype = 'dich', sigma = cov2cor(Cov))
+dat2 &lt;- simdata(a, d2, N, itemtype = 'dich', sigma = Cov, mu = Mean)
+dat &lt;- rbind(dat1, dat2)
+mod &lt;- multipleGroup(dat, model, group=group, SE=TRUE,
+                     invariance=c('free_means', 'free_var'))
+coef(mod, simplify=TRUE)
+plot(mod, degrees = c(45,45))
+
+DRF(mod)
+DRF(mod, draws = 500)
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,204 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>findPeaks</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Find Score Peaks and Detections in a <code>templateScores</code> Object
+</h2>
+
+<h3>Description</h3>
+
+<p>This function accepts <code>templateScores</code> objects and returns information on all score peaks and those peaks that are considered detections.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">findPeaks(score.obj, fd.rat = 1, frame, parallel = FALSE)
+  </code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>score.obj</code></td>
+<td>
+
+<p>A <code>templateScores</code> object, produced by <code>corMatch</code> or <code>binMatch</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fd.rat</code></td>
+<td>
+
+<p>A ratio of frame width (twice minimum peak separation) to template duration. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>frame</code></td>
+<td>
+
+<p>If you want the same frame width for templates with varying duration, specify a value directly.
+<code>fd.rate</code> will be ignored if <code>frame</code> is specified.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+
+<p>Set to <code>TRUE</code> for parallel processing using <code>mclapply</code>.
+This option is not available for Windows operating systems.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <code>findPeaks</code> function translates raw scores from template matching to detection information, by finding peaks in the score data, and determining which peaks, if any, exceed the score cutoffs specified in the templates (see the two functions for making templates, <code>makeBinTemplate</code> and <code>makeCorTemplate</code> and <code>templateCutoff</code> for more details on cutoffs). 
+</p>
+
+
+<h3>Value</h3>
+
+<p>An S4 object of class <code>templateScores</code>, with the following slots:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>survey.name</code></td>
+<td>
+<p>The file path to the survey that the scores apply to.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>survey</code></td>
+<td>
+<p>The actual survey as a <code>Wave</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>survey.data</code></td>
+<td>
+<p>A named list with one element per template.
+Each element is a named list with time-domain results for the survey.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>templates</code></td>
+<td>
+<p>The templates (an S4 object of class <code>corTemplateList</code> or <code>binTemplateList</code>) used to calculate the scores.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scores</code></td>
+<td>
+<p>A named list with an element for each template.
+Each element contains the scores for an individual template.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>peaks</code></td>
+<td>
+<p>A named list with peak information (as a data frame) for each template.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>detections</code></td>
+<td>
+<p>A named list with detection information (as a data frame) for each template.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Sasha D. Hafner and Jon Katz
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>makeCorTemplate</code>, 
+<code>makeBinTemplate</code>, 
+<code>corMatch</code>, 
+<code>binMatch</code>, 
+<code>getDetections</code>, 
+<code>getPeaks</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Load data
+data(btnw)
+data(oven)
+data(survey)
+
+# Write Wave objects to file (temporary directory used here)
+btnw.fp &lt;- file.path(tempdir(), "btnw.wav")
+oven.fp &lt;- file.path(tempdir(), "oven.wav")
+survey.fp &lt;- file.path(tempdir(), "survey2010-12-31_120000_EST.wav")
+writeWave(btnw, btnw.fp)
+writeWave(oven, oven.fp)
+writeWave(survey, survey.fp)
+
+# Correlation example
+# Create two correlation templates
+wct &lt;- makeCorTemplate(btnw.fp, t.lim = c(1.5, 2.1), frq.lim = c(4.2, 5.6), name = "w")
+
+oct &lt;- makeCorTemplate(oven.fp, t.lim = c(1, 4), frq.lim = c(1, 11), dens = 0.1, name = "o")
+
+# Combine them
+ctemps &lt;- combineCorTemplates(wct, oct)
+
+# Calculate scores
+cscores &lt;- corMatch(survey.fp, ctemps)
+
+# Finally, find peaks and detections
+cdetects &lt;- findPeaks(cscores)
+
+cdetects
+
+plot(cdetects)
+
+# plotting help:
+method?plot('detectionList')
+
+# Binary example
+## Not run: 
+# Not run because of the time required (maybe 2-5 seconds) Create two templates
+wbt &lt;- makeBinTemplate(btnw.fp, amp.cutoff = -30, t.lim = c(1.5, 2.1), frq.lim = c(4.2, 5.6),
+                       buffer = 2, name = "w")
+
+obt &lt;- makeBinTemplate(oven.fp, amp.cutoff = -20, t.lim = c(1, 4), frq.lim = c(1, 11), 
+                       name = "o")
+
+# Combine them
+btemps &lt;- combineBinTemplates(wbt, obt)
+
+# Calculate scores
+bscores &lt;- binMatch(survey.fp, btemps)
+
+# Finally, find peaks and detections
+bdetects &lt;- findPeaks(bscores)
+
+bdetects
+
+plot(bdetects)
+
+## End(Not run)
+
+# Clean up (only because these files were created in these examples)
+file.remove(btnw.fp)
+file.remove(oven.fp)
+file.remove(survey.fp)
+</code></pre>
+
+
+</div>

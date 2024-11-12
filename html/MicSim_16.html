@@ -1,0 +1,331 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>micSimParallel</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Run microsimulation (parallel computing)
+</h2>
+
+<h3>Description</h3>
+
+<p>The function <code>micSimParallel</code> is a parallelized version of the function micSim. That is, it runs a continuous-time microsimulation simulation distributed, i.e., using more than one CPU core.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">micSimParallel(initPop, immigrPop = NULL, initPopList = c(), immigrPopList = c(), 
+  transitionMatrix, absStates = NULL, varInitStates = c(), initStatesProb = c(), 
+  fixInitStates = c(), maxAge = 99, simHorizon, fertTr = c(), 
+  monthSchoolEnrol=c(), cores=1, seeds=1254)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>initPop</code></td>
+<td>
+<p>Either an initial population has to be given as a whole or splitted to be run at the distinct cores, see arguments <code>initPopList</code>. If it is given as a whole it is automatically splitted by MicSim such that the population parts run on the distinct cores are approx. equally sized.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>immigrPop</code></td>
+<td>
+<p>Optionally, a population of migrants entering the virtual population along simulation time can be given, see arguments <code>immigrPopList</code>. This migrants population can either be given as a whole or splitted to be run at the distinct cores. If it is given as a whole it is automatically splitted by MicSim such that the population parts run on the distinct cores are approx. equally sized.   
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transitionMatrix</code></td>
+<td>
+<p>See micSim.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>absStates</code></td>
+<td>
+<p>See micSim.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>varInitStates</code></td>
+<td>
+<p>See micSim.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initStatesProb</code></td>
+<td>
+<p>See micSim.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initPopList</code></td>
+<td>
+
+<p>Optional: A list containing the initial population split for the distinct cores. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>immigrPopList</code></td>
+<td>
+
+<p>Optional: A list containing the immigration population split for the distinct cores. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixInitStates</code></td>
+<td>
+<p>See micSim.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxAge</code></td>
+<td>
+<p>See micSim.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>simHorizon</code></td>
+<td>
+<p>See micSim.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fertTr</code></td>
+<td>
+<p>See micSim.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>monthSchoolEnrol</code></td>
+<td>
+<p>See micSim.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cores</code></td>
+<td>
+
+<p>Number of CPUs to be used.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seeds</code></td>
+<td>
+
+<p>Seeds for pseudo number generators used for parallel computing.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The argument <code>cores</code> must not exceed the number of cores of the computer (cluster) used. 
+</p>
+<p>In <code>seeds</code> as many seeds should be given as cores are used. If less are given, the latter are repeated to complete the set of seeds. 
+</p>
+
+
+<h3>Value</h3>
+
+<p>The data frame <code>pop</code> contains the whole synthetic population considered during simulation including all events generated. For more details, see micSim.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sabine Zinn
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+# Clean workspace 
+rm(list=ls())
+
+# Defining simulation horizon
+startDate &lt;- 20140101 # yyyymmdd
+endDate   &lt;- 20241231 # yyyymmdd
+simHorizon &lt;- c(startDate=startDate, endDate=endDate)
+
+# Seed for random number generator
+set.seed(234)
+
+# Definition of maximal age 
+maxAge &lt;- 100  
+
+# Defintion of nonabsorbing and absorbing states
+sex &lt;- c("m","f")                     
+fert &lt;- c("0","1+")           
+marital &lt;- c("NM","M","D","W")        
+edu &lt;- c("no","low","med","high")   
+stateSpace &lt;- expand.grid(sex=sex,fert=fert,marital=marital,edu=edu)
+absStates &lt;- c("dead","rest")   
+
+# General month of enrollment to elementary school
+monthSchoolEnrol &lt;- 9
+
+# Definition of an initial population (for illustration purposes, create a random population)
+N = 10000                                                       
+birthDates &lt;- runif(N, min=getInDays(19500101), max=getInDays(20131231)) 
+getRandInitState &lt;- function(birthDate){
+  age &lt;- trunc((getInDays(simHorizon[1]) - birthDate)/365.25) 
+  s1 &lt;- sample(sex,1)
+  s2 &lt;- ifelse(age&lt;=18, fert[1], sample(fert,1))
+  s3 &lt;- ifelse(age&lt;=18, marital[1], ifelse(age&lt;=22, sample(marital[1:3],1), 
+                                           sample(marital,1)))
+  s4 &lt;- ifelse(age&lt;=7, edu[1], ifelse(age&lt;=18, edu[2], ifelse(age&lt;=23, sample(edu[2:3],1), 
+                                                              sample(edu[-1],1))))
+  initState &lt;- paste(c(s1,s2,s3,s4),collapse="/")
+  return(initState)
+}
+initPop &lt;- data.frame(ID=1:N, birthDate=birthDates, initState=sapply(birthDates, getRandInitState))
+initPop$birthDate &lt;- getInDateFormat(initPop$birthDate)
+range(initPop$birthDate)
+
+# Definition of immigrants entering the population (for illustration purposes, create immigrants 
+# randomly)
+M = 2000                                                           
+immigrDates &lt;- runif(M, min=getInDays(20140101), max=getInDays(20241231)) 
+immigrAges &lt;- runif(M, min=15*365.25, max=70*365.25)
+immigrBirthDates &lt;- immigrDates - immigrAges
+IDmig &lt;- max(as.numeric(initPop[,"ID"]))+(1:M)
+immigrPop &lt;- data.frame(ID = IDmig, immigrDate = immigrDates, birthDate=immigrBirthDates, 
+                        immigrInitState=sapply(immigrBirthDates, getRandInitState))  
+immigrPop$birthDate &lt;- getInDateFormat(immigrPop$birthDate)
+immigrPop$immigrDate &lt;- getInDateFormat(immigrPop$immigrDate)
+
+# Definition of initial states for newborns 
+varInitStates &lt;- rbind(c("m","0","NM","no"),c("f","0","NM","no")) 
+# Definition of related occurrence probabilities
+initStatesProb &lt;- c(0.515,0.485)                              
+
+# Definition of (possible) transition rates  
+# (1) Fertility rates (Hadwiger mixture model)
+fert1Rates &lt;- function(age, calTime, duration){  # parity 1
+  b &lt;- ifelse(calTime&lt;=2020, 3.9, 3.3)
+  c &lt;- ifelse(calTime&lt;=2020, 28, 29)
+  rate &lt;-  (b/c)*(c/age)^(3/2)*exp(-b^2*(c/age+age/c-2))
+  rate[age&lt;=15 | age&gt;=45] &lt;- 0
+  return(rate)
+}
+fert2Rates &lt;- function(age, calTime, duration){  # partiy 2+
+  b &lt;- ifelse(calTime&lt;=2020, 3.2, 2.8)
+  c &lt;- ifelse(calTime&lt;=2020, 32, 33)
+  rate &lt;-  (b/c)*(c/age)^(3/2)*exp(-b^2*(c/age+age/c-2))
+  rate[age&lt;=15 | age&gt;=45 | duration&lt;0.75] &lt;- 0
+  return(rate)
+}
+# (2) Rates for first marriage (normal density)
+marriage1Rates &lt;- function(age, calTime, duration){  
+  m &lt;- ifelse(calTime&lt;=2020, 25, 30)
+  s &lt;- ifelse(calTime&lt;=2020, 3, 3)
+  rate &lt;- dnorm(age, mean=m, sd=s)
+  rate[age&lt;=16] &lt;- 0
+  return(rate)
+}
+# (3) Remariage rates (log-logistic model)
+marriage2Rates &lt;- function(age, calTime, duration){  
+  b &lt;- ifelse(calTime&lt;=2020, 0.07, 0.10)
+  p &lt;- ifelse(calTime&lt;=2020, 2.7,2.7)
+  lambda &lt;- ifelse(calTime&lt;=1950, 0.04, 0.03)
+  rate &lt;- b*p*(lambda*age)^(p-1)/(1+(lambda*age)^p)
+  rate[age&lt;=18] &lt;- 0
+  return(rate)
+}
+# (4) Divorce rates (normal density)
+divorceRates &lt;- function(age, calTime, duration){
+  m &lt;- 40
+  s &lt;- ifelse(calTime&lt;=2020, 7, 6)
+  rate &lt;- dnorm(age,mean=m,sd=s)
+  rate[age&lt;=18] &lt;- 0
+  return(rate)
+}
+# (5) Widowhood rates (gamma cdf)
+widowhoodRates &lt;- function(age, calTime, duration){
+  rate &lt;- ifelse(age&lt;=30, 0, pgamma(age-30, shape=6, rate=0.06))
+  return(rate)
+}
+# (6) Rates to change educational attainment
+# Set rate to `Inf' to make transition for age 7 deterministic.
+noToLowEduRates &lt;- function(age, calTime, duration){
+  rate &lt;- ifelse(age==7,Inf,0) 
+  return(rate)
+}
+lowToMedEduRates &lt;- function(age, calTime, duration){
+  rate &lt;- dnorm(age,mean=16,sd=1)
+  rate[age&lt;=15 | age&gt;=25] &lt;- 0
+  return(rate)
+}
+medToHighEduRates &lt;- function(age, calTime, duration){
+  rate &lt;- dnorm(age,mean=20,sd=3)
+  rate[age&lt;=18 | age&gt;=35] &lt;- 0
+  return(rate)
+}
+# (7) Mortality rates (Gompertz model)
+mortRates &lt;- function(age, calTime, duration){
+  a &lt;- .00003
+  b &lt;- ifelse(calTime&lt;=2020, 0.1, 0.097)
+  rate &lt;- a*exp(b*age)
+  return(rate)
+}
+# (8) Emigration rates 
+emigrRates &lt;- function(age, calTime, duration){
+  rate &lt;- ifelse(age&lt;=18,0,0.0025)
+  return(rate)
+}
+
+# Transition pattern and assignment of functions specifying transition rates
+fertTrMatrix &lt;- cbind(c("0-&gt;1+","1+-&gt;1+"),                         
+  c("fert1Rates", "fert2Rates"))
+maritalTrMatrix &lt;- cbind(c("NM-&gt;M","M-&gt;D","M-&gt;W","D-&gt;M","W-&gt;M"),              
+  c("marriage1Rates","divorceRates","widowhoodRates",
+ "marriage2Rates","marriage2Rates"))
+eduTrMatrix &lt;- cbind(c("no-&gt;low","low-&gt;med","med-&gt;high"),
+  c("noToLowEduRates","lowToMedEduRates","medToHighEduRates")) 
+allTransitions &lt;- rbind(fertTrMatrix, maritalTrMatrix, eduTrMatrix)
+absTransitions &lt;- rbind(c("dead","mortRates"),c("rest","emigrRates"))
+transitionMatrix &lt;- buildTransitionMatrix(allTransitions=allTransitions,
+  absTransitions=absTransitions, stateSpace=stateSpace)
+
+# Define transitions triggering a birth event
+fertTr &lt;- fertTrMatrix[,1]
+
+# Run microsimulation on cluster with three cores (settings depend on cluster used)
+## Not run: 
+cores &lt;- 3
+seeds &lt;- c(1233,1245,265)
+initPopList &lt;- list(initPop[1:5000,], initPop[5001:8000,],initPop[8001:nrow(initPop),])
+immigrPopList &lt;- list(immigrPop[1:1000,], immigrPop[1001:1500,],immigrPop[1501:nrow(immigrPop),])
+
+pop &lt;- micSimParallel(initPopList=initPopList, immigrPopList=immigrPopList, 
+  transitionMatrix=transitionMatrix, absStates=absStates, varInitStates=varInitStates, 
+  initStatesProb=initStatesProb, maxAge=maxAge, simHorizon=simHorizon, 
+  fertTr=fertTr, monthSchoolEnrol=monthSchoolEnrol, 
+  cores=cores, seeds=seeds)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

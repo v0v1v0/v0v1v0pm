@@ -1,0 +1,205 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>estimate</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Model estimation</h2>
+
+<h3>Description</h3>
+
+<p>All models are estimated using full information maximum likelihood. The
+<code>equilibrium_model</code> can also be estimated using two-stage
+least squares. The maximum likelihood estimation is based on
+<code>optim</code>. If no starting values are provided, the function uses
+linear regression estimates as initializing values. The default optimization method is
+BFGS. For other alternatives see <code>optim</code>. The implementation of
+the two-stage least square estimation of the <code>equilibrium_model</code>
+is based on <code>lm</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">estimate(object, ...)
+
+## S4 method for signature 'market_model'
+estimate(
+  object,
+  gradient = "calculated",
+  hessian = "calculated",
+  standard_errors = "homoscedastic",
+  ...
+)
+
+## S4 method for signature 'equilibrium_model'
+estimate(object, method = "BFGS", optimizer = "optim", ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A model object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional parameter used in the model's estimation. These are
+passed further down to the optimization call. For the
+<code>equilibrium_model</code> model, the parameters are passed to
+<code>lm</code>, if the method is set to
+<code>2SLS</code>, or to <code>optim</code> for any other method. For the rest of
+the models, the parameters are passed to <code>optim</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gradient</code></td>
+<td>
+<p>One of two potential options: <code>"numerical"</code> and
+<code>"calculated"</code>. By default, all the models are estimated using the
+analytic expressions of their likelihoods' gradients.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hessian</code></td>
+<td>
+<p>One of three potential options: <code>"skip"</code>,
+<code>"numerical"</code>, and <code>"calculated"</code>. The default is to use the
+<code>"calculated"</code> Hessian for the models that expressions are
+available and the <code>"numerical"</code> Hessian in other cases. Calculated
+Hessian expressions are available for the basic and directional models.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>standard_errors</code></td>
+<td>
+<p>One of three potential options:
+<code>"homoscedastic"</code>, <code>"heteroscedastic"</code>, or a vector with
+variables names for which standard error clusters are to be created. The
+default value is <code>"homoscedastic"</code>. If the option
+<code>"heteroscedastic"</code> is passed, the variance-covariance matrix is
+calculated using heteroscedasticity adjusted (Huber-White) standard errors.
+If a vector with variable names is supplied, the variance-covariance
+matrix is calculated by grouping the score matrix based on the
+passed variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>A string specifying the estimation method. When the passed value is
+among <code>"Nelder-Mead"</code>, <code>"BFGS"</code>, <code>"CG"</code>, <code>"L-BFGS-B"</code>,
+<code>"SANN"</code>, and <code>"Brent"</code>, the model is estimated using
+full information maximum likelihood based on <code>optim</code> functionality.
+When <code>"2SLS"</code> is supplied, the model is estimated using two-stage least squares
+via <code>lm</code>. In this case, the function returns a
+list containing the first and second stage estimates. The default value is
+<code>"BFGS"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optimizer</code></td>
+<td>
+<p>One of two options:
+<code>"optim"</code>, <code>"gsl"</code>. The default value is <code>"optim"</code>. If the
+option <code>"gsl"</code> is set, the equilibrium likelihood is maximized using
+<a href="https://www.gnu.org/software/gsl/doc/html/multimin.html"><code>GSL</code></a>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The likelihood of the equilibrium model can be optimized either by using <code>optim</code>
+(the default option) or native
+<a href="https://www.gnu.org/software/gsl/doc/html/multimin.html"><code>GSL</code></a> routines.
+The caller can override the default behavior by setting the <code>optimizer</code> argument
+equal to <code>"gsl"</code>, in which case <code>GSL</code> routines are used. This does not
+necessarily result to faster execution times. This functionality is primarily
+intended for advanced usage. The <code>optim</code> functionality is a fast,
+analysis-oriented alternative, which is more suitable for most use case.
+</p>
+<p>When <code>optimizer = "gsl"</code> is used, the only available optimization method is BFGS.
+Additionally, the caller needs to specify in the control list values for the
+optimization step (<code>step</code>), the objective's optimization tolerance
+(<code>objective_tolerance</code>), the gradient's optimization tolerance
+(<code>gradient_tolerance</code>, and the maximum allowed number of iterations (<code>maxit</code>).
+If the <code>GSL</code> library is not available in the calling machine, the function
+returns a trivial result list with convergence status set equal to -1. If the
+<a href="https://en.cppreference.com/w/cpp/algorithm/execution_policy_tag_t">C++17 execution policies</a>
+are available, the implementation of the optimization is parallelized.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A market fit object holding the estimation result.
+</p>
+
+
+<h3>Functions</h3>
+
+
+<ul>
+<li> <p><code>estimate(market_model)</code>: Full information maximum likelihood estimation.
+</p>
+</li>
+<li> <p><code>estimate(equilibrium_model)</code>: Equilibrium model estimation.
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# initialize the model using the houses dataset
+model &lt;- new(
+  "diseq_deterministic_adjustment", # model type
+  subject = ID, time = TREND, quantity = HS, price = RM,
+  demand = RM + TREND + W + CSHS + L1RM + L2RM + MONTH,
+  supply = RM + TREND + W + L1RM + MA6DSF + MA3DHF + MONTH,
+  fair_houses(), # data
+  correlated_shocks = FALSE # let shocks be independent
+)
+
+# estimate the model object (BFGS is used by default)
+fit &lt;- estimate(model)
+
+# estimate the model by specifying the optimization details passed to the optimizer.
+fit &lt;- estimate(model, control = list(maxit = 1e+6))
+
+# summarize results
+summary(fit)
+
+
+# simulate an equilibrium model
+model &lt;- simulate_model(
+  "equilibrium_model", list(
+    # observed entities, observed time points
+    nobs = 500, tobs = 3,
+    # demand coefficients
+    alpha_d = -1.9, beta_d0 = 24.9, beta_d = c(2.3, -1.2), eta_d = c(2.0, -1.5),
+    # supply coefficients
+    alpha_s = .9, beta_s0 = 8.2, beta_s = c(3.3), eta_s = c(1.5, -2.2)
+  ),
+  seed = 99
+)
+
+# maximize the model's log-likelihood
+fit &lt;- estimate(
+  model,
+  optimizer = "gsl", control = list(
+    step = 1e-2, objective_tolerance = 1e-8,
+    gradient_tolerance = 1e-2, maxit = 1e+3
+  )
+)
+
+summary(fit)
+
+</code></pre>
+
+
+</div>

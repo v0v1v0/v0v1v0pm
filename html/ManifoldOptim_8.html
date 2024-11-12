@@ -1,0 +1,84 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Product manifold definition</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Product manifold definition</h2>
+
+<h3>Description</h3>
+
+<p>Define a product manifold composed of simpler manifolds
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">get.product.defn(...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table><tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>One or more simpler Manifold definitions</p>
+</td>
+</tr></table>
+<h3>Value</h3>
+
+<p>List containing manifold definitions for the product manifold
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">mani.defn1 &lt;- get.product.defn(get.sphere.defn(n=5), get.spd.defn(n=5))
+mani.defn2 &lt;- get.product.defn(
+    get.stiefel.defn(n=10, p=5),
+    get.stiefel.defn(n=7, p=3),
+    get.grassmann.defn(n=10, p=5)
+)
+
+## Not run: 
+# --- Estimate jointly: Sigma in SPD manifold and mu in sphere manifold ---
+library(mvtnorm)
+n &lt;- 400
+p &lt;- 3
+mu.true &lt;- rep(1/sqrt(p), p)
+Sigma.true &lt;- diag(2,p) + 0.1
+y &lt;- rmvnorm(n, mean = mu.true, sigma = Sigma.true)
+
+tx &lt;- function(x) {
+    idx.mu &lt;- 1:p
+    idx.S &lt;- 1:p^2 + p
+    mu &lt;- x[idx.mu]
+    S &lt;- matrix(x[idx.S], p, p)
+    list(mu = mu, Sigma = S)
+}
+f &lt;- function(x) {
+    par &lt;- tx(x)
+    -sum(dmvnorm(y, mean = par$mu, sigma = par$Sigma, log = TRUE))
+}
+
+mod &lt;- Module("ManifoldOptim_module", PACKAGE = "ManifoldOptim")
+prob &lt;- new(mod$RProblem, f)
+
+mu0 &lt;- diag(1, p)[,1]
+Sigma0 &lt;- diag(1, p)
+x0 &lt;- c(mu0, as.numeric(Sigma0))
+
+mani.defn &lt;- get.product.defn(get.sphere.defn(p), get.spd.defn(p))
+mani.params &lt;- get.manifold.params()
+solver.params &lt;- get.solver.params(isconvex = TRUE)
+
+res &lt;- manifold.optim(prob, mani.defn, method = "LRBFGS", 
+    mani.params = mani.params, solver.params = solver.params, x0 = x0)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

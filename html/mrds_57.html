@@ -1,0 +1,399 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>dht</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Density and abundance estimates and variances</h2>
+
+<h3>Description</h3>
+
+<p>Compute density and abundance estimates and variances based on
+Horvitz-Thompson-like estimator.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">dht(
+  model,
+  region.table,
+  sample.table,
+  obs.table = NULL,
+  subset = NULL,
+  se = TRUE,
+  options = list()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>ddf model object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>region.table</code></td>
+<td>
+<p><code>data.frame</code> of region records. Two columns:
+<code>Region.Label</code> and <code>Area</code>. If only density is required, one can
+set <code>Area=0</code> for all regions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sample.table</code></td>
+<td>
+<p><code>data.frame</code> of sample records. Three columns:
+<code>Region.Label</code>, <code>Sample.Label</code>, <code>Effort</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>obs.table</code></td>
+<td>
+<p><code>data.frame</code> of observation records with fields:
+<code>object</code>, <code>Region.Label</code>, and <code>Sample.Label</code> which give links
+to <code>sample.table</code>, <code>region.table</code> and the data records used in
+<code>model</code>. Not necessary if the <code>data.frame</code> used to create the
+model contains <code>Region.Label</code>, <code>Sample.Label</code> columns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>subset statement to create <code>obs.table</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>se</code></td>
+<td>
+<p>if <code>TRUE</code> computes standard errors, coefficient of variation
+and confidence intervals (based on log-normal approximation). See
+"Uncertainty" below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>options</code></td>
+<td>
+<p>a list of options that can be set, see "<code>dht</code> options",
+below.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Density and abundance within the sampled region is computed based on a
+Horvitz-Thompson-like estimator for groups and individuals (if a clustered
+population) and this is extrapolated to the entire survey region based on
+any defined regional stratification. The variance is based on replicate
+samples within any regional stratification. For clustered populations,
+<code class="reqn">E(s)</code> and its standard error are also output.
+</p>
+<p>Abundance is estimated with a Horvitz-Thompson-like estimator (Huggins 1989,
+1991; Borchers et al 1998; Borchers and Burnham 2004). The abundance in the
+sampled region is simply <code class="reqn">1/p_1 + 1/p_2 + ... + 1/p_n</code> where <code class="reqn">p_i</code>
+is the estimated detection probability for the <code class="reqn">i</code>th detection of
+<code class="reqn">n</code> total observations. It is not strictly a Horvitz-Thompson estimator
+because the <code class="reqn">p_i</code> are estimated and not known. For animals observed in
+tight clusters, that estimator gives the abundance of groups
+(<code>group=TRUE</code> in <code>options</code>) and the abundance of individuals is
+estimated as <code class="reqn">s_1/p_1 + s_2/p_2 + ... + s_n/p_n</code>, where <code class="reqn">s_i</code> is the
+size (e.g., number of animals in the group) of each observation
+(<code>group=FALSE</code> in <code>options</code>).
+</p>
+<p>Extrapolation and estimation of abundance to the entire survey region is
+based on either a random sampling design or a stratified random sampling
+design. Replicate samples (lines) are specified within regional strata
+<code>region.table</code>, if any. If there is no stratification,
+<code>region.table</code> should contain only a single record with the <code>Area</code>
+for the entire survey region. The <code>sample.table</code> is linked to the
+<code>region.table</code> with the <code>Region.Label</code>. The <code>obs.table</code> is
+linked to the <code>sample.table</code> with the <code>Sample.Label</code> and
+<code>Region.Label</code>. Abundance can be restricted to a subset (e.g., for a
+particular species) of the population by limiting the list the observations
+in <code>obs.table</code> to those in the desired subset. Alternatively, if
+<code>Sample.Label</code> and <code>Region.Label</code> are in the <code>data.frame</code>
+used to fit the model, then a <code>subset</code> argument can be given in place
+of the <code>obs.table</code>. To use the <code>subset</code> argument but include all
+of the observations, use <code>subset=1==1</code> to avoid creating an
+<code>obs.table</code>.
+</p>
+<p>In extrapolating to the entire survey region it is important that the unit
+measurements be consistent or converted for consistency. A conversion factor
+can be specified with the <code>convert.units</code> variable in the
+<code>options</code> list. The values of <code>Area</code> in <code>region.table</code>, must
+be made consistent with the units for <code>Effort</code> in <code>sample.table</code>
+and the units of <code>distance</code> in the <code>data.frame</code> that was analyzed.
+It is easiest to do if the units of <code>Area</code> is the square of the units
+of <code>Effort</code> and then it is only necessary to convert the units of
+<code>distance</code> to the units of <code>Effort</code>. For example, if <code>Effort</code>
+was entered in kilometres and <code>Area</code> in square kilometres and
+<code>distance</code> in metres then using
+<code>options=list(convert.units=0.001)</code> would convert metres to kilometres,
+density would be expressed in square kilometres which would then be
+consistent with units for <code>Area</code>. However, they can all be in different
+units as long as the appropriate composite value for <code>convert.units</code> is
+chosen. Abundance for a survey region can be expressed as: <code>A*N/a</code>
+where <code>A</code> is <code>Area</code> for the survey region, <code>N</code> is the
+abundance in the covered (sampled) region, and <code>a</code> is the area of the
+sampled region and is in units of <code>Effort * distance</code>. The sampled
+region <code>a</code> is multiplied by <code>convert.units</code>, so it should be
+chosen such that the result is in the same units of <code>Area</code>. For
+example, if <code>Effort</code> was entered in kilometres, <code>Area</code> in hectares
+(100m x 100m) and <code>distance</code> in metres, then using
+<code>options=list(convert.units=10)</code> will convert <code>a</code> to units of
+hectares (100 to convert metres to 100 metres for distance and .1 to convert
+km to 100m units).
+</p>
+<p>The argument <code>options</code> is a list of <code>variable=value</code> pairs that
+set options for the analysis. All but two of these have been described above.
+<code>pdelta</code> should not need to be changed but was included for
+completeness. It controls the precision of the first derivative calculation
+for the delta method variance. If the option <code>areas.supplied</code> is
+<code>TRUE</code> then the covered area is assumed to be supplied in the
+<code>CoveredArea</code> column of the sample <code>data.frame</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>list object of class <code>dht</code> with elements:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>clusters</code></td>
+<td>
+<p>result list for object clusters</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>individuals</code></td>
+<td>
+<p>result list for individuals</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Expected.S</code></td>
+<td>
+<p><code>data.frame</code> of estimates of expected cluster size
+with fields <code>Region</code>, <code>Expected.S</code> and <code>se.Expected.S</code>
+If each cluster <code>size=1</code>, then the result only includes individuals
+and not clusters and <code>Expected.S</code>.</p>
+</td>
+</tr>
+</table>
+<p>The list structure of clusters and individuals are the same:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>bysample</code></td>
+<td>
+<p><code>data.frame</code> giving results for each sample;
+<code>Nchat</code> is the estimated abundance within the sample and <code>Nhat</code> is
+scaled by surveyed area/covered area within that region</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary</code></td>
+<td>
+<p><code>data.frame</code> of summary statistics for each region and
+total</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N</code></td>
+<td>
+<p><code>data.frame</code> of estimates of abundance for each region and
+total</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>D</code></td>
+<td>
+<p><code>data.frame</code> of estimates of density for each region and total</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>average.p</code></td>
+<td>
+<p>average detection probability estimate</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cormat</code></td>
+<td>
+<p>correlation matrix of regional abundance/density estimates and
+total (if more than one region)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vc</code></td>
+<td>
+<p>list of 3: total variance-covariance matrix, detection function
+component of variance and encounter rate component of variance. For
+detection the v-c matrix and partial vector are returned</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Nhat.by.sample</code></td>
+<td>
+<p>another summary of <code>Nhat</code> by sample used by
+<code>dht.se</code></p>
+</td>
+</tr>
+</table>
+<h3>Uncertainty</h3>
+
+<p>If the argument <code>se=TRUE</code>, standard errors for density and abundance is
+computed. Coefficient of variation and log-normal confidence intervals are
+constructed using a Satterthwaite approximation for degrees of freedom
+(Buckland et al. 2001 p. 90). The function <code>dht.se</code> computes the
+variance and interval estimates.
+</p>
+<p>The variance has two components:
+</p>
+
+<ul>
+<li>
+<p> variation due to uncertainty from estimation of the detection
+function parameters;
+</p>
+</li>
+<li>
+<p> variation in abundance due to random sample selection;
+</p>
+</li>
+</ul>
+<p>The first component (model parameter uncertainty) is computed using a delta
+method estimate of variance (Huggins 1989, 1991, Borchers et al. 1998) in
+which the first derivatives of the abundance estimator with respect to the
+parameters in the detection function are computed numerically (see
+<code>DeltaMethod</code>).
+</p>
+<p>The second component (encounter rate variance) can be computed in one of
+several ways depending on the form taken for the encounter rate and the
+estimator used. To begin with there three possible values for <code>varflag</code>
+to calculate encounter rate:
+</p>
+
+<ul>
+<li> <p><code>0</code> uses a binomial variance for the number of observations
+(equation 13 of Borchers et al. 1998). This estimator is only useful if the
+sampled region is the survey region and the objects are not clustered; this
+situation will not occur very often;
+</p>
+</li>
+<li> <p><code>1</code> uses the encounter rate <code class="reqn">n/L</code> (objects observed per unit
+transect) from Buckland et al. (2001) pg 78-79 (equation 3.78) for line
+transects (see also Fewster et al, 2009 estimator R2). This variance
+estimator is not appropriate if <code>size</code> or a derivative of <code>size</code>
+is used in the detection function;
+</p>
+</li>
+<li> <p><code>2</code> is the default and uses the encounter rate estimator
+<code class="reqn">\hat{N}/L</code> (estimated abundance per unit transect) suggested by Innes
+et al (2002) and Marques &amp; Buckland (2004).
+</p>
+</li>
+</ul>
+<p>In general if any covariates are used in the models, the default
+<code>varflag=2</code> is preferable as the estimated abundance will take into
+account variability due to covariate effects. If the population is clustered
+the mean group size and standard error is also reported.
+</p>
+<p>For options <code>1</code> and <code>2</code>, it is then possible to choose one of the
+estimator forms given in Fewster et al (2009) for line transects:
+<code>"R2"</code>, <code>"R3"</code>, <code>"R4"</code>, <code>"S1"</code>, <code>"S2"</code>,
+<code>"O1"</code>, <code>"O2"</code> or <code>"O3"</code> by specifying the <code>ervar=</code>
+option (default <code>"R2"</code>). For points, either the <code>"P2"</code> or 
+<code>"P3"</code> estimator can be selected (&gt;=mrds 2.3.0 default <code>"P2"</code>,
+&lt;= mrds 2.2.9 default <code>"P3"</code>). See <code>varn</code> and Fewster 
+et al (2009) for further details on these estimators.
+</p>
+
+
+<h3>
+<code>dht</code> options</h3>
+
+<p>Several options are available to control calculations and output:
+</p>
+
+<dl>
+<dt><code>ci.width</code></dt>
+<dd>
+<p>Confidence interval width, expressed as a decimal
+between 0 and 1 (default <code>0.95</code>, giving a 95% CI)</p>
+</dd>
+<dt><code>pdelta</code></dt>
+<dd>
+<p>delta value for computing numerical first derivatives
+(Default: 0.001)</p>
+</dd>
+<dt><code>varflag</code></dt>
+<dd>
+<p>0,1,2 (see "Uncertainty") (Default: <code>2</code>)</p>
+</dd>
+<dt><code>convert.units</code></dt>
+<dd>
+<p> multiplier for width to convert to units of
+length (Default: <code>1</code>)</p>
+</dd>
+<dt><code>ervar</code></dt>
+<dd>
+<p>encounter rate variance type (see "Uncertainty" and
+<code>type</code> argument of <code>varn</code>). (Default: <code>"R2"</code> for
+lines and <code>"P2"</code> for points)</p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>Jeff Laake, David L Miller
+</p>
+
+
+<h3>References</h3>
+
+<p>Borchers, D.L., S.T. Buckland, P.W. Goedhart, E.D. Clarke, and S.L. Hedley.
+1998. Horvitz-Thompson estimators for double-platform line transect
+surveys. Biometrics 54: 1221-1237.
+</p>
+<p>Borchers, D.L. and K.P. Burnham. General formulation for distance sampling
+pp 10-11 In: Advanced Distance Sampling, eds. S.T. Buckland, D.R.Anderson,
+K.P. Burnham, J.L. Laake, D.L. Borchers, and L. Thomas. Oxford University
+Press.
+</p>
+<p>Buckland, S.T., D.R.Anderson, K.P. Burnham, J.L. Laake, D.L. Borchers, and
+L. Thomas. 2001. Introduction to Distance Sampling: Estimating Abundance
+of Biological Populations. Oxford University Press.
+</p>
+<p>Fewster, R.M., S.T. Buckland, K.P. Burnham, D.L. Borchers, P.E. Jupp, J.L.
+Laake and L. Thomas. 2009. Estimating the encounter rate variance in
+distance sampling. Biometrics 65: 225-236.
+</p>
+<p>Huggins, R.M. 1989. On the statistical analysis of capture experiments.
+Biometrika 76:133-140.
+</p>
+<p>Huggins, R.M. 1991. Some practical aspects of a conditional likelihood
+approach to capture experiments. Biometrics 47: 725-732.
+</p>
+<p>Innes, S., M.P. Heide-Jorgensen, J.L. Laake, K.L. Laidre, H.J. Cleator, P.
+Richard, and R.E.A. Stewart. 2002. Surveys of belugas and narwhals in the
+Canadian High Arctic in 1996. NAMMCO Scientific Publications 4: 169-190.
+</p>
+<p>Marques, F.F.C. and S.T. Buckland. 2004. Covariate models for the detection
+function. In: Advanced Distance Sampling, eds. S.T. Buckland,
+D.R.Anderson, K.P. Burnham, J.L. Laake, D.L. Borchers, and L. Thomas.
+Oxford University Press.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>print.dht dht.se
+</p>
+
+
+</div>

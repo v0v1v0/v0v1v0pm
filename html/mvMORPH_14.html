@@ -1,0 +1,174 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mv.Precalc</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Model parameterization for the various mvMORPH functions
+
+</h2>
+
+<h3>Description</h3>
+
+<p>This function allows computing the fixed parameters or objects needed by the mvMORPH functions. This could be useful for bootstrap-like computations (see exemple)
+
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mv.Precalc(tree, nb.traits = 1, scale.height = FALSE, param = list(pivot = "MMD",
+            method = c("sparse"), smean = TRUE, model = "OUM"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>tree</code></td>
+<td>
+
+<p>A "phylo" (or SIMMAP like) object representing the tree for which we want to precalculate parameters.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nb.traits</code></td>
+<td>
+
+<p>The number of traits involved in the subsequent analysis.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale.height</code></td>
+<td>
+
+<p>Whether the tree should be scaled to unit length or not.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>param</code></td>
+<td>
+
+<p>A list of parameters used in the computations (see details)
+
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The mv.Precalc function allows the pre-computation of the fixed parameters required by the different mvMORPH models (e.g., the design matrix, the vcv matrix, the sparsity structure...).
+In the "param" list you should provide the details about the model fit:
+</p>
+<p>-model name (e.g., "OUM", "OU1")
+</p>
+<p>-method (which kind of algorithm is used for computing the log-likelihood).
+</p>
+<p>-smean (whether there is one ancestral state per trait or per selective regimes - for mvBM only).
+</p>
+<p>Additional parameters can be fixed:
+</p>
+<p>-root (estimation of the ancestral state for the Ornstein-Uhlenbeck model; see ?mvOU).
+</p>
+<p>-pivot (pivot method used by the "sparse" matrix method for computing the log-likelihood; see ?spam).
+
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class "mvmorph.precalc" which can be used in the "precalc" argument of the various mvMORPH functions.
+
+
+
+
+
+</p>
+
+
+<h3>Note</h3>
+
+<p>This function is mainly used internally; it is still in development. A misuse of this functions can result in a crash of the R session.
+
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Julien Clavel
+
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mvMORPH</code>
+<code>mvOU</code>
+<code>mvEB</code>
+<code>mvBM</code>
+<code>mvSHIFT</code>
+<code>mvLL</code>
+</p>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(14)
+# Generating a random tree
+tree&lt;-pbtree(n=50)
+
+# Simulate two correlated traits evolving along the phylogeny according to a
+# Ornstein-Uhlenbeck process
+alpha&lt;-matrix(c(2,1,1,1.3),2,2)
+sigma&lt;-matrix(c(1,0.5,0.5,0.8),2,2)
+theta&lt;-c(3,1)
+nsim&lt;-50
+simul&lt;-mvSIM(tree,param=list(sigma=sigma, alpha=alpha, ntraits=2, theta=theta,
+             names_traits=c("head.size","mouth.size")), model="OU1", nsim=nsim)
+
+# Do the pre-calculations
+precal&lt;-mv.Precalc(tree,nb.traits=2, param=list(method="sparse",model="OU1", root=FALSE))
+
+mvOU(tree, simul[[1]], method="sparse", model="OU1", precalc=precal,
+    param=list(decomp="cholesky"))
+
+### Bootstrap
+
+# Fit the model to the "nsim" simulated datasets
+ results&lt;-lapply(1:nsim,function(x){
+ mvOU(tree, simul[[x]], method="sparse", model="OU1", precalc=precal,
+    param=list(decomp="cholesky"),
+    echo=FALSE, diagnostic=FALSE)
+ })
+
+### Use parallel package
+ library(parallel)
+if(.Platform$OS.type == "unix"){
+  number_of_cores&lt;-2L # Only working on Unix systems
+}else{
+  number_of_cores&lt;-1L
+} 
+
+ results&lt;-mclapply(simul, function(x){
+    mvOU(tree, x, method="sparse", model="OU1", precalc=precal,
+       param=list(decomp="cholesky"), echo=FALSE, diagnostic=FALSE)
+ }, mc.cores = getOption("mc.cores", number_of_cores))
+
+
+# Summarize (we use the generic S3 method "logLik" to extract the log-likelihood)
+loglik&lt;-sapply(results,logLik)
+hist(loglik)
+	
+</code></pre>
+
+
+</div>

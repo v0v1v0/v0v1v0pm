@@ -1,0 +1,189 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>randomEffects</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Random effects estimation</h2>
+
+<h3>Description</h3>
+
+<p>Approximate individual-level random effects estimation for state transition probabilities based on Burnham &amp; White (2002)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">randomEffects(
+  m,
+  Xformula = ~1,
+  alpha = 0.95,
+  ncores = 1,
+  nlmPar = list(),
+  fit = TRUE,
+  retryFits = 0,
+  retrySD = NULL,
+  optMethod = "nlm",
+  control = list(),
+  modelName = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>m</code></td>
+<td>
+<p>A <code>momentuHMM</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Xformula</code></td>
+<td>
+<p>Formula for the design matrix of the random effects model. The default <code>Xformula=~1</code> specifies an intercept-only model with no additional individual covariate effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>Significance level of the confidence intervals. Default: 0.95 (i.e. 95% CIs).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+<p>number of cores to use for parallel processing</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nlmPar</code></td>
+<td>
+<p>List of parameters to pass to the optimization function <code>nlm</code>. See <code>fitHMM</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fit</code></td>
+<td>
+<p><code>TRUE</code> if the HMM should be re-fitted at the shrinkage estimates, <code>FALSE</code> otherwise.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>retryFits</code></td>
+<td>
+<p>Non-negative integer indicating the number of times to attempt to iteratively fit the model using random perturbations of the current parameter estimates as the 
+initial values for likelihood optimization. See <code>fitHMM</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>retrySD</code></td>
+<td>
+<p>An optional list of scalars or vectors indicating the standard deviation to use for normal perturbations of each working scale parameter when <code>retryFits&gt;0</code>. See <code>fitHMM</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optMethod</code></td>
+<td>
+<p>The optimization method to be used. See <code>fitHMM</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>A list of control parameters to be passed to <code>optim</code> (ignored unless <code>optMethod="Nelder-Mead"</code> or <code>optMethod="SANN"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modelName</code></td>
+<td>
+<p>An optional character string providing a name for the fitted model. See <code>fitHMM</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments passed to or from other methods. Not currently used.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A <code>randomEffects</code> model similar to a <code>momentuHMM</code> object, but including the additional random effect components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>varcomp</code></td>
+<td>
+<p>A list of length <code>nbStates*(nbStates-1)</code> with each element containing the random effect mean coefficient(s) (<code>mu</code>), random effect variance (<code>sigma</code>), 
+and logit-scale shrinkage estimates for the state transition probability parameters (<code>ztilde</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>traceG</code></td>
+<td>
+<p>The trace of the projection matrix for each random effect.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Burnham, K.P. and White, G.C. 2002. Evaluation of some random effects methodology applicable to bird ringing data. Journal of Applied Statistics 29: 245-264.
+</p>
+<p>McClintock, B.T. 2021. Worth the effort? A practical examination of random effects in hidden Markov models for animal telemetry data. Methods in Ecology and Evolution <a href="https://doi.org/10.1111/2041-210X.13619">doi:10.1111/2041-210X.13619</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# simulated data with normal random effects
+# and binary individual covariate 
+
+nbAnimals &lt;- 5 # should be larger for random effects estimation
+obsPerAnimal &lt;- 110
+indCov &lt;- rbinom(nbAnimals,1,0.5) # individual covariate
+betaCov &lt;- c(-0.5,0.5) # covariate effects
+mu &lt;- c(-0.1,0.1) # mean for random effects
+sigma &lt;- c(0.2,0.4) # sigma for random effects
+beta0 &lt;- cbind(rnorm(nbAnimals,mu[1],sigma[1]),
+               rnorm(nbAnimals,mu[2],sigma[2]))
+
+reData &lt;- simData(nbAnimals=nbAnimals,obsPerAnimal=obsPerAnimal,nbStates=2,
+                  dist=list(step="gamma"),formula=~0+ID+indCov,
+                  Par=list(step=c(1,10,1,2)),
+                  beta=rbind(beta0,betaCov),
+                  covs=data.frame(indCov=rep(indCov,each=obsPerAnimal)))
+
+# fit null model
+nullFit &lt;- fitHMM(reData,nbStates=2,
+                  dist=list(step="gamma"),
+                  Par0=list(step=c(1,10,1,2)))
+
+# fit covariate model
+covFit &lt;- fitHMM(reData,nbStates=2,
+                 dist=list(step="gamma"),formula=~indCov,
+                 Par0=list(step=c(1,10,1,2)),
+                 beta0=rbind(mu,betaCov)) 
+
+# fit fixed effects model
+fixFit &lt;- fitHMM(reData,nbStates=2,
+                 dist=list(step="gamma"),formula=~0+ID,
+                 Par0=list(step=c(1,10,1,2)),
+                 beta0=beta0)
+
+# fit random effect model
+reFit &lt;- randomEffects(fixFit)
+
+# fit random effect model with individual covariate
+reCovFit &lt;- randomEffects(fixFit, Xformula=~indCov)
+
+# compare by AICc
+AIC(nullFit,covFit,fixFit,reFit,reCovFit, n=nrow(reData))
+
+## End(Not run)
+</code></pre>
+
+
+</div>

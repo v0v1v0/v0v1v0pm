@@ -1,0 +1,263 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>create_comparison_data</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create Comparison Data</h2>
+
+<h3>Description</h3>
+
+<p>Create comparison data for all pairs of records, except for those records in
+files which are assumed to have no duplicates.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">create_comparison_data(
+  records,
+  types,
+  breaks,
+  file_sizes,
+  duplicates,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>records</code></td>
+<td>
+<p>A <code>data.frame</code> containing the records to be linked, where
+each column of <code>records</code> is a field to be compared. If there are
+multiple files, <code>records</code> should be obtained by stacking the files on
+top of each other so that <code>records[1:file_sizes[1], ]</code> contains the
+records for file <code>1</code>,
+<code>records[(file_sizes[1] + 1):(file_sizes[1] + file_sizes[2]), ]</code>
+contains the records for file <code>2</code>, and so on. Missing values should be
+coded as <code>NA</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>types</code></td>
+<td>
+<p>A <code>character</code> vector, indicating the comparison to be used
+for each field (i.e. each column of <code>records</code>). The options are:
+<code>"bi"</code> for binary comparisons, <code>"nu"</code> for numeric comparisons
+(absolute difference), <code>"lv"</code> for string comparisons (normalized
+Levenshtein distance), <code>"lv_sep"</code> for string comparisons (normalized
+Levenshtein distance) where each string may contain multiple spellings
+separated by the "|" character. We assume that fields using options
+<code>"bi"</code>, <code>"lv"</code>, and <code>"lv_sep"</code> are  of class
+<code>character</code>, and fields using the <code>"nu"</code> option are of class
+<code>numeric</code>. For fields using the <code>"lv_sep"</code> option, for each record
+pair the normalized Levenshtein distance is computed between each possible
+spelling, and the minimum normalized Levenshtein distance between spellings
+is then used as the comparison for that record pair.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>breaks</code></td>
+<td>
+<p>A <code>list</code>, the same length as <code>types</code>, indicating the
+break points used to compute disagreement levels for each fields'
+comparisons. If <code>types[f]="bi"</code>, <code>breaks[[f]]</code> is ignored (and thus
+can be set to <code>NA</code>). See Details for more information on specifying this
+argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>file_sizes</code></td>
+<td>
+<p>A <code>numeric</code> vector indicating the size of each file.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>duplicates</code></td>
+<td>
+<p>A <code>numeric</code> vector indicating which files are assumed
+to have duplicates. <code>duplicates[k]</code> should be <code>1</code> if file <code>k</code>
+has duplicates, and <code>duplicates[k]</code> should be <code>0</code> if file <code>k</code>
+has no duplicates. If any files do not have duplicates, we strongly recommend
+that the largest such file is organized to be the first file.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>A <code>logical</code> indicator of whether progress messages should
+be print (default <code>TRUE</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The purpose of this function is to construct comparison vectors for each pair
+of records. In order to construct these vectors, one needs to specify the
+<code>types</code> and <code>breaks</code> arguments. The <code>types</code> argument specifies
+how each field should be compared, and the <code>breaks</code> argument specifies
+how to discretize these comparisons.
+</p>
+<p>Currently, the <code>types</code> argument supports three types of field
+comparisons: binary, absolute difference, and the normalized Levenshtein
+distance. Please contact the package maintainer if you need a new type of
+comparison to be supported.
+</p>
+<p>The <code>breaks</code> argument should be a <code>list</code>, with with one element for
+each field. If a field is being compared with a binary comparison, i.e.
+<code>types[f]="bi"</code>, then the corresponding element of <code>breaks</code> should
+be <code>NA</code>, i.e. <code>breaks[[f]]=NA</code>. If a field is being compared with a
+numeric or string comparison, then the corresponding element of <code>breaks</code>
+should be a vector of cut points used to discretize the comparisons. To give
+more detail, suppose you pass in cut points
+<code>breaks[[f]]=c(cut_1, ...,cut_L)</code>. These cut points
+discretize the range of the comparisons into <code>L+1</code> intervals:
+<code class="reqn">I_0=(-\infty, cut_1], I_1=(cut_1, cut_2], ..., I_L=(cut_L, \infty]</code>. The
+raw comparisons, which lie in <code class="reqn">[0,\infty)</code> for numeric comparisons and
+<code class="reqn">[0,1]</code> for  string comparisons, are then replaced with indicators of
+which interval the comparisons lie in. The interval <code class="reqn">I_0</code> corresponds to
+the lowest level of disagreement for a comparison, while the interval
+<code class="reqn">I_L</code> corresponds to the highest level of disagreement for a comparison.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list containing:
+</p>
+
+<dl>
+<dt><code>record_pairs</code></dt>
+<dd>
+<p>A <code>data.frame</code>, where each row
+contains the pair of records being compared in the corresponding row of
+<code>comparisons</code>. The rows are sorted in ascending order according to the
+first column, with ties broken according to the second column in ascending
+order. For any given row, the first column is less than the second column,
+i.e. <code>record_pairs[i, 1] &lt; record_pairs[i, 2]</code> for each row <code>i</code>.</p>
+</dd>
+<dt><code>comparisons</code></dt>
+<dd>
+<p>A <code>logical</code> matrix, where each row contains
+the comparisons for the record pair in the corresponding row of
+<code>record_pairs</code>. Comparisons are in the same order as the columns of
+<code>records</code>, and are represented by <code>L + 1</code> columns of
+<code>TRUE/FALSE</code> indicators, where <code>L + 1</code> is the number of
+disagreement levels for the field based on <code>breaks</code>.</p>
+</dd>
+<dt><code>K</code></dt>
+<dd>
+<p>The number of files, assumed to be of class
+<code>numeric</code>.</p>
+</dd>
+<dt><code>file_sizes</code></dt>
+<dd>
+<p>A <code>numeric</code> vector of length <code>K</code>,
+indicating the size of each file.</p>
+</dd>
+<dt><code>duplicates</code></dt>
+<dd>
+<p>A <code>numeric</code> vector of length <code>K</code>,
+indicating which files are assumed to have duplicates. <code>duplicates[k]</code>
+should be <code>1</code> if file <code>k</code> has duplicates, and
+<code>duplicates[k]</code> should be <code>0</code> if file <code>k</code> has no duplicates.
+If any files do not have duplicates, we strongly recommend that the largest
+such file is organized to be the first file.</p>
+</dd>
+<dt><code>field_levels</code></dt>
+<dd>
+<p>A <code>numeric</code> vector indicating the number of
+disagreement levels for each field.</p>
+</dd>
+<dt><code>file_labels</code></dt>
+<dd>
+<p>An <code>integer</code> vector of length
+<code>sum(file_sizes)</code>, where <code>file_labels[i]</code> indicates which file
+record <code>i</code> is in.</p>
+</dd>
+<dt><code>fp_matrix</code></dt>
+<dd>
+<p>An <code>integer</code> matrix, where
+<code>fp_matrix[k1, k2]</code> is a label for the file pair <code>(k1, k2)</code>. Note
+that <code>fp_matrix[k1, k2] = fp_matrix[k2, k1]</code>.</p>
+</dd>
+<dt><code>rp_to_fp</code></dt>
+<dd>
+<p>A <code>logical</code> matrix that indicates which record
+pairs belong to which file pairs. <code>rp_to_fp[fp, rp]</code> is <code>TRUE</code> if
+the records  <code>record_pairs[rp, ]</code> belong to the file pair <code>fp</code>,
+and is FALSE otherwise. Note that <code>fp</code> is given by the labeling in
+<code>fp_matrix</code>.</p>
+</dd>
+<dt><code>ab</code></dt>
+<dd>
+<p>An <code>integer</code> vector, of length
+<code>ncol(comparisons) * K * (K + 1) / 2</code> that indicates how many record
+pairs there are with a given disagreement level for a given field, for each
+file pair.</p>
+</dd>
+<dt><code>file_sizes_not_included</code></dt>
+<dd>
+<p>A <code>numeric</code> vector of <code>0</code>s.
+This element is non-zero when <code>reduce_comparison_data</code> is
+used.</p>
+</dd>
+<dt><code>ab_not_included</code></dt>
+<dd>
+<p>A <code>numeric</code> vector of <code>0</code>s. This
+element is non-zero when <code>reduce_comparison_data</code> is used.</p>
+</dd>
+<dt><code>labels</code></dt>
+<dd>
+<p><code>NA</code>. This element is not <code>NA</code> when
+<code>reduce_comparison_data</code> is used.</p>
+</dd>
+<dt><code>pairs_to_keep</code></dt>
+<dd>
+<p><code>NA</code>. This element is not <code>NA</code> when
+<code>reduce_comparison_data</code> is used.</p>
+</dd>
+<dt><code>cc</code></dt>
+<dd>
+<p><code>0</code>. This element is non-zero when
+<code>reduce_comparison_data</code> is used.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Serge Aleshin-Guendel &amp; Mauricio Sadinle (2022). Multifile Partitioning for Record Linkage and Duplicate Detection. <em>Journal of the
+American Statistical Association</em>. [doi: <a href="https://doi.org/10.1080/01621459.2021.2013242">10.1080/01621459.2021.2013242</a>][<a href="https://arxiv.org/abs/2110.03839">arXiv</a>]
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Example with small no duplicate dataset
+data(no_dup_data_small)
+
+# Create the comparison data
+comparison_list &lt;- create_comparison_data(no_dup_data_small$records,
+ types = c("bi", "lv", "lv", "lv", "lv", "bi", "bi"),
+ breaks = list(NA,  c(0, 0.25, 0.5),  c(0, 0.25, 0.5),
+               c(0, 0.25, 0.5), c(0, 0.25, 0.5),  NA, NA),
+ file_sizes = no_dup_data_small$file_sizes,
+ duplicates = c(0, 0, 0))
+
+## Example with small duplicate dataset
+data(dup_data_small)
+
+# Create the comparison data
+comparison_list &lt;- create_comparison_data(dup_data_small$records,
+ types = c("bi", "lv", "lv", "lv", "lv", "bi", "bi"),
+ breaks = list(NA,  c(0, 0.25, 0.5),  c(0, 0.25, 0.5),
+               c(0, 0.25, 0.5), c(0, 0.25, 0.5),  NA, NA),
+ file_sizes = dup_data_small$file_sizes,
+ duplicates = c(1, 1, 1))
+</code></pre>
+
+
+</div>

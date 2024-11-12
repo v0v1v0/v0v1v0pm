@@ -1,0 +1,153 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mastClimate</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Covariates for mast data</h2>
+
+<h3>Description</h3>
+
+<p>Annotates <code>treeData</code> for <code>mastif</code> to include covariates.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">  mastClimate( file, plots, years, months = 1:12, FUN = 'mean', 
+                         vname = '', normYr = c( 1990:2020 ), lastYear = 2021 )
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>file</code></td>
+<td>
+<p><code>character</code> giving the path and file name where covariate is stored in <code>mastif</code> covariate format (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plots</code></td>
+<td>
+<p><code>character vector</code> from <code>treeData$plot</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>years</code></td>
+<td>
+<p><code>numeric vector</code> from <code>treeData$year</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>months</code></td>
+<td>
+<p><code>numeric vector</code> of months to include in annual values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>FUN</code></td>
+<td>
+<p><code>character</code> specifies how monthly covariate values are combined into annual values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vname</code></td>
+<td>
+<p>name to use for a variable in the model that comes from <code>file</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>normYr</code></td>
+<td>
+<p>years for climate norm for calculating anomalies.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lastYear</code></td>
+<td>
+<p>last data year to include.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The version of <code>treeData</code> used in <code>mastif</code> can have additional tree years included when there are seed trap years that were not censused or when AR(p) effects extend observations to impute the p years before and after a tree was observed.  The <code>function mastFillCensus</code> makes this version of <code>treeData</code> available to the user.  The <code>function mastClimate</code> provides a quick way to add plot-year covariates to <code>treeData</code>. 
+</p>
+<p>A covariate like minimum monthly temperature is stored in a <code>plot</code> by <code>year_month</code> format, where <code>rownames</code> of <code>file</code> are plot names matching <code>treeData$plot</code>, and <code>colnames</code> of <code>file</code> could be <code>2012_1, 2012_2, ...</code> for the 12 months in the year.  The <code>numeric vector months</code> holds the months to be included in the annual values, e.g., <code>c(3, 4)</code> for minimum winter temperatures during the period from March through April.  To find the minimum for this period, set <code>FUN</code> to <code>'min'</code>.
+</p>
+<p>More detailed vignettes can be obtained with: <code>browseVignettes('mastif')</code>
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>numeric vector</code> equal in length to the number of rows in <code>treeData</code> that can be added as a <code>column</code> and included in <code>formulaFec</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>James S Clark, <a href="mailto:jimclark@duke.edu">jimclark@duke.edu</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Clark, J.S., C. Nunes, and B. Tomasek. 2019. Foodwebs based on unreliable foundations: spatio-temporal masting merged with consumer movement, storage, and diet. Ecological Monographs, e01381.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mastFillCensus</code> to fill tree census
+</p>
+<p><code>mastif</code> for analysis
+</p>
+<p>A more detailed vignette is can be obtained with:
+</p>
+<p><code>browseVignettes('mastif')</code>
+</p>
+<p>website 'http://sites.nicholas.duke.edu/clarklab/code/'.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+d &lt;- "https://github.com/jimclarkatduke/mast/blob/master/liriodendronExample.rData?raw=True"
+repmis::source_data(d)
+
+inputs   &lt;- list( specNames = specNames, seedNames = seedNames, 
+                  treeData = treeData, seedData = seedData, 
+                  xytree = xytree, xytrap = xytrap)
+                  
+# interpolate census, add years for AR(p) model
+inputs   &lt;- mastFillCensus(inputs, p = 3)
+treeData &lt;- inputs$treeData               #now includes additional years
+
+# include minimum spring temperature of previous year
+cfile &lt;- tempfile(fileext = '.csv')
+d &lt;- "https://github.com/jimclarkatduke/mast/blob/master/tmin.csv?raw=True"
+download.file(d, destfile=cfile)
+
+tyears &lt;- treeData$year - 1
+tplots &lt;- treeData$plot
+  
+tmp &lt;- mastClimate( file = cfile, plots = tplots, 
+                    years = tyears, months = 1:4, FUN = 'min')
+treeData$tminSprAnomaly &lt;- tmp$x[,3]                             
+inputs$treeData &lt;- treeData
+  
+formulaRep &lt;- as.formula( ~ diam )
+formulaFec &lt;- as.formula( ~ diam + tminSprAnomaly )        
+  
+inputs$yearEffect &lt;- list(groups ='species', p = 3)  # AR(3) model, species are lag groups
+  
+output &lt;- mastif(inputs = inputs, formulaFec, formulaRep, ng = 1000, burnin = 400)
+
+</code></pre>
+
+
+</div>

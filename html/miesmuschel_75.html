@@ -1,0 +1,180 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mies_select_from_archive</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Select Individuals from an OptimInstance</h2>
+
+<h3>Description</h3>
+
+<p>Apply a <code>Selector</code> operator to a subset of configurations inside
+an <code>OptimInstance</code>
+and return the index within the archive (when <code>get_indivs</code> <code>FALSE</code>) or the configurations themselves
+(when <code>get_indivs</code> is <code>TRUE</code>).
+</p>
+<p>It is not strictly necessary for the selector to select unique individuals / individuals without replacement.
+</p>
+<p>Individuals are selected independently of whether they are "alive" or not. To select only from alive individuals,
+set <code>rows</code> to <code>inst$archive$data[, which(is.na(eol))]</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mies_select_from_archive(
+  inst,
+  n_select,
+  rows,
+  selector = SelectorBest$new()$prime(inst$search_space),
+  group_size = 1,
+  get_indivs = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>inst</code></td>
+<td>
+<p>(<code>OptimInstance</code>)<br>
+Optimization instance to evaluate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_select</code></td>
+<td>
+<p>(<code>integer(1)</code>)<br>
+Number of individuals to select.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rows</code></td>
+<td>
+<p>optional (<code>integer</code>)<br>
+Indices of rows within <code>inst</code> to consider. If this is not given, then the entire archive is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>selector</code></td>
+<td>
+<p>(<code>Selector</code>)<br><code>Selector</code> operator that selects individuals depending on configuration values
+and objective results. When <code>selector$operate()</code> is called, then objectives that
+are being minimized are multiplied with -1 (through <code>mies_get_fitnesses()</code>), since <code>Selector</code>s always try to maximize fitness.
+Defaults to <code>SelectorBest</code>.<br>
+The <code>Selector</code> must be primed on a superset of <code>inst$search_space</code>; this <em>includes</em> the "budget" component
+when performing multi-fidelity optimization. All components on which <code>selector</code> is primed on must occur in the archive.<br>
+The given <code>Selector</code> <em>may</em> return duplicates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>group_size</code></td>
+<td>
+<p>(<code>integer</code>)<br>
+Sampling group size hint, indicating that the caller would prefer there to not be any duplicates within this group size.
+The <code>Selector</code> may or may not ignore this value, however.
+This may possibly happen because of certain configuration parameters, or because the input size is too small.<br>
+Must either be a scalar value or sum up to <code>n_select</code>. Must be non-negative. A scalar value of 0 is interpreted the same as 1.<br>
+Default is 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>get_indivs</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether to return configuration values from within the archive (<code>TRUE</code>) or just the indices within
+the archive (<code>FALSE</code>). Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>integer</code> | <code>data.table</code>: Selected individuals, either index into <code>inst</code> or subset of archive table,
+depending on <code>get_indivs</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other mies building blocks: 
+<code>mies_evaluate_offspring()</code>,
+<code>mies_generate_offspring()</code>,
+<code>mies_get_fitnesses()</code>,
+<code>mies_init_population()</code>,
+<code>mies_step_fidelity()</code>,
+<code>mies_survival_comma()</code>,
+<code>mies_survival_plus()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(1)
+library("bbotk")
+lgr::threshold("warn")
+
+# Define the objective to optimize
+objective &lt;- ObjectiveRFun$new(
+  fun = function(xs) {
+    z &lt;- exp(-xs$x^2 - xs$y^2) + 2 * exp(-(2 - xs$x)^2 - (2 - xs$y)^2)
+    list(Obj = z)
+  },
+  domain = ps(x = p_dbl(-2, 4), y = p_dbl(-2, 4)),
+  codomain = ps(Obj = p_dbl(tags = "maximize"))
+)
+
+# Get a new OptimInstance
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 100)
+)
+
+s = sel("best")
+s$prime(oi$search_space)
+
+mies_init_population(inst = oi, mu = 6)
+
+oi$archive
+
+# Default: get individuals
+mies_select_from_archive(oi, n_select = 2, rows = 1:6, selector = s)
+
+# Alternatively: get rows within archive
+mies_select_from_archive(oi, n_select = 2, rows = 1:6, selector = s,
+  get_indivs = FALSE)
+
+# Rows gotten from archive are relative from *all* rows, not from archive[rows]:
+mies_select_from_archive(oi, n_select = 2, rows = 3:6, selector = s,
+  get_indivs = FALSE)
+
+##
+# When using additional components: mies_select_from_archive learns about
+# additional components from primed selector.
+
+# Get a new OptimInstance
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 100)
+)
+
+mies_init_population(inst = oi, mu = 6,
+  additional_component_sampler = Sampler1DRfun$new(
+    param = ps(additional = p_dbl(-1, 1)), rfun = function(n) -1
+  )
+)
+
+oi$archive
+
+# Wrong: using selector primed only on search space. The resulting
+# individuals do not have the additional component.
+mies_select_from_archive(oi, n_select = 2, rows = 1:6, selector = s)
+
+# Correct: selector must be primed on search space + additional component
+mies_prime_operators(oi$search_space, selectors = list(s),
+  additional_components = ps(additional = p_dbl(-1, 1)))
+
+mies_select_from_archive(oi, n_select = 2, rows = 1:6, selector = s)
+</code></pre>
+
+
+</div>

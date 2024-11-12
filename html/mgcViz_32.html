@@ -1,0 +1,155 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>l_glyphs2D</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Adding glyphs to 2D plots</h2>
+
+<h3>Description</h3>
+
+<p>This layer adds glyphs or subplots to 2D plots. It is mainly meant to
+be used with check2D and to produce residuals checks.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">l_glyphs2D(
+  glyFun,
+  ggLay = "geom_points",
+  n = c(4, 4),
+  mapping = NULL,
+  data = NULL,
+  polar = FALSE,
+  height = ggplot2::rel(0.95),
+  width = ggplot2::rel(0.95),
+  y_scale = I,
+  x_scale = I,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>glyFun</code></td>
+<td>
+<p>the function that produces the data needed to construct the glyphs.
+It will take a single argument (<code>.d</code>), which is a <code>data.frame</code>
+with columns <code>"x"</code>, <code>"y"</code> and <code>"z"</code>. When <code>l_glyphs2D</code>
+is used with <code>check2D</code>, then <code>"x"</code> and <code>"y"</code> will be the
+locations of the residual <code>"z"</code> in the relevant covariates.
+<code>glyFun</code> needs to output a <code>data.frame</code> that will be passed to
+the <code>ggLay</code> function, which does the plotting.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ggLay</code></td>
+<td>
+<p>the <code>ggplot2</code> layer function (such as <code>"geom_point"</code>) used to
+plot the glyphs. Its mapping needs to take at least argument "x", "y" and
+"group". See the <code>mapping</code> argument below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>vector of two positive integers, indicating the number of 2D grid cell
+along x and y in which the data is divided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mapping</code></td>
+<td>
+<p>list of aesthetic mappings to be used by <code>ggLay</code>. By default it is
+<code>aes(x=gx, y=gy, group = gid)</code>. Here gx and gy specify the x-y
+location of each data-point used to plot the glyphs, while gid specifies
+to which glyph each data-point belongs (there are <code>n[1]*n[2]</code> glyphs).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>an optional data.frame to be used for computing the glyphs.
+It must have two variables called <code>x</code> and <code>y</code>. If left to <code>NULL</code> then
+the glyphs will be computed using the data in the <code>plotSmooth</code> object
+to which this layer is being added.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>polar, height, width, y_scale, x_scale</code></td>
+<td>
+<p>see GGally::glyphs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>graphical arguments to be passed to <code>ggLay</code> function.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object of class <code>gamLayer</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>check2D.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(mgcViz);
+set.seed(4124)
+n &lt;- 1e4
+dat &lt;- data.frame("x1" = rnorm(n), "x2" = rnorm(n))
+
+# Residuals are heteroscedastic w.r.t. x1
+dat$y &lt;- (dat$x1)^2 + (dat$x2)^2 + (1*abs(dat$x1) + 1)  * rnorm(n)
+b &lt;- bam(y ~ s(x1,k=30) + s(x2, k=30), data = dat, discrete = TRUE)
+b &lt;- getViz(b)
+
+pl &lt;- check2D(b, x1 = "x1", x2 = "x2", type = "tnormal") + 
+  l_points(colour = "blue", alpha = 0.5)
+
+# Look at distributions of residuals across x1 and x2
+# Approach 1: using binned kernel density estimate
+# Colour indicates whether we have more that 50 obs in that bin
+glyFun &lt;- function(.d){
+  .r &lt;- .d$z
+  .qq &lt;- as.data.frame( density(.r)[c("x", "y")], n = 100 )
+  .qq$colour &lt;- rep(ifelse(length(.r)&gt;50, "black", "red"), nrow(.qq))
+  return( .qq )
+}
+
+pl + l_glyphs2D(glyFun = glyFun, ggLay = "geom_path", n = c(8, 8),
+                 mapping = aes(x=gx, y=gy, group = gid, colour = I(colour)), 
+                 height=1.5, width = 1) 
+
+# Approach 2: using binned worm-plots. These are simply rotated QQplots.
+# An horizontal plot indicates well specified residual model. 
+# Increasing (decreasing) worm indicates over (under) dispersion
+glyFun &lt;- function(.d){
+  n &lt;- nrow(.d)
+  px &lt;- qnorm( (1:n - 0.5)/(n) )
+  py &lt;- sort( .d$z )
+  clr &lt;- if(n &gt; 50) { "black" } else { "red" }
+  clr &lt;- rep(clr, n)
+  return( data.frame("x" = px, "y" = py - px, "colour" = clr))
+}
+
+pl + l_glyphs2D(glyFun = glyFun, ggLay = "geom_point", n = c(10, 10),
+                mapping = aes(x=gx, y=gy, group = gid, colour = I(colour)),
+                height=2, width = 1, size = 0.2) 
+
+</code></pre>
+
+
+</div>

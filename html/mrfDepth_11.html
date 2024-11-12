@@ -1,0 +1,195 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>dirOutl</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Directional outlyingness of points relative to a dataset</h2>
+
+<h3>Description</h3>
+
+<p>Computes the directional outlyingness of <code class="reqn">p</code>-dimensional points <code>z</code> relative to a <code class="reqn">p</code>-dimensional dataset <code>x</code>. For each multivariate point <code class="reqn">z_i</code>, its directional outlyingness relative to <code>x</code> is defined as its maximal univariate directional outlyingness measured over all directions. To obtain the univariate directional outlyingness in the direction <code class="reqn">v</code>, the dataset <code>x</code> is projected on <code class="reqn">v</code>, and the robustly skew-adjusted standardized distance of <code class="reqn">v'z_i</code> to the median of the projected data points <code>x</code><code class="reqn">v</code> is computed. This is done through the estimation of 2 scales, one on each side of the median, using a 1-step M-estimator of scale.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">dirOutl(x, z = NULL, options = list())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>An <code class="reqn">n</code> by <code class="reqn">p</code> data matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>z</code></td>
+<td>
+<p>An optional <code class="reqn">m</code> by <code class="reqn">p</code> matrix containing
+rowwise the points <code class="reqn">z_i</code> for which to compute
+the directional outlyingness. If <code>z</code> is not specified,
+it is set equal to <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>options</code></td>
+<td>
+<p> A list of available options:
+</p>
+
+<ul>
+<li> <p><code>type</code> <br>
+Determines the desired type of invariance and should be
+one of <code>"Affine"</code>, <code>"compWise"</code>.
+When the option <code>"Affine"</code> is used,  the directions
+<code class="reqn">v</code> are orthogonal to hyperplanes spanned by <code class="reqn">p</code>
+observations from <code>x</code>. With the option <code>"compWise"</code>,
+the directional outlyingness is computed in the directions of the
+coordinate axes and combined through the Euclidean norm.<br>
+Defaults to <code>"Affine"</code>.
+</p>
+</li>
+<li> <p><code>ndir</code> <br>
+When <code>type</code> is chosen to be <code>"Affine"</code>, determines the number of                              directions <code class="reqn">v</code> by setting <code>ndir</code> to a specific number.
+Defaults to <code class="reqn">250p</code>.
+</p>
+</li>
+<li> <p><code>seed</code>  <br>
+A strictly positive integer specifying the seed to be used
+to select the directions.<br>
+Defaults to <code class="reqn">10</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The directional outlyingness (DO) of multivariate data was introduced in Rousseeuw et al. (2018). It extends the Stahel-Donoho outlyingness towards skewed distributions.
+</p>
+<p>Depending on the dimension <code class="reqn">p</code>, different approximate algorithms are implemented. The affine invariant algorithm can only be used when <code class="reqn">n &gt; p</code>. It draws <code>ndir</code> times at random <code class="reqn">p</code> observations from <code>x</code> and considers the direction orthogonal to the hyperplane spanned by these <code class="reqn">p</code> observations. At most <code class="reqn">p</code> out of <code class="reqn">n</code> directions can be considered. The orthogonal invariant version can be applied to high-dimensional data. It draws <code>ndir</code> times at random <code class="reqn">2</code> observations from <code>x</code> and considers the direction through these two observations. Here, at most 2 out of <code class="reqn">n</code> directions can be considered. Finally, the shift invariant version randomly draws <code>ndir</code> vectors from the unit sphere.
+</p>
+<p>The resulting DO values are invariant to affine transformations, rotations and shifts respectively provided that the <code>seed</code> is kept fixed at different runs of the algorithm. Note that the DO values are guaranteed to increase when more directions are considered provided the seed is kept fixed, as this ensures that the random directions are generated in a fixed order.
+</p>
+<p>An observation from <code>x</code> and <code>z</code> is flagged as an outlier if its DO exceeds a cutoff value. This cutoff value is determined using the procedure in Rousseeuw et al. (2018). First, the logarithm of the DO values is taken to render their distribution more symmetric, after which a normal approximation yields a cutoff on these values. The cutoff is then transformed back by applying the exponential function.
+</p>
+<p>It is first checked whether the data lie in a subspace of dimension smaller than <code class="reqn">p</code>. If so, a warning is given, as well as the dimension of the subspace and a direction which is orthogonal to it. Furthermore, the univariate directional outlyingness of the projected points <code>x</code><code class="reqn">v</code> is ill-defined when the scale in its denominator becomes zero. This can happen when many observations collapse. In these cases the algorithm will stop and give a warning. The returned values then include the direction <code class="reqn">v</code> as well as an indicator specifying which of the observations of <code>x</code> belong to the hyperplane orthogonal to <code class="reqn">v</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with components: <br></p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>outlyingnessX</code></td>
+<td>
+<p>Vector of length <code class="reqn">n</code> giving the directional
+outlyingness of the observations in <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outlyingnessZ</code></td>
+<td>
+<p>Vector of length <code class="reqn">m</code> giving the directional
+outlyingness of the points in <code>z</code> relative to <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cutoff</code></td>
+<td>
+<p>Points whose directional outlyingness exceeds this cutoff can be considered as outliers with respect to <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>flagX</code></td>
+<td>
+<p>Observations of <code>x</code> whose directional outlyingness exceeds the cutoff receive a flag <code>FALSE</code>, regular observations receive a flag <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>flagZ</code></td>
+<td>
+<p>Points of <code>z</code> whose directional outlyingness exceeds the cutoff receive a flag equal to <code>FALSE</code>, otherwise they receive a flag <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>singularSubsets</code></td>
+<td>
+<p>When the input parameter type is equal to <code>"Affine"</code>,
+the number of <code class="reqn">p</code>-subsets that span a subspace of
+dimension smaller than <code class="reqn">p-1</code>. In such a case the orthogonal
+direction can not be uniquely determined. This is an indication
+that the data are not in general position.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dimension</code></td>
+<td>
+<p>When the data <code>x</code> are lying in a lower dimensional subspace, the dimension of this subspace.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hyperplane</code></td>
+<td>
+<p>When the data <code>x</code> are lying in a lower dimensional subspace, a direction orthogonal to this subspace. When a direction <code class="reqn">v</code> is found such that the robust skew-adjusted scale of <code>x</code><code class="reqn">v</code> is equal to zero, this equals <code class="reqn">v</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inSubspace</code></td>
+<td>
+<p>When a direction <code class="reqn">v</code> is found such that DO(<code>x</code><code class="reqn">v</code>) is ill-defined, the observations from <code>x</code> which belong to the hyperplane orthogonal to <code class="reqn">v</code> receive a value TRUE. The other observations receive a value FALSE.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>J. Raymaekers and P. Rousseeuw</p>
+
+
+<h3>References</h3>
+
+<p>Rousseeuw P.J., Raymaekers J., Hubert M. (2018). A measure of directional outlyingness with applications to image data and video. <em>Journal of Computational and Graphical Statistics</em>, <b>27</b>, 345–359.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>dprojdepth</code>, <code>dprojmedian</code>, <code>adjOutl</code>, <code>outlyingness</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Compute the directional outlyingness of a two-dimensional dataset. 
+# Outliers are plotted in red.
+data(geological)
+BivData &lt;- geological[c("MnO", "MgO")]
+Result &lt;- dirOutl(x = BivData)
+IndOutliers &lt;- which(!Result$flagX)
+plot(BivData, pch = 16, col = "grey60")
+points(BivData[IndOutliers, ], pch = 16, col = "red")
+
+# The number of directions may be specified through
+# the option list. The resulting directional outlyingness
+# is monotone increasing in the number of directions.
+Result1 &lt;- dirOutl(x = BivData, options = list(ndir = 50))
+Result2 &lt;- dirOutl(x = BivData, options = list(ndir = 100))
+which(Result2$outlyingnessX - Result1$outlyingnessX &lt; 0)
+# This is however not the case when the seed is changed
+Result1 &lt;- dirOutl(x = BivData, options = list(ndir = 50))
+Result2 &lt;- dirOutl(x = BivData, options = list(ndir = 100, seed = 950))
+
+plot(Result2$outlyingnessX - Result1$outlyingnessX,
+     xlab = "Index", ylab = "Difference in DO")
+</code></pre>
+
+
+</div>

@@ -1,0 +1,101 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>systemGmm-doc</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>A guide to estimating systems of equations</h2>
+
+<h3>Description</h3>
+
+<p>This document is meant to describe how to create system of equations
+objects, estimating them and peforming hypothesis tests.
+</p>
+
+
+<h3>Details</h3>
+
+<p>Instread of repeating the same example for each method, we are going
+through all methods and classes for systems of equations.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(simData)
+
+## first, we create an sysGmm object
+g1 &lt;- y1~x1+x4; h1 &lt;- ~x4+z1+z2+z3+z4
+g2 &lt;- y2~x1+x2+x3; h2 &lt;- ~x3+z1+z2+z3+z4
+g3 &lt;- y3~x2+x3+x4; h3 &lt;- ~x3+x4+z1+z2+z3+z4
+g &lt;- list(g1,g2,g3)
+h &lt;- list(h1,h2,h3)
+smodel &lt;- sysMomentModel(g, h, data=simData, vcov="MDS")
+
+## The show or print method
+smodel
+
+## The ']' method
+smodel[1:2]
+smodel[1] ## becomes a one equation model
+
+## equation by equation 2SLS
+tsls(smodel)
+
+## or manually
+lapply(1:3, function(i) coef(tsls(smodel[i])))
+
+## Fitting the model by two-step GMM
+res &lt;- gmmFit(smodel)
+
+## testing Overidentifying restrictions
+specTest(res)
+
+## All info using the summary method
+## which includes equation by equation measures of
+## the instrument stengths
+summary(res)
+
+### When the error id iid (homoscedastic), we have a
+### FIVE estimator with 2SLS  as the first step
+smodel &lt;- sysMomentModel(g, h, data=simData, vcov="iid")
+gmmFit(smodel)
+
+### When the error is iid (homoscedastic), 
+### all instruments are the same, and the first step is 2SLS,
+### we have 3SLS
+smodel &lt;- sysMomentModel(g, ~x4+z1+z2+z3+z4, data=simData, vcov="iid")
+gmmFit(smodel, initW='tsls')
+
+### When the error is iid (homoscedastic), 
+### the instruments are the same and are the union of all regressors,
+### we have SUR
+smodel &lt;- sysMomentModel(g, NULL, data=simData, vcov="iid")
+gmmFit(smodel, initW='tsls')
+
+############ Restricted models ##################
+
+## unrestricted
+smodel &lt;- sysMomentModel(g, h, data=simData, vcov="MDS")
+res &lt;- gmmFit(smodel)
+
+## no cross-equation restrictions
+R1 &lt;- list(c("x1=-12*x4"), character(), c("x2=0.8", "x4=0.3"))
+rm1 &lt;- restModel(smodel, R1)
+(res1 &lt;- gmmFit(rm1))
+
+## Cross equation restrictions
+R2&lt;- c("Eqn1.x1=1", "Eqn2.x1=Eqn3.x2")
+rm2 &lt;- restModel(smodel, R2)
+(es2 &lt;- gmmFit(rm2))## no longer expressed as a system
+
+## testing the restriction
+
+hypothesisTest(res, res1, type="LR")
+hypothesisTest(res, res1, type="LM")
+hypothesisTest(res, res1, type="Wald")
+
+</code></pre>
+
+
+</div>

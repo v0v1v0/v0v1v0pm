@@ -1,0 +1,140 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MoE_crit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MoEClust BIC, ICL, and AIC Model-Selection Criteria</h2>
+
+<h3>Description</h3>
+
+<p>Computes the BIC (Bayesian Information Criterion), ICL (Integrated Complete Likelihood), and AIC (Akaike Information Criterion) for parsimonious mixture of experts models given the log-likelihood, the dimension of the data, the number of mixture components in the model, the numbers of parameters in the gating and expert networks respectively, and, for the ICL, the numbers of observations in each component.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MoE_crit(modelName,
+         loglik,
+         n,
+         d,
+         G,
+         gating.pen = G - 1L,
+         expert.pen = G * d,
+         z = NULL,
+         df = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>modelName</code></td>
+<td>
+<p>A character string indicating the model. The help file for <code>mclustModelNames</code> describes the available models. Not necessary if <code>df</code> is supplied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loglik</code></td>
+<td>
+<p>The log-likelihood for a data set with respect to the Gaussian mixture model specified in the <code>modelName</code> argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n, d, G</code></td>
+<td>
+<p>The number of observations in the data, dimension of the data, and number of components in the Gaussian mixture model, respectively, used to compute <code>loglik</code>. <code>d</code> &amp; <code>G</code> are not necessary if <code>df</code> is supplied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gating.pen</code></td>
+<td>
+<p>The number of parameters of the <em>gating</em> network of the MoEClust model. Defaults to <code>G - 1</code>, which corresponds to no gating covariates. If covariates are included, this should be the number of regression coefficients in the fitted <code>gating</code> object. If there are no covariates and mixing proportions are further assumed to be present in equal proportion, <code>gating.pen</code> should be <code>0</code>. The number of parameters used in the estimation of the noise component, if any, should also be included. Not necessary if <code>df</code> is supplied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expert.pen</code></td>
+<td>
+<p>The number of parameters of the <em>expert</em> network of the MoEClust model. Defaults to <code>G * d</code>, which corresponds to no expert covariates. If covariates are included, this should be the number of regression coefficients in the fitted <code>expert</code> object. Not necessary if <code>df</code> is supplied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>z</code></td>
+<td>
+<p>The <code>n</code> times <code>G</code> responsibility matrix whose <code>[i,k]</code>-th entry is the probability that observation <em>i</em> belongs to the <em>k</em>-th component.. If supplied the ICL is also computed and returned, otherwise only the BIC and AIC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>An alternative way to specify the number of estimated parameters (or 'used' degrees of freedom) exactly. If supplied, the arguments <code>modelName</code>, <code>d</code>, <code>G</code>, <code>gating.pen</code>, and <code>expert.pen</code>, which are used to calculate the number of parameters, will be ignored. The number of parameters used in the estimation of the noise component, if any, should also be included.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function is vectorised with respect to the arguments <code>modelName</code> and <code>loglik</code>.
+</p>
+<p>If <code>model</code> is an object of class <code>"MoEClust"</code> with <code>G</code> components, the number of parameters for the <code>gating.pen</code> and <code>expert.pen</code> are <code>length(coef(model$gating))</code> and <code>G * length(coef(model$expert[[1]]))</code>, respectively.
+</p>
+<p>Models with a noise component are facilitated here too, provided the extra number of parameters are accounted for by the user.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A simplified array containing the BIC, AIC, number of estimated parameters (<code>df</code>) and, if <code>z</code> is supplied, also the ICL, for each of the given input arguments.
+</p>
+
+
+<h3>Note</h3>
+
+<p>In order to speed up repeated calls to the function inside <code>MoE_clust</code>, no checks take place.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Keefe Murphy - &lt;<a href="mailto:keefe.murphy@mu.ie">keefe.murphy@mu.ie</a>&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Biernacki, C., Celeux, G. and Govaert, G. (2000). Assessing a mixture model for clustering with the integrated completed likelihood. <em>IEEE Transactions on Pattern Analysis and Machine Intelligence</em>, 22(7): 719-725.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MoE_clust</code>, <code>nVarParams</code>, <code>mclustModelNames</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">MoE_crit(modelName=c("VVI", "VVE", "VVV"), n=120, d=8,
+         G=3, loglik=c(-4036.99, -3987.12, -3992.45))
+
+data(CO2data)
+GNP   &lt;- CO2data$GNP
+model &lt;- MoE_clust(CO2data$CO2, G=1:2, expert= ~ GNP)
+G     &lt;- model$G
+name  &lt;- model$modelName
+ll    &lt;- max(model$loglik)
+n     &lt;- length(CO2data$CO2)
+z     &lt;- model$z
+
+# Compare BIC from MoE_crit to the BIC of the model
+(bic2 &lt;- MoE_crit(modelName=name, loglik=ll, n=n, d=1, G=G, z=z,
+                  expert.pen=G * length(coef(model$expert[[1]])))["bic",])
+identical(unname(bic2), model$bic) #TRUE
+
+# Make the same comparison with the known number of estimated parameters
+(bic3 &lt;- MoE_crit(loglik=ll, n=n, df=model$df, z=z)["bic",])
+identical(unname(bic3), bic2)      #TRUE
+</code></pre>
+
+
+</div>

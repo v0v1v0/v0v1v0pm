@@ -1,0 +1,172 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mixImp</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Imputation for a mixture of continuous and categorical variables using
+the general location model.</h2>
+
+<h3>Description</h3>
+
+<p>This function performs multiple imputation under a general location model
+as described by Schafer (1997), using the <code>mix</code> package. Imputation can
+either be performed using posterior draws (<code>pd=TRUE</code>) or conditonal on the maximum likelihood
+estimate of the model parameters (<code>pd=FALSE</code>), referred to as maximum likelihood
+multiple imputation by von Hippel and Bartlett (2021).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mixImp(
+  obsData,
+  nCat,
+  M = 10,
+  pd = FALSE,
+  marginsType = 1,
+  margins = NULL,
+  designType = 1,
+  design = NULL,
+  steps = 100,
+  rseed
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obsData</code></td>
+<td>
+<p>The data frame to be imputed. The categorical variables must be
+in the first <code>nCat</code> columns, and they must be coded using consecutive positive
+integers.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nCat</code></td>
+<td>
+<p>The number of categorical variables in <code>obsData</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M</code></td>
+<td>
+<p>Number of imputations to generate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pd</code></td>
+<td>
+<p>Specify whether to use posterior draws (<code>TRUE</code>)
+or not (<code>FALSE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>marginsType</code></td>
+<td>
+<p>An integer specifying what type of log-linear model to use for the
+categorical variables. <code>marginsType=1</code>, the default, allows for all two-way associations
+in the log-linear model. <code>marginsType=2</code> allows for all three-way associations (plus lower).
+<code>marginsType=3</code> assumes a saturated log-linear model for the categorical variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>margins</code></td>
+<td>
+<p>If <code>marginsType</code> is not specified, <code>margins</code> must be
+supplied to specify the margins of the log-linear model for the categorical variable.
+See the help for <code>ecm.mix</code> for details on specifying <code>margins</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>designType</code></td>
+<td>
+<p>An integer specifying how the continuous variables' means should depend
+on the categorical variables. <code>designType=1</code>, the default, assumes the mean of each continuous
+variable is a linear function with main effects of the categorical variables.
+<code>designType=2</code> assumes each continuous variables has a separate mean for each
+combination of the categorical variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>design</code></td>
+<td>
+<p>If <code>designType</code> is not specified, <code>design</code> must be supplied
+to specify how the mean of the continuous variables depends on the categorical variables.
+See the help for <code>ecm.mix</code> for details on specifying <code>design</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>steps</code></td>
+<td>
+<p>If <code>pd</code> is <code>TRUE</code>, the <code>steps</code> argument specifies
+how many MCMC iterations to perform.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rseed</code></td>
+<td>
+<p>The value to set the <code>mix</code> package's random number seed to,
+using the <code>rngseed</code> function of <code>mix</code>. This function must be called at least
+once before imputing using <code>mix</code>. If the user wishes to set the seed using
+<code>rngseed</code> before calling <code>mixImp</code>, set <code>rseed=NULL</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>See the descriptions for <code>marginsType</code>, <code>margins</code>, <code>designType</code>, <code>design</code> and the documentation
+in <code>ecm.mix</code> for details about how to specify the model.
+</p>
+<p>Imputed datasets can be analysed using <code>withinBetween</code>,
+<code>scoreBased</code>, or for example the
+<a href="https://cran.r-project.org/package=bootImpute">bootImpute</a> package.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of imputed datasets, or if <code>M=1</code>, just the imputed data frame.
+</p>
+
+
+<h3>References</h3>
+
+<p>Schafer J.L. (1997). Analysis of incomplete multivariate data.
+Chapman &amp; Hall, Boca Raton, Florida, USA.
+</p>
+<p>von Hippel P.T. and Bartlett J.W. Maximum likelihood multiple imputation: faster,
+more efficient imputation without posterior draws. Statistical Science 2021; 36(3) 400-420 <a href="https://doi.org/10.1214/20-STS793">doi:10.1214/20-STS793</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#simulate a partially observed dataset with a mixture of categorical and continuous variables
+set.seed(1234)
+
+n &lt;- 100
+
+#for simplicity we simulate completely independent categorical variables
+x1 &lt;- ceiling(3*runif(n))
+x2 &lt;- ceiling(2*runif(n))
+x3 &lt;- ceiling(2*runif(n))
+y &lt;- 1+0.5*(x1==2)+1.5*(x1==3)+x2+x3+rnorm(n)
+
+temp &lt;- data.frame(x1=x1,x2=x2,x3=x3,y=y)
+
+#make some data missing in all variables
+for (i in 1:4) {
+  temp[(runif(n)&lt;0.25),i] &lt;- NA
+}
+
+#impute conditional on MLE, assuming two-way associations in the log-linear model
+#and main effects of categorical variables on continuous one (the default)
+imps &lt;- mixImp(temp, nCat=3, M=10, pd=FALSE, rseed=4423)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,377 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>plsFit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Partial Least Squares Regression</h2>
+
+<h3>Description</h3>
+
+<p>Functions to perform partial least squares regression with a formula interface. Bootstraping can be used. Prediction, residuals, model extraction, plot, print and summary methods are also implemented.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">plsFit(formula, data, subset, ncomp = NULL, na.action, 
+method = c("bidiagpls", "wrtpls"), scale = TRUE, n_cores = 2, 
+alpha = 0.05, perms = 2000, validation = c("none", "oob", "loo"), 
+boots = 1000, model = TRUE, parallel = FALSE,
+x = FALSE, y = FALSE, ...) 
+## S3 method for class 'mvdareg'
+summary(object, ncomp = object$ncomp, digits = 3, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p> a model formula (see below). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p> an optional data frame containing the variables in the model. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p> an optional vector specifying a subset of observations to be used in the fitting process. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncomp</code></td>
+<td>
+<p> the number of components to include in the model (see below). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na.action</code></td>
+<td>
+<p> a function which indicates what should happen when the data contain <code>NAs</code>. The default is set by the <code>na.action</code> setting of options, and is <code>na.fail</code> if that is unset. The default is <code>na.omit</code>. Another possible value is <code>NULL</code>, no action. Value <code>na.exclude</code> can be useful. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p> the multivariate regression algorithm to be used. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p> should scaling to unit variance be used. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_cores</code></td>
+<td>
+<p> Number of cores to run for parallel processing.  Currently set to 2 with the max being 4. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p> the significance level for <code>wrtpls</code> </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>perms</code></td>
+<td>
+<p> the number of permutations to run for <code>wrtpls</code> </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>validation</code></td>
+<td>
+<p> character. What kind of (internal) validation to use. See below. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boots</code></td>
+<td>
+<p>Number of bootstrap samples when <code>validation = 'oob'</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p> an optional data frame containing the variables in the model. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p> should parallelization be used. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p> a logical. If TRUE, the model matrix is returned. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p> a logical. If TRUE, the response is returned. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p> an object of class <code>"mvdareg"</code>, i.e., a fitted model. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>the number of decimal place to output with <code>summary.mvdareg</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p> additional arguments, passed to the underlying fit functions, and <code>mvdareg</code>. Currently not in use.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function fits a partial least squares (PLS) model with 1, ..., <code>ncomp</code> number of latent variables. Multi-response models are not supported.
+</p>
+<p>The type of model to fit is specified with the method argument. Currently two PLS algorithms are available: the bigiag2 algorithm ("bigiagpls" and "wrtpls").
+</p>
+<p>The formula argument should be a symbolic formula of the form response ~ terms, where response is the name of the response vector and terms is the name of one or more predictor matrices, usually separated by +, e.g., y ~ X + Z. See <code>lm</code> for a detailed description. The named variables should exist in the supplied data data frame or in the global environment. The chapter Statistical models in R of the manual An Introduction to R distributed with R is a good reference on formulas in R.
+</p>
+<p>The number of components to fit is specified with the argument <code>ncomp</code>. It this is not supplied, the maximal number of components is used.
+</p>
+<p>Note that if the number of samples is &lt;= 15, oob validation may fail.  It is recommended that you PLS with <code>validation = "loo"</code>.
+</p>
+<p>If <code>method = "bidiagpls"</code> and <code>validation = "oob"</code>, bootstrap cross-validation is performed. Bootstrap confidence intervals are provided for <code>coefficients</code>, <code>weights</code>, <code>loadings</code>, and <code>y.loadings</code>.  The number of bootstrap samples is specified with the argument <code>boots</code>. See <code>mvdaboot</code> for details.
+</p>
+<p>If <code>method = "bidiagpls"</code> and <code>validation = "loo"</code>, leave-one-out cross-validation is performed.
+</p>
+<p>If <code>method = "bidiagpls"</code> and <code>validation = "none"</code>, no cross-validation is performed.  Note that the number of components, <code>ncomp</code>, is set to <code>min(nobj - 1, npred)</code>
+</p>
+<p>If <code>method = "wrtpls"</code> and <code>validation = "none"</code>, The Weight Randomization Test for the selection of the number of components is performed.  Note that the number of components, <code>ncomp</code>, is set to <code>min(nobj - 1, npred)</code>
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>mvdareg</code> is returned. The object contains all components returned by the underlying fit function. In addition, it contains the following:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>loadings</code></td>
+<td>
+<p> X loadings </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p> weights </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>D2.values</code></td>
+<td>
+<p> bidiag2 matrix </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iD2</code></td>
+<td>
+<p> inverse of bidiag2 matrix </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Ymean</code></td>
+<td>
+<p> mean of reponse variable </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Xmeans</code></td>
+<td>
+<p> mean of predictor variables </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coefficients</code></td>
+<td>
+<p> PLS regression coefficients </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y.loadings</code></td>
+<td>
+<p> y-loadings </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scores</code></td>
+<td>
+<p> X scores </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>R</code></td>
+<td>
+<p> orthogonal weights </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Y.values</code></td>
+<td>
+<p> scaled response values </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Yactual</code></td>
+<td>
+<p> actual response values </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fitted</code></td>
+<td>
+<p> fitted values </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>residuals</code></td>
+<td>
+<p> residuals </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Xdata</code></td>
+<td>
+<p> X matrix </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iPreds</code></td>
+<td>
+<p> predicted values </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y.loadings2</code></td>
+<td>
+<p> scaled y-loadings </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncomp</code></td>
+<td>
+<p> number of latent variables </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p> PLS algorithm used </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p> scaling used </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>validation</code></td>
+<td>
+<p> validation method </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p> model call </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>terms</code></td>
+<td>
+<p> model terms </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p> fitted model </p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Nelson Lee Afanador (<a href="mailto:nelson.afanador@mvdalab.com">nelson.afanador@mvdalab.com</a>), Thanh Tran (<a href="mailto:thanh.tran@mvdalab.com">thanh.tran@mvdalab.com</a>)</p>
+
+
+<h3>References</h3>
+
+<p>NOTE: This function is adapted from <code>mvr</code> in package <span class="pkg">pls</span> with extensive modifications by Nelson Lee Afanador and Thanh Tran.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>bidiagpls.fit</code>, <code>mvdaboot</code>, <code>boot.plots</code>,
+<code>R2s</code>, <code>PE</code>, <code>ap.plot</code>,
+<code>T2</code>, <code>Xresids</code>, <code>smc</code>,
+<code>scoresplot</code>, <code>ScoreContrib</code>, <code>sr</code>,
+<code>loadingsplot</code>, <code>weightsplot</code>, <code>coefsplot</code>,
+<code>coefficientsplot2D</code>, <code>loadingsplot2D</code>,
+<code>weightsplot2D</code>, 
+<code>bca.cis</code>, <code>coefficients.boots</code>, <code>loadings.boots</code>,
+<code>weight.boots</code>, <code>coefficients</code>, <code>loadings</code>,
+<code>weights</code>, <code>BiPlot</code>, <code>jk.after.boot</code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">###  PLS MODEL FIT WITH method = 'bidiagpls' and validation = 'oob', i.e. bootstrapping ###
+data(Penta)
+## Number of bootstraps set to 300 to demonstrate flexibility
+## Use a minimum of 1000 (default) for results that support bootstraping
+mod1 &lt;- plsFit(log.RAI ~., scale = TRUE, data = Penta[, -1], method = "bidiagpls",
+               ncomp = 2, validation = "oob", boots = 300)
+summary(mod1) #Model summary
+
+###  PLS MODEL FIT WITH method = 'bidiagpls' and validation = 'loo', i.e. leave-one-out CV ###
+## Not run: 
+mod2 &lt;- plsFit(log.RAI ~., scale = TRUE, data = Penta[, -1], method = "bidiagpls",
+               ncomp = 2, validation = "loo")
+summary(mod2) #Model summary
+
+## End(Not run)
+
+###  PLS MODEL FIT WITH method = 'bidiagpls' and validation = 'none', i.e. no CV is performed ###
+## Not run: 
+mod3 &lt;- plsFit(log.RAI ~., scale = TRUE, data = Penta[, -1], method = "bidiagpls",
+               ncomp = 2, validation = "none")
+summary(mod3) #Model summary
+
+## End(Not run)
+###  PLS MODEL FIT WITH method = 'wrtpls' and validation = 'none', i.e. WRT-PLS is performed ###
+## Not run: 
+mod4 &lt;- plsFit(log.RAI ~., scale = TRUE, data = Penta[, -1],
+               method = "wrtpls", validation = "none")
+summary(mod4) #Model summary
+plot.wrtpls(mod4)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

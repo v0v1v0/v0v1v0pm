@@ -1,0 +1,93 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ModelInfo_mf</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Returns a MetaForest ModelInfo list for use with caret</h2>
+
+<h3>Description</h3>
+
+<p>This function allows users to rely on the powerful <code>caret</code> package for
+cross-validating and tuning a MetaForest analysis. Methods for MetaForest
+are not included in the caret package, because the interface of caret is not
+entirely compatible with MetaForest's model call. Specifically, MetaForest is
+not compatible with the <code>train</code> methods for classes 'formula' or
+'recipe', because the variance of the effect size must be a column of the
+training data x. The name of this column is specified using the argument
+'vi'.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ModelInfo_mf()
+</code></pre>
+
+
+<h3>Details</h3>
+
+<p>To train a clustered MetaForest, for nested data structures, simply provide
+the optional argument 'study' to the train function, to specify the study ID.
+This should again refer to a column of x.
+</p>
+<p>When training a clustered MetaForest, make sure to use
+'index = groupKFold(your_study_id_variable, k = 10))' in traincontrol, to
+sample by study ID when creating cross-validation partitions; otherwise the
+testing error will be positively biased.
+</p>
+
+
+<h3>Value</h3>
+
+<p>ModelInfo list of length 17.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Prepare data
+data &lt;- dat.bangertdrowns2004
+data[, c(4:12)] &lt;- apply(data[ , c(4:12)], 2, function(x){
+  x[is.na(x)] &lt;- median(x, na.rm = TRUE)
+  x})
+data$subject &lt;- factor(data$subject)
+data$yi &lt;- as.numeric(data$yi)
+# Load caret
+library(caret)
+set.seed(999)
+# Specify the resampling method as 10-fold CV
+fit_control &lt;- trainControl(method = "cv", number = 10)
+cv_mf_fit &lt;- train(y = data$yi, x = data[,c(3:13, 16)],
+                   method = ModelInfo_mf(), trControl = fit_control)
+
+
+# Cross-validated clustered MetaForest
+data &lt;- get(data(dat.bourassa1996))
+data &lt;- escalc(measure = "OR", ai = lh.le, bi = lh.re, ci = rh.le, di= rh.re,
+               data = data, add = 1/2, to = "all")
+data$mage[is.na(data$mage)] &lt;- median(data$mage, na.rm = TRUE)
+data[c(5:8)] &lt;- lapply(data[c(5:8)], factor)
+data$yi &lt;- as.numeric(data$yi)
+# Set up 10-fold grouped CV
+fit_control &lt;- trainControl(method = "cv", index = groupKFold(data$sample,
+                            k = 10))
+# Set up a custom tuning grid for the three tuning parameters of MetaForest
+rf_grid &lt;- expand.grid(whichweights = c("random", "fixed", "unif"),
+                       mtry = c(2, 4, 6),
+                       min.node.size = c(2, 4, 6))
+# Train the model
+cv.mf.cluster &lt;- train(y = data$yi, x = data[, c("selection", "investigator",
+                                                 "hand_assess", "eye_assess",
+                                                 "mage", "sex", "vi",
+                                                 "sample")],
+                       study = "sample", method = ModelInfo_mf(),
+                       trControl = fit_control,
+                       tuneGrid = rf_grid)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

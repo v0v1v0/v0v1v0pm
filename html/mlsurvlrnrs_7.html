@@ -1,0 +1,235 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>LearnerSurvXgboostCox</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>R6 Class to construct a Xgboost survival learner for Cox regression</h2>
+
+<h3>Description</h3>
+
+<p>The <code>LearnerSurvXgboostCox</code> class is the interface to perform a Cox
+regression with the <code>xgboost</code> R package for use with the <code>mlexperiments</code>
+package.
+</p>
+
+
+<h3>Details</h3>
+
+<p>Optimization metric: needs to be specified with the learner parameter
+<code>eval_metric</code>.
+Can be used with
+</p>
+
+<ul>
+<li> <p>mlexperiments::MLTuneParameters
+</p>
+</li>
+<li> <p>mlexperiments::MLCrossValidation
+</p>
+</li>
+<li> <p>mlexperiments::MLNestedCV
+</p>
+</li>
+</ul>
+<h3>Super classes</h3>
+
+<p><code>mlexperiments::MLLearnerBase</code> -&gt; <code>mllrnrs::LearnerXgboost</code> -&gt; <code>LearnerSurvXgboostCox</code>
+</p>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-LearnerSurvXgboostCox-new"><code>LearnerSurvXgboostCox$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-LearnerSurvXgboostCox-clone"><code>LearnerSurvXgboostCox$clone()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="bayesian_scoring_function"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-bayesian_scoring_function"><code>mlexperiments::MLLearnerBase$bayesian_scoring_function()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="cross_validation"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-cross_validation"><code>mlexperiments::MLLearnerBase$cross_validation()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="fit"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-fit"><code>mlexperiments::MLLearnerBase$fit()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="predict"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-predict"><code>mlexperiments::MLLearnerBase$predict()</code></a></span></li>
+</ul></details><hr>
+<a id="method-LearnerSurvXgboostCox-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Create a new <code>LearnerSurvXgboostCox</code> object.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerSurvXgboostCox$new(metric_optimization_higher_better)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>metric_optimization_higher_better</code></dt>
+<dd>
+<p>A logical. Defines the direction
+of the optimization metric used throughout the hyperparameter
+optimization.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>A new <code>LearnerSurvXgboostCox</code> R6 object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>LearnerSurvXgboostCox$new(metric_optimization_higher_better = FALSE)
+
+</pre>
+</div>
+
+
+<hr>
+<a id="method-LearnerSurvXgboostCox-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerSurvXgboostCox$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>See Also</h3>
+
+<p><code>xgboost::xgb.train()</code>, <code>xgboost::xgb.cv()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># execution time &gt;2.5 sec
+# survival analysis
+
+dataset &lt;- survival::colon |&gt;
+  data.table::as.data.table() |&gt;
+  na.omit()
+dataset &lt;- dataset[get("etype") == 2, ]
+
+seed &lt;- 123
+surv_cols &lt;- c("status", "time", "rx")
+
+feature_cols &lt;- colnames(dataset)[3:(ncol(dataset) - 1)]
+
+param_list_xgboost &lt;- expand.grid(
+  objective = "survival:cox",
+  eval_metric = "cox-nloglik",
+  subsample = seq(0.6, 1, .2),
+  colsample_bytree = seq(0.6, 1, .2),
+  min_child_weight = seq(1, 5, 4),
+  learning_rate = c(0.1, 0.2),
+  max_depth = seq(1, 5, 4)
+)
+ncores &lt;- 2L
+
+split_vector &lt;- splitTools::multi_strata(
+  df = dataset[, .SD, .SDcols = surv_cols],
+  strategy = "kmeans",
+  k = 4
+)
+
+train_x &lt;- model.matrix(
+  ~ -1 + .,
+  dataset[, .SD, .SDcols = setdiff(feature_cols, surv_cols[1:2])]
+)
+train_y &lt;- survival::Surv(
+  event = (dataset[, get("status")] |&gt;
+             as.character() |&gt;
+             as.integer()),
+  time = dataset[, get("time")],
+  type = "right"
+)
+
+fold_list &lt;- splitTools::create_folds(
+  y = split_vector,
+  k = 3,
+  type = "stratified",
+  seed = seed
+)
+
+surv_xgboost_cox_optimizer &lt;- mlexperiments::MLCrossValidation$new(
+  learner = LearnerSurvXgboostCox$new(
+    metric_optimization_higher_better = FALSE
+  ),
+  fold_list = fold_list,
+  ncores = ncores,
+  seed = seed
+)
+surv_xgboost_cox_optimizer$learner_args &lt;- c(as.list(
+  data.table::data.table(param_list_xgboost[1, ], stringsAsFactors = FALSE)
+),
+nrounds = 45L
+)
+surv_xgboost_cox_optimizer$performance_metric &lt;- c_index
+
+# set data
+surv_xgboost_cox_optimizer$set_data(
+  x = train_x,
+  y = train_y
+)
+
+surv_xgboost_cox_optimizer$execute()
+
+
+
+## ------------------------------------------------
+## Method `LearnerSurvXgboostCox$new`
+## ------------------------------------------------
+
+LearnerSurvXgboostCox$new(metric_optimization_higher_better = FALSE)
+
+</code></pre>
+
+
+</div>

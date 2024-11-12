@@ -1,0 +1,184 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mewAvg</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Convenience wrapper for the MEW process</h2>
+
+<h3>Description</h3>
+
+<p>Packages the process of calling <code>mewInit</code>,
+looping through the random vectors calling <code>mewAccum</code> for each
+one and calling <code>mewMean</code> when desired.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mewAvg(f, n.bin, n.xx, ff, n.save = NULL, n.iter = NULL, i.to.save, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>f</code></td>
+<td>
+<p>(function) A user defined R function.  See the 'Details'
+section for more on defining this function</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.bin</code></td>
+<td>
+<p>(scalar integer) The fixed number of bins to use to
+define the moving expanding window</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.xx</code></td>
+<td>
+<p>(scalar integer) The length of the numeric vector
+returned by <code>f</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ff</code></td>
+<td>
+<p>(scalar double) The fraction of the samples to included
+in each window</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.save</code></td>
+<td>
+<p>(scalar integer OR NULL)The number of estimates to
+save and return.  The default value is NULL since this argument can
+be derived from <code>i.to.save</code>.  The argument is kept for
+compatibility with older versions of this package</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.iter</code></td>
+<td>
+<p>(scalar integer OR NULL) The number of times to call
+<code>f</code>.  The default value is NULL since this argument can be
+derived from <code>i.to.save</code>.  The argument is kept for
+compatibility with older versions of this package</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>i.to.save</code></td>
+<td>
+<p>(vector integer length n.iter) A vector of zeros
+and ones of length <code>n.iter</code> where position <code>i</code> is 1 if an
+average should be calculated and saved at iteration i, and zero
+otherwise</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>The initial named arguments to <code>f</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function <code>f</code> should generate the sequence of
+random vectors one at a time.  The returned value from a single call
+should be a list with at least one element.  The first element
+should be a numeric vector of length <code>n.xx</code> (the next vector
+in the sequence), and the remaining elements should be the updated
+arguments for the next call to <code>f</code>, named appropriately for
+the argument of <code>f</code> to update.  The 'Examples' section
+provides further guidance.
+</p>
+<p>The downfall of this interface is that the user cannot run the
+algorithm for some number of iterations, pause, assess convergence
+of the mean and then pick up from where they paused.  To accomplish
+that see the examples associated with the <code>mewMean</code> function.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A matrix of dimension <code>n.save</code> by <code>n.xx</code>
+containing the saved averages
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">MyFun &lt;- function (k) {
+
+ value &lt;- runif(n=2)
+ value[1] &lt;- ((cos(value[1]*2*pi))^2)*(1 - exp(-0.01*k))
+ value[2] &lt;- (-((sin(value[2]*2*pi))^2))*(1 - exp(-0.01*k))
+
+ k &lt;- k + 1
+
+ return(list(value=value, k=k))
+}
+
+i.to.save &lt;- seq(from=1, to=1025, by=32)
+tmp &lt;- rep(x=0, times=1025)
+tmp[i.to.save] &lt;- 1
+i.to.save &lt;- tmp
+
+mean.vals &lt;- mewAvg(f=MyFun,
+                    n.bin=4,
+                    n.xx=2,
+                    ff=0.5,
+                    n.save=sum(i.to.save),
+                    n.iter=length(i.to.save),
+                    i.to.save=i.to.save,
+                    k=1)
+
+plot(c(1:sum(i.to.save),
+       1:sum(i.to.save)),
+     c(mean.vals[, 1],
+       mean.vals[, 2]),
+     type="n",
+     xlab="Saved Iter",
+     ylab="Mean")
+points(1:sum(i.to.save),
+       mean.vals[, 1])
+points(1:sum(i.to.save),
+       mean.vals[, 2])
+
+## an AR(1) process
+
+ArOne &lt;- function (x.old, phi, sig.eps) {
+
+  value &lt;- phi*x.old + rnorm(n=1, mean=0, sd=sig.eps)
+
+  return(list(value=value, x.old=value))
+}
+
+mean.vals.ar1 &lt;- mewAvg(f=ArOne,
+                        n.bin=4,
+                        n.xx=1,
+                        ff=0.5,
+                        n.save=sum(i.to.save),
+                        n.iter=length(i.to.save),
+                        i.to.save=i.to.save,
+                        x.old=0,
+                        phi=0.5,
+                        sig.eps=1)
+
+plot(x=c(1, sum(i.to.save)),
+     y=c(-0.5, 0.5),
+     xlab="Saved Iter",
+     ylab="Mean",
+     type="n")
+points(x=1:sum(i.to.save),
+       y=mean.vals.ar1)
+abline(h=0, col="red")
+
+</code></pre>
+
+
+</div>

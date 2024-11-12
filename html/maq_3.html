@@ -1,0 +1,126 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>get_aipw_scores</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Construct evaluation scores via augmented inverse-propensity weighting.</h2>
+
+<h3>Description</h3>
+
+<p>A simple convenience function to construct an AIPW-based evaluation score given estimates
+of conditional means and treatment propensities.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">get_aipw_scores(Y, W, mu.hat, W.hat = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+<p>The observed outcome.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>W</code></td>
+<td>
+<p>The observed treatment assignment (must be a factor vector,
+where the first factor level is the control arm).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu.hat</code></td>
+<td>
+<p>A matrix of conditional mean estimates for each arm, <code class="reqn">E[Y_i | W_i = k, X_i]</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>W.hat</code></td>
+<td>
+<p>Optional treatment propensities. If these vary by unit and arm, then
+this should be a matrix with the treatment assignment
+probability of units to arms, with columns corresponding to the levels of <code>W</code>.
+If these only vary by arm, a vector can also be supplied.
+If W.hat is NULL (Default), then the assignment probabilities are assumed to be uniform
+and the same for each arm.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An <code class="reqn">n \cdot K</code> matrix of evaluation scores
+(eqn (13) in the multi-armed Qini paper).
+</p>
+
+
+<h3>References</h3>
+
+<p>Robins, James M, Andrea Rotnitzky, and Lue Ping Zhao.
+"Estimation of regression coefficients when some regressors are not always observed."
+Journal of the American statistical Association, 89(427), 1994.
+</p>
+<p>Sverdrup, Erik, Han Wu, Susan Athey, and Stefan Wager.
+"Qini Curves for Multi-Armed Treatment Rules".
+arXiv preprint arXiv:2306.11979, 2023.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+if (require("grf", quietly = TRUE)) {
+# Simulate data with two treatment arms (k = 1, 2) and a control arm (k = 0).
+n &lt;- 3000
+p &lt;- 5
+X &lt;- matrix(runif(n * p), n, p)
+W &lt;- as.factor(sample(c("0", "1", "2"), n, replace = TRUE))
+Y &lt;- X[, 1] + X[, 2] * (W == "1") + 1.5 * X[, 3] * (W == "2") + rnorm(n)
+
+# Fit a CATE estimator on a training sample.
+train &lt;- sample(1:n, n/2)
+tau.forest &lt;- grf::multi_arm_causal_forest(X[train, ], Y[train], W[train])
+
+# Predict CATEs on held out evaluation data.
+test &lt;- -train
+tau.hat &lt;- predict(tau.forest, X[test, ], drop = TRUE)$predictions
+# Form costs.
+cost &lt;- cbind(X[test, 4] / 4, X[test, 5])
+
+# Estimate nuisance components for test set AIPW scores.
+X.test &lt;- X[test, ]
+Y.test &lt;- Y[test]
+W.test &lt;- W[test]
+
+# Fit models for E[Y | W = k, X], k = 0, 1, 2, using for example separate random forests.
+Y0.forest &lt;- grf::regression_forest(X.test[W.test == 0, ], Y.test[W.test == 0])
+Y1.forest &lt;- grf::regression_forest(X.test[W.test == 1, ], Y.test[W.test == 1])
+Y2.forest &lt;- grf::regression_forest(X.test[W.test == 2, ], Y.test[W.test == 2])
+mu.hat = cbind(
+   mu0 = predict(Y0.forest, X.test)$predictions,
+   mu1 = predict(Y1.forest, X.test)$predictions,
+   mu2 = predict(Y2.forest, X.test)$predictions
+)
+
+# If unknown, estimate the propensity scores E[W = k | X].
+W.hat &lt;- predict(grf::probability_forest(X.test, W.test))$predictions
+
+# Form doubly robust scores.
+DR.scores &lt;- get_aipw_scores(Y.test, W.test, mu.hat, W.hat)
+
+# Fit a Qini curve estimated with forest-based AIPW.
+qini &lt;- maq(tau.hat, cost, DR.scores, R = 200)
+plot(qini)
+}
+
+
+</code></pre>
+
+
+</div>

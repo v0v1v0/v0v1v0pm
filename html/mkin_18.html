@@ -1,0 +1,109 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>dimethenamid_2018</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Aerobic soil degradation data on dimethenamid and dimethenamid-P from the EU assessment in 2018</h2>
+
+<h3>Description</h3>
+
+<p>The datasets were extracted from the active substance evaluation dossier
+published by EFSA. Kinetic evaluations shown for these datasets are intended
+to illustrate and advance kinetic modelling. The fact that these data and
+some results are shown here does not imply a license to use them in the
+context of pesticide  registrations, as the use of the data may be
+constrained by data protection regulations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">dimethenamid_2018
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>An mkindsg object grouping seven datasets with some meta information
+</p>
+
+
+<h3>Details</h3>
+
+<p>The R code used to create this data object is installed with this package
+in the 'dataset_generation' directory. In the code, page numbers are given for
+specific pieces of information in the comments.
+</p>
+
+
+<h3>Source</h3>
+
+<p>Rapporteur Member State Germany, Co-Rapporteur Member State Bulgaria (2018)
+Renewal Assessment Report Dimethenamid-P Volume 3 - B.8 Environmental fate and behaviour
+Rev. 2 - November 2017
+https://open.efsa.europa.eu/study-inventory/EFSA-Q-2014-00716
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">print(dimethenamid_2018)
+dmta_ds &lt;- lapply(1:7, function(i) {
+  ds_i &lt;- dimethenamid_2018$ds[[i]]$data
+  ds_i[ds_i$name == "DMTAP", "name"] &lt;-  "DMTA"
+  ds_i$time &lt;- ds_i$time * dimethenamid_2018$f_time_norm[i]
+  ds_i
+})
+names(dmta_ds) &lt;- sapply(dimethenamid_2018$ds, function(ds) ds$title)
+dmta_ds[["Elliot"]] &lt;- rbind(dmta_ds[["Elliot 1"]], dmta_ds[["Elliot 2"]])
+dmta_ds[["Elliot 1"]] &lt;- NULL
+dmta_ds[["Elliot 2"]] &lt;- NULL
+## Not run: 
+# We don't use DFOP for the parent compound, as this gives numerical
+# instabilities in the fits
+sfo_sfo3p &lt;- mkinmod(
+ DMTA = mkinsub("SFO", c("M23", "M27", "M31")),
+ M23 = mkinsub("SFO"),
+ M27 = mkinsub("SFO"),
+ M31 = mkinsub("SFO", "M27", sink = FALSE),
+ quiet = TRUE
+)
+dmta_sfo_sfo3p_tc &lt;- mmkin(list("SFO-SFO3+" = sfo_sfo3p),
+  dmta_ds, error_model = "tc", quiet = TRUE)
+print(dmta_sfo_sfo3p_tc)
+# The default (test_log_parms = FALSE) gives an undue
+# influence of ill-defined rate constants that have
+# extremely small values:
+plot(mixed(dmta_sfo_sfo3p_tc), test_log_parms = FALSE)
+# If we disregards ill-defined rate constants, the results
+# look more plausible, but the truth is likely to be in
+# between these variants
+plot(mixed(dmta_sfo_sfo3p_tc), test_log_parms = TRUE)
+# We can also specify a default value for the failing
+# log parameters, to mimic FOCUS guidance
+plot(mixed(dmta_sfo_sfo3p_tc), test_log_parms = TRUE,
+  default_log_parms = log(2)/1000)
+# As these attempts are not satisfying, we use nonlinear mixed-effects models
+# f_dmta_nlme_tc &lt;- nlme(dmta_sfo_sfo3p_tc)
+# nlme reaches maxIter = 50 without convergence
+f_dmta_saem_tc &lt;- saem(dmta_sfo_sfo3p_tc)
+# I am commenting out the convergence plot as rendering them
+# with pkgdown fails (at least without further tweaks to the
+# graphics device used)
+#saemix::plot(f_dmta_saem_tc$so, plot.type = "convergence")
+summary(f_dmta_saem_tc)
+# As the confidence interval for the random effects of DMTA_0
+# includes zero, we could try an alternative model without
+# such random effects
+# f_dmta_saem_tc_2 &lt;- saem(dmta_sfo_sfo3p_tc,
+#   covariance.model = diag(c(0, rep(1, 7))))
+# saemix::plot(f_dmta_saem_tc_2$so, plot.type = "convergence")
+# This does not perform better judged by AIC and BIC
+# saemix::compare.saemix(f_dmta_saem_tc$so, f_dmta_saem_tc_2$so)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

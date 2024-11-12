@@ -1,0 +1,185 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_loop_functions_smsego</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Sequential Multi-Objective Bayesian Optimization via SMS-EGO</h2>
+
+<h3>Description</h3>
+
+<p>Loop function for sequential multi-objective Bayesian Optimization via SMS-EGO.
+Normally used inside an OptimizerMbo.
+</p>
+<p>In each iteration after the initial design, the surrogate and acquisition function (mlr_acqfunctions_smsego) are
+updated and the next candidate is chosen based on optimizing the acquisition function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bayesopt_smsego(
+  instance,
+  surrogate,
+  acq_function,
+  acq_optimizer,
+  init_design_size = NULL,
+  random_interleave_iter = 0L
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>instance</code></td>
+<td>
+<p>(bbotk::OptimInstanceBatchMultiCrit)<br>
+The bbotk::OptimInstanceBatchMultiCrit to be optimized.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>surrogate</code></td>
+<td>
+<p>(SurrogateLearnerCollection)<br>
+SurrogateLearnerCollection to be used as a surrogate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>acq_function</code></td>
+<td>
+<p>(mlr_acqfunctions_smsego)<br>
+mlr_acqfunctions_smsego to be used as acquisition function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>acq_optimizer</code></td>
+<td>
+<p>(AcqOptimizer)<br>
+AcqOptimizer to be used as acquisition function optimizer.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init_design_size</code></td>
+<td>
+<p>(<code>NULL</code> | <code>integer(1)</code>)<br>
+Size of the initial design.
+If <code>NULL</code> and the bbotk::Archive contains no evaluations, <code>4 * d</code> is used with <code>d</code> being the
+dimensionality of the search space.
+Points are generated via a Sobol sequence.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random_interleave_iter</code></td>
+<td>
+<p>(<code>integer(1)</code>)<br>
+Every <code>random_interleave_iter</code> iteration (starting after the initial design), a point is
+sampled uniformly at random and evaluated (instead of a model based proposal).
+For example, if <code>random_interleave_iter = 2</code>, random interleaving is performed in the second,
+fourth, sixth, ... iteration.
+Default is <code>0</code>, i.e., no random interleaving is performed at all.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>invisible(instance)<br>
+The original instance is modified in-place and returned invisible.
+</p>
+
+
+<h3>Note</h3>
+
+
+<ul>
+<li>
+<p> The <code>acq_function$surrogate</code>, even if already populated, will always be overwritten by the <code>surrogate</code>.
+</p>
+</li>
+<li>
+<p> The <code>acq_optimizer$acq_function</code>, even if already populated, will always be overwritten by <code>acq_function</code>.
+</p>
+</li>
+<li>
+<p> The <code>surrogate$archive</code>, even if already populated, will always be overwritten by the bbotk::Archive of the bbotk::OptimInstanceBatchMultiCrit.
+</p>
+</li>
+<li>
+<p> Due to the iterative computation of the epsilon within the mlr_acqfunctions_smsego, requires the bbotk::Terminator of
+the bbotk::OptimInstanceBatchMultiCrit to be a bbotk::TerminatorEvals.
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+
+<ul>
+<li>
+<p> Beume N, Naujoks B, Emmerich M (2007).
+“SMS-EMOA: Multiobjective selection based on dominated hypervolume.”
+<em>European Journal of Operational Research</em>, <b>181</b>(3), 1653–1669.
+</p>
+</li>
+<li>
+<p> Ponweiser, Wolfgang, Wagner, Tobias, Biermann, Dirk, Vincze, Markus (2008).
+“Multiobjective Optimization on a Limited Budget of Evaluations Using Model-Assisted S-Metric Selection.”
+In <em>Proceedings of the 10th International Conference on Parallel Problem Solving from Nature</em>, 784–794.
+</p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+<p>Other Loop Function: 
+<code>loop_function</code>,
+<code>mlr_loop_functions</code>,
+<code>mlr_loop_functions_ego</code>,
+<code>mlr_loop_functions_emo</code>,
+<code>mlr_loop_functions_mpcl</code>,
+<code>mlr_loop_functions_parego</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+if (requireNamespace("mlr3learners") &amp;
+    requireNamespace("DiceKriging") &amp;
+    requireNamespace("rgenoud")) {
+
+  library(bbotk)
+  library(paradox)
+  library(mlr3learners)
+
+  fun = function(xs) {
+    list(y1 = xs$x^2, y2 = (xs$x - 2) ^ 2)
+  }
+  domain = ps(x = p_dbl(lower = -10, upper = 10))
+  codomain = ps(y1 = p_dbl(tags = "minimize"), y2 = p_dbl(tags = "minimize"))
+  objective = ObjectiveRFun$new(fun = fun, domain = domain, codomain = codomain)
+
+  instance = OptimInstanceBatchMultiCrit$new(
+    objective = objective,
+    terminator = trm("evals", n_evals = 5))
+
+  surrogate = default_surrogate(instance)
+
+  acq_function = acqf("smsego")
+
+  acq_optimizer = acqo(
+    optimizer = opt("random_search", batch_size = 100),
+    terminator = trm("evals", n_evals = 100))
+
+  optimizer = opt("mbo",
+    loop_function = bayesopt_smsego,
+    surrogate = surrogate,
+    acq_function = acq_function,
+    acq_optimizer = acq_optimizer)
+
+  optimizer$optimize(instance)
+}
+
+</code></pre>
+
+
+</div>

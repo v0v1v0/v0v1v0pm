@@ -1,0 +1,251 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MEDseq_control</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Set control values for use with MEDseq_fit</h2>
+
+<h3>Description</h3>
+
+<p>Supplies a list of arguments (with defaults) for use with <code>MEDseq_fit</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MEDseq_control(algo = c("EM", "CEM", "cemEM"), 
+               init.z = c("kmedoids", "kmodes", "kmodes2", "hc", "random", "list"), 
+               z.list = NULL, 
+               dist.mat = NULL, 
+               unique = TRUE, 
+               criterion = c("bic", "icl", "aic", "dbs", "asw", "cv", "nec"), 
+               tau0 = NULL, 
+               noise.gate = TRUE, 
+               random = TRUE,
+               do.cv = FALSE, 
+               do.nec = FALSE, 
+               nfolds = 10L, 
+               nstarts = 1L, 
+               stopping = c("aitken", "relative"), 
+               equalPro = FALSE, 
+               equalNoise = FALSE, 
+               tol = c(1E-05, 1E-08), 
+               itmax = c(.Machine$integer.max, 1000L), 
+               opti = c("mode", "medoid", "first", "GA"), 
+               ordering = c("none", "decreasing", "increasing"), 
+               MaxNWts = 1000L, 
+               verbose = TRUE, 
+               ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>algo</code></td>
+<td>
+<p>Switch controlling whether models are fit using the <code>"EM"</code> (the default) or <code>"CEM"</code> algorithm. The option <code>"cemEM"</code> allows running the EM algorithm starting from convergence of the CEM algorithm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init.z</code></td>
+<td>
+<p>The method used to initialise the cluster labels. All options respect the presence of sampling <code>weights</code>, if any. Defaults to <code>"kmedoids"</code>. Other options include <code>"kmodes"</code>, <code>"kmodes2"</code>, Ward's hierarchical clustering (<code>"hc"</code>, via <code>hclust</code>), <code>"random"</code> initialisation, and a user-supplied <code>"list"</code> (see <code>z.list</code> below). For weighted sequences, <code>"kmedoids"</code> is itself initialised using Ward's hierarchical clustering.
+</p>
+<p>The <code>"kmodes"</code> and <code>"kmodes2"</code> options both internally call the function <code>wKModes</code>, which <em>typically</em> uses random initial modes. Under <code>"kmodes"</code>, the algorithm is instead initialised via the medoids of the clusters obtained from a call to <code>hclust</code>. The option <code>"kmodes2"</code> is slightly faster, by virtue of using the <em>random</em> initial medoids. However, final results are by default still subject to randomness under both options (unless <code>set.seed</code> is invoked), as ties for modes and cluster assignments are <em>typically</em> broken at random throughout the algorithm (see the <code>random</code> argument below, and in <code>wKModes</code> itself).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>z.list</code></td>
+<td>
+<p>A user supplied list of initial cluster allocation matrices, with number of rows given by the number of observations, and numbers of columns given by the range of component numbers being considered. Only relevant if <code>init.z == "z.list"</code>. These matrices are allowed correspond to both soft or hard clusterings, and will be internally normalised so that the rows sum to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dist.mat</code></td>
+<td>
+<p>An optional distance matrix to use for initialisation when <code>init.z</code> is one of <code>"kmedoids"</code> or <code>"hc"</code>. Defaults to a Hamming distance matrix. This is an experimental feature and should only be tampered with by expert users.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>unique</code></td>
+<td>
+<p>A logical indicating whether the model is fit only to the unique observations (defaults to <code>TRUE</code>). When there are covariates, this means all unique combinations of covariate and sequence patterns, otherwise only the sequence patterns. 
+</p>
+<p>When <code>weights</code> <em>are not</em> supplied to <code>MEDseq_fit</code> and <code>isTRUE(unique)</code>, weights are given by the occurrence frequency of the corresponding sequences, and the model is then fit to the unique observations only.
+</p>
+<p>When <code>weights</code> <em>are</em> supplied and <code>isTRUE(unique)</code>, the weights are summed for each set of duplicate observations and assigned to one retained copy of each corresponding unique sequence. Hence, observations with different weights that are otherwise duplicates are treated as duplicates and significant computational gains can be made. 
+</p>
+<p>In both cases, the results will be unchanged, but setting <code>unique</code> to <code>TRUE</code> can often be much faster.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>criterion</code></td>
+<td>
+<p>When either <code>G</code> or <code>modtype</code> is a vector, <code>criterion</code> governs how the 'best' model is determined when gathering output. Defaults to <code>"bic"</code>. Note that all criteria will be returned in any case, if possible.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tau0</code></td>
+<td>
+<p>Prior mixing proportion for the noise component. If supplied, a noise component will be added to the model in the estimation, with <code>tau0</code> giving the prior probability of belonging to the noise component for <em>all</em> observations. Typically supplied as a scalar in the interval (0, 1), e.g. <code>0.1</code>. Can be supplied as a vector when gating covariates are present and <code>noise.gate</code> is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>noise.gate</code></td>
+<td>
+<p>A logical indicating whether gating network covariates influence the mixing proportion for the noise component, if any. Defaults to <code>TRUE</code>, but leads to greater parsimony if <code>FALSE</code>. Only relevant in the presence of a noise component (i.e. the <code>"CCN"</code>, <code>"UCN"</code>, <code>"CUN"</code>, and <code>"UUN"</code> models); only affects estimation in the presence of gating covariates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random</code></td>
+<td>
+<p>A logical governing how ties for estimated central sequence positions are handled. When <code>TRUE</code> (the default), such ties are broken at random. When <code>FALSE</code> (the implied default prior to version <code>1.2.0</code> of this package), the first candidate state is always chosen. This argument affects all <code>opti</code> options. If <code>verbose</code> is <code>TRUE</code> and there are tie-breaking operations performed, a warning message is printed once per model, regardless of the number of such operations. 
+</p>
+<p>Note that this argument is <em>also</em> passed to <code>wKModes</code> if <code>init.z</code> is <code>"kmodes"</code> or <code>"kmodes2"</code> and that, in certain rare cases when the <code>"CEM"</code> <code>algo</code> is invoked when <code>equalPro</code> is <code>TRUE</code> and the precision parameter(s) are somehow constrained across clusters, this argument also governs ties for cluster assignments within <code>MEDseq_fit</code> as well.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>do.cv</code></td>
+<td>
+<p>A logical indicating whether cross-validated log-likelihood scores should also be computed (see <code>nfolds</code>). Defaults to <code>FALSE</code> due to significant computational burden incurred.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>do.nec</code></td>
+<td>
+<p>A logical indicating whether the normalised entropy criterion (NEC) should also be computed (for models with more than one component). Defaults to <code>FALSE</code>. When <code>TRUE</code>, models with <code>G=1</code> are fitted always.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nfolds</code></td>
+<td>
+<p>The number of folds to use when <code>isTRUE{do.cv}</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nstarts</code></td>
+<td>
+<p>The number of random initialisations to use when <code>init.z="random"</code>. Defaults to <code>1</code>. Results will be based on the random start yielding the highest estimated log-likelihood.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stopping</code></td>
+<td>
+<p>The criterion used to assess convergence of the EM/CEM algorithm. The default (<code>"aitken"</code>) uses Aitken's acceleration method, otherwise the <code>"relative"</code> change in log-likelihood is monitored (which may be less strict).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>equalPro</code></td>
+<td>
+<p>Logical variable indicating whether or not the mixing proportions are to be constrained to be equal in the model. Default: <code>equalPro = FALSE</code>. Only relevant when <code>gating</code> covariates are <em>not</em> supplied within <code>MEDseq_fit</code>, otherwise ignored. In the presence of a noise component, only the mixing proportions for the non-noise components are constrained to be equal (by default, see <code>equalNoise</code>), after accounting for the noise component.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>equalNoise</code></td>
+<td>
+<p>Logical which is <strong>only</strong> invoked when <code>isTRUE(equalPro)</code> and gating covariates are not supplied. Under the default setting (<code>FALSE</code>), the mixing proportion for the noise component is estimated, and remaining mixing proportions are equal; when <code>TRUE</code> all components, including the noise component, have equal mixing proportions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>A vector of length two giving <em>relative</em> convergence tolerances for 1) the log-likelihood of the EM/CEM algorithm, and 2) optimisation in the multinomial logistic regression in the gating network, respectively. The default is <code>c(1e-05, 1e-08)</code>. If only one number is supplied, it is used as the tolerance in both cases.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>itmax</code></td>
+<td>
+<p>A vector of length two giving integer limits on the number of iterations for 1) the EM/CEM algorithm, and 2) the multinomial logistic regression in the gating network, respectively. The default is <code>c(.Machine$integer.max, 1000)</code>. This allows termination of the EM/CEM algorithm to be completely governed by <code>tol[1]</code>. If only one number is supplied, it is used as the iteration limit for the EM/CEM algorithm only and the other element of <code>itmax</code> retains its usual default.
+</p>
+<p>If, for any model with gating covariates, the multinomial logistic regression in the gating network fails to converge in <code>itmax[2]</code> iterations at any stage of the EM/CEM algorithm, an appropriate warning will be printed, prompting the user to modify this argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>opti</code></td>
+<td>
+<p>Character string indicating how central sequence parameters should be estimated. The default <code>"mode"</code> is exact and thus this experimental argument should only be tampered with by expert users. The option <code>"medoid"</code> fixes the central sequence(s) to be one of the observed sequences (like k-medoids). The other options <code>"first"</code> and <code>"GA"</code> use stochastic local search with the first-improvement and genetic algorithms, respectively, to mutate the medoid. Pre-computation of the Hamming distance matrix for the observed sequences speeds-up computation of all options other than <code>"mode"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ordering</code></td>
+<td>
+<p>Experimental feature that should only be tampered with by experienced users. Allows sequences to be reordered on the basis of the column-wise entropy when <code>opti</code> is <code>"first"</code> or <code>"GA"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MaxNWts</code></td>
+<td>
+<p>The maximum allowable number of weights in the call to <code>multinom</code> for the multinomial logistic regression in the gating network. There is no intrinsic limit in the code, but increasing <code>MaxNWts</code> will probably allow fits that are very slow and time-consuming. It may be necessary to increase <code>MaxNWts</code> when categorical concomitant variables with many levels are included or the number of components is high.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Logical indicating whether to print messages pertaining to progress to the screen during fitting. By default is <code>TRUE</code> if the session is interactive, and <code>FALSE</code> otherwise. If <code>FALSE</code>, warnings and error messages will still be printed to the screen, but everything else will be suppressed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Catches unused arguments, and also allows the optional arguments <code>ztol</code> and <code>summ</code> to be passed to <code>dbs</code> (<code>ztol</code> and <code>summ</code>) as well as the ASW computation (<code>summ</code>), and the optional <code>wKModes</code> arguments <code>iter.max</code>, <code>freq.weighted</code>, and <code>fast</code> (provided <code>init.z</code> is one of <code>"kmodes"</code> or <code>"kmodes2"</code>). In such cases, the <code>wKModes</code> argument <code>random</code> is already controlled by <code>random</code> above here.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>MEDseq_control</code> is provided for assigning values and defaults within <code>MEDseq_fit</code>. While the <code>criterion</code> argument controls the choice of the optimal number of components and MEDseq model type (in terms of the constraints or lack thereof on the precision parameters), <code>MEDseq_compare</code> is provided for choosing between fits with different combinations of covariates or different initialisation settings.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A named list in which the names are the names of the arguments and the values are the values supplied to the arguments.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Keefe Murphy - &lt;<a href="mailto:keefe.murphy@mu.ie">keefe.murphy@mu.ie</a>&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Murphy, K., Murphy, T. B., Piccarreta, R., and Gormley, I. C. (2021). Clustering longitudinal life-course sequences using mixtures of exponential-distance models. <em>Journal of the Royal Statistical Society: Series A (Statistics in Society)</em>, 184(4): 1414-1451. &lt;<a href="https://doi.org/10.1111/rssa.12712">doi:10.1111/rssa.12712</a>&gt;.
+</p>
+<p>Menardi, G. (2011). Density-based silhouette diagnostics for clustering methods. <em>Statistics and Computing</em>, 21(3): 295-308.
+</p>
+<p>Hoos, H. and T. Stützle (2004). <em>Stochastic Local Search: Foundations and Applications</em>. The Morgan Kaufman Series in Artificial Intelligence. San Francisco, CA, USA: Morgan Kaufman Publishers Inc.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MEDseq_fit</code>, <code>dbs</code>, <code>wcKMedoids</code>, <code>pam</code>, <code>wKModes</code>, <code>hclust</code>, <code>seqdist</code>, <code>multinom</code>, <code>MEDseq_compare</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># The CC MEDseq model is almost equivalent to k-medoids when the
+# CEM algorithm is employed, mixing proportions are constrained,
+# and the central sequences are restricted to the observed sequences
+ctrl  &lt;- MEDseq_control(algo="CEM", equalPro=TRUE, opti="medoid", criterion="asw")
+
+data(mvad)
+# Note that ctrl must be explicitly named 'ctrl'
+mod   &lt;- MEDseq_fit(seqdef(mvad[,17:86]), G=11, modtype="CC", weights=mvad$weight, ctrl=ctrl)
+
+# Alternatively, specify the control arguments directly
+mod   &lt;- MEDseq_fit(seqdef(mvad[,17:86]), G=11, modtype="CC", weights=mvad$weight,
+                    algo="CEM", equalPro=TRUE, opti="medoid", criterion="asw")
+
+# Note that supplying control arguments via a mix of the ... construct and the named argument 
+# 'control' or supplying MEDseq_control output without naming it 'control' can throw an error
+</code></pre>
+
+
+</div>

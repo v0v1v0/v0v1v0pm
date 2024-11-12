@@ -1,0 +1,123 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>maintain.packages</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Set up task package for live editing</h2>
+
+<h3>Description</h3>
+
+<p>See <code>mvbutils.packaging.tools</code> before reading or experimenting!
+</p>
+<p>Set up task package(s) for editing and/or live-editing. Usually called in <code>.First</code> or <code>.First.task</code>. You need to be <code>cd</code>ed into the parent task of your task-package. <code>maintain.packages</code> must be called <em>before</em> loading the package via <code>library</code> or <code>require</code>. The converse, <code>unmaintain.package</code>, is rarely needed; it's really only meant for when <code>unpackage</code> doesn't work properly, and you want a "clean slate" task package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R"># E.g. in your .First, after library( mvbutils), or in...
+# ... a '.First.task' above yr task-package
+maintain.packages(..., character.only = FALSE, autopatch=FALSE)
+unmaintain.package( pkg, character.only = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code> ...</code></td>
+<td>
+<p>names of packages, unquoted unless <code>character.only</code> is TRUE. Package names must correspond to subtasks of the current task.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> character.only</code></td>
+<td>
+<p>see above</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> pkg</code></td>
+<td>
+<p>name of package, unquoted unless <code>character.only</code> is TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> autopatch</code></td>
+<td>
+<p>whether to <code>patch.install</code> out-of-date installed packages (default FALSE, but TRUE is common).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>maintain.packages( mypack)</code> loads a copy of your task-package "mypack" (as stored in its ".RData" file) into a environment <code>..mypack</code> (an "in-memory-task-package"), which itself lives in the "mvb.session.info" environment on the search path. You don't normally need to know this, because normally you'd modify/create/delete objects in the package via <code>fixr</code> or <code>fixr(..., pkg="mypack")</code> or <code>rm.pkg( ..., pkg="mypack")</code>. But to move objects between the package and other tasks, you do need to refer to the in-memory task package, e.g. via <code>move( ..., from=..Splendid, to=subtask/of/current)</code>. In most cases, you will be prompted afterwards for whether to save the task package on disk, but you can always do yourself via <code>Save.pos( ..Splendid)</code>. Note that only these updates and saves only update the <em>task package</em> and the <em>loaded package</em>. To update the <em>source package</em> using the task package, call <code>pre.install</code>; to update the <em>installed package</em> on disk as well as the source package, call <code>patch.install</code>.
+</p>
+
+
+<h4>Creating new things</h4>
+
+<p>It's always safe to create new objects of any type in <code>.GlobalEnv</code>, then use <code>move(newthing,.,..mypack)</code>. For a new <em>function</em>, you can shortcut this two-step process and create it directly in the in-memory maintained package, via <code>fixr(..mypack$newfun)</code>; <code>fixr</code> will take care of synchronization with the loaded package. This also ought to work for text objects created via <code>fixtext</code>. Otherwise, use the two-step route, unless you have a good reason to do the following...
+</p>
+
+
+
+<h4>Directly modifying the maintained package</h4>
+
+<p>Rarely, you may have a really good reason to directly modify the contents of <code>..mypack</code>, e.g. via
+</p>
+<pre>
+  ..mypack$newfun &lt;&lt;- function( x) whatever
+</pre>
+<p>You can do it, but there are two problems to be aware of. The first is that changes won't be directly propagated to the loaded package, possibly not even after <code>patch.install</code> (though they will be honoured when you <code>library()</code> the package again). That is definitely the case for general data objects, and I'm not sure about functions; however, successful propagation after <code>patch.install</code> may happen for a special objects such as <code>mypack.DESCRIPTION</code> and documentation objects. Hence my general advice is to use <code>fixr</code> or <code>move</code>.
+</p>
+<p>The second, minor, problem is that you will probably forget to use <code>&lt;&lt;-</code> and will use <code>&lt;-</code> instead, so that a local copy of <code>..mypack</code> will be created in the current task. This is no big deal, and you can just <code>rm</code> the local copy; the local copy and the master copy in "mvb.session.info" both point to the same thing, and modifying one implies modifying the other, so that deleting the local copy won't lose your changes. <code>Save</code> detects accidental local copies of task packages, and omits them from the disk image, so there shouldn't be any problems next time you start R even if you completely forget about local/master copies.
+</p>
+
+
+
+<h4>Autopatch</h4>
+
+<p>If <code>autopatch==TRUE</code>, then <code>maintain.packages</code> will check whether the corresponding <em>installed</em> packages are older than the ".RData" files of the task packages. If they are, it will do a full <code>patch.install</code>; if not, it will still call <code>patch.install</code> but only to reverse-update any bundled DLLs (see <code>pre.install</code>), not to re-install the R-source. I find <code>autopatch</code> useful with packages containing C code, where a crash in the C code can cause R to die before the most recent R-code changes have been "committed" with <code>patch.install</code>. When you next start R, a call to <code>maintain.packages</code> with <code>autopatch=TRUE</code> will "commit" the changes <em>before</em> the package is loaded, because you have to call <code>maintain.packages</code> before <code>library</code>; this seems to be more reliable than running <code>patch.install</code> manually after <code>library</code> after a restart.
+</p>
+
+
+
+<h3>Maintained packages as tasks</h3>
+
+<p>If you use <code>mvbutils</code> to pre-build your package, then your package must exist as a task in the <code>cd</code> hierarchy. Older versions of <code>mvbutils</code> allowed you to <code>cd</code> to a maintained package, but this is now forbidden because of the scope for confusion. Thanks to <code>maintain.packages</code>, there is no compelling need to have the package/task at the top of the search path; <code>fixr</code>, <code>move</code>, etc work just fine without. If you really do want to <code>cd</code> to a maintained package, you must call <code>unmaintain.package</code> first.
+</p>
+<p>One piece of cleanup that I recommend, is to move any subtasks of "mypack" one level up in the task hierarchy, and to remove the <code>tasks</code> object from "Splendid" itself, e.g. via something like:
+</p>
+<pre>
+  cd( task.above.splendid)
+  tasks &lt;- c( tasks, combined.file.paths( tasks[ "Splendid"], ..Splendid$tasks))
+  # ... combined.file.paths is an imaginary function. Watch out if you've used relative paths!
+  rm.pkg( tasks, pkg="Splendid")
+</pre>
+
+
+<h3>See Also</h3>
+
+<p><code>mvbutils.packaging.tools</code>, <code>fixr</code>, <code>pre.install</code>, <code>patch.installed</code>, <code>unpackage</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# In your .First:
+library( mvbutils)
+maintain.packages( myfirstpack, mysecondpack, mythirdpack)
+# or...
+live.edit.list &lt;- c( 'myfirstpack', 'mysecondpack', 'mythirdpack')
+maintain.packages( live.edit.list, character.only=TRUE)
+library( myfirstpack) # etc
+
+## End(Not run)
+</code></pre>
+
+
+</div>

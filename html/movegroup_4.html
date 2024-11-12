@@ -1,0 +1,367 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>movegroup</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Automates dynamic Brownian bridge movement model construction across individuals</h2>
+
+<h3>Description</h3>
+
+<p>Automates dynamic Brownian bridge movement model calculation for utilization distribution (UD)
+estimation for multiple individuals simultaneously, using functions in the 'move' package. The
+authors are indebted to the move package authors Bart Kraunstauber, Marco Smolla, and Anne K
+Scharf, and to Sarah Becker for seed code which inspired the development of the
+movegroup::movegroup function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">movegroup(
+  data = NULL,
+  ID = NULL,
+  Datetime = NULL,
+  Lat = NULL,
+  Lon = NULL,
+  dat.TZ = "US/Eastern",
+  proj = sp::CRS("+proj=longlat +datum=WGS84"),
+  sensor = "VR2W",
+  moveLocError = 1,
+  timeDiffLong = 2,
+  timeDiffUnits = "hours",
+  center = TRUE,
+  centre = NULL,
+  buffpct = 0.3,
+  rasterExtent = NULL,
+  rasterCRS = sp::CRS("+proj=utm +zone=17 +datum=WGS84"),
+  rasterResolution = 50,
+  movemargin = 11,
+  dbbext = 3,
+  dbbwindowsize = 23,
+  writeRasterFormat = "ascii",
+  writeRasterExtension = ".asc",
+  writeRasterDatatype = "FLT4S",
+  absVolumeAreaSaveName = "VolumeArea_AbsoluteScale.csv",
+  savedir = tempdir(),
+  alerts = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Data frame object containing the data. Requires columns Lat Lon DateTime ID and
+potentially a grouping column (not currently implemented, email to request). Column names
+specified in later parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ID</code></td>
+<td>
+<p>Name of animal tag ID column in data. "Character".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Datetime</code></td>
+<td>
+<p>Column name in data that contains date/time stamps for each recorded detection.
+Must be in POSIXct format. "Character".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Lat</code></td>
+<td>
+<p>Name of latitude column in data. "Character".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Lon</code></td>
+<td>
+<p>Name of longitude column in data. "Character".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dat.TZ</code></td>
+<td>
+<p>Timezone of data for as.POSIXct. Default "US/Eastern".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>proj</code></td>
+<td>
+<p>CRS for move function. Default sp::CRS("+proj=longlat +datum=WGS84").</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sensor</code></td>
+<td>
+<p>Sensor for move function. Single character or vector with length of the number of
+coordinates. Optional. Default "VR2W".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>moveLocError</code></td>
+<td>
+<p>Location error (m) in the 'brownian.bridge.dyn' function in the 'move'
+package. Numeric. Either single or a vector of length nrow data. If using passive acoustic data
+this is the detection range of the receiver(s). Default 1. See MoveLocErrorCalc function for
+satellite data with state space modelled locations with 95% confidence intervals for latlon i.e.
+lat and lon025 and 975.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>timeDiffLong</code></td>
+<td>
+<p>Single numeric value. Threshold value in timeDiffUnits designating the length
+of long breaks in re-locations. Used for bursting a movement track into segments, thereby
+removing long breaks from the movement track. See ?move::bursted for details. Default 2 hours is
+arbitrary, looping through 18, 24, and 36 hours for satellite data on great hammerhead sharks
+revealed volume areas for core and general use gradually rise with timeDiffLong increases,
+multiple small dots of presence get blobbed together, and therefore sometimes this covers land.
+Ideally one would not discard any data, in which case one should choose a value higher than the
+largest between-detections gap in their dataset (or just pick a very large number). This
+parameter is useful when the model would otherwise get stuck trying to calculate a UD for an
+individual with a very large home range that is inadequately captured by a receiver array.
+Default 2.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>timeDiffUnits</code></td>
+<td>
+<p>Character. Unit for timeDiffLong. Default "hours".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>center</code></td>
+<td>
+<p>US English alternate to centre. Do you want to center the move object within
+extent? See spTransform. Default TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>centre</code></td>
+<td>
+<p>British English alternate to center. Do you want to centre the move object within
+extent? See spTransform. Default NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>buffpct</code></td>
+<td>
+<p>Buffer extent for raster creation, proportion of 1. Default 0.3, can try e.g. 3
+for a large buffer to avoid clipping, at the cost of file size, but later cropping in
+plotraster.R will remove extraneous blank space.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rasterExtent</code></td>
+<td>
+<p>Extent of raster created around data. If NULL (default), calculated from
+data, buffpct, rasterResolution. Else length 4 vector, c(xmn, xmx, ymn, ymx) decimal latlon
+degrees. Don't go to 90 (degrees) north or south for ymax or ymin. Doesn't prevent constraint to
+data limits (in plot anyway), but prevents raster clipping crash.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rasterCRS</code></td>
+<td>
+<p>CRS for raster creation. Default sp::CRS("+proj=utm +zone=17 +datum=WGS84").</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rasterResolution</code></td>
+<td>
+<p>Single numeric value to set raster resolution - cell size (width and
+height) in metres. 111000: 1 degree lat = 111km. Trade-off between small res = big file &amp; processing
+time. Should be a function of the spatial resolution of your receivers or positioning tags.
+Higher resolution will lead to more precision in the volume areas calculations. Try using
+2*dbblocationerror, if dbblocationerror is a single value. Default 50 = 50m = 50m² = 0.00005 km²
+(divide by 1000000). Try around the median of your moveLocError.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>movemargin</code></td>
+<td>
+<p>Margin size for variance calc in move::brownian.motion.variance.dyn and
+behavioural change point analysis in move::brownian.bridge.dyn. Must be an odd number. Default 11.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dbbext</code></td>
+<td>
+<p>Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends
+bounding box around track. Numeric single (all edges), double (x &amp; y), or 4 (xmin xmax ymin ymax)
+. Default 3. Excessive buffering will get cropped automatically.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dbbwindowsize</code></td>
+<td>
+<p>The window.size param in the 'brownian.bridge.dyn' function
+in the 'move' package. The size of the moving window along the track. Larger windows provide more
+stable/accurate estimates of the brownian motion variance but are less well able to capture more
+frequent changes in behaviour. Number must be odd. Code will not run if total detections of
+individual &lt; window size (default 23), which must be &gt;= 2*movemargin (default 11).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>writeRasterFormat</code></td>
+<td>
+<p>Character. Output file type for raster::writeRaster param format.
+Default "ascii". TO DEPRECIATE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>writeRasterExtension</code></td>
+<td>
+<p>Character. Output file extension for raster::writeRaster param
+extension. Default ".asc". TO DEPRECIATE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>writeRasterDatatype</code></td>
+<td>
+<p>Character. Data type for writing values to disk for
+raster::writeRaster param Datatype. Default "FLT4S". TO DEPRECIATE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>absVolumeAreaSaveName</code></td>
+<td>
+<p>File name plus extension where UD estimates are saved. Default
+"VolumeArea_AbsoluteScale.csv".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>savedir</code></td>
+<td>
+<p>Save outputs to a temporary directory (default) else change
+to desired directory e.g. "/home/me/folder". Do not use getwd() for this.
+Do NOT include terminal slash. Directory must exist. Default tempdir().</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alerts</code></td>
+<td>
+<p>Audio warning for failures. Default TRUE.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Step 1. Filter individuals.
+Remove those individuals for which there are insufficient data i.e. number of re-locations is
+smaller than the window size parameter value (default = 31).
+Step 2. Generate universal raster.
+Based on all remaining data, a universal raster is generated where the calculated UDs are plotted
+into.
+</p>
+<p>Step 3. Loop through individuals.
+Individuals are looped through to construct individual-level movement models (on an absolute
+scale).
+</p>
+<p>See www.GitHub.com/SimonDedman/movegroup for issues, feedback, and development
+suggestions.
+</p>
+<p>install_git('https://gitlab.com/bartk/move.git') #Installs 'move' development version
+</p>
+<p>When used together, the order of functions would be: movegroup, scaleraster, alignraster if
+required, plotraster.
+</p>
+
+
+<h4>Errors and their origins:</h4>
+
+
+<ol>
+<li>
+<p> Error in .local(object, raster, location.error = location.error, ext = ext: Higher y grid not
+large enough, consider extending the raster in that direction or enlarging the ext argument.
+Increase buffpct, e.g. to 3.
+</p>
+</li>
+<li>
+<p> Error in .data[[dttm]]: Must subset the data pronoun with a string, not a &lt;POSIXct/POSIXt&gt;
+object. Use "ColName" not dataframe$ColName syntax for Datetime, ID, Lat, Lon.
+</p>
+</li>
+<li>
+<p> Error in splice(dot_call(capture_dots, frame_env = frame_env, named = named,: object
+'DateTime' not found. Use "ColName" not ColName syntax for Datetime, ID, Lat, Lon.
+</p>
+</li>
+<li>
+<p> Error in .local(object, raster, location.error = location.error, ext = ext: Higher x grid not
+large enough, consider extending the raster in that direction or enlarging the ext argument. Try
+"buffpct = 1," , then larger e.g. 3, if still getting the error.
+</p>
+</li>
+<li>
+<p> cannot allocate vector of size (BIG) Gb: Increase rasterResolution value.
+</p>
+</li>
+<li>
+<p> In min/max: No non-missing arguments to min; returning Inf: likely not enough memory, increase
+rasterResolution value.
+</p>
+</li>
+<li>
+<p> Error in tmp[[i]]: subscript out of bounds. dbbmmwindowsize may be too large relative to nrow
+of that individual. Try lowering movemargin (default 11, has to be odd) and then lowering
+dbbmmwindowsize (default 23, has to be &gt;=2*movemargin, has to be odd).
+</p>
+</li>
+</ol>
+<h3>Value</h3>
+
+<p>Individual-level utilization distributions, saved as rasters, as well
+as calculated volume area estimates for 50 and 95pct contours, saved in a
+.csv file. Motion variance csvs per individual ("MotionVariance.csv"), see
+move::brownian.motion.variance.dyn. No processed object is returned, i.e. bad: "objectname &lt;-
+movegroup()", good: "movegroup()".
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Simon Dedman, <a href="mailto:simondedman@gmail.com">simondedman@gmail.com</a>
+</p>
+<p>Maurits van Zinnicq Bergmann, <a href="mailto:mauritsvzb@gmail.com">mauritsvzb@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Kranstauber, B., Kays, R., LaPoint, S. D., Wikelski, M. and Safi, K. (2012), A
+dynamic Brownian bridge movement model to estimate utilization distributions for heterogeneous
+animal movement. Journal of Animal Ecology. doi: 10.1111/j.1365-2656.2012.01955.x
+</p>
+<p>Kranstauber, B., M. Smolla &amp; A. K. Scharf. 2019. Move: visualizing and analyzing animal track
+data. R package version 4.2.4 (at 2023-08-15). https://CRAN.R-project.org/package=move.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# load data
+data("TracksCleaned")
+# run function
+movegroup(
+ data = TracksCleaned,
+ ID = "Shark",
+ Datetime = "Datetime",
+ Lat = "Lat",
+ Lon = "Lon",
+ savedir = tempdir())
+ 
+
+</code></pre>
+
+
+</div>

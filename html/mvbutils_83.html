@@ -1,0 +1,119 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>generic.dll.loader</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Convenient automated loading of DLLs</h2>
+
+<h3>Description</h3>
+
+<p><code>generic.dll.loader</code> is to be called from the <code>.onLoad</code> of a package. It calls <code>library.dynam</code> on all the DLLs it can find in the "libs" folder (so you don't need to specify their names), or in the appropriate sub-architecture folder below "libs". It also creates "R aliasses" in your namespace for all the <em>registered</em> low-level routines in each DLL (i.e. those returned by <code>getDLLRegisteredRoutines</code>, qv), so that the routines can be called efficiently later on from your code— see <b>Details</b>.
+</p>
+<p>If you just want to use <code>mvbutils</code> to help build/maintain your package, and don't need your package to import/depend on other functions in <code>mvbutils</code>, then it's fine to just copy the code from <code>generic.dll.loader</code> etc and put it directly into your own <code>.onLoad</code>.
+</p>
+<p><code>ldyn.tester</code>, <code>create.wrappers.for.dll</code>, and <code>ldyn.unload</code> are to help you develop a DLL that has fully-registered routines, without immediately having to create an R package for it. <code>ldyn.tester</code> loads a DLL and returns its registration info. The DLL must be in a folder <code>.../libs/&lt;subarch&gt;</code> where <code>&lt;subarch&gt;</code> is <code>.Platform$r_arch</code> iff that is non-empty; this is because <code>ldyn.tester</code> merely tricks <code>library.dynam</code> into finding a spurious "package", and that's the folder structure that <code>library.dynam</code> needs to see. <code>create.wrappers.for.dll</code> does the alias-creation mentioned above for <code>generic.dll.loader</code>. <code>ldyn.unload</code> unloads the DLL.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R"># Only call this inside your .onLoad!
+generic.dll.loader(libname, pkgname, ignore_error=FALSE)
+# Only call these if you are informally developing a DLL outside a package
+ldyn.tester(chname)
+create.wrappers.for.dll( this.dll.info, ns=new.env( parent=parent.frame(2)))
+ldyn.unload( l1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code> libname, pkgname</code></td>
+<td>
+<p>as per <code>.onLoad</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> ignore_error</code></td>
+<td>
+<p>?continue to load other DLLs if one fails?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> chname</code></td>
+<td>
+<p>(for <code>ldyn.tester</code>) Path to the DLL (extension not required)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> this.dll.info</code></td>
+<td>
+<p>(for <code>create.wrappers.for.dll</code>) A <code>DLLInfo</code> object, as returned by <code>.dynLibs()[[N]]</code> or <code>library.dynam(...)</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> ns</code></td>
+<td>
+<p>(for <code>create.wrappers.for.dll</code>) If you're calling <code>create.wrappers.for.dll</code> manually, then this defaults to the calling environment, probably <code>.GlobalEnv</code>. For "internal use", <code>ns</code> is meant to be a namespace, but you shouldn't be using it like that!</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> l1</code></td>
+<td>
+<p>(for <code>ldyn.unload</code>) Result of previous call to <code>ldyn.tester</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>R-callable aliasses for your low-level routines will be called e.g. <code>C_myrout1</code>, <code>Call_myrout2</code>, <code>F_myrout3</code>, or <code>Ext_myrout4</code>, depending on type. Those for routines in "myfirstdll" will be stored in the environment <code>LL_myfirstdll</code> ("Low Level") in your package's namespace, which itself inherits from the namespace. In your own R code elsewhere in your package, you can then have something like
+</p>
+<pre>
+  .C( LL_myfirstdll$C_myrout1, &lt;&lt;arguments&gt;&gt;) # NB no need for PACKAGE argument
+</pre>
+<p>Getting fancy, you can alternatively set the environment of your calling function to <code>LL_myfirstdll</code> (which inherits from the namespace, so all your other functions are still visible). In that case, you can just write
+</p>
+<pre>
+  .C( C_myrout1, &lt;&lt;arguments&gt;&gt;)
+</pre>
+
+
+<h3>Value</h3>
+
+<p><code>generic.dll.loader</code> returns NULL (but see <b>Details</b>).
+<code>ldyn.tester</code> returns a class "DLLInfo" object if successful. <code>ldyn.unload</code> should return NULL if successful, and crash otherwise.
+<code>create.wrappers.for.dll</code> returns the environment containing the aliasses.
+Be careful with accidentally saving and loading the results of <code>ldyn.tester</code> and <code>create.wrappers.for.dll</code>; they won't be valid in a new R session. You might be better off creating them in the <code>mvb.session.info</code> environment on the search path; they will still be found, but won't persist in a different R session. See <b>Examples</b>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>set.finalizer</code> for a safe way to ensure cleanup after low-level routines.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+mypack:::.onLoad &lt;- function( libname, pkgname) generic.dll.loader( libname, pkgname)
+#... or just copy the code into your .onLoad
+# For casual testing of a DLL that's not yet in a package
+dl &lt;- ldyn.tester( 'path/to/my/dll/libs/i386/mydll.dll')
+getDLLRegisteredRoutines( l1)
+LL_mydll &lt;- create.wrappers.for.dll( dl)
+.C( LL_mydll$C_rout1, as.integer( 0)) # ... whatever!
+ldyn.unload( dl)
+# Safer because not permanent:
+assign( 'dl', ldyn.tester( 'path/to/my/dll/libs/i386/mydll.dll'), pos='mvb.session.info')
+assign( 'LL_mydll', create.wrappers.for.dll( dl), pos='mvb.session.info')
+.C( LL.mydll$C_rout1, as.integer( 0)) # ... whatever!
+
+## End(Not run)
+</code></pre>
+
+
+</div>

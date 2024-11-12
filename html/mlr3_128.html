@@ -1,0 +1,1030 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Learner</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Learner Class</h2>
+
+<h3>Description</h3>
+
+<p>This is the abstract base class for learner objects like LearnerClassif and LearnerRegr.
+</p>
+<p>Learners are build around the three following key parts:
+</p>
+
+<ul>
+<li>
+<p> Methods <code style="white-space: pre;">⁠$train()⁠</code> and <code style="white-space: pre;">⁠$predict()⁠</code> which call internal methods or private methods <code style="white-space: pre;">⁠$.train()⁠</code>/<code style="white-space: pre;">⁠$.predict()⁠</code>).
+</p>
+</li>
+<li>
+<p> A paradox::ParamSet which stores meta-information about available hyperparameters, and also stores hyperparameter settings.
+</p>
+</li>
+<li>
+<p> Meta-information about the requirements and capabilities of the learner.
+</p>
+</li>
+<li>
+<p> The fitted model stored in field <code style="white-space: pre;">⁠$model⁠</code>, available after calling <code style="white-space: pre;">⁠$train()⁠</code>.
+</p>
+</li>
+</ul>
+<p>Predefined learners are stored in the dictionary mlr_learners,
+e.g. <code>classif.rpart</code> or <code>regr.rpart</code>.
+</p>
+<p>More classification and regression learners are implemented in the add-on package <a href="https://CRAN.R-project.org/package=mlr3learners"><span class="pkg">mlr3learners</span></a>.
+Learners for survival analysis (or more general, for probabilistic regression) can be found in <a href="https://CRAN.R-project.org/package=mlr3proba"><span class="pkg">mlr3proba</span></a>.
+Unsupervised cluster algorithms are implemented in <a href="https://CRAN.R-project.org/package=mlr3cluster"><span class="pkg">mlr3cluster</span></a>.
+The dictionary mlr_learners gets automatically populated with the new learners as soon as the respective packages are loaded.
+</p>
+<p>More (experimental) learners can be found in the GitHub repository: <a href="https://github.com/mlr-org/mlr3extralearners">https://github.com/mlr-org/mlr3extralearners</a>.
+A guide on how to extend <a href="https://CRAN.R-project.org/package=mlr3"><span class="pkg">mlr3</span></a> with custom learners can be found in the <a href="https://mlr3book.mlr-org.com">mlr3book</a>.
+</p>
+<p>To combine the learner with preprocessing operations like factor encoding, <a href="https://CRAN.R-project.org/package=mlr3pipelines"><span class="pkg">mlr3pipelines</span></a> is recommended.
+Hyperparameters stored in the <code>param_set</code> can be tuned with <a href="https://CRAN.R-project.org/package=mlr3tuning"><span class="pkg">mlr3tuning</span></a>.
+</p>
+
+
+<h3>Optional Extractors</h3>
+
+<p>Specific learner implementations are free to implement additional getters to ease the access of certain parts
+of the model in the inherited subclasses.
+</p>
+<p>For the following operations, extractors are standardized:
+</p>
+
+<ul>
+<li> <p><code>importance(...)</code>: Returns the feature importance score as numeric vector.
+The higher the score, the more important the variable.
+The returned vector is named with feature names and sorted in decreasing order.
+Note that the model might omit features it has not used at all.
+The learner must be tagged with property <code>"importance"</code>.
+To filter variables using the importance scores, see package <a href="https://CRAN.R-project.org/package=mlr3filters"><span class="pkg">mlr3filters</span></a>.
+</p>
+</li>
+<li> <p><code>selected_features(...)</code>: Returns a subset of selected features as <code>character()</code>.
+The learner must be tagged with property <code>"selected_features"</code>.
+</p>
+</li>
+<li> <p><code>oob_error(...)</code>: Returns the out-of-bag error of the model as <code>numeric(1)</code>.
+The learner must be tagged with property <code>"oob_error"</code>.
+</p>
+</li>
+<li> <p><code>loglik(...)</code>: Extracts the log-likelihood (c.f. <code>stats::logLik()</code>).
+This can be used in measures like mlr_measures_aic or mlr_measures_bic.
+</p>
+</li>
+<li> <p><code>internal_valid_scores</code>: Returns the internal validation score(s) of the model as a named <code>list()</code>.
+Only available for <code>Learner</code>s with the <code>"validation"</code> property.
+If the learner is not trained yet, this returns <code>NULL</code>.
+</p>
+</li>
+<li> <p><code>internal_tuned_values</code>: Returns the internally tuned hyperparameters of the model as a named <code>list()</code>.
+Only available for <code>Learner</code>s with the <code>"internal_tuning"</code> property.
+If the learner is not trained yet, this returns <code>NULL</code>.
+</p>
+</li>
+</ul>
+<h3>Setting Hyperparameters</h3>
+
+<p>All information about hyperparameters is stored in the slot <code>param_set</code> which is a paradox::ParamSet.
+The printer gives an overview about the ids of available hyperparameters, their storage type, lower and upper bounds,
+possible levels (for factors), default values and assigned values.
+To set hyperparameters, assign a named list to the subslot <code>values</code>:
+</p>
+<div class="sourceCode"><pre>lrn = lrn("classif.rpart")
+lrn$param_set$values = list(minsplit = 3, cp = 0.01)
+</pre></div>
+<p>Note that this operation replaces all previously set hyperparameter values.
+If you only intend to change one specific hyperparameter value and leave the others as-is, you can use the helper function <code>mlr3misc::insert_named()</code>:
+</p>
+<div class="sourceCode"><pre>lrn$param_set$values = mlr3misc::insert_named(lrn$param_set$values, list(cp = 0.001))
+</pre></div>
+<p>If the learner has additional hyperparameters which are not encoded in the ParamSet, you can easily extend the learner.
+Here, we add a factor hyperparameter with id <code>"foo"</code> and possible levels <code>"a"</code> and <code>"b"</code>:
+</p>
+<div class="sourceCode"><pre>lrn$param_set$add(paradox::ParamFct$new("foo", levels = c("a", "b")))
+</pre></div>
+
+
+<h3>Implementing Validation</h3>
+
+<p>Some Learners, such as <code>XGBoost</code>, other boosting algorithms, or deep learning models (<code>mlr3torch</code>),
+utilize validation data during the training to prevent overfitting or to log the validation performance.
+It is possible to configure learners to be able to receive such an independent validation set during training.
+To do so, one must:
+</p>
+
+<ul>
+<li>
+<p> annotate the learner with the <code>"validation"</code> property
+</p>
+</li>
+<li>
+<p> implement the active binding <code style="white-space: pre;">⁠$internal_valid_scores⁠</code> (see section <em>Optional Extractors</em>), as well as the
+private method <code style="white-space: pre;">⁠$.extract_internal_valid_scores()⁠</code> which returns the (final) internal validation scores from the
+model of the <code>Learner</code> and returns them as a named <code>list()</code> of <code>numeric(1)</code>.
+If the model is not trained yet, this method should return <code>NULL</code>.
+</p>
+</li>
+<li>
+<p> Add the <code>validate</code> parameter, which can be either <code>NULL</code>, a ratio in $(0, 1)$, <code>"test"</code>, or <code>"predefined"</code>:
+</p>
+
+<ul>
+<li> <p><code>NULL</code>: no validation
+</p>
+</li>
+<li> <p><code>ratio</code>: only proportion <code>1 - ratio</code> of the task is used for training and <code>ratio</code> is used for validation.
+</p>
+</li>
+<li> <p><code>"test"</code> means that the <code>"test"</code> task is used.
+<strong>Warning</strong>: This can lead to biased performance estimation.
+This option is only available if the learner is being trained via <code>resample()</code>, <code>benchmark()</code> or functions that
+internally use them, e.g. <code>tune()</code> of <a href="https://CRAN.R-project.org/package=mlr3tuning"><span class="pkg">mlr3tuning</span></a> or <code>batchmark()</code> of <a href="https://CRAN.R-project.org/package=mlr3batchmark"><span class="pkg">mlr3batchmark</span></a>.
+This is especially useful for hyperparameter tuning, where one might e.g. want to use the same validation data
+for early stopping and model evaluation.
+</p>
+</li>
+<li> <p><code>"predefined"</code> means that the task's (manually set) <code style="white-space: pre;">⁠$internal_valid_task⁠</code> is used.
+See the <code>Task</code> documentation for more information.
+</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>For an example how to do this, see <code>LearnerClassifDebug</code>.
+Note that in <code>.train()</code>, the <code style="white-space: pre;">⁠$internal_valid_task⁠</code> will only be present if the <code style="white-space: pre;">⁠$validate⁠</code> field of the <code>Learner</code>
+is set to a non-<code>NULL</code> value.
+</p>
+
+
+<h3>Implementing Internal Tuning</h3>
+
+<p>Some learners such as <code>XGBoost</code> or <code>cv.glmnet</code> can internally tune hyperparameters.
+XGBoost, for example, can tune the number of boosting rounds based on the validation performance.
+CV Glmnet, on the other hand, can tune the regularization parameter based on an internal cross-validation.
+Internal tuning <em>can</em> therefore rely on the internal validation data, but does not necessarily do so.
+</p>
+<p>In order to be able to combine this internal hyperparamer tuning with the standard hyperparameter optimization
+implemented via <a href="https://CRAN.R-project.org/package=mlr3tuning"><span class="pkg">mlr3tuning</span></a>, one most:
+</p>
+
+<ul>
+<li>
+<p> annotate the learner with the <code>"internal_tuning"</code> property
+</p>
+</li>
+<li>
+<p> implement the active binding <code style="white-space: pre;">⁠$internal_tuned_values⁠</code> (see section <em>Optional Extractors</em>) as well as the
+private method <code style="white-space: pre;">⁠$.extract_internal_tuned_values()⁠</code> which extracts the internally tuned values from the <code>Learner</code>'s
+model and returns them as a named <code>list()</code>.
+If the model is not trained yet, this method should return <code>NULL</code>.
+</p>
+</li>
+<li>
+<p> Have at least one parameter tagged with <code>"internal_tuning"</code>, which requires to also provide a <code>in_tune_fn</code> and
+<code>disable_tune_fn</code>, and <em>should</em> also include a default <code>aggr</code>egation function.
+</p>
+</li>
+</ul>
+<p>For an example how to do this, see <code>LearnerClassifDebug</code>.
+</p>
+
+
+<h3>Implementing Marshaling</h3>
+
+<p>Some <code>Learner</code>s have models that cannot be serialized as they e.g. contain external pointers.
+In order to still be able to save them, use them with parallelization or callr encapsulation it is necessary
+to implement how they should be (un)-marshaled. See <code>marshaling</code> for how to do this.
+</p>
+
+
+<h3>Public fields</h3>
+
+<div class="r6-fields">
+
+<dl>
+<dt><code>id</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Identifier of the object.
+Used in tables, plot and text output.</p>
+</dd>
+<dt><code>label</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Label for this object.
+Can be used in tables, plot and text output instead of the ID.</p>
+</dd>
+<dt><code>state</code></dt>
+<dd>
+<p>(<code>NULL</code> | named <code>list()</code>)<br>
+Current (internal) state of the learner.
+Contains all information gathered during <code>train()</code> and <code>predict()</code>.
+It is not recommended to access elements from <code>state</code> directly.
+This is an internal data structure which may change in the future.</p>
+</dd>
+<dt><code>task_type</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Task type, e.g. <code>"classif"</code> or <code>"regr"</code>.
+</p>
+<p>For a complete list of possible task types (depending on the loaded packages),
+see <code>mlr_reflections$task_types$type</code>.</p>
+</dd>
+<dt><code>predict_types</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Stores the possible predict types the learner is capable of.
+A complete list of candidate predict types, grouped by task type, is stored in <code>mlr_reflections$learner_predict_types</code>.</p>
+</dd>
+<dt><code>feature_types</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Stores the feature types the learner can handle, e.g. <code>"logical"</code>, <code>"numeric"</code>, or <code>"factor"</code>.
+A complete list of candidate feature types, grouped by task type, is stored in <code>mlr_reflections$task_feature_types</code>.</p>
+</dd>
+<dt><code>properties</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Stores a set of properties/capabilities the learner has.
+A complete list of candidate properties, grouped by task type, is stored in <code>mlr_reflections$learner_properties</code>.</p>
+</dd>
+<dt><code>packages</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Set of required packages.
+These packages are loaded, but not attached.</p>
+</dd>
+<dt><code>predict_sets</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+During <code>resample()</code>/<code>benchmark()</code>, a Learner can predict on multiple sets.
+Per default, a learner only predicts observations in the test set (<code>predict_sets == "test"</code>).
+To change this behavior, set <code>predict_sets</code> to a non-empty subset of <code style="white-space: pre;">⁠{"train", "test", "internal_valid"}⁠</code>.
+The <code>"train"</code> predict set contains the train ids from the resampling. This means that if a learner does validation and
+sets <code style="white-space: pre;">⁠$validate⁠</code> to a ratio (creating the validation data from the training data), the train predictions
+will include the predictions for the validation data.
+Each set yields a separate Prediction object.
+Those can be combined via getters in ResampleResult/BenchmarkResult, or Measures can be configured
+to operate on specific subsets of the calculated prediction sets.</p>
+</dd>
+<dt><code>parallel_predict</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)<br>
+If set to <code>TRUE</code>, use <a href="https://CRAN.R-project.org/package=future"><span class="pkg">future</span></a> to calculate predictions in parallel (default: <code>FALSE</code>).
+The row ids of the <code>task</code> will be split into <code>future::nbrOfWorkers()</code> chunks,
+and predictions are evaluated according to the active <code>future::plan()</code>.
+This currently only works for methods <code>Learner$predict()</code> and <code>Learner$predict_newdata()</code>,
+and has no effect during <code>resample()</code> or <code>benchmark()</code> where you have other means
+to parallelize.
+</p>
+<p>Note that the recorded time required for prediction reports the time required to predict
+is not properly defined and depends on the parallelization backend.</p>
+</dd>
+<dt><code>timeout</code></dt>
+<dd>
+<p>(named <code>numeric(2)</code>)<br>
+Timeout for the learner's train and predict steps, in seconds.
+This works differently for different encapsulation methods, see
+<code>mlr3misc::encapsulate()</code>.
+Default is <code>c(train = Inf, predict = Inf)</code>.
+Also see the section on error handling the mlr3book:
+<a href="https://mlr3book.mlr-org.com/chapters/chapter10/advanced_technical_aspects_of_mlr3.html#sec-error-handling">https://mlr3book.mlr-org.com/chapters/chapter10/advanced_technical_aspects_of_mlr3.html#sec-error-handling</a></p>
+</dd>
+<dt><code>man</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+String in the format <code style="white-space: pre;">⁠[pkg]::[topic]⁠</code> pointing to a manual page for this object.
+Defaults to <code>NA</code>, but can be set by child classes.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Active bindings</h3>
+
+<div class="r6-active-bindings">
+
+<dl>
+<dt><code>data_formats</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Supported data format. Always <code>"data.table"</code>..
+This is deprecated and will be removed in the future.</p>
+</dd>
+<dt><code>model</code></dt>
+<dd>
+<p>(any)<br>
+The fitted model. Only available after <code style="white-space: pre;">⁠$train()⁠</code> has been called.</p>
+</dd>
+<dt><code>timings</code></dt>
+<dd>
+<p>(named <code>numeric(2)</code>)<br>
+Elapsed time in seconds for the steps <code>"train"</code> and <code>"predict"</code>.
+</p>
+<p>When predictions for multiple predict sets were made during <code>resample()</code> or <code>benchmark()</code>,
+the predict time shows the cumulative duration of all predictions.
+If <code>learner$predict()</code> is called manually, the last predict time gets overwritten.
+</p>
+<p>Measured via <code>mlr3misc::encapsulate()</code>.</p>
+</dd>
+<dt><code>log</code></dt>
+<dd>
+<p>(<code>data.table::data.table()</code>)<br>
+Returns the output (including warning and errors) as table with columns
+</p>
+
+<ul>
+<li> <p><code>"stage"</code> ("train" or "predict"),
+</p>
+</li>
+<li> <p><code>"class"</code> ("output", "warning", or "error"), and
+</p>
+</li>
+<li> <p><code>"msg"</code> (<code>character()</code>).
+</p>
+</li>
+</ul>
+</dd>
+<dt><code>warnings</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Logged warnings as vector.</p>
+</dd>
+<dt><code>errors</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Logged errors as vector.</p>
+</dd>
+<dt><code>hash</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Hash (unique identifier) for this object.</p>
+</dd>
+<dt><code>phash</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Hash (unique identifier) for this partial object, excluding some components
+which are varied systematically during tuning (parameter values).</p>
+</dd>
+<dt><code>predict_type</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Stores the currently active predict type, e.g. <code>"response"</code>.
+Must be an element of <code style="white-space: pre;">⁠$predict_types⁠</code>.</p>
+</dd>
+<dt><code>param_set</code></dt>
+<dd>
+<p>(paradox::ParamSet)<br>
+Set of hyperparameters.</p>
+</dd>
+<dt><code>fallback</code></dt>
+<dd>
+<p>(Learner)<br>
+Returns the fallback learner set with <code style="white-space: pre;">⁠$encapsulate()⁠</code>.</p>
+</dd>
+<dt><code>encapsulation</code></dt>
+<dd>
+<p>(<code>character(2)</code>)<br>
+Returns the encapsulation settings set with <code style="white-space: pre;">⁠$encapsulate()⁠</code>.</p>
+</dd>
+<dt><code>hotstart_stack</code></dt>
+<dd>
+<p>(HotstartStack)<br>.
+Stores <code>HotstartStack</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-Learner-new"><code>Learner$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Learner-format"><code>Learner$format()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Learner-print"><code>Learner$print()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Learner-help"><code>Learner$help()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Learner-train"><code>Learner$train()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Learner-predict"><code>Learner$predict()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Learner-predict_newdata"><code>Learner$predict_newdata()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Learner-reset"><code>Learner$reset()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Learner-base_learner"><code>Learner$base_learner()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Learner-encapsulate"><code>Learner$encapsulate()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Learner-clone"><code>Learner$clone()</code></a>
+</p>
+</li>
+</ul>
+<hr>
+<a id="method-Learner-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Creates a new instance of this R6 class.
+</p>
+<p>Note that this object is typically constructed via a derived classes, e.g. LearnerClassif or LearnerRegr.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Learner$new(
+  id,
+  task_type,
+  param_set = ps(),
+  predict_types = character(),
+  feature_types = character(),
+  properties = character(),
+  data_formats,
+  packages = character(),
+  label = NA_character_,
+  man = NA_character_
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>id</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Identifier for the new instance.</p>
+</dd>
+<dt><code>task_type</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Type of task, e.g. <code>"regr"</code> or <code>"classif"</code>.
+Must be an element of mlr_reflections$task_types$type.</p>
+</dd>
+<dt><code>param_set</code></dt>
+<dd>
+<p>(paradox::ParamSet)<br>
+Set of hyperparameters.</p>
+</dd>
+<dt><code>predict_types</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Supported predict types. Must be a subset of <code>mlr_reflections$learner_predict_types</code>.</p>
+</dd>
+<dt><code>feature_types</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Feature types the learner operates on. Must be a subset of <code>mlr_reflections$task_feature_types</code>.</p>
+</dd>
+<dt><code>properties</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Set of properties of the Learner.
+Must be a subset of <code>mlr_reflections$learner_properties</code>.
+The following properties are currently standardized and understood by learners in <a href="https://CRAN.R-project.org/package=mlr3"><span class="pkg">mlr3</span></a>:
+</p>
+
+<ul>
+<li> <p><code>"missings"</code>: The learner can handle missing values in the data.
+</p>
+</li>
+<li> <p><code>"weights"</code>: The learner supports observation weights.
+</p>
+</li>
+<li> <p><code>"importance"</code>: The learner supports extraction of importance scores, i.e. comes with an <code style="white-space: pre;">⁠$importance()⁠</code> extractor function (see section on optional extractors in Learner).
+</p>
+</li>
+<li> <p><code>"selected_features"</code>: The learner supports extraction of the set of selected features, i.e. comes with a <code style="white-space: pre;">⁠$selected_features()⁠</code> extractor function (see section on optional extractors in Learner).
+</p>
+</li>
+<li> <p><code>"oob_error"</code>: The learner supports extraction of estimated out of bag error, i.e. comes with a <code>oob_error()</code> extractor function (see section on optional extractors in Learner).
+</p>
+</li>
+<li> <p><code>"validation"</code>: The learner can use a validation task during training.
+</p>
+</li>
+<li> <p><code>"internal_tuning"</code>: The learner is able to internally optimize hyperparameters (those are also tagged with <code>"internal_tuning"</code>).
+</p>
+</li>
+<li> <p><code>"marshal"</code>: To save learners with this property, you need to call <code style="white-space: pre;">⁠$marshal()⁠</code> first.
+If a learner is in a marshaled state, you call first need to call <code style="white-space: pre;">⁠$unmarshal()⁠</code> to use its model, e.g. for prediction.
+</p>
+</li>
+</ul>
+</dd>
+<dt><code>data_formats</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Deprecated: ignored, and will be removed in the future.</p>
+</dd>
+<dt><code>packages</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Set of required packages.
+A warning is signaled by the constructor if at least one of the packages is not installed,
+but loaded (not attached) later on-demand via <code>requireNamespace()</code>.</p>
+</dd>
+<dt><code>label</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Label for the new instance.</p>
+</dd>
+<dt><code>man</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+String in the format <code style="white-space: pre;">⁠[pkg]::[topic]⁠</code> pointing to a manual page for this object.
+The referenced help package can be opened via method <code style="white-space: pre;">⁠$help()⁠</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-Learner-format"></a>
+
+
+
+<h4>Method <code>format()</code>
+</h4>
+
+<p>Helper for print outputs.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Learner$format(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(ignored).</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-Learner-print"></a>
+
+
+
+<h4>Method <code>print()</code>
+</h4>
+
+<p>Printer.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Learner$print(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(ignored).</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-Learner-help"></a>
+
+
+
+<h4>Method <code>help()</code>
+</h4>
+
+<p>Opens the corresponding help page referenced by field <code style="white-space: pre;">⁠$man⁠</code>.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Learner$help()</pre></div>
+
+
+<hr>
+<a id="method-Learner-train"></a>
+
+
+
+<h4>Method <code>train()</code>
+</h4>
+
+<p>Train the learner on a set of observations of the provided <code>task</code>.
+Mutates the learner by reference, i.e. stores the model alongside other information in field <code style="white-space: pre;">⁠$state⁠</code>.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Learner$train(task, row_ids = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>task</code></dt>
+<dd>
+<p>(Task).</p>
+</dd>
+<dt><code>row_ids</code></dt>
+<dd>
+<p>(<code>integer()</code>)<br>
+Vector of training indices as subset of <code>task$row_ids</code>.
+For a simple split into training and test set, see <code>partition()</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>Returns the object itself, but modified <strong>by reference</strong>.
+You need to explicitly <code style="white-space: pre;">⁠$clone()⁠</code> the object beforehand if you want to keeps
+the object in its previous state.
+</p>
+
+
+<hr>
+<a id="method-Learner-predict"></a>
+
+
+
+<h4>Method <code>predict()</code>
+</h4>
+
+<p>Uses the information stored during <code style="white-space: pre;">⁠$train()⁠</code> in <code style="white-space: pre;">⁠$state⁠</code> to create a new Prediction
+for a set of observations of the provided <code>task</code>.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Learner$predict(task, row_ids = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>task</code></dt>
+<dd>
+<p>(Task).</p>
+</dd>
+<dt><code>row_ids</code></dt>
+<dd>
+<p>(<code>integer()</code>)<br>
+Vector of test indices as subset of <code>task$row_ids</code>.
+For a simple split into training and test set, see <code>partition()</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>Prediction.
+</p>
+
+
+<hr>
+<a id="method-Learner-predict_newdata"></a>
+
+
+
+<h4>Method <code>predict_newdata()</code>
+</h4>
+
+<p>Uses the model fitted during <code style="white-space: pre;">⁠$train()⁠</code> to create a new Prediction based on the new data in <code>newdata</code>.
+Object <code>task</code> is the task used during <code style="white-space: pre;">⁠$train()⁠</code> and required for conversion of <code>newdata</code>.
+If the learner's <code style="white-space: pre;">⁠$train()⁠</code> method has been called, there is a (size reduced) version
+of the training task stored in the learner.
+If the learner has been fitted via <code>resample()</code> or <code>benchmark()</code>, you need to pass the corresponding task stored
+in the ResampleResult or BenchmarkResult, respectively.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Learner$predict_newdata(newdata, task = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>newdata</code></dt>
+<dd>
+<p>(any object supported by <code>as_data_backend()</code>)<br>
+New data to predict on.
+All data formats convertible by <code>as_data_backend()</code> are supported, e.g.
+<code>data.frame()</code> or DataBackend.
+If a DataBackend is provided as <code>newdata</code>, the row ids are preserved,
+otherwise they are set to to the sequence <code>1:nrow(newdata)</code>.</p>
+</dd>
+<dt><code>task</code></dt>
+<dd>
+<p>(Task).</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>Prediction.
+</p>
+
+
+<hr>
+<a id="method-Learner-reset"></a>
+
+
+
+<h4>Method <code>reset()</code>
+</h4>
+
+<p>Reset the learner, i.e. un-train by resetting the <code>state</code>.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Learner$reset()</pre></div>
+
+
+
+<h5>Returns</h5>
+
+<p>Returns the object itself, but modified <strong>by reference</strong>.
+You need to explicitly <code style="white-space: pre;">⁠$clone()⁠</code> the object beforehand if you want to keeps
+the object in its previous state.
+</p>
+
+
+<hr>
+<a id="method-Learner-base_learner"></a>
+
+
+
+<h4>Method <code>base_learner()</code>
+</h4>
+
+<p>Extracts the base learner from nested learner objects like
+<code>GraphLearner</code> in <a href="https://CRAN.R-project.org/package=mlr3pipelines"><span class="pkg">mlr3pipelines</span></a> or <code>AutoTuner</code> in
+<a href="https://CRAN.R-project.org/package=mlr3tuning"><span class="pkg">mlr3tuning</span></a>.
+Returns the Learner itself for regular learners.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Learner$base_learner(recursive = Inf)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>recursive</code></dt>
+<dd>
+<p>(<code>integer(1)</code>)<br>
+Depth of recursion for multiple nested objects.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>Learner.
+</p>
+
+
+<hr>
+<a id="method-Learner-encapsulate"></a>
+
+
+
+<h4>Method <code>encapsulate()</code>
+</h4>
+
+<p>Sets the encapsulation method and fallback learner for the train and predict steps.
+There are currently four different methods implemented:
+</p>
+
+<ul>
+<li> <p><code>"none"</code>: Just runs the learner in the current session and measures the elapsed time.
+Does not keep a log, output is printed directly to the console.
+Works well together with <code>traceback()</code>.
+</p>
+</li>
+<li> <p><code>"try"</code>: Similar to <code>"none"</code>, but catches error.
+Output is printed to the console and not logged.
+</p>
+</li>
+<li> <p><code>"evaluate"</code>: Uses the package <a href="https://CRAN.R-project.org/package=evaluate"><span class="pkg">evaluate</span></a> to call the learner, measure time and do the logging.
+</p>
+</li>
+<li> <p><code>"callr"</code>: Uses the package <a href="https://CRAN.R-project.org/package=callr"><span class="pkg">callr</span></a> to call the learner, measure time and do the logging.
+This encapsulation spawns a separate R session in which the learner is called.
+While this comes with a considerable overhead, it also guards your session from being teared down by segfaults.
+</p>
+</li>
+</ul>
+<p>The fallback learner is fitted to create valid predictions in case that either the model fitting or the prediction of the original learner fails.
+If the training step or the predict step of the original learner fails, the fallback is used completely to predict predictions sets.
+If the original learner only partially fails during predict step (usually in the form of missing to predict some observations or producing some 'NA“ predictions), these missing predictions are imputed by the fallback.
+Note that the fallback is always trained, as we do not know in advance whether prediction will fail.
+</p>
+<p>Also see the section on error handling the mlr3book:
+<a href="https://mlr3book.mlr-org.com/chapters/chapter10/advanced_technical_aspects_of_mlr3.html#sec-error-handling">https://mlr3book.mlr-org.com/chapters/chapter10/advanced_technical_aspects_of_mlr3.html#sec-error-handling</a>
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Learner$encapsulate(method, fallback = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>method</code></dt>
+<dd>
+<p><code>character(1)</code><br>
+One of <code>"none"</code>, <code>"try"</code>, <code>"evaluate"</code> or <code>"callr"</code>.
+See the description for details.</p>
+</dd>
+<dt><code>fallback</code></dt>
+<dd>
+<p>Learner<br>
+The fallback learner for failed predictions.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>self</code> (invisibly).
+</p>
+
+
+<hr>
+<a id="method-Learner-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Learner$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>See Also</h3>
+
+
+<ul>
+<li>
+<p> Chapter in the <a href="https://mlr3book.mlr-org.com/">mlr3book</a>:
+<a href="https://mlr3book.mlr-org.com/chapters/chapter2/data_and_basic_modeling.html#sec-learners">https://mlr3book.mlr-org.com/chapters/chapter2/data_and_basic_modeling.html#sec-learners</a>
+</p>
+</li>
+<li>
+<p> Package <a href="https://CRAN.R-project.org/package=mlr3learners"><span class="pkg">mlr3learners</span></a> for a solid collection of essential learners.
+</p>
+</li>
+<li>
+<p> Package <a href="https://github.com/mlr-org/mlr3extralearners">mlr3extralearners</a> for more learners.
+</p>
+</li>
+<li> <p>Dictionary of Learners: mlr_learners
+</p>
+</li>
+<li> <p><code>as.data.table(mlr_learners)</code> for a table of available Learners in the running session (depending on the loaded packages).
+</p>
+</li>
+<li> <p><a href="https://CRAN.R-project.org/package=mlr3pipelines"><span class="pkg">mlr3pipelines</span></a> to combine learners with pre- and postprocessing steps.
+</p>
+</li>
+<li>
+<p> Package <a href="https://CRAN.R-project.org/package=mlr3viz"><span class="pkg">mlr3viz</span></a> for some generic visualizations.
+</p>
+</li>
+<li>
+<p> Extension packages for additional task types:
+</p>
+
+<ul>
+<li> <p><a href="https://CRAN.R-project.org/package=mlr3proba"><span class="pkg">mlr3proba</span></a> for probabilistic supervised regression and survival analysis.
+</p>
+</li>
+<li> <p><a href="https://CRAN.R-project.org/package=mlr3cluster"><span class="pkg">mlr3cluster</span></a> for unsupervised clustering.
+</p>
+</li>
+</ul>
+</li>
+<li> <p><a href="https://CRAN.R-project.org/package=mlr3tuning"><span class="pkg">mlr3tuning</span></a> for tuning of hyperparameters, <a href="https://CRAN.R-project.org/package=mlr3tuningspaces"><span class="pkg">mlr3tuningspaces</span></a>
+for established default tuning spaces.
+</p>
+</li>
+</ul>
+<p>Other Learner: 
+<code>LearnerClassif</code>,
+<code>LearnerRegr</code>,
+<code>mlr_learners</code>,
+<code>mlr_learners_classif.debug</code>,
+<code>mlr_learners_classif.featureless</code>,
+<code>mlr_learners_classif.rpart</code>,
+<code>mlr_learners_regr.debug</code>,
+<code>mlr_learners_regr.featureless</code>,
+<code>mlr_learners_regr.rpart</code>
+</p>
+
+
+</div>

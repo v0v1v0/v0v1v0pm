@@ -1,0 +1,342 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict.marssMLE</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> predict and forecast MARSS MLE objects </h2>
+
+<h3>Description</h3>
+
+<p>This function will return the modeled value of <code class="reqn">\mathbf{y}_t</code> or <code class="reqn">\mathbf{x}_t</code> conditioned on the data (either the data used to fit the model or data in <code>newdata</code>). For <code class="reqn">\mathbf{y}_t</code>, this is <code class="reqn">\mathbf{Z}_t \mathbf{x}_t^T+\mathbf{a}_t+\mathbf{D}_t\mathbf{d}_t</code>. For <code class="reqn">\mathbf{x}_t</code>, this is <code class="reqn">\mathbf{B}_t \mathbf{x}_{t-1}^T+\mathbf{u}_t+\mathbf{C}_t\mathbf{c}_{t}</code>.  <code class="reqn">\mathbf{x}_t^T</code> is the smoothed state estimate at time <code class="reqn">t</code> conditioned on all the data (either data used to fit the model or the optional data passed into <code>newdata</code>).
+</p>
+<p>If you want the estimate of <code class="reqn">\mathbf{x}_t</code> conditioned on all the data (i.e. output from the Kalman filter or smoother), then use <code>tsSmooth()</code>. Note that the prediction of <code class="reqn">\mathbf{x}_t</code> conditioned on the data up to time <code class="reqn">t</code> is not provided since that would require the estimate of <code class="reqn">\mathbf{x}_t</code> conditioned on data 1 to <code class="reqn">t+1</code>, which is not output from the Kalman filter or smoother.
+</p>
+<p>If <code>h</code> is passed in, <code>predict(object)</code> will return a forecast <code class="reqn">h</code> steps past the end of the model data. <code>predict(object)</code> returns a <code>marssPredict</code> object which can be passed to <code>plot()</code> or <code>ggplot2::autoplot()</code>for automatic plotting of predictions and forecasts with intervals.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'marssMLE'
+predict(object, n.ahead = 0, 
+     level = c(0.80, 0.95), 
+     type = c("ytt1", "ytT", "xtT", "ytt", "xtt1"), 
+     newdata = list(t=NULL, y=NULL, c=NULL, d=NULL), 
+     interval = c("none", "confidence", "prediction"), 
+     fun.kf = c("MARSSkfas", "MARSSkfss"), 
+     x0 = "reestimate", ...)
+   </code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p> A <code>marssMLE</code> object.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.ahead</code></td>
+<td>
+<p> Number of steps ahead to forecast. If <code>n.ahead !=0</code>, then <code>newdata</code> is for the forecast, i.e. for the n.ahead time steps after the end of the model data. See details. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>level</code></td>
+<td>
+<p> Level for the intervals if <code>interval != "none".</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+ <p><code>ytT</code>, <code>ytt</code> or <code>ytt1</code>: predictions for the observations based on the states estimate at time <code class="reqn">t</code> conditioned on all the data, data up to <code class="reqn">t</code> or data up to <code class="reqn">t-1</code>. <code>xtT</code> or <code>xtt1</code>: predictions for the states at time <code class="reqn">t</code> based on the states estimate at time <code class="reqn">t-1</code> conditioned on all the data or data up to <code class="reqn">t-1</code>. The data are the data used to fit the model unless <code>y</code> is passed in in <code>newdata</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p> An optional list with new <code>y</code> (data), <code>c</code> or <code>d</code> (covariates) to use for the predictions or forecasts. <code>y</code>, <code>c</code> or <code>d</code> must have the same structure (matrix dimensions) as used in the <code>MARSS()</code> call but the number of time steps can be different. <code>t</code> is used if there is ambuiquity as to which time steps the <code>newdata</code> refer to. See examples and details. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>interval</code></td>
+<td>
+<p> If <code>interval="confidence"</code>, then the standard error and confidence intervals of the predictions are returned. If <code>interval="prediction"</code>, prediction intervals are returned. See <code>fitted</code> for a discussion of the intervals. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun.kf</code></td>
+<td>
+<p> Only if you want to change the default Kalman filter. Can be ignored. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x0</code></td>
+<td>
+<p> If "reestimate" (the default), then the initial value for the states is re-estimated. If <code>"use.model"</code>, then the initial values in the fitted model (<code>object</code>) are used. If you change the data, then this initial condition may not be appropriate. You can also pass in a new <code>x0</code> to use. It must be a matrix that is the same dimensions as <code>x0</code> in the model. <code>x0</code> is ignored if <code>h!=0</code> since in that case a forecast is being done. See example. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p> Other arguments. Not used. </p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><strong>Forecasts <code>n.ahead != 0</code></strong>
+</p>
+<p>The <code>type="xtT"</code> forecast is the states forecast conditioned on all the data. If <code>n.ahead !=0</code>, then 'data' that is being conditioned on is the original data (model data) plus any data in <code>newdata$y</code> for the h forecast time steps. Note, typically forecasts would not have data, since they are forecasts, but <code>predict.marssMLE()</code> allows you to specify data for the forecast time steps if you need to. If the model includes covariates (<code class="reqn">\mathbf{c}</code> and/or <code class="reqn">\mathbf{d}</code> matrices passed into the <code>model</code> list in the <code>MARSS()</code> call), then <code>c</code> and/or <code>d</code> must be passed into <code>newdata</code>. 
+</p>
+<p>The <code>type="ytT"</code> forecast is the expected value of NEW data (<code class="reqn">\mathbf{Y}</code>) conditioned on the data used for fitting. The data used for fitting is the same as for <code>type="xtT"</code> (above). The <code class="reqn">\mathbf{y}</code> forecast is <code>Z xtT[,T+i] + A + D d[,T+i]</code>. 
+</p>
+<p>If the model has time-varying parameters, the value of the parameters at the last time step are used for the forecast.
+</p>
+<p><strong>Model predictions <code>n.ahead == 0</code></strong>
+</p>
+<p>If <code>newdata</code> is not passed in, then the model data (<code class="reqn">\mathbf{y}</code>) and <code class="reqn">\mathbf{c}</code> and <code class="reqn">\mathbf{d}</code> (if part of model) are used for the predictions. <code>fitted(object, type="ytT")</code> is the internal function for model predictions in that case.
+</p>
+<p>If <code>newdata</code> is passed in, then the predictions are computed using <code>newdata</code> but with the MARSS model estimated from the original data, essentially the Kalman filter/smoother is run using the estimated MARSS model but with data (and <code class="reqn">\mathbf{c}</code> and <code class="reqn">\mathbf{d}</code> if in the model) in <code>newdata</code>.  <code>y</code>, <code>c</code> and <code>d</code> in the <code>newdata</code> list must all have the same number of columns (time-steps) and the length of <code>t</code> in <code>newdata</code> must be the same as the number of columns and must be sequential.
+</p>
+<p>For <code>type="ytT"</code>, the predictions are conceptually the same as predictions returned by <code>predict.lm</code> for a linear regression. The confidence interval is the interval for the expected value of NEW data. The prediction interval is the interval for NEW data. Prediction intervals will always be wider (or equal if R=0) to confidence intervals. The difference is that the uncertainty in <code>predict.lm</code> comes from parameter uncertainty and the data error while in <code>predict.marssMLE</code>, the uncertainty is from <code class="reqn">\mathbf{x}</code> uncertainty and data error. Parameter uncertainty does not enter the interval calculations; parameters are treated as known at their point estimates. This is not specific to the MARSS package. This is how prediction and confidence intervals are presented for MARSS models in the literature, i.e. no parameter uncertainty. 
+</p>
+
+<dl>
+<dt>
+<code>t</code> in <code>newdata</code>:</dt>
+<dd>
+<p> If the model has time-varying parameters, <code>t</code> in <code>newdata</code> removes any ambiguity as to which parameter values (time steps) will be used for prediction. In this case, <code>t</code> specifies which time values of the parameters you want to use. If you leave off <code>t</code>, then it is assumed that <code>t</code> starts at the first time step in the data used to fit the original model. If the model is time-constant, <code>t</code> is used to set the time step values (used for plotting, etc.). </p>
+</dd>
+<dt>The model has <code class="reqn">\mathbf{c}</code> and/or <code class="reqn">\mathbf{d}</code>:</dt>
+<dd> <p><code>c</code> and/or <code>d</code> must be included in <code>newdata</code>. If <code>y</code> (new data) is not in <code>newdata</code>, it is assumed to be absent (all NA). That is, the default behavior if <code>y</code> is absent but <code>c</code> and/or <code>d</code> is present is <code>y="none"</code>. If you want to use the original data used to fit the model, then pass in <code>y="model"</code> in <code>newdata</code>. Pass in <code>t</code> in <code>newdata</code> if it is ambiguous which time steps of the model data to use.</p>
+</dd>
+<dt>The model has time-varying parameters:</dt>
+<dd>
+<p> You have to pass in <code>t</code> in <code>newdata</code> to specify what parameter values to use. If any <code class="reqn">t &gt; T</code> (<code class="reqn">T</code> equals the last time step in the model data), then it is assumed that you want to use the parameter values at the last time step of the original time series for values beyond the last time step. See examples. </p>
+</dd>
+<dt>
+<code>y</code>, <code>c</code> and <code>d</code> in <code>newdata</code> have more time steps than the original data: </dt>
+<dd>
+<p>If the model has time-varying parameters, you will need to pass in <code>t</code>. If the model is time-constant, then <code>t</code> is assumed to start at the first time step in the original data but you can pass in <code>t</code> to change that. It will not change the prediction, but will change the t column in the output.</p>
+</dd>
+</dl>
+<p><strong>x0 estimation</strong> If you are passing in <code>y</code> in <code>newdata</code>, then it is likely that you will need to re-estimate the <code class="reqn">\mathbf{x}</code> initial condition. The default behavior of <code>predict.marssMLE</code>. Use <code>x0 = "use.model"</code> to use the initial values in the estimated model (<code>object</code>).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>The method used for fitting, e.g. MARSS kem. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>The <code>marssMLE</code> object passed into predict(). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>The <code>newdata</code> list if passed in.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>level</code></td>
+<td>
+<p>The confidence or prediction intervals <code>level</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pred</code></td>
+<td>
+<p>A data frame the predictions or forecasts along with the intervals. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>The <code>type</code> passed in.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t</code></td>
+<td>
+<p>The time steps in the pred data frame.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.ahead and h</code></td>
+<td>
+<p>The number of forecast time steps.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x0</code></td>
+<td>
+<p>The x0 used for the predictions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tinitx</code></td>
+<td>
+<p>The tinitx used.</p>
+</td>
+</tr>
+</table>
+<p>The pred data frame has the following columns:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>.rownames</code></td>
+<td>
+<p> Names of the data or states. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t</code></td>
+<td>
+<p> Time step. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p> The data if <code>type</code> is <code>"ytT"</code>, <code>"ytt"</code> or <code>"ytt1"</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xtT</code></td>
+<td>
+<p> The estimate of <code class="reqn">\mathbf{x}_t</code> conditioned on all the data if <code>type="xtT"</code>. From <code>tsSmooth()</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xtt</code></td>
+<td>
+<p> The estimate of <code class="reqn">\mathbf{x}_t</code> conditioned on the data 1 to <code class="reqn">t</code> if <code>type="xtt1"</code>. From <code>tsSmooth()</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimate</code></td>
+<td>
+<p>Model predicted values of observations (<code class="reqn">\mathbf{y}</code>) or the states (<code class="reqn">\mathbf{x}</code>). See details.</p>
+</td>
+</tr>
+</table>
+<p>If intervals are returned, the following are added to the data frame:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>se</code></td>
+<td>
+<p> Standard errors of the predictions. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Lo ...</code></td>
+<td>
+<p> Lower confidence level at <code>alpha = 1-level</code>. The interval is approximated using qnorm(alpha/2)*se + prediction. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Hi ...</code></td>
+<td>
+<p> Upper confidence level. The interval is approximated using qnorm(1-alpha/2)*se + prediction. </p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+ 
+<p>Eli Holmes, NOAA, Seattle, USA.  
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>plot.marssPredict()</code>, <code>fitted.marssMLE()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">dat &lt;- t(harborSealWA)
+dat &lt;- dat[2:4,] #remove the year row
+fit &lt;- MARSS(dat, model=list(R="diagonal and equal"))
+
+# 2 steps ahead forecast
+fr &lt;- predict(fit, type="ytT", n.ahead=2)
+plot(fr)
+
+# use model data with the estimated initial values (at t=0) for 
+# initial values at t=9
+# This would be a somewhat strange thing to do and the value at t=10 will look wrong.
+fr &lt;- predict(fit,  newdata=list(t=10:20, y=dat[,10:20]), x0 = "use.model")
+plot(fr)
+
+# pass in new data and give it new t; initial conditions will be estimated
+fr &lt;- predict(fit,  newdata=list(t=23:33, y=matrix(10,3,11)))
+plot(fr, ylim=c(8,12))
+
+
+# Covariate example
+fulldat &lt;- lakeWAplanktonTrans
+years &lt;- fulldat[,"Year"]&gt;=1965 &amp; fulldat[,"Year"]&lt;1975
+dat &lt;- t(fulldat[years,c("Greens", "Bluegreens")])
+dat &lt;- zscore(dat)
+covariates &lt;- rbind(
+  Temp = fulldat[years, "Temp"],
+  TP = fulldat[years, "TP"])
+covariates &lt;- zscore(covariates)
+A &lt;- U &lt;- "zero"
+B &lt;- Z &lt;- "identity"
+R &lt;- diag(0.16,2)
+Q &lt;- "equalvarcov"
+C &lt;- "unconstrained"
+model.list &lt;- list(B=B,U=U,Q=Q,Z=Z,A=A,R=R,C=C,c=covariates)
+fit &lt;- MARSS(dat, model=model.list)
+
+# Use a new c (covariate) but no data.
+fr &lt;- predict(fit,  newdata=list(c=matrix(5,2,10)), x0="use.model")
+plot(fr)
+
+# Use first 10 time steps of model data
+plot(predict(fit, newdata=list(y=dat[,1:10], c=matrix(5,2,10))))
+
+# Use all model data but new covariates
+# Why does it look so awful? Because this is a one-step ahead
+# prediction and there is no info on what the c will be at t
+plot(predict(fit,  newdata=list(y=dat, c=matrix(5,2,120))))
+
+# Use all model data but new covariates with ytT type
+# this looks better because is uses all the c data to estimate (so knows what c is at t and beyond)
+plot(predict(fit,  newdata=list(y=dat, c=matrix(5,2,120)), type="ytT"))
+
+# Use no data; cannot estimate initial conditions without data
+# so x0 must be "use.model"
+fr &lt;- predict(fit,  newdata=list(c=matrix(5,2,22)), x0="use.model")
+plot(fr)
+
+# forecast with covariates
+# n.ahead and the number column in your covariates in newdata must match
+plot(predict(fit,  newdata=list(c=matrix(5,2,10)), n.ahead=10))
+
+# forecast with covariates and only show last 10 steps of original data
+plot(predict(fit,  newdata=list(c=matrix(5,2,10)), n.ahead=10), include=10)
+    
+</code></pre>
+
+
+</div>

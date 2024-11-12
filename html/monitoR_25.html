@@ -1,0 +1,156 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>dbUploadResult</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Upload Detection Results to an Acoustics Database</h2>
+
+<h3>Description</h3>
+
+<p>Upload detection results (peaks or detections) from <code>findPeaks</code> directly to tblResult in an acoustics database.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">dbUploadResult(detection.obj, which.one, what = "detections", db.name = "acoustics", 
+               uid, pwd, analysis.type, analyst = "", ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>detection.obj</code></td>
+<td>
+<p>Object of class <code>detectionList</code> containing results from <code>findPeaks</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>which.one</code></td>
+<td>
+<p>Results from a single template can be selected for upload, or leave blank to upload results from all templates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>what</code></td>
+<td>
+<p>Character value of either "detections" (the default; peaks above the score cutoff) or "peaks" (all peaks regardless of score cutoff).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>db.name</code></td>
+<td>
+<p>Name of the ODBC connector data source corresponding to the acoustics database.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>uid</code></td>
+<td>
+<p>User ID to allow ODBC connector to connect to database, if not present in ODBC connector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pwd</code></td>
+<td>
+<p>Password to allow ODBC connector to connect to database, if not present in ODBC connector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>analysis.type</code></td>
+<td>
+<p>Character value identifying analysis type, in c("BIN", "COR").  Some partial matching is performed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>analyst</code></td>
+<td>
+<p>Numerical key value corresponding to the user's tblPerson.pkPersonID value in the acoustics database.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments to <code>RODBC::odbcConnect</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>dbUploadResult</code> assumes a database structure identical to that provided in the acoustics schema.  If the username and password are present in the ODBC datasource they do not need to be provided.  It is possible to store only the username in the datasource and enter a password, but the reverse will not work.
+</p>
+<p>The value for analyst must be present in tblPeople.pkPeopleID for upload to succeed.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Invoked for its side effect, which is to insert the detection results into tblResult in an acoustics database.  Successful upload is marked by a report of the upload time; unsuccessful upload will report any errors encountered.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jon Katz
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>findPeaks</code>, <code>getPeaks</code>, <code>getDetections</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+## Not run, as it requires a database to receive the upload
+# Load data
+data(btnw)
+data(survey)
+
+# Write Wave objects to file (temporary directory used here)
+btnw.fp &lt;- file.path(tempdir(), "btnw.wav")
+survey.fp &lt;- file.path(tempdir(), "survey2010-12-31_120000_EST.wav")
+writeWave(btnw, btnw.fp)
+writeWave(survey, survey.fp)
+
+# Template construction
+b4 &lt;- makeBinTemplate(
+    btnw.fp, 
+    frq.lim = c(2, 8), 
+    select = "auto", 
+    name = "b4", 
+    buffer = 4, 
+    amp.cutoff = -31, 
+    binary = TRUE)
+
+# Binary point matching
+scores &lt;- binMatch(survey = survey.fp, templates = b4, time.source = 'fileinfo')
+
+# Isolate peaks
+pks &lt;- findPeaks(scores)
+
+#If using the 'acoustics' schema verbatim:
+dbUploadResult(detection.obj = pks, analysis.type = "BIN", analyst = 1)
+
+#'acoustics' schema, different database name:
+dbUploadResult(
+    detection.obj = pks, 
+    which.one = "b4", 
+    what = "peaks", 
+    db.name = "LocalSQLdb", 
+    uid = "EntryOnly" , 
+    pwd = "07H23BBM", 
+    analysis.type = "BIN", 
+    analyst = 1)
+## End(Not run)
+    
+    
+    
+</code></pre>
+
+
+</div>

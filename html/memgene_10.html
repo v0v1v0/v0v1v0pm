@@ -1,0 +1,122 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mgVarPart</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Variation partitioning of the genetic distance matrix 
+</h2>
+
+<h3>Description</h3>
+
+<p>This function performs a variation partitioning of the genetic distance matrix
+using the supplied MEM eigenvectors and spatial coordinates.  Randomization tests
+are conducted to determine the significance of the [a] fraction representing
+the MEM eigenvectors, the [c] fraction representing the spatial coordinates and
+the [abc] fraction representing the spatial genetic variation.  It is called
+by <code>mgLandscape</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mgVarPart(genD, vectorsMEM, coords, perm=1000)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>genD</code></td>
+<td>
+
+<p>A symmetrical distance matrix giving the genetic distances among
+individual genotypes or populations
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vectorsMEM</code></td>
+<td>
+
+<p>A matrix giving a set of any number of MEM eigenvectors 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coords</code></td>
+<td>
+
+<p>A two column <code>matrix</code> or <code>data.frame</code> of x and y coordinates of sampling locations of individual genotypes or populations. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>perm</code></td>
+<td>
+
+<p>The number of permutations to use when testing the significance of the [a], [c] and [abc] fractions.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>See <code>mgLandscape</code> for explanation of the fractions.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Pedro Peres-Neto (peres-neto.pedro@uqam.ca)<br>
+Paul Galpern (pgalpern@ucalgary.ca)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+## Prepare the radial data for analysis
+radialData &lt;- read.csv(system.file("extdata/radial.csv", package="memgene"))
+radialGen &lt;- radialData[, -c(1,2)]
+radialXY &lt;- radialData[, 1:2]
+
+if (require(adegenet)) {
+  radialDM &lt;- codomToPropShared(radialGen)
+} else {
+  stop("adegenent package required to produce genetic distance matrix in example.")
+}
+
+
+## Find MEM eigenvectors given sampling locations
+## by first finding the Euclidean distance matrix
+radialEuclid &lt;- dist(radialXY)
+radialMEM &lt;- mgMEM(radialEuclid)
+
+## Forward select significant MEM eigenvectors using RDA
+## Positive MEM eigenvectors (positive spatial autocorrelation) first
+radialPositive &lt;- mgForward(radialDM,
+    radialMEM$vectorsMEM[ , radialMEM$valuesMEM &gt; 0])
+## Negative MEM eigenvectors (negative spatial autocorrelation) second
+radialNegative &lt;- mgForward(radialDM,
+    radialMEM$vectorsMEM[ , radialMEM$valuesMEM &lt; 0])
+
+
+## Summarize the selected MEM eigenvectors
+allSelected &lt;- cbind(radialMEM$vectorsMEM[, radialMEM$valuesMEM &gt; 0][
+                    , na.omit(radialPositive$selectedMEM)],
+                 radialMEM$vectorsMEM[, radialMEM$valuesMEM &lt; 0][
+                    , na.omit(radialNegative$selectedMEM)])
+
+## Use the selected MEM eigenvectors and coordinates in
+## variation partitioning
+radialVarPart &lt;- mgVarPart(radialDM, allSelected, radialXY)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

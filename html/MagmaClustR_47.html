@@ -1,0 +1,241 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pred_magmaclust</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MagmaClust prediction</h2>
+
+<h3>Description</h3>
+
+<p>Compute the posterior predictive distribution in MagmaClust.
+Providing data from any new individual/task, its trained hyper-parameters
+and a previously trained MagmaClust model, the multi-task posterior
+distribution is evaluated on any arbitrary inputs that are specified through
+the 'grid_inputs' argument. Due to the nature of the model, the prediction is
+defined as a mixture of Gaussian distributions. Therefore the present
+function computes the parameters of the predictive distribution
+associated with each cluster, as well as the posterior mixture probabilities
+for this new individual/task.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pred_magmaclust(
+  data = NULL,
+  trained_model = NULL,
+  grid_inputs = NULL,
+  mixture = NULL,
+  hp = NULL,
+  kern = "SE",
+  hyperpost = NULL,
+  prop_mixture = NULL,
+  get_hyperpost = FALSE,
+  get_full_cov = TRUE,
+  plot = TRUE,
+  pen_diag = 1e-10
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A tibble or data frame. Required columns: <code>Input</code>,
+<code>Output</code>. Additional columns for covariates can be specified.
+The <code>Input</code> column should define the variable that is used as
+reference for the observations (e.g. time for longitudinal data). The
+<code>Output</code> column specifies the observed values (the response
+variable). The data frame can also provide as many covariates as desired,
+with no constraints on the column names. These covariates are additional
+inputs (explanatory variables) of the models that are also observed at
+each reference 'Input'. If NULL, the mixture of mean processes from
+<code>trained_model</code> is returned as a generic prediction.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trained_model</code></td>
+<td>
+<p>A list, containing  the information coming from a
+MagmaClust model, previously trained using the
+<code>train_magmaclust</code> function. If <code>trained_model</code> is set to
+NULL, the <code>hyperpost</code> and <code>prop_mixture</code> arguments are mandatory
+to perform required re-computations for the prediction to succeed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grid_inputs</code></td>
+<td>
+<p>The grid of inputs (reference Input and covariates) values
+on which the GP should be evaluated. Ideally, this argument should be a
+tibble or a data frame, providing the same columns as <code>data</code>, except
+'Output'. Nonetheless, in cases where <code>data</code> provides only one
+'Input' column, the <code>grid_inputs</code> argument can be NULL (default) or a
+vector. This vector would be used as reference input for prediction and if
+NULL, a vector of length 500 is defined, ranging between the min and max
+Input values of <code>data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mixture</code></td>
+<td>
+<p>A tibble or data frame, indicating the mixture probabilities
+of each cluster for the new individual/task.
+If NULL, the <code>train_gp_clust</code> function is used to compute
+these posterior probabilities according to <code>data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hp</code></td>
+<td>
+<p>A named vector, tibble or data frame of hyper-parameters
+associated with <code>kern</code>. The columns/elements should be named
+according to the hyper-parameters that are used in <code>kern</code>. The
+<code>train_gp_clust</code> function can be used to learn
+maximum-likelihood estimators of the hyper-parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kern</code></td>
+<td>
+<p>A kernel function, defining the covariance structure of the GP.
+Several popular kernels
+(see <a href="https://www.cs.toronto.edu/~duvenaud/cookbook/">The Kernel
+Cookbook</a>) are already implemented and can be selected within the
+following list:
+</p>
+
+<ul>
+<li>
+<p> "SE": (default value) the Squared Exponential Kernel (also called
+Radial Basis Function or Gaussian kernel),
+</p>
+</li>
+<li>
+<p> "LIN": the Linear kernel,
+</p>
+</li>
+<li>
+<p> "PERIO": the Periodic kernel,
+</p>
+</li>
+<li>
+<p> "RQ": the Rational Quadratic kernel.
+Compound kernels can be created as sums or products of the above kernels.
+For combining kernels, simply provide a formula as a character string
+where elements are separated by whitespaces (e.g. "SE + PERIO"). As the
+elements are treated sequentially from the left to the right, the product
+operator '*' shall always be used before the '+' operators (e.g.
+'SE * LIN + RQ' is valid whereas 'RQ + SE * LIN' is  not).
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hyperpost</code></td>
+<td>
+<p>A list, containing the elements <code>mean</code>, <code>cov</code> and
+<code>mixture</code> the parameters of the hyper-posterior distributions of the
+mean processes. Typically, this argument should come from a previous
+learning using <code>train_magmaclust</code>, or a previous prediction
+with <code>pred_magmaclust</code>, with the argument <code>get_hyperpost</code>
+set to TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prop_mixture</code></td>
+<td>
+<p>A tibble or a named vector of the mixture proportions.
+Each name of column or element should refer to a cluster. The value
+associated with each cluster is a number between 0 and 1. If both
+<code>mixture</code> and <code>trained_model</code> are set to NULL, this argument
+allows to recompute mixture probabilities, thanks to the <code>hyperpost</code>
+argument and the <code>train_gp_clust</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>get_hyperpost</code></td>
+<td>
+<p>A logical value, indicating whether the hyper-posterior
+distributions of the mean processes should be returned. This can be useful
+when planning to perform several predictions on the same grid of inputs,
+since recomputation of the hyper-posterior can be prohibitive for high
+dimensional grids.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>get_full_cov</code></td>
+<td>
+<p>A logical value, indicating whether the full posterior
+covariance matrices should be returned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot</code></td>
+<td>
+<p>A logical value, indicating whether a plot of the results is
+automatically displayed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pen_diag</code></td>
+<td>
+<p>A number. A jitter term, added on the diagonal to prevent
+numerical issues when inverting nearly singular matrices.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list of GP prediction results composed of:
+</p>
+
+<ul>
+<li>
+<p> pred: As sub-list containing, for each cluster:
+</p>
+
+<ul>
+<li>
+<p> pred_gp: A tibble, representing the GP predictions as two
+column <code>Mean</code> and <code>Var</code>, evaluated on the
+<code>grid_inputs</code>. The column <code>Input</code> and additional
+covariates columns are associated with each predicted values.
+</p>
+</li>
+<li>
+<p> proba: A number, the posterior probability associated with
+this cluster.
+</p>
+</li>
+<li>
+<p> cov (if <code>get_full_cov</code> = TRUE): A matrix, the full
+posterior covariance matrix associated with this cluster.
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p> mixture: A tibble, indicating the mixture probabilities
+of each cluster for the predicted individual/task.
+</p>
+</li>
+<li>
+<p> hyperpost (if <code>get_hyperpost</code> = TRUE): A list,
+containing the hyper-posterior distributions information useful
+for visualisation purposes.
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">TRUE
+</code></pre>
+
+
+</div>

@@ -1,0 +1,212 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>metamerise</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create metamers</h2>
+
+<h3>Description</h3>
+
+<p>Produces very dissimilar datasets with the same statistical properties.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">metamerise(
+  data,
+  preserve,
+  minimize = NULL,
+  change = colnames(data),
+  round = truncate_to(2),
+  stop_if = n_tries(100),
+  keep = NULL,
+  annealing = TRUE,
+  K = 0.02,
+  start_probability = 0.5,
+  perturbation = 0.08,
+  name = "",
+  verbose = interactive()
+)
+
+metamerize(
+  data,
+  preserve,
+  minimize = NULL,
+  change = colnames(data),
+  round = truncate_to(2),
+  stop_if = n_tries(100),
+  keep = NULL,
+  annealing = TRUE,
+  K = 0.02,
+  start_probability = 0.5,
+  perturbation = 0.08,
+  name = "",
+  verbose = interactive()
+)
+
+new_metamer(data, preserve, round = truncate_to(2))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A <code>data.frame</code> with the starting data or a <code>metamer_list</code> object returned
+by a previous call to the function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>preserve</code></td>
+<td>
+<p>A function whose result must be kept exactly the same.
+Must take the data as argument and return a numeric vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>minimize</code></td>
+<td>
+<p>An optional function to minimize in the process. Must take
+the data as argument and return a single numeric.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>change</code></td>
+<td>
+<p>A character vector with the names of the columns that need to be
+changed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>round</code></td>
+<td>
+<p>A function to apply to the result of <code>preserve</code> to round
+numbers. See truncate_to.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stop_if</code></td>
+<td>
+<p>A stopping criterium. See n_tries.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep</code></td>
+<td>
+<p>Max number of metamers to return.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>annealing</code></td>
+<td>
+<p>Logical indicating whether to perform annealing.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>K</code></td>
+<td>
+<p>speed/quality tradeoff parameter.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start_probability</code></td>
+<td>
+<p>initial probability of rejecting bad solutions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>perturbation</code></td>
+<td>
+<p>Numeric with the magnitude of the random perturbations.
+Can be of length 1 or <code>length(change)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>name</code></td>
+<td>
+<p>Character for naming the metamers.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Logical indicating whether to show a progress bar.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>It follows Matejka &amp; Fitzmaurice (2017) method of constructing metamers.
+Beginning from a starting dataset, it iteratively adds a small perturbation,
+checks if <code>preserve</code> returns the same value (up to <code>signif</code> significant digits)
+and if <code>minimize</code> has been lowered, and accepts the solution for the next
+round. If <code>annealing</code> is <code>TRUE</code>, it also accepts solutions with bigger
+<code>minimize</code> with an ever decreasing probability to help the algorithm avoid
+local minimums.
+</p>
+<p>The annealing scheme is adapted from de Vicente et al. (2003).
+</p>
+<p>If <code>data</code> is a <code>metamer_list</code>, the function will start the algorithm from the
+last metamer of the list. Furthermore, if <code>preserve</code> and/or <code>minimize</code>
+are missing, the previous functions will be carried over from the previous call.
+</p>
+<p><code>minimize</code> can be also a <em>vector</em> of functions. In that case, the process minimizes
+the product of the functions applied to the data.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>metamer_list</code> object (a list of data.frames).
+</p>
+
+
+<h3>References</h3>
+
+<p>Matejka, J., &amp; Fitzmaurice, G. (2017). Same Stats, Different Graphs. Proceedings of the 2017 CHI Conference on Human Factors in Computing Systems  - CHI ’17, 1290–1294. https://doi.org/10.1145/3025453.3025912
+de Vicente, Juan, Juan Lanchares, and Román Hermida. (2003). ‘Placement by Thermodynamic Simulated Annealing’. Physics Letters A 317(5): 415–23.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>delayed_with()</code> for a convenient way of making functions suitable for
+<code>preserve</code>, <code>mean_dist_to()</code> for a convenient way of minimizing the distance
+to a known target in <code>minimize</code>, <code>mean_self_proximity()</code> for maximizing the
+"self distance" to prevent data clumping.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(cars)
+# Metamers of `cars` with the same mean speed and dist, and correlation
+# between the two.
+means_and_cor &lt;- delayed_with(mean_speed = mean(speed),
+                              mean_dist = mean(dist),
+                              cor = cor(speed, dist))
+set.seed(42)  # for reproducibility.
+metamers &lt;- metamerize(cars,
+                       preserve = means_and_cor,
+                       round = truncate_to(2),
+                       stop_if = n_tries(1000))
+print(metamers)
+
+last &lt;- tail(metamers)
+
+# Confirm that the statistics are the same
+cbind(original = means_and_cor(cars),
+      metamer = means_and_cor(last))
+
+# Visualize
+plot(tail(metamers))
+points(cars, col = "red")
+
+</code></pre>
+
+
+</div>

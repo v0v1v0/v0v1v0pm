@@ -1,0 +1,228 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>prep_nested</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Prepared Nested Modeltime Data</h2>
+
+<h3>Description</h3>
+
+<p>A set of functions to simplify preparation of nested data for
+iterative (nested) forecasting with Nested Modeltime Tables.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">extend_timeseries(.data, .id_var, .date_var, .length_future, ...)
+
+nest_timeseries(.data, .id_var, .length_future, .length_actual = NULL)
+
+split_nested_timeseries(.data, .length_test, .length_train = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>.data</code></td>
+<td>
+<p>A data frame or tibble containing time series data. The data should have:
+</p>
+
+<ul>
+<li>
+<p> identifier (.id_var): Identifying one or more time series groups
+</p>
+</li>
+<li>
+<p> date variable (.date_var): A date or date time column
+</p>
+</li>
+<li>
+<p> target variable (.value): A column containing numeric values that is to be forecasted
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.id_var</code></td>
+<td>
+<p>An id column</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.date_var</code></td>
+<td>
+<p>A date or datetime column</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.length_future</code></td>
+<td>
+<p>Varies based on the function:
+</p>
+
+<ul>
+<li> <p><code>extend_timeseries()</code>: Defines how far into the future to extend the
+time series by each time series group.
+</p>
+</li>
+<li> <p><code>nest_timeseries()</code>: Defines which observations should be split into the <code>.future_data</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments passed to the helper function. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.length_actual</code></td>
+<td>
+<p>Can be used to slice the <code>.actual_data</code> to a most recent number of observations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.length_test</code></td>
+<td>
+<p>Defines the length of the test split for evaluation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.length_train</code></td>
+<td>
+<p>Defines the length of the training split for evaluation.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Preparation of nested time series follows a 3-Step Process:
+</p>
+
+
+<h4>Step 1: Extend the Time Series</h4>
+
+<p><code>extend_timeseries()</code>: A wrapper for <code>timetk::future_frame()</code> that extends a time series
+group-wise into the future.
+</p>
+
+<ul>
+<li>
+<p> The group column is specified by <code>.id_var</code>.
+</p>
+</li>
+<li>
+<p> The date column is specified by <code>.date_var</code>.
+</p>
+</li>
+<li>
+<p> The length into the future is specified with <code>.length_future</code>.
+</p>
+</li>
+<li>
+<p> The <code>...</code> are additional parameters that can be passed to <code>timetk::future_frame()</code>
+</p>
+</li>
+</ul>
+<h4>Step 2: Nest the Time Series</h4>
+
+<p><code>nest_timeseries()</code>: A helper for nesting your data into <code>.actual_data</code> and <code>.future_data</code>.
+</p>
+
+<ul>
+<li>
+<p> The group column is specified by <code>.id_var</code>
+</p>
+</li>
+<li>
+<p> The <code>.length_future</code> defines the length of the <code>.future_data</code>.
+</p>
+</li>
+<li>
+<p> The remaining data is converted to the <code>.actual_data</code>.
+</p>
+</li>
+<li>
+<p> The <code>.length_actual</code> can be used to slice the <code>.actual_data</code> to a most recent number of observations.
+</p>
+</li>
+</ul>
+<p>The result is a "nested data frame".
+</p>
+
+
+
+<h4>Step 3: Split the Actual Data into Train/Test Splits</h4>
+
+<p><code>split_nested_timeseries()</code>: A wrapper for <code>timetk::time_series_split()</code> that generates
+training/testing splits from the <code>.actual_data</code> column.
+</p>
+
+<ul>
+<li>
+<p> The <code>.length_test</code> is the primary argument that identifies the size of the
+testing sample. This is typically the same size as the <code>.future_data</code>.
+</p>
+</li>
+<li>
+<p> The <code>.length_train</code> is an optional size of the training data.
+</p>
+</li>
+<li>
+<p> The <code>...</code> (dots) are additional arguments that can be passed to <code>timetk::time_series_split()</code>.
+</p>
+</li>
+</ul>
+<h4>Helpers</h4>
+
+<p><code>extract_nested_train_split()</code> and <code>extract_nested_test_split()</code> are used to simplify extracting
+the training and testing data from the actual data. This can be helpful when making
+preprocessing recipes using the <code>recipes</code> package.
+</p>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(dplyr)
+library(timetk)
+
+
+nested_data_tbl &lt;- walmart_sales_weekly %&gt;%
+    select(id, date = Date, value = Weekly_Sales) %&gt;%
+
+    # Step 1: Extends the time series by id
+    extend_timeseries(
+        .id_var     = id,
+        .date_var   = date,
+        .length_future = 52
+    ) %&gt;%
+
+    # Step 2: Nests the time series into .actual_data and .future_data
+    nest_timeseries(
+        .id_var     = id,
+        .length_future = 52
+    ) %&gt;%
+
+    # Step 3: Adds a column .splits that contains training/testing indices
+    split_nested_timeseries(
+        .length_test = 52
+    )
+
+nested_data_tbl
+
+# Helpers: Getting the Train/Test Sets
+extract_nested_train_split(nested_data_tbl, .row_id = 1)
+
+</code></pre>
+
+
+</div>

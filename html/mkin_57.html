@@ -1,0 +1,112 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>loftest</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Lack-of-fit test for models fitted to data with replicates</h2>
+
+<h3>Description</h3>
+
+<p>This is a generic function with a method currently only defined for mkinfit
+objects. It fits an anova model to the data contained in the object and
+compares the likelihoods using the likelihood ratio test
+<code>lrtest.default</code> from the lmtest package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">loftest(object, ...)
+
+## S3 method for class 'mkinfit'
+loftest(object, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A model object with a defined loftest method</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Not used</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The anova model is interpreted as the simplest form of an mkinfit model,
+assuming only a constant variance about the means, but not enforcing any
+structure of the means, so we have one model parameter for every mean
+of replicate samples.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>lrtest
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+test_data &lt;- subset(synthetic_data_for_UBA_2014[[12]]$data, name == "parent")
+sfo_fit &lt;- mkinfit("SFO", test_data, quiet = TRUE)
+plot_res(sfo_fit) # We see a clear pattern in the residuals
+loftest(sfo_fit)  # We have a clear lack of fit
+#
+# We try a different model (the one that was used to generate the data)
+dfop_fit &lt;- mkinfit("DFOP", test_data, quiet = TRUE)
+plot_res(dfop_fit) # We don't see systematic deviations, but heteroscedastic residuals
+# therefore we should consider adapting the error model, although we have
+loftest(dfop_fit) # no lack of fit
+#
+# This is the anova model used internally for the comparison
+test_data_anova &lt;- test_data
+test_data_anova$time &lt;- as.factor(test_data_anova$time)
+anova_fit &lt;- lm(value ~ time, data = test_data_anova)
+summary(anova_fit)
+logLik(anova_fit) # We get the same likelihood and degrees of freedom
+#
+test_data_2 &lt;- synthetic_data_for_UBA_2014[[12]]$data
+m_synth_SFO_lin &lt;- mkinmod(parent = list(type = "SFO", to = "M1"),
+  M1 = list(type = "SFO", to = "M2"),
+  M2 = list(type = "SFO"), use_of_ff = "max")
+sfo_lin_fit &lt;- mkinfit(m_synth_SFO_lin, test_data_2, quiet = TRUE)
+plot_res(sfo_lin_fit) # not a good model, we try parallel formation
+loftest(sfo_lin_fit)
+#
+m_synth_SFO_par &lt;- mkinmod(parent = list(type = "SFO", to = c("M1", "M2")),
+  M1 = list(type = "SFO"),
+  M2 = list(type = "SFO"), use_of_ff = "max")
+sfo_par_fit &lt;- mkinfit(m_synth_SFO_par, test_data_2, quiet = TRUE)
+plot_res(sfo_par_fit) # much better for metabolites
+loftest(sfo_par_fit)
+#
+m_synth_DFOP_par &lt;- mkinmod(parent = list(type = "DFOP", to = c("M1", "M2")),
+  M1 = list(type = "SFO"),
+  M2 = list(type = "SFO"), use_of_ff = "max")
+dfop_par_fit &lt;- mkinfit(m_synth_DFOP_par, test_data_2, quiet = TRUE)
+plot_res(dfop_par_fit) # No visual lack of fit
+loftest(dfop_par_fit)  # no lack of fit found by the test
+#
+# The anova model used for comparison in the case of transformation products
+test_data_anova_2 &lt;- dfop_par_fit$data
+test_data_anova_2$variable &lt;- as.factor(test_data_anova_2$variable)
+test_data_anova_2$time &lt;- as.factor(test_data_anova_2$time)
+anova_fit_2 &lt;- lm(observed ~ time:variable - 1, data = test_data_anova_2)
+summary(anova_fit_2)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

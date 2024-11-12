@@ -1,0 +1,92 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Save</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Save R objects</h2>
+
+<h3>Description</h3>
+
+<p>These function resemble <code>save</code> and <code>save.image</code>, with two main differences. First, any functions which have been <code>mtrace</code>d (see package <span class="pkg">debug</span>) will be temporarily untraced during saving (the <span class="pkg">debug</span> package need not be loaded). Second, <code>Save</code> and <code>Save.pos</code> know how to deal with lazy-loaded objects set up via <code>mlazy</code>. <code>Save()</code> is like <code>save.image()</code>, and also tries to call <code>savehistory</code> (see <b>Details</b>). <code>Save.pos(i)</code> saves all objects from the <code>i</code>th position on the search list in the corresponding ".RData" file (or "all.rda" file for image-loading packages, or "*.rdb/*.rdx" for lazyloading packages). There is less flexibility in the arguments than for the system equivalents. If you use the <code>cd</code> system in <code>mvbutils</code>, you will rarely need to call <code>Save.pos</code> directly; <code>cd</code>, <code>move</code> and <code>FF</code> will do it for you.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">Save()
+Save.pos( pos, path, ascii=FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>  pos</code></td>
+<td>
+<p>string or numeric position on search path, or environment (e.g. <code>..mypack</code> if "mypack" is a maintained-package).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>  path</code></td>
+<td>
+<p>directory or file to save into (see <b>Details</b>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>  ascii</code></td>
+<td>
+<p>file type, as per <code>save</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>There is a safety provision in <code>Save</code> and <code>Save.pos</code>, which is normally invisible to the user, but can be helpful if there is a failure during the save process (for example, if the system shuts down unexpectedly). The workspace image is first saved under a name such as "n.RData" (the name will be adapted to avoid clashes if necessary). Then, if and only if the new image file has a different checksum to the old ".RData" file, the old file will be deleted and the new one will be renamed ".RData"; otherwise, the new file will be deleted. This also means that the ".RData" file will not be updated at all if there have been no changes, which may save time when synchronizing file systems or backing up.
+</p>
+<p>Two categories of objects will not be saved by <code>Save</code> or <code>Save.pos</code>. The first category is anything named in <code>options( dont.save)</code>; by default, this is ".packageName", ".SavedPlots", "last.warning", and ".Traceback", and you might want to add ".Last.value". The second category is anything which looks like a maintained package, i.e. an environment whose name starts with ".." and which has attributes "name", "path", and "task.tree". A warning will be given if such objects are found. [From bitter experience, this is to prevent accidents on re-loading after careless mistakes such as <code>..mypack$newfun &lt;- something</code>; what you <em>meant</em>, of course, is <code>..mypack$newfun &lt;&lt;- something</code>. Note that the accident will not cause any bad effects during the current R session, because environments are not duplicated; anything you do to the "copy" will also affect the "real" <code>..mypack</code>. However, a mismatch will occur if the environment is accidentally saved and re-loaded; hence the check in <code>Save</code>.]
+</p>
+<p><code>path</code> is normally inferred from the <code>path</code> attribute of the <code>pos</code> workspace. If no such attribute can be found (e.g. if the attached workspace was a list object), you will be prompted. If <code>path</code> is a directory, the file will be called ".RData" if that file already exists, or "R/all.rda" if that exists, or "R/*.rbd" for lazy loads if that exists; and if none of these exist already, then the file will be called ".RData" after all. If you specify <code>path</code>, it must be a complete directory path or file path (i.e. it will not be interpreted relative to a <code>path</code> attribute).
+</p>
+
+
+<h4>Compression</h4>
+
+<p><code>mvbutils</code> uses the default compression options of <code>save</code>, unless you set <code>options()</code> "mvbutils.compress" and/or "mvbutils.compression_level" to appropriate values as per <code>?save</code>. The same applies to <code>mlazy</code> objects. Setting <code>options(mvbutils.compression_level=1)</code> can sometimes save quite a bit of time, at the cost of using more disk space. Set these options to NULL to return to the defaults.
+</p>
+
+
+
+<h4>History files</h4>
+
+<p><code>Save</code> calls <code>savehistory()</code>. With package <span class="pkg">mvbutils</span> from about version 2.5.6 on, <code>savehistory</code> and <code>loadhistory</code> will by default use the same file throughout each and every R session. That means everything works nicely for most users, and you really don't need to read the rest of this section unless you are unhappy with the default behaviour.
+</p>
+<p>If you are unhappy, there are two things you might be unhappy about. First, <code>savehistory</code> and <code>loadhistory</code> are by default modified to always use the <em>current</em> value of the R_HISTFILE environment variable at the time they are called, whereas default R behaviour is to use the value when the session started, or ".Rhistory" in the current directory if none was set. I can't imagine why the default would be preferable, but if you do want to revert to it, then try to follow the instructions in <code>?mvbutils</code>, and email me if you get stuck. Second, the default for R_HISTFILE itself is set by <code>mvbutils</code> to be the file ".Rhistory" in the <code>.First.top.search</code> directory– normally the one you start R in. You can change that default by specifying R_HISTFILE yourself before loading <code>mvbutils</code>, in one of the many ways described by the R documentation on <code>?Startup</code> and <code>?Sys.getenv</code>.
+</p>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Mark Bravington</p>
+
+
+<h3>See Also</h3>
+
+<p><code>save</code>, <code>save.image</code>, <code> mtrace</code> in package <span class="pkg">debug</span>, <code>mlazy</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+Save() #
+Save.pos( "package:mvbutils") # binary image of exported functions
+Save.pos( 3, path="temp.Rdata") # path appended to attr( search()[3], "path")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

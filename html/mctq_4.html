@@ -1,0 +1,258 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>cycle_time</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Cycle time objects</h2>
+
+<h3>Description</h3>
+
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#deprecated"><img src="../help/figures/lifecycle-deprecated.svg" alt="[Deprecated]"></a>
+</p>
+<p>This function will be removed on the next <code>mctq</code> version. You can still find
+it in the <a href="https://github.com/giperbio/lubritime"><code>lubritime</code></a> package.
+</p>
+<p><code>cycle_time()</code> cycles time span objects in a predetermined cycle length,
+adapting linear time objects into a circular time frame.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">cycle_time(time, cycle, reverse = TRUE)
+
+## S3 method for class 'numeric'
+cycle_time(time, cycle, reverse = TRUE)
+
+## S3 method for class 'Duration'
+cycle_time(time, cycle, reverse = TRUE)
+
+## S3 method for class 'difftime'
+cycle_time(time, cycle, reverse = TRUE)
+
+## S3 method for class 'hms'
+cycle_time(time, cycle, reverse = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>time</code></td>
+<td>
+<p>An object belonging to one of the following classes:
+<code>numeric</code>, <code>Duration</code>,
+<code>difftime</code>, or <code>hms</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cycle</code></td>
+<td>
+<p>A <code>numeric</code> or
+<code>Duration</code> object of length <code>1</code>, equal or greater
+than <code>0</code>, indicating the cycle length in seconds. See the Details section
+to learn more.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reverse</code></td>
+<td>
+<p>(optional) a <code>logical</code> value indicating if the
+function must use a reverse cycle for negative values in <code>time</code>. See
+the Details section to learn more (default: <code>TRUE</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+
+
+<h4>Linear versus circular time</h4>
+
+<p>Time can have different "shapes".
+</p>
+<p>If the objective is to measure the duration (time span) of an event, time is
+usually measured considering a linear frame, with a fixed point of
+<a href="https://en.wikipedia.org/wiki/Origin_(mathematics)">origin</a>. In this
+context, the time value distance itself to infinity in relation to the
+origin.
+</p>
+<div class="sourceCode"><pre>                                   B
+                             |----------|
+                                        A
+                             |---------------------|
+ - inf                                                inf +
+&lt;----------------------------|----------|----------|-------&gt;
+ s                           0          5          10     s
+                           origin
+
+A + B = 10 + 5 = 15s
+</pre></div>
+<p>But that's not the only possible "shape" of time, as it can also be measured
+in other contexts.
+</p>
+<p>In a "time of day" context, the time will be linked to the rotation of the
+earth, "resetting" when a new rotation cycle starts. That brings a different
+kind of shape to time: a circular shape. With this shape the time value
+encounters the origin at the beginning and end of each cycle.
+</p>
+<div class="sourceCode"><pre>               - &lt;--- h ---&gt; +
+                    origin
+                . . . 0 . . .
+             .                 .
+            .                   .
+           .                     .
+          .                       .
+         .                         .
+         18                        6
+         .                         .
+          .                       .
+           .                     .
+            .                   .
+             .                 .
+                . . . 12 . . .
+
+18 + 6 = 0h
+</pre></div>
+<p>If we transpose this circular time frame to a linear one, it would look like
+this:
+</p>
+<div class="sourceCode"><pre>&lt;----|---------------|---------------|---------------|-----&gt;
+    0h              12h              0h             12h
+  origin                           origin
+</pre></div>
+<p>Note that now the origin is not fix, but cyclical.
+</p>
+<p><code>cycle_time()</code> operates by converting linear time objects using a circular
+approach relative to the cycle length (e.g, <code>cycle = 86400</code> (1 day)).
+</p>
+
+
+
+<h4>Fractional time</h4>
+
+<p><code>cycle_time()</code> uses the <code>%%</code> operator to cycle values.
+Hence, it can be subject to catastrophic loss of accuracy if <code>time</code> is
+fractional and much larger than <code>cycle</code>. A warning is given if this is
+detected.
+</p>
+<p><code>%%</code> is a <code>builtin</code> R function that operates like this:
+</p>
+<div class="sourceCode"><pre>function(a, b) {
+    a - floor(a / b) * b
+}
+</pre></div>
+
+
+
+<h4>Negative time cycling</h4>
+
+<p>If <code>time</code> have a negative value and <code>reverse == FALSE</code>, <code>cycle_time()</code> will
+perform the cycle considering the absolute value of <code>time</code> and return the
+result with a negative signal.
+</p>
+<p>However, If <code>time</code> have a negative value and <code>reverse == TRUE</code> (default),
+<code>cycle_time()</code> will perform the cycle in reverse, relative to its origin.
+</p>
+<p>Example: If you have a -30h time span in a reversed cycle of 24h, the result
+will be 18h. By removing the full cycles of -30h you will get -6h (-30 + 24),
+and -6h relative to the origin will be 18h.
+</p>
+<div class="sourceCode"><pre>               - &lt;--- h ---&gt; +
+                    origin
+                . . . 0 . . .
+              .                 .
+            .                   .
+           .                     .
+          .                       .
+         .                         .
+    (-6) 18                        6 (-18)
+         .                         .
+          .                       .
+           .                     .
+            .                   .
+             .                 .
+                . . . 12 . . .
+                    (-12)
+</pre></div>
+
+
+
+<h4>
+<code>Period</code> objects</h4>
+
+<p><code>Period</code> objects are a special type of object
+developed by the lubridate team that
+represents "human units", ignoring possible timeline irregularities. That is
+to say that 1 day as <code>Period</code> can have different time
+spans, when looking to a timeline after a irregularity event.
+</p>
+<p>Since the time span of a <code>Period</code> object can
+fluctuate, <code>cycle_time()</code> don't accept this kind of object. You can transform
+it to a <code>Duration</code> object and still use the
+function, but beware that this can produce errors.
+</p>
+<p>Learn more about <code>Period</code> objects in the <a href="https://r4ds.had.co.nz/dates-and-times.html#periods">Dates and times</a> chapter of
+Wickham &amp; Grolemund book (n.d.).
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>The same type of object of <code>time</code> cycled with the <code>cycle</code> parameter.
+</p>
+
+
+<h3>References</h3>
+
+<p>Wickham, H., &amp; Grolemund, G. (n.d.). <em>R for data science</em>. (n.p.).
+<a href="https://r4ds.had.co.nz">https://r4ds.had.co.nz</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Scalar example
+
+time &lt;- lubridate::dhours(25)
+cycle &lt;- lubridate::ddays(1)
+cycle_time(time, cycle)
+#&gt; [1] "3600s (~1 hours)" # Expected
+
+time &lt;- lubridate::dhours(-25)
+cycle &lt;- lubridate::ddays(1)
+reverse &lt;- FALSE
+cycle_time(time, cycle, reverse)
+#&gt; [1] "-3600s (~-1 hours)" # Expected
+
+time &lt;- lubridate::dhours(-25)
+cycle &lt;- lubridate::ddays(1)
+reverse &lt;- TRUE
+cycle_time(time, cycle, reverse)
+#&gt; [1] "82800s (~23 hours)" # Expected
+
+## Vector example
+
+time &lt;- c(lubridate::dmonths(24), lubridate::dmonths(13))
+cycle &lt;- lubridate::dyears(1)
+cycle_time(time, cycle)
+#&gt; [1] "0s"                     "2629800s (~4.35 weeks)" # Expected
+
+time &lt;- c(lubridate::dmonths(24), lubridate::dmonths(-13))
+cycle &lt;- lubridate::dyears(1)
+reverse &lt;- FALSE
+cycle_time(time, cycle, reverse)
+#&gt; [1] "0s"                       "-2629800s (~-4.35 weeks)" # Expected
+
+time &lt;- c(lubridate::dmonths(24), lubridate::dmonths(-13))
+cycle &lt;- lubridate::dyears(1)
+reverse &lt;- TRUE
+cycle_time(time, cycle, reverse)
+#&gt; [1] "0s"                       "28927800s (~47.83 weeks)" # Expected
+</code></pre>
+
+
+</div>

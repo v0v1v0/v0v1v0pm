@@ -1,0 +1,182 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mmcif_data</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Sets up an Object to Compute the Log Composite Likelihood</h2>
+
+<h3>Description</h3>
+
+<p>Sets up the R and C++ objects that are needed to evaluate the log composite
+likelihood. This reduces to a log likelihood when only clusters of size one
+or two are used.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mmcif_data(
+  formula,
+  data,
+  cause,
+  time,
+  cluster_id,
+  max_time,
+  spline_df = 3L,
+  left_trunc = NULL,
+  ghq_data = NULL,
+  strata = NULL,
+  knots = NULL,
+  boundary_quantiles = c(0.025, 0.975)
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p><code>formula</code> for covariates in the risk and trajectories.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p><code>data.frame</code> with the covariate and outcome information.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cause</code></td>
+<td>
+<p>an integer vector with the cause of each outcome. If there are
+<code>n_causes</code> of outcome, then the vector should have values in
+<code>1:(n_causes + 1)</code> with <code>n_causes + 1</code> indicating censoring.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>time</code></td>
+<td>
+<p>a numeric vector with the observed times.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cluster_id</code></td>
+<td>
+<p>an integer vector with the cluster id of each individual.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_time</code></td>
+<td>
+<p>the maximum time after which there are no observed events. It
+is denoted by <code class="reqn">\tau</code> in the original article (Cederkvist et al., 2019).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spline_df</code></td>
+<td>
+<p>degrees of freedom to use for each spline in the
+cumulative incidence functions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>left_trunc</code></td>
+<td>
+<p>numeric vector with left-truncation times. <code>NULL</code>
+implies that there are not any individuals with left-truncation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ghq_data</code></td>
+<td>
+<p>the default Gauss-Hermite quadrature nodes and weights to
+use. It should be a list with two elements called <code>"node"</code>
+and <code>"weight"</code>. A default is provided if <code>NULL</code> is passed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strata</code></td>
+<td>
+<p>an integer vector or a factor vector with the strata of each
+individual. <code>NULL</code> implies that there are no strata.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>knots</code></td>
+<td>
+<p>A list of lists with knots for the splines. The inner lists
+needs to have elements called <code>"knots"</code> and
+<code>"boundary_knots"</code> which are passed to a function like <code>ns</code>.
+<code>NULL</code> yields defaults based on the quantiles of the observed event
+times. Note that the knots needs to be on the
+<code>atanh((time - max_time / 2) / (max_time / 2))</code> scale.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boundary_quantiles</code></td>
+<td>
+<p>two dimensional numerical vector with boundary
+quantile probabilities after which the natural cubic splines for the time
+transformations are restricted to be linear. Only relevant if <code>knots</code> is
+not <code>NULL</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object of class mmcif which is needed for the other functions in the
+package.
+</p>
+
+
+<h3>References</h3>
+
+<p>Cederkvist, L., Holst, K. K., Andersen, K. K., &amp;
+Scheike, T. H. (2019).
+<em>Modeling the cumulative incidence function of multivariate competing
+risks data allowing for within-cluster dependence of risk and timing</em>.
+Biostatistics, Apr 1, 20(2), 199-217.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mmcif_fit</code>, <code>mmcif_start_values</code> and
+<code>mmcif_sandwich</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">if(require(mets)){
+  # prepare the data
+  data(prt)
+
+  # truncate the time
+  max_time &lt;- 90
+  prt &lt;- within(prt, {
+    status[time &gt;= max_time] &lt;- 0
+    time &lt;- pmin(time, max_time)
+  })
+
+  # select the DZ twins and re-code the status
+  prt_use &lt;- subset(prt, zyg == "DZ") |&gt;
+    transform(status = ifelse(status == 0, 3L, status))
+
+  # randomly sub-sample
+  set.seed(1)
+  prt_use &lt;- subset(
+    prt_use, id %in% sample(unique(id), length(unique(id)) %/% 10L))
+
+  mmcif_obj &lt;- mmcif_data(
+    ~ country - 1, prt_use, status, time, id, max_time,
+    2L, strata = country)
+}
+
+</code></pre>
+
+
+</div>

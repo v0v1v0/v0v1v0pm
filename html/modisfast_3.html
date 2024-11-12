@@ -1,0 +1,159 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mf_download_data</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Download several datasets given their URLs and destination path</h2>
+
+<h3>Description</h3>
+
+<p>This function enables to download datasets. In a data import workflow, this function is typically used after a call to the mf_get_url function. The output value of mf_get_url can be used as input of parameter <code>df_to_dl</code> of mf_download_data.
+</p>
+<p>The download can the parallelized.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mf_download_data(
+  df_to_dl,
+  path = tempfile("modisfast_"),
+  parallel = FALSE,
+  num_workers = parallel::detectCores() - 1,
+  credentials = NULL,
+  verbose = TRUE,
+  min_filesize = 5000
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>df_to_dl</code></td>
+<td>
+<p>data.frame. Urls and destination files of dataset to download. Typically output of mf_get_url. See Details for the structure</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>path</code></td>
+<td>
+<p>string. Target folder for the data to download. Default : temporary folder.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>boolean. Parallelize the download ? Default to FALSE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>num_workers</code></td>
+<td>
+<p>integer. Number of workers in case of parallel download. Default to number of workers available in the machine minus one.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>credentials</code></td>
+<td>
+<p>vector string of length 2 with username and password. optional if the function mf_login was previously executed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>boolean. optional. Verbose (default TRUE)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min_filesize</code></td>
+<td>
+<p>integer. Minimum file size expected (in bites) for one file downloaded. If files downloaded are less that this value, the files will be downloaded again. Default 5000.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Parameter <code>df_to_dl</code> must be a data.frame with the following minimal structure :
+</p>
+
+<dl>
+<dt>id_roi</dt>
+<dd>
+<p>An id for the ROI (character string)</p>
+</dd>
+<dt>collection</dt>
+<dd>
+<p>Collection (character string)</p>
+</dd>
+<dt>name</dt>
+<dd></dd>
+<dt>url</dt>
+<dd>
+<p>URL of the file to download (character string)</p>
+</dd>
+</dl>
+<h3>Value</h3>
+
+<p>a data.frame with the same structure of the input data.frame <code>df_to_dl</code> + columns providing details of the data downloaded. The additional columns are :
+</p>
+
+<dl>
+<dt>fileDl</dt>
+<dd>
+<p>Booloean (dataset downloaded or failure)</p>
+</dd>
+<dt>dlStatus</dt>
+<dd>
+<p>Download status : 1 = download ok ; 2 = download error ; 3 = dataset was already existing in destination file </p>
+</dd>
+<dt>fileSize</dt>
+<dd>
+<p>File size on disk</p>
+</dd>
+</dl>
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+
+### Login to EOSDIS Earthdata with your username and password
+log &lt;- mf_login(credentials = c("earthdata_un","earthdata_pw"))
+
+### Set-up parameters of interest
+coll &lt;- "MOD11A1.061"
+
+bands &lt;- c("LST_Day_1km","LST_Night_1km")
+
+time_range &lt;- as.Date(c("2017-01-01","2017-01-30"))
+
+roi &lt;- sf::st_as_sf(data.frame(
+id = "roi_test",
+geom="POLYGON ((-5.82 9.54, -5.42 9.55, -5.41 8.84, -5.81 8.84, -5.82 9.54))"),
+wkt="geom",crs = 4326)
+
+### Get the URLs of the data
+(urls_mod11a1 &lt;- mf_get_url(
+collection = coll,
+variables = bands,
+roi = roi,
+time_range = time_range
+))
+
+### Download the data
+res_dl &lt;- mf_download_data(urls_mod11a1)
+
+### Import the data as terra::SpatRast
+modis_ts &lt;- mf_import_data(dirname(res_dl$destfile[1]), collection = coll)
+
+### Plot the data
+terra::plot(modis_ts)
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

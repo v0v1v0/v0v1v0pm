@@ -1,0 +1,157 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MiBiClassGBODT</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Binary classification using gradient boosting over desicion trees</h2>
+
+<h3>Description</h3>
+
+<p>This function conducts a binary classification of specimens based on microarray gene (transcript) expression data.
+Gradient boosting over desicion trees algorithm is used.
+Several generalized boosted regression models are fitted during cross-validation, for each model
+measurements of classification quality and feature importance are returned.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MiBiClassGBODT(Matrix, specimens, n.crossval = 5, ntrees = 10000,
+  shrinkage = 0.1, intdepth = 2, n.terminal = 10, bag.frac = 0.5)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Matrix</code></td>
+<td>
+<p>numeric matrix of expression data where each row corresponds to a probe (gene, transcript),
+and each column correspondes to a specimen (patient).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>specimens</code></td>
+<td>
+<p>factor vector with two levels specifying specimens in the columns of the <code>Matrix</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.crossval</code></td>
+<td>
+<p>integer specifying number of cross-validation folds.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ntrees</code></td>
+<td>
+<p>integer specifying the total number of decision trees (boosting iterations).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>shrinkage</code></td>
+<td>
+<p>numeric specifying the learning rate. Scales the step size in the gradient descent procedure.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intdepth</code></td>
+<td>
+<p>integer specifying the maximum depth of each tree.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.terminal</code></td>
+<td>
+<p>integer specifying the actual minimum number of observations in the terminal nodes of the trees.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bag.frac</code></td>
+<td>
+<p>the fraction of the training set observations randomly selected to propose the next tree in the expansion.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>Matrix</code> must contain specimens from two classification groups only. To sample expression matrix
+use <code>MiDataSample</code>.
+<br>
+The order of the variables in <code>specimens</code> and the columns of <code>Matrix</code> must be the same. Levels of
+<code>specimens</code> are two classification groups. To sample specimens use <code>MiSpecimenSample</code>.
+<br>
+Number of cross-validation folders defines number of models to be fitted. For example,
+if n.crossval=5 then all specimens are divided into 5 folders, each of them is later used for model testing,
+so 5 models are fitted. See <code>createFolds</code> for details.
+<br>
+While boosting, basis functions are iteratively adding in a greedy fashion
+so that each additional basis function further reduces the selected loss function.
+Gaussian distribution (squared error) is used.
+<code>ntrees</code>, <code>shrinkage</code>, <code>intdepth</code> are parameters for model tuning.
+<code>bag.frac</code> introduces randomnesses into the model fit.
+If <code>bag.frac</code> &lt; 1 then running the same model twice will result in similar but different fits.
+Number of specimens in train sample must be enough to provide the minimum number of observations in terminal nodes.I.e.
+<br>(1-1/<code>n.crossval</code>)*<code>bag.frac</code> &gt; <code>n.terminal</code>.
+<br>
+See <code>gbm</code> for details.
+</p>
+
+
+<h3>Value</h3>
+
+<p>list of 2:
+<br><code>QC</code> - matrix containing quality measures for each fitted model and their summary.
+Accur - accuracy (percentage of correct predictions),
+AUC - area under ROC curve (see <code>roc</code>),
+MCC - Mattew's correlation coefficient
+<br>
+formula ((TP*TN)-(FP*FN))/sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)),
+<br>
+F1sc - F1 score
+<br>
+formula 2xPresxRec/(Pres+Rec).
+<br>
+If all the data points from one class are misclassified into other, MCC and F1 score may get NaN values.
+<br><br><code>Importance</code> - list of data frames containing for each fitted model:
+<code>var</code> - probe ID and <code>rel.inf</code> - its feature importance for classification (relative influence).
+<br>
+Feature importance (relative influence) graphs are also produced.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Elena N. Filatova
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>createFolds</code>, <code>gbm</code>, <code>MiSpecimenSample</code>, <code>MiDataSample</code>,
+<code>roc</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+#get gene expression and specimen data
+data("IMexpression");data("IMspecimen")
+#sample expression matrix and specimen data for binary classification,
+#only "NORM" and "EBV" specimens are left
+SampleMatrix&lt;-MiDataSample(IMexpression, IMspecimen$diagnosis,"norm", "ebv")
+SampleSpecimen&lt;-MiSpecimenSample(IMspecimen$diagnosis, "norm", "ebv")
+#Fitting, low tuning for faster running
+BoostRes&lt;-MiBiClassGBODT(SampleMatrix, SampleSpecimen, n.crossval = 3,
+                       ntrees = 10, shrinkage = 1, intdepth = 2)
+BoostRes[[1]] # QC values for n.crossval = 3 models and its summary
+length(BoostRes[[2]]) # n.crossval = 3 data frames of probes feature importance for classification
+head(BoostRes[[2]][[1]])
+
+</code></pre>
+
+
+</div>

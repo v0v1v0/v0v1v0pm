@@ -1,0 +1,1208 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>trans_nullmodel</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create <code>trans_nullmodel</code> object for phylogeny- and taxonomy-based null model analysis.</h2>
+
+<h3>Description</h3>
+
+<p>This class is a wrapper for a series of null model related approaches, 
+including the mantel correlogram analysis of phylogenetic signal, beta nearest taxon index (betaNTI), 
+beta net relatedness index (betaNRI), NTI, NRI and RCbray calculations;
+See Stegen et al. (2013) &lt;10.1038/ismej.2013.93&gt; and Liu et al. (2017) &lt;doi:10.1038/s41598-017-17736-w&gt; for the algorithms and applications.
+</p>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-trans_nullmodel-new"><code>trans_nullmodel$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_mantel_corr"><code>trans_nullmodel$cal_mantel_corr()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-plot_mantel_corr"><code>trans_nullmodel$plot_mantel_corr()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_betampd"><code>trans_nullmodel$cal_betampd()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_betamntd"><code>trans_nullmodel$cal_betamntd()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_ses_betampd"><code>trans_nullmodel$cal_ses_betampd()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_ses_betamntd"><code>trans_nullmodel$cal_ses_betamntd()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_rcbray"><code>trans_nullmodel$cal_rcbray()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_process"><code>trans_nullmodel$cal_process()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_NRI"><code>trans_nullmodel$cal_NRI()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_NTI"><code>trans_nullmodel$cal_NTI()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_Cscore"><code>trans_nullmodel$cal_Cscore()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_NST"><code>trans_nullmodel$cal_NST()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_NST_test"><code>trans_nullmodel$cal_NST_test()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-cal_NST_convert"><code>trans_nullmodel$cal_NST_convert()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_nullmodel-clone"><code>trans_nullmodel$clone()</code></a>
+</p>
+</li>
+</ul>
+<hr>
+<a id="method-trans_nullmodel-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$new(
+  dataset = NULL,
+  filter_thres = 0,
+  taxa_number = NULL,
+  group = NULL,
+  select_group = NULL,
+  env_cols = NULL,
+  add_data = NULL,
+  complete_na = FALSE
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>dataset</code></dt>
+<dd>
+<p>the object of <code>microtable</code> Class.</p>
+</dd>
+<dt><code>filter_thres</code></dt>
+<dd>
+<p>default 0; the relative abundance threshold.</p>
+</dd>
+<dt><code>taxa_number</code></dt>
+<dd>
+<p>default NULL; how many taxa the user want to keep, if provided, filter_thres parameter will be forcible invalid.</p>
+</dd>
+<dt><code>group</code></dt>
+<dd>
+<p>default NULL; which column name in sample_table is selected as the group for the following selection.</p>
+</dd>
+<dt><code>select_group</code></dt>
+<dd>
+<p>default NULL; one or more elements in <code>group</code>, used to select samples.</p>
+</dd>
+<dt><code>env_cols</code></dt>
+<dd>
+<p>default NULL; number or name vector to select the environmental data in dataset$sample_table.</p>
+</dd>
+<dt><code>add_data</code></dt>
+<dd>
+<p>default NULL; provide environmental data table additionally.</p>
+</dd>
+<dt><code>complete_na</code></dt>
+<dd>
+<p>default FALSE; whether fill the NA in environmental data based on the method in mice package.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>data_comm</code> and <code>data_tree</code> in object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>data(dataset)
+data(env_data_16S)
+t1 &lt;- trans_nullmodel$new(dataset, filter_thres = 0.0005, add_data = env_data_16S)
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_mantel_corr"></a>
+
+
+
+<h4>Method <code>cal_mantel_corr()</code>
+</h4>
+
+<p>Calculate mantel correlogram.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_mantel_corr(
+  use_env = NULL,
+  break.pts = seq(0, 1, 0.02),
+  cutoff = FALSE,
+  ...
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>use_env</code></dt>
+<dd>
+<p>default NULL; numeric or character vector to select env_data; if provide multiple variables or NULL, 
+use PCA (principal component analysis) to reduce dimensionality.</p>
+</dd>
+<dt><code>break.pts</code></dt>
+<dd>
+<p>default seq(0, 1, 0.02); see break.pts parameter in <code>mantel.correlog</code> of <code>vegan</code> package.</p>
+</dd>
+<dt><code>cutoff</code></dt>
+<dd>
+<p>default FALSE; see cutoff parameter in <code>mantel.correlog</code>.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p>parameters pass to <code>mantel.correlog</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>res_mantel_corr in object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\dontrun{
+t1$cal_mantel_corr(use_env = "pH")
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-plot_mantel_corr"></a>
+
+
+
+<h4>Method <code>plot_mantel_corr()</code>
+</h4>
+
+<p>Plot mantel correlogram.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$plot_mantel_corr(point_shape = 22, point_size = 3)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>point_shape</code></dt>
+<dd>
+<p>default 22; the number for selecting point shape type; see <code>ggplot2</code> manual for the number meaning.</p>
+</dd>
+<dt><code>point_size</code></dt>
+<dd>
+<p>default 3; the point size.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>ggplot.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\dontrun{
+t1$plot_mantel_corr()
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_betampd"></a>
+
+
+
+<h4>Method <code>cal_betampd()</code>
+</h4>
+
+<p>Calculate betaMPD (mean pairwise distance). Same with <code>picante::comdist</code> function, but faster.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_betampd(abundance.weighted = TRUE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>abundance.weighted</code></dt>
+<dd>
+<p>default TRUE; whether use abundance-weighted method.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>res_betampd in object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\donttest{
+t1$cal_betampd(abundance.weighted = TRUE)
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_betamntd"></a>
+
+
+
+<h4>Method <code>cal_betamntd()</code>
+</h4>
+
+<p>Calculate betaMNTD (mean nearest taxon distance). Same with <code>picante::comdistnt</code> package, but faster.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_betamntd(
+  abundance.weighted = TRUE,
+  exclude.conspecifics = FALSE,
+  use_iCAMP = FALSE,
+  use_iCAMP_force = TRUE,
+  iCAMP_tempdir = NULL,
+  ...
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>abundance.weighted</code></dt>
+<dd>
+<p>default TRUE; whether use abundance-weighted method.</p>
+</dd>
+<dt><code>exclude.conspecifics</code></dt>
+<dd>
+<p>default FALSE; see <code>exclude.conspecifics</code> parameter in <code>comdistnt</code> function of <code>picante</code> package.</p>
+</dd>
+<dt><code>use_iCAMP</code></dt>
+<dd>
+<p>default FALSE; whether use <code>bmntd.big</code> function of <code>iCAMP</code> package to calculate betaMNTD. 
+This method can store the phylogenetic distance matrix on the disk to lower the memory spending and perform the calculation parallelly.</p>
+</dd>
+<dt><code>use_iCAMP_force</code></dt>
+<dd>
+<p>default FALSE; whether use <code>bmntd.big</code> function of <code>iCAMP</code> package automatically when the feature number is large.</p>
+</dd>
+<dt><code>iCAMP_tempdir</code></dt>
+<dd>
+<p>default NULL; the temporary directory used to place the large tree file; If NULL; use the system user tempdir.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p>paremeters pass to <code>iCAMP::pdist.big</code> function.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>res_betamntd in object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\donttest{
+t1$cal_betamntd(abundance.weighted = TRUE)
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_ses_betampd"></a>
+
+
+
+<h4>Method <code>cal_ses_betampd()</code>
+</h4>
+
+<p>Calculate standardized effect size of betaMPD, i.e. beta net relatedness index (betaNRI).
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_ses_betampd(
+  runs = 1000,
+  null.model = c("taxa.labels", "richness", "frequency", "sample.pool", "phylogeny.pool",
+    "independentswap", "trialswap")[1],
+  abundance.weighted = TRUE,
+  iterations = 1000
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>runs</code></dt>
+<dd>
+<p>default 1000; simulation runs.</p>
+</dd>
+<dt><code>null.model</code></dt>
+<dd>
+<p>default "taxa.labels"; The available options include "taxa.labels", "richness", "frequency", "sample.pool", "phylogeny.pool", 
+"independentswap"and "trialswap"; see <code>null.model</code> parameter of <code>ses.mntd</code> function in <code>picante</code> package for the algorithm details.</p>
+</dd>
+<dt><code>abundance.weighted</code></dt>
+<dd>
+<p>default TRUE; whether use weighted abundance.</p>
+</dd>
+<dt><code>iterations</code></dt>
+<dd>
+<p>default 1000; iteration number for part null models to perform; see iterations parameter of <code>picante::randomizeMatrix</code> function.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>res_ses_betampd in object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\dontrun{
+# only run 50 times for the example; default 1000
+t1$cal_ses_betampd(runs = 50, abundance.weighted = TRUE)
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_ses_betamntd"></a>
+
+
+
+<h4>Method <code>cal_ses_betamntd()</code>
+</h4>
+
+<p>Calculate standardized effect size of betaMNTD, i.e. beta nearest taxon index (betaNTI).
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_ses_betamntd(
+  runs = 1000,
+  null.model = c("taxa.labels", "richness", "frequency", "sample.pool", "phylogeny.pool",
+    "independentswap", "trialswap")[1],
+  abundance.weighted = TRUE,
+  exclude.conspecifics = FALSE,
+  use_iCAMP = FALSE,
+  use_iCAMP_force = TRUE,
+  iCAMP_tempdir = NULL,
+  nworker = 2,
+  iterations = 1000
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>runs</code></dt>
+<dd>
+<p>default 1000; simulation number of null model.</p>
+</dd>
+<dt><code>null.model</code></dt>
+<dd>
+<p>default "taxa.labels"; The available options include "taxa.labels", "richness", "frequency", "sample.pool", "phylogeny.pool", 
+"independentswap"and "trialswap"; see <code>null.model</code> parameter of <code>ses.mntd</code> function in <code>picante</code> package for the algorithm details.</p>
+</dd>
+<dt><code>abundance.weighted</code></dt>
+<dd>
+<p>default TRUE; whether use abundance-weighted method.</p>
+</dd>
+<dt><code>exclude.conspecifics</code></dt>
+<dd>
+<p>default FALSE; see <code>comdistnt</code> in picante package.</p>
+</dd>
+<dt><code>use_iCAMP</code></dt>
+<dd>
+<p>default FALSE; whether use bmntd.big function of iCAMP package to calculate betaMNTD. 
+This method can store the phylogenetic distance matrix on the disk to lower the memory spending and perform the calculation parallelly.</p>
+</dd>
+<dt><code>use_iCAMP_force</code></dt>
+<dd>
+<p>default FALSE; whether to make use_iCAMP to be TRUE when the feature number is large.</p>
+</dd>
+<dt><code>iCAMP_tempdir</code></dt>
+<dd>
+<p>default NULL; the temporary directory used to place the large tree file; If NULL; use the system user tempdir.</p>
+</dd>
+<dt><code>nworker</code></dt>
+<dd>
+<p>default 2; the CPU thread number.</p>
+</dd>
+<dt><code>iterations</code></dt>
+<dd>
+<p>default 1000; iteration number for part null models to perform; see iterations parameter of <code>picante::randomizeMatrix</code> function.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>res_ses_betamntd in object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\dontrun{
+# only run 50 times for the example; default 1000
+t1$cal_ses_betamntd(runs = 50, abundance.weighted = TRUE, exclude.conspecifics = FALSE)
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_rcbray"></a>
+
+
+
+<h4>Method <code>cal_rcbray()</code>
+</h4>
+
+<p>Calculate Bray–Curtis-based Raup–Crick (RCbray) &lt;doi: 10.1890/ES10-00117.1&gt;.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_rcbray(
+  runs = 1000,
+  verbose = TRUE,
+  null.model = "independentswap"
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>runs</code></dt>
+<dd>
+<p>default 1000; simulation runs.</p>
+</dd>
+<dt><code>verbose</code></dt>
+<dd>
+<p>default TRUE; whether show the calculation process message.</p>
+</dd>
+<dt><code>null.model</code></dt>
+<dd>
+<p>default "independentswap"; see more available options in <code>randomizeMatrix</code> function of <code>picante</code> package.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>res_rcbray in object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\dontrun{
+# only run 50 times for the example; default 1000
+t1$cal_rcbray(runs = 50)
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_process"></a>
+
+
+
+<h4>Method <code>cal_process()</code>
+</h4>
+
+<p>Infer the ecological processes according to ses.betaMNTD/ses.betaMPD and rcbray.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_process(use_betamntd = TRUE, group = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>use_betamntd</code></dt>
+<dd>
+<p>default TRUE; whether use ses.betaMNTD; if false, use ses.betaMPD.</p>
+</dd>
+<dt><code>group</code></dt>
+<dd>
+<p>default NULL; a column name in sample_table of microtable object. 
+If provided, the analysis will be performed for each group instead of the whole.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>res_process in object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\dontrun{
+t1$cal_process(use_betamntd = TRUE)
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_NRI"></a>
+
+
+
+<h4>Method <code>cal_NRI()</code>
+</h4>
+
+<p>Calculates Nearest Relative Index (NRI), equivalent to -1 times the standardized effect size of MPD.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_NRI(
+  null.model = "taxa.labels",
+  abundance.weighted = FALSE,
+  runs = 999,
+  ...
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>null.model</code></dt>
+<dd>
+<p>default "taxa.labels"; Null model to use; see <code>null.model</code> parameter in <code>ses.mpd</code> function of <code>picante</code> package for available options.</p>
+</dd>
+<dt><code>abundance.weighted</code></dt>
+<dd>
+<p>default FALSE; Should mean nearest relative distances for each species be weighted by species abundance?</p>
+</dd>
+<dt><code>runs</code></dt>
+<dd>
+<p>default 999; Number of randomizations.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p>paremeters pass to ses.mpd function in picante package.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>res_NRI in object, equivalent to -1 times ses.mpd.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\donttest{
+# only run 50 times for the example; default 999
+t1$cal_NRI(null.model = "taxa.labels", abundance.weighted = FALSE, runs = 50)
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_NTI"></a>
+
+
+
+<h4>Method <code>cal_NTI()</code>
+</h4>
+
+<p>Calculates Nearest Taxon Index (NTI), equivalent to -1 times the standardized effect size of MNTD.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_NTI(
+  null.model = "taxa.labels",
+  abundance.weighted = FALSE,
+  runs = 999,
+  ...
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>null.model</code></dt>
+<dd>
+<p>default "taxa.labels"; Null model to use; see <code>null.model</code> parameter in <code>ses.mntd</code> function of <code>picante</code> package for available options.</p>
+</dd>
+<dt><code>abundance.weighted</code></dt>
+<dd>
+<p>default FALSE; Should mean nearest taxon distances for each species be weighted by species abundance?</p>
+</dd>
+<dt><code>runs</code></dt>
+<dd>
+<p>default 999; Number of randomizations.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p>paremeters pass to <code>ses.mntd</code> function in <code>picante</code> package.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>res_NTI in object, equivalent to -1 times ses.mntd.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\donttest{
+# only run 50 times for the example; default 999
+t1$cal_NTI(null.model = "taxa.labels", abundance.weighted = TRUE, runs = 50)
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_Cscore"></a>
+
+
+
+<h4>Method <code>cal_Cscore()</code>
+</h4>
+
+<p>Calculates the (normalised) mean number of checkerboard combinations (C-score) using <code>C.score</code> function in <code>bipartite</code> package.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_Cscore(by_group = NULL, ...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>by_group</code></dt>
+<dd>
+<p>default NULL; one column name or number in sample_table; calculate C-score for different groups separately.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p>paremeters pass to <code>bipartite::C.score</code> function.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>vector.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\dontrun{
+t1$cal_Cscore(normalise = FALSE)
+t1$cal_Cscore(by_group = "Group", normalise = FALSE)
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_NST"></a>
+
+
+
+<h4>Method <code>cal_NST()</code>
+</h4>
+
+<p>Calculate normalized stochasticity ratio (NST) based on the <code>NST</code> package.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_NST(method = "tNST", group, ...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>method</code></dt>
+<dd>
+<p>default "tNST"; <code>'tNST'</code> or <code>'pNST'</code>. See the help document of <code>tNST</code> or <code>pNST</code> function in <code>NST</code> package for more details.</p>
+</dd>
+<dt><code>group</code></dt>
+<dd>
+<p>a colname of <code>sample_table</code> in microtable object; 
+the function can select the data from sample_table to generate a one-column (n x 1) matrix and 
+provide it to the group parameter of <code>tNST</code> or <code>pNST</code> function.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p>paremeters pass to <code>NST::tNST</code> or <code>NST::pNST</code> function; see the document of corresponding function for more details.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>res_NST stored in the object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\dontrun{
+t1$cal_NST(group = "Group", dist.method = "bray", output.rand = TRUE, SES = TRUE)
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_NST_test"></a>
+
+
+
+<h4>Method <code>cal_NST_test()</code>
+</h4>
+
+<p>Test the significance of NST difference between each pair of groups.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_NST_test(method = "nst.boot", ...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>method</code></dt>
+<dd>
+<p>default "nst.boot"; "nst.boot" or "nst.panova"; see <code>NST::nst.boot</code> function or <code>NST::nst.panova</code> function for the details.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p>paremeters pass to NST::nst.boot when method = "nst.boot" or NST::nst.panova when method = "nst.panova".</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>list. See the Return part of <code>NST::nst.boot</code> function or <code>NST::nst.panova</code> function in NST package.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\dontrun{
+t1$cal_NST_test()
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-cal_NST_convert"></a>
+
+
+
+<h4>Method <code>cal_NST_convert()</code>
+</h4>
+
+<p>Convert NST paired long format table to symmetric matrix form.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$cal_NST_convert(column = 10)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>column</code></dt>
+<dd>
+<p>default 10; which column is selected for the conversion. See the columns of <code>res_NST$index.pair</code> stored in the object.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>symmetric matrix.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>\dontrun{
+t1$cal_NST_convert(column = 10)
+}
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_nullmodel-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_nullmodel$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## ------------------------------------------------
+## Method `trans_nullmodel$new`
+## ------------------------------------------------
+
+data(dataset)
+data(env_data_16S)
+t1 &lt;- trans_nullmodel$new(dataset, filter_thres = 0.0005, add_data = env_data_16S)
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_mantel_corr`
+## ------------------------------------------------
+
+## Not run: 
+t1$cal_mantel_corr(use_env = "pH")
+
+## End(Not run)
+
+## ------------------------------------------------
+## Method `trans_nullmodel$plot_mantel_corr`
+## ------------------------------------------------
+
+## Not run: 
+t1$plot_mantel_corr()
+
+## End(Not run)
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_betampd`
+## ------------------------------------------------
+
+
+t1$cal_betampd(abundance.weighted = TRUE)
+
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_betamntd`
+## ------------------------------------------------
+
+
+t1$cal_betamntd(abundance.weighted = TRUE)
+
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_ses_betampd`
+## ------------------------------------------------
+
+## Not run: 
+# only run 50 times for the example; default 1000
+t1$cal_ses_betampd(runs = 50, abundance.weighted = TRUE)
+
+## End(Not run)
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_ses_betamntd`
+## ------------------------------------------------
+
+## Not run: 
+# only run 50 times for the example; default 1000
+t1$cal_ses_betamntd(runs = 50, abundance.weighted = TRUE, exclude.conspecifics = FALSE)
+
+## End(Not run)
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_rcbray`
+## ------------------------------------------------
+
+## Not run: 
+# only run 50 times for the example; default 1000
+t1$cal_rcbray(runs = 50)
+
+## End(Not run)
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_process`
+## ------------------------------------------------
+
+## Not run: 
+t1$cal_process(use_betamntd = TRUE)
+
+## End(Not run)
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_NRI`
+## ------------------------------------------------
+
+
+# only run 50 times for the example; default 999
+t1$cal_NRI(null.model = "taxa.labels", abundance.weighted = FALSE, runs = 50)
+
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_NTI`
+## ------------------------------------------------
+
+
+# only run 50 times for the example; default 999
+t1$cal_NTI(null.model = "taxa.labels", abundance.weighted = TRUE, runs = 50)
+
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_Cscore`
+## ------------------------------------------------
+
+## Not run: 
+t1$cal_Cscore(normalise = FALSE)
+t1$cal_Cscore(by_group = "Group", normalise = FALSE)
+
+## End(Not run)
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_NST`
+## ------------------------------------------------
+
+## Not run: 
+t1$cal_NST(group = "Group", dist.method = "bray", output.rand = TRUE, SES = TRUE)
+
+## End(Not run)
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_NST_test`
+## ------------------------------------------------
+
+## Not run: 
+t1$cal_NST_test()
+
+## End(Not run)
+
+## ------------------------------------------------
+## Method `trans_nullmodel$cal_NST_convert`
+## ------------------------------------------------
+
+## Not run: 
+t1$cal_NST_convert(column = 10)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

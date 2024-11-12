@@ -1,0 +1,181 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bg_mrgsim_d</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Run mrgsim in the background</h2>
+
+<h3>Description</h3>
+
+<p>This function uses <code>callr::r_bg()</code> to simulate a dataset in the background,
+optionally in parallel and optionally saving the results directly to
+disk in  <code>fst</code>, <code>arrow</code> or <code>rds</code> format. Parallelization can be mediated
+by the <code>parallel</code> package on unix or macos or <code>future</code> on any os.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bg_mrgsim_d(
+  mod,
+  data,
+  nchunk = 1,
+  ...,
+  .locker = NULL,
+  .tag = NULL,
+  .format = c("fst", "feather", "rds"),
+  .wait = TRUE,
+  .seed = FALSE,
+  .cores = 1,
+  .plan = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>mod</code></td>
+<td>
+<p>A model object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Data set to simulate; see <code>mrgsolve::data_set()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nchunk</code></td>
+<td>
+<p>Number of chunks in which to split the data set</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Arguments passed to <code>mrgsolve::mrgsim()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.locker</code></td>
+<td>
+<p>A directory for saving simulated data; use this to collect
+results from several different runs in a single folder.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.tag</code></td>
+<td>
+<p>A name to use for the current run; results are saved under
+<code>.tag</code> in <code>.path</code> folder.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.format</code></td>
+<td>
+<p>The output format for saving simulations; using format
+<code>fst</code> will allow saved results to be read with <code>fst::read_fst()</code>; using
+format <code>arrow</code> will allow saved results to be read with
+<code>arrow::open_dataset()</code> with <code>format = "feather"</code>; note that <code>fst</code> is
+installed with <code>mrgsim.parallel</code> but <code>arrow</code> may need explicit installation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.wait</code></td>
+<td>
+<p>If <code>FALSE</code>, the function returns immediately; if <code>TRUE</code>, then
+wait until the background job is finished.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.seed</code></td>
+<td>
+<p>A <code>numeric</code> value used to set the seed for the simulation;
+this is the only way to control the random number generation for your
+simulation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.cores</code></td>
+<td>
+<p>The number of cores to parallelize across; pass 1 to run the
+simulation sequentially.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.plan</code></td>
+<td>
+<p>The name of a <code>future::plan()</code> strategy; if passed, the
+parallelization will be handled by the <code>future</code> package.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>bg_mrgsim_d()</code> returns a processx::process object (follow that link to
+see a list of methods). You will have to call <code>process$get_result()</code> to
+retrieve the result. When an output <code>.locker</code> is not specified, simulated
+data are returned; when an output <code>.locker</code> is specified, the path to
+the <code>fst</code> file on disk is returned.  The <code>fst</code> files  should be read with
+<code>fst::read_fst()</code>. When the results are not saved to <code>.locker</code>, you will
+get a single data frame when <code>nchunk</code> is 1 or a list of data frames when
+<code>nchunk</code> is greater than 1. It is safest to call <code>dplyr::bind_rows()</code> or
+something equivalent on the result if you are expecting data frame.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An <code>r_process</code> object; see <code>callr::r_bg()</code>. Call <code>process$get_resuilt()</code> to
+get the actual result (see <code>details</code>). If a <code>.locker</code> path is supplied,
+the simulated data is saved to disk and a list of file names is returned.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>future_mrgsim_d()</code>, <code>internalize_fst()</code>, <code>list_fst()</code>,
+<code>head_fst()</code>, <code>setup_locker()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">mod &lt;- mrgsolve::house(delta = 24, end = 168)
+data &lt;- mrgsolve::expand.ev(
+  amt = c(100, 300, 450), 
+  ID = 1:100, 
+  ii = 24, 
+  addl = 6
+)
+data &lt;- dplyr::mutate(data, dose = amt)
+process &lt;- bg_mrgsim_d(
+  mod, 
+  data, 
+  carry_out = "dose", 
+  outvars = "CP",
+  .wait = TRUE
+) 
+process$get_result()
+ 
+ 
+ds &lt;- file.path(tempdir(), "sims")
+files &lt;- bg_mrgsim_d(
+  mod, data, carry_out = "dose", 
+  .wait = TRUE, 
+  .locker = ds,
+  .format = "fst"
+)
+files
+sims &lt;- internalize_fst(ds)
+head(sims)
+  
+
+</code></pre>
+
+
+</div>

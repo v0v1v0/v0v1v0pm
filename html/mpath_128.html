@@ -1,0 +1,441 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>zipath_fit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Internal function to fit zero-inflated count data linear model with lasso (or elastic net), snet or mnet regularization</h2>
+
+<h3>Description</h3>
+
+<p>Fit zero-inflated regression models for count data via penalized maximum likelihood.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">zipath_fit(X, Z, Y, weights, offsetx, offsetz, standardize=TRUE, 
+           intercept = TRUE, family = c("poisson", "negbin", "geometric"), 
+           link = c("logit", "probit", "cloglog", "cauchit", "log"), 
+           penalty = c("enet", "mnet",  "snet"), start = NULL, y = TRUE, 
+           x = FALSE, nlambda=100, lambda.count=NULL, lambda.zero=NULL, 
+           type.path=c("active", "nonactive"), penalty.factor.count=NULL, 
+           penalty.factor.zero=NULL, lambda.count.min.ratio=.0001, 
+           lambda.zero.min.ratio=.1, alpha.count=1, alpha.zero=alpha.count, 
+           gamma.count=3, gamma.zero=gamma.count, rescale=FALSE, 
+           init.theta=NULL, theta.fixed=FALSE, EM=TRUE, maxit.em=200, 
+           convtype=c("count", "both"), maxit= 1000, maxit.theta =10, 
+           reltol = 1e-5, thresh=1e-6, eps.bino=1e-5, shortlist=FALSE, 
+           trace=FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>predictor matrix of the count model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Z</code></td>
+<td>
+<p>predictor matrix of the zero model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+<p>response variable</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>optional numeric vector of weights.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offsetx</code></td>
+<td>
+<p>optional numeric vector with an a priori known component to be
+included in the linear predictor of the count model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offsetz</code></td>
+<td>
+<p>optional numeric vector with an a priori known component to be
+included in the linear predictor of the zero model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intercept</code></td>
+<td>
+<p>Should intercept(s) be fitted (default=TRUE) or set to
+zero (FALSE)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>standardize</code></td>
+<td>
+<p>Logical flag for x variable standardization, prior to
+fitting the model sequence. The coefficients are always returned on
+the original scale. 
+Default is <code>standardize=TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>character specification of count model family (a log link is 
+always used).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>link</code></td>
+<td>
+<p>character specification of link function in the binary
+zero-inflation model (a binomial family is always used).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y, x</code></td>
+<td>
+<p>logicals. If <code>TRUE</code> the corresponding response and model matrix are returned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>penalty</code></td>
+<td>
+<p>penalty considered as one of <code>enet, mnet, snet</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p>starting values for the parameters in the linear predictor.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nlambda</code></td>
+<td>
+<p>number of <code>lambda</code> value, default value is 100. The sequence may be truncated before <code>nlambda</code> is reached if a close to saturated model for the zero component is fitted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.count</code></td>
+<td>
+<p>A user supplied <code>lambda.count</code> sequence. Typical usage is to have the program compute its own <code>lambda.count</code> and <code>lambda.zero</code> sequence based on
+<code>nlambda</code> and <code>lambda.min.ratio</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.zero</code></td>
+<td>
+<p>A user supplied <code>lambda.zero</code> sequence.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type.path</code></td>
+<td>
+<p>solution path with default value <code>"active"</code>, which is less time computing than <code>"nonactive"</code>. If <code>type.path="nonactive"</code>, no active set for each element of the lambda sequence and cycle through all the predictor variables. 
+If <code>type.path="active"</code>, then cycle through only the active set, then cycle through all the variables for the same penalty parameter. See details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>penalty.factor.count, penalty.factor.zero</code></td>
+<td>
+<p>These are numeric vectors with the same length as predictor variables. that multiply <code>lambda.count, lambda.zero</code>, respectively, to allow differential shrinkage of coefficients. Can be 0 for some variables, which implies
+no shrinkage, and that variable is always included in the
+model. Default is same shrinkage for all variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.count.min.ratio, lambda.zero.min.ratio</code></td>
+<td>
+<p>Smallest value for <code>lambda.count</code> 
+and <code>lambda.zero</code>, respectively, as a fraction of
+<code>lambda.max</code>, the (data derived) entry value (i.e. the smallest
+value for which all coefficients are zero except the intercepts).
+Note, there is a closed formula for <code>lambda.max</code> for <code>penalty="enet"</code>. If <code>rescale=TRUE</code>, <code>lambda.max</code> is the same for <code>penalty="mnet" or "snet"</code>. Otherwise, some modifications are required. In the current implementation, for small <code>gamma</code> value, the square root of the computed <code>lambda.zero[1]</code> is used when <code>penalty="mnet" or "snet"</code>. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha.count</code></td>
+<td>
+<p>The elastic net mixing parameter for the count part of model. The default value 1 implies no L_2 penalty, as in LASSO.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha.zero</code></td>
+<td>
+<p>The elastic net mixing parameter for the zero part of model. The default value 1 implies no L_2 penalty, as in LASSO.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma.count</code></td>
+<td>
+<p>The tuning parameter of the <code>snet</code> or <code>mnet</code> penalty for the count part of model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma.zero</code></td>
+<td>
+<p>The tuning parameter of the <code>snet</code> or <code>mnet</code> penalty for the zero part of model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rescale</code></td>
+<td>
+<p>logical value, if TRUE, adaptive rescaling</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init.theta</code></td>
+<td>
+<p>The initial value of <code>theta</code> for <code>family="negbin"</code>. This is set to <code>NULL</code> since version 0.3-24.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>theta.fixed</code></td>
+<td>
+<p>Logical value only used for <code>family="negbin"</code>. If <code>TRUE</code> and <code>init.theta</code> is provided with a numeric value &gt; 0, then <code>init.theta</code> is not updated. 
+If <code>theta.fixed=FALSE</code>, then <code>init.theta</code> will be updated. In this case, if <code>init.theta=NULL</code>, its initial value is computed with intercept-only zero-inflated negbin model. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>EM</code></td>
+<td>
+<p>Using <code>EM</code> algorithm. Not implemented otherwise</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convtype</code></td>
+<td>
+<p>convergency type, default is for count component only for speedy computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit.em</code></td>
+<td>
+<p>Maximum number of EM algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit</code></td>
+<td>
+<p>Maximum number of coordinate descent algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit.theta</code></td>
+<td>
+<p>Maximum number of iterations for estimating <code>theta</code> scaling parameter if family="negbin". Default value <code>maxit.theta</code> may be increased, yet may slow the algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps.bino</code></td>
+<td>
+<p>a lower bound of probabilities to be claimed as zero, for computing weights and related values when <code>family="binomial"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reltol</code></td>
+<td>
+<p>Convergence criteria, default value 1e-5 may be reduced to make more accurate yet slow</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thresh</code></td>
+<td>
+<p>Convergence threshold for coordinate descent. Defaults value is <code>1e-6</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>shortlist</code></td>
+<td>
+<p>logical value, if TRUE, limited results return</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trace</code></td>
+<td>
+<p>If <code>TRUE</code>, progress of algorithm is reported</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Other arguments which can be passed to <code>glmreg</code> or <code>glmregNB</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The algorithm fits penalized zero-inflated count data regression models using the coordinate descent algorithm within the EM algorithm.
+The returned fitted model object is of class <code>"zipath"</code> and is similar
+to fitted <code>"glm"</code> and <code>"zeroinfl"</code> objects. For elements such as <code>"coefficients"</code> a list is returned with elements for the zero and count component,
+respectively. 
+</p>
+<p>If <code>type.path="active"</code>, the algorithm iterates for a pair (lambda_count, lambda_zero) in a loop:<br>
+Step 1: For initial coefficients start_count of the count model and start_zero of the zero model, the EM algorithm is iterated until convergence for the active set with non-zero coefficients determined from start_count and start_zero, respectively.<br>
+Step 2: EM is iterated for all the predict variables once.<br>
+Step 3: If active set obtained from Step 2 is the same as in Step 1, stop; otherwise, repeat Step 1 and Step 2.<br>
+If <code>type.path="nonactive"</code>, the EM algorithm iterates for a pair (lambda_count, lambda_zero) with all the predict variables until convergence. 
+</p>
+<p>A set of standard extractor functions for fitted model objects is available for
+objects of class <code>"zipath"</code>, including methods to the generic functions
+<code>print</code>, <code>coef</code>, 
+<code>logLik</code>, <code>residuals</code>, 
+<code>predict</code>. 
+See <code>predict.zipath</code> for more details on all methods.
+</p>
+<p>The program may terminate with the following message:
+</p>
+<p><code>Error in: while (j &lt;= maxit.em &amp;&amp; !converged)</code> <code>{ :</code><br><code> Missing value, where TRUE/FALSE is necessary</code><br><code>Calls: zipath</code><br><code>Additionally: Warning:</code><br><code>In glmreg_fit(Znew, probi, weights = weights, standardize = standardize,  :</code><br><code> saturated model, exiting ...</code><br><code>Execution halted</code><br></p>
+<p>One possible reason is that the fitted model is too complex for the data. There are two suggestions to overcome the error. One is to reduce the number of variables. Second, find out what lambda values caused the problem and omit them. Try with other lambda values instead.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>"zipath"</code>, i.e., a list with components including
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>coefficients</code></td>
+<td>
+<p>a list with elements <code>"count"</code> and <code>"zero"</code>
+containing the coefficients from the respective models,</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>residuals</code></td>
+<td>
+<p>a vector of raw residuals (observed - fitted),</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fitted.values</code></td>
+<td>
+<p>a vector of fitted means,</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>the case weights used,</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>terms</code></td>
+<td>
+<p>a list with elements <code>"count"</code>, <code>"zero"</code> and
+<code>"full"</code> containing the terms objects for the respective models,</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>theta</code></td>
+<td>
+<p>estimate of the additional <code class="reqn">\theta</code> parameter of the
+negative binomial model (if a negative binomial regression is used),</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loglik</code></td>
+<td>
+<p>log-likelihood of the fitted model,</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>character string describing the count distribution used,</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>link</code></td>
+<td>
+<p>character string describing the link of the zero-inflation model,</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>linkinv</code></td>
+<td>
+<p>the inverse link function corresponding to <code>link</code>,</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>converged</code></td>
+<td>
+<p>logical value, TRUE indicating successful convergence of <code>zipath</code>, FALSE indicating otherwise</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>the original function call</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>the original formula</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>levels</code></td>
+<td>
+<p>levels of the categorical regressors</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>the full model frame (if <code>model = TRUE</code>),</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>the response count vector (if <code>y = TRUE</code>),</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a list with elements <code>"count"</code> and <code>"zero"</code>
+containing the model matrices from the respective models
+(if <code>x = TRUE</code>),</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Zhu Wang &lt;zwang145@uthsc.edu&gt;</p>
+
+
+<h3>References</h3>
+
+     
+<p>Zhu Wang, Shuangge Ma, Michael Zappitelli, Chirag Parikh, Ching-Yun Wang and Prasad Devarajan (2014)      <em>Penalized Count Data Regression with Application to Hospital Stay after Pediatric Cardiac Surgery</em>, <em>Statistical Methods in Medical Research</em>. 2014 Apr 17. [Epub ahead of print]
+</p>
+<p>Zhu Wang, Shuangge Ma, Ching-Yun Wang, Michael Zappitelli, Prasad Devarajan and Chirag R. Parikh (2014)
+<em>EM for Regularized Zero Inflated Regression Models with Applications to Postoperative Morbidity after Cardiac Surgery in Children</em>, <em>Statistics in Medicine</em>. 33(29):5192-208.
+</p>
+<p>Zhu Wang, Shuangge Ma and Ching-Yun Wang (2015) <em>Variable selection for zero-inflated and overdispersed data with application to health care demand in Germany</em>, <em>Biometrical Journal</em>. 57(5):867-84.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>zipath</code>,
+<code>glmreg</code>, <code>glmregNB</code>
+</p>
+
+
+</div>

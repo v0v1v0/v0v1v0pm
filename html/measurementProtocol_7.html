@@ -1,0 +1,192 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mp_parse_json</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Parse out objects into the Measurement Protocol v2 format for sending</h2>
+
+<h3>Description</h3>
+
+<p>This function helps take HTTP events and rearranges its structure so it will work in a MP measurement protocol hit.  This enables HTTP events from say Pub/Sub to be translated into MP hits.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mp_parse_json(
+  json,
+  name_f,
+  params_f = NULL,
+  items_f = NULL,
+  client_id_f = NULL,
+  user_id_f = NULL,
+  user_properties_f = NULL
+)
+
+mp_parse_gtm(json)
+
+mp_pubsub(pubsub_body)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>json</code></td>
+<td>
+<p>The location of a json file or a json string or an R list that has been parsed from json via <code>jsonlite::fromJSON</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>name_f</code></td>
+<td>
+<p>The function that extracts the event name out of <code>json</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>params_f</code></td>
+<td>
+<p>An optional function that extracts parameters for the event from <code>json</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>items_f</code></td>
+<td>
+<p>An optional function that extracts e-commerce items from <code>json</code>. Must return a mp_event_item object.  you may not need this if the <code>params_f</code> includes parsing of e-commerce items</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>client_id_f</code></td>
+<td>
+<p>An optional function to extract the client.id.  You will need to supply cid though if using downstream in <code>mp_send</code> so it usually is necessary</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>user_id_f</code></td>
+<td>
+<p>Optionally include a function that will parse out user_id</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>user_properties_f</code></td>
+<td>
+<p>Optionally include a function that will parse out user properties</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pubsub_body</code></td>
+<td>
+<p>The req$postBody of a plumber request</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The passed in functions should return NULL if they don't find any entries
+</p>
+
+
+<h3>Value</h3>
+
+<p>An <code>mp_parse_json</code> object that is a list of an <code>mp_event</code> object, and <code>user</code> fields including client.id, user.id and user properties
+</p>
+<p>The Pub/Sub message "data" attribute unencoded into a json string
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+demo_json &lt;- system.file("example", "pubsub-ga4.json", package = "measurementProtocol")
+demo_list &lt;- jsonlite::fromJSON(demo_json)
+
+
+# extract the event_name
+name_f &lt;- function(x) x[["event_name"]]
+
+# extract client_id
+client_id_f &lt;- function(x) x[["client_id"]]
+
+# extract user_id
+user_id_f &lt;- function(x) x[["user_id"]]
+
+# simple event
+mp_parse_json(demo_list,
+              name_f,
+              client_id_f = client_id_f,
+              user_id_f = user_id_f)
+
+# params could be assumed to be everything not a event_name of client_id
+# also not allowed any starting with reserved 'ga_'
+params_f &lt;- function(x){
+  x_names &lt;- names(x)[grepl("^x-", names(x))]
+  ga_names &lt;- names(x)[grepl("^ga_", names(x))]
+  x[setdiff(names(x), c("client_id","user_id" ,"event_name", x_names, ga_names))]
+  }
+
+# parse including params (could include items as well)
+parsed_event &lt;- mp_parse_json(demo_list,
+                              name_f,
+                              params_f = params_f,
+                              client_id_f = client_id_f,
+                              user_id_f = user_id_f)
+parsed_event
+
+# sending to a debug endpoint
+# preferably set this in .Renviron
+Sys.setenv(MP_SECRET="MY_SECRET")
+
+# replace with your GA4 settings
+my_measurement_id &lt;- "G-1234"
+my_connection &lt;- mp_connection(my_measurement_id)
+mp_send(parsed_event$mp_event,
+        client_id = parsed_event$user$client_id,
+        user_id = parsed_event$user$user_id,
+        user_properties = parsed_event$user$user_properties,
+        connection = my_connection,
+        debug_call = TRUE)
+
+
+
+# mp_parse_gtm internally uses functions demonstrated with mp_parse_json
+pubsub_event &lt;- mp_parse_gtm(demo_json)
+
+mp_send(pubsub_event$mp_event,
+        client_id = pubsub_event$user$client_id,
+        user_id = pubsub_event$user$user_id,
+        user_properties = pubsub_event$user$user_properties,
+        connection = my_connection,
+        debug_call = TRUE)
+
+## Not run: 
+
+#* Send forward a measurement protocol hit
+#* @post /gtm
+#* @serializer unboxedJSON
+#* @parser json
+function(req, res, ga_id) {
+
+  pubsub_data &lt;- mp_pubsub_parse(req$postBody)
+
+  parsed &lt;- mp_parse_gtm(pubsub_data)
+
+  my_connection &lt;- mp_connection(ga_id)
+
+  mp_send(parsed$mp_event,
+          client_id = parsed$user$client_id,
+          user_id = parsed$user$user_id,
+          user_properties = parsed$user$user_properties,
+          connection = my_connection)
+
+  "OK"
+  }
+
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

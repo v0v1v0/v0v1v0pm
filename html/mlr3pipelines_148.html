@@ -1,0 +1,271 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>PipeOpImpute</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Imputation Base Class</h2>
+
+<h3>Description</h3>
+
+<p>Abstract base class for feature imputation.
+</p>
+
+
+<h3>Format</h3>
+
+<p>Abstract <code>R6Class</code> object inheriting from <code>PipeOp</code>.
+</p>
+
+
+<h3>Construction</h3>
+
+<div class="sourceCode"><pre>PipeOpImpute$$new(id, param_set = ps(), param_vals = list(), whole_task_dependent = FALSE, packages = character(0), task_type = "Task")
+</pre></div>
+
+<ul>
+<li> <p><code>id</code> :: <code>character(1)</code><br>
+Identifier of resulting object. See <code style="white-space: pre;">⁠$id⁠</code> slot of <code>PipeOp</code>.
+</p>
+</li>
+<li> <p><code>param_set</code> :: <code>ParamSet</code><br>
+Parameter space description. This should be created by the subclass and given to <code>super$initialize()</code>.
+</p>
+</li>
+<li> <p><code>param_vals</code> :: named <code>list</code><br>
+List of hyperparameter settings, overwriting the hyperparameter settings given in <code>param_set</code>. The
+subclass should have its own <code>param_vals</code> parameter and pass it on to <code>super$initialize()</code>. Default <code>list()</code>.
+</p>
+</li>
+<li> <p><code>whole_task_dependent</code> :: <code>logical(1)</code><br>
+Whether the <code>context_columns</code> parameter should be added which lets the user limit the columns that are
+used for imputation inference. This should generally be <code>FALSE</code> if imputation depends only on individual features
+(e.g. mode imputation), and <code>TRUE</code> if imputation depends on other features as well (e.g. kNN-imputation).
+</p>
+</li>
+<li>
+<p> packages :: <code>character</code><br>
+Set of all required packages for the <code>PipeOp</code>'s <code>private$.train</code> and <code>private$.predict</code> methods. See <code style="white-space: pre;">⁠$packages⁠</code> slot.
+Default is <code>character(0)</code>.
+</p>
+</li>
+<li> <p><code>task_type</code> :: <code>character(1)</code><br>
+The class of <code>Task</code> that should be accepted as input and will be returned as output. This
+should generally be a <code>character(1)</code> identifying a type of <code>Task</code>, e.g. <code>"Task"</code>, <code>"TaskClassif"</code> or
+<code>"TaskRegr"</code> (or another subclass introduced by other packages). Default is <code>"Task"</code>.
+</p>
+</li>
+<li> <p><code>feature_types</code> :: <code>character</code><br>
+Feature types affected by the <code>PipeOp</code>. See <code>private$.select_cols()</code> for more information.
+</p>
+</li>
+</ul>
+<h3>Input and Output Channels</h3>
+
+<p><code>PipeOpImpute</code> has one input channel named <code>"input"</code>, taking a <code>Task</code>, or a subclass of
+<code>Task</code> if the <code>task_type</code> construction argument is given as such; both during training and prediction.
+</p>
+<p><code>PipeOpImpute</code> has one output channel named <code>"output"</code>, producing a <code>Task</code>, or a subclass;
+the <code>Task</code> type is the same as for input; both during training and prediction.
+</p>
+<p>The output <code>Task</code> is the modified input <code>Task</code> with features imputed according to the <code>private$.impute()</code> function.
+</p>
+
+
+<h3>State</h3>
+
+<p>The <code style="white-space: pre;">⁠$state⁠</code> is a named <code>list</code>; besides members added by inheriting classes, the members are:
+</p>
+
+<ul>
+<li> <p><code>affected_cols</code> :: <code>character</code><br>
+Names of features being selected by the <code>affect_columns</code> parameter.
+</p>
+</li>
+<li> <p><code>context_cols</code> :: <code>character</code><br>
+Names of features being selected by the <code>context_columns</code> parameter.
+</p>
+</li>
+<li> <p><code>intasklayout</code> :: <code>data.table</code><br>
+Copy of the training <code>Task</code>'s <code style="white-space: pre;">⁠$feature_types⁠</code> slot. This is used during prediction to ensure that
+the prediction <code>Task</code> has the same features, feature layout, and feature types as during training.
+</p>
+</li>
+<li> <p><code>outtasklayout</code> :: <code>data.table</code><br>
+Copy of the trained <code>Task</code>'s <code style="white-space: pre;">⁠$feature_types⁠</code> slot. This is used during prediction to ensure that
+the <code>Task</code> resulting from the prediction operation has the same features, feature layout, and feature types as after training.
+</p>
+</li>
+<li> <p><code>model</code> :: named <code>list</code><br>
+Model used for imputation. This is a list named by <code>Task</code> features, containing the result of the <code>private$.train_imputer()</code> or
+<code>private$.train_nullmodel()</code> function for each one.
+</p>
+</li>
+<li> <p><code>imputed_train</code> :: <code>character</code><br>
+Names of features that were imputed during training. This is used to ensure that factor levels that were added during training are also added during prediction.
+Note that features that are imputed during prediction but not during training will still have inconsistent factor levels.
+</p>
+</li>
+</ul>
+<h3>Parameters</h3>
+
+
+<ul>
+<li> <p><code>affect_columns</code> :: <code>function</code> | <code>Selector</code> | <code>NULL</code> <br>
+What columns the <code>PipeOpImpute</code> should operate on.
+The parameter must be a <code>Selector</code> function, which takes a <code>Task</code> as argument and returns a <code>character</code>
+of features to use.<br>
+See <code>Selector</code> for example functions. Defaults to <code>NULL</code>, which selects all features.
+</p>
+</li>
+<li> <p><code>context_columns</code> :: <code>function</code> | <code>Selector</code> | <code>NULL</code> <br>
+What columns the <code>PipeOpImpute</code> imputation may depend on. This parameter is only present if the constructor is called with
+the <code>whole_task_dependent</code> argument set to <code>TRUE</code>.<br>
+The parameter must be a <code>Selector</code> function, which takes a <code>Task</code> as argument and returns a <code>character</code>
+of features to use.<br>
+See <code>Selector</code> for example functions. Defaults to <code>NULL</code>, which selects all features.
+</p>
+</li>
+</ul>
+<h3>Internals</h3>
+
+<p><code>PipeOpImpute</code> is an abstract class inheriting from <code>PipeOp</code> that makes implementing imputer <code>PipeOp</code>s simple.
+</p>
+
+
+<h3>Fields</h3>
+
+<p>Fields inherited from <code>PipeOp</code>.
+</p>
+
+
+<h3>Methods</h3>
+
+<p>Methods inherited from <code>PipeOp</code>, as well as:
+</p>
+
+<ul>
+<li> <p><code>.select_cols(task)</code> <br>
+(<code>Task</code>) -&gt; <code>character</code> <br>
+Selects which columns the <code>PipeOp</code> operates on. In contrast to
+the <code>affect_columns</code> parameter. <code>private$.select_cols()</code> is for the <em>inheriting class</em> to determine which columns
+the operator should function on, e.g. based on feature type, while <code>affect_columns</code> is a way for the <em>user</em>
+to limit the columns that a <code>PipeOpTaskPreproc</code> should operate on.
+This method can optionally be overloaded when inheriting <code>PipeOpImpute</code>;
+If this method is not overloaded, it defaults to selecting the columns of type indicated by the <code>feature_types</code> construction argument.
+</p>
+</li>
+<li> <p><code>.train_imputer(feature, type, context)</code><br>
+(<code>atomic</code>, <code>character(1)</code>, <code>data.table</code>) -&gt; <code>any</code><br>
+Abstract function that must be overloaded when inheriting.
+Called once for each feature selected by <code>affect_columns</code> to create the model entry to be used for <code>private$.impute()</code>. This function
+is only called for features with at least one non-missing value.
+</p>
+</li>
+<li> <p><code>.train_nullmodel(feature, type, context)</code><br>
+(<code>atomic</code>, <code>character(1)</code>, <code>data.table</code>) -&gt; <code>any</code><br>
+Like <code>.train_imputer()</code>, but only called for each feature that only contains missing values. This is not an abstract function
+and, if not overloaded, gives a default response of <code>0</code> (<code>integer</code>, <code>numeric</code>), <code>c(TRUE, FALSE)</code> (<code>logical</code>), all available levels (<code>factor</code>/<code>ordered</code>),
+or the empty  string (<code>character</code>).
+</p>
+</li>
+<li> <p><code>.impute(feature, type, model, context)</code><br>
+(<code>atomic</code>, <code>character(1)</code>, <code>any</code>, <code>data.table</code>) -&gt; <code>atomic</code><br>
+Imputes the features. <code>model</code> is the model created by <code>private$.train_imputer()</code> Default behaviour is to assume <code>model</code> is an atomic vector
+from which values are sampled to impute missing values of <code>feature</code>. <code>model</code> may have an attribute <code>probabilities</code> for non-uniform sampling.
+</p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+<p>https://mlr-org.com/pipeops.html
+</p>
+<p>Other PipeOps: 
+<code>PipeOp</code>,
+<code>PipeOpEnsemble</code>,
+<code>PipeOpTargetTrafo</code>,
+<code>PipeOpTaskPreproc</code>,
+<code>PipeOpTaskPreprocSimple</code>,
+<code>mlr_pipeops</code>,
+<code>mlr_pipeops_adas</code>,
+<code>mlr_pipeops_blsmote</code>,
+<code>mlr_pipeops_boxcox</code>,
+<code>mlr_pipeops_branch</code>,
+<code>mlr_pipeops_chunk</code>,
+<code>mlr_pipeops_classbalancing</code>,
+<code>mlr_pipeops_classifavg</code>,
+<code>mlr_pipeops_classweights</code>,
+<code>mlr_pipeops_colapply</code>,
+<code>mlr_pipeops_collapsefactors</code>,
+<code>mlr_pipeops_colroles</code>,
+<code>mlr_pipeops_copy</code>,
+<code>mlr_pipeops_datefeatures</code>,
+<code>mlr_pipeops_encode</code>,
+<code>mlr_pipeops_encodeimpact</code>,
+<code>mlr_pipeops_encodelmer</code>,
+<code>mlr_pipeops_featureunion</code>,
+<code>mlr_pipeops_filter</code>,
+<code>mlr_pipeops_fixfactors</code>,
+<code>mlr_pipeops_histbin</code>,
+<code>mlr_pipeops_ica</code>,
+<code>mlr_pipeops_imputeconstant</code>,
+<code>mlr_pipeops_imputehist</code>,
+<code>mlr_pipeops_imputelearner</code>,
+<code>mlr_pipeops_imputemean</code>,
+<code>mlr_pipeops_imputemedian</code>,
+<code>mlr_pipeops_imputemode</code>,
+<code>mlr_pipeops_imputeoor</code>,
+<code>mlr_pipeops_imputesample</code>,
+<code>mlr_pipeops_kernelpca</code>,
+<code>mlr_pipeops_learner</code>,
+<code>mlr_pipeops_missind</code>,
+<code>mlr_pipeops_modelmatrix</code>,
+<code>mlr_pipeops_multiplicityexply</code>,
+<code>mlr_pipeops_multiplicityimply</code>,
+<code>mlr_pipeops_mutate</code>,
+<code>mlr_pipeops_nmf</code>,
+<code>mlr_pipeops_nop</code>,
+<code>mlr_pipeops_ovrsplit</code>,
+<code>mlr_pipeops_ovrunite</code>,
+<code>mlr_pipeops_pca</code>,
+<code>mlr_pipeops_proxy</code>,
+<code>mlr_pipeops_quantilebin</code>,
+<code>mlr_pipeops_randomprojection</code>,
+<code>mlr_pipeops_randomresponse</code>,
+<code>mlr_pipeops_regravg</code>,
+<code>mlr_pipeops_removeconstants</code>,
+<code>mlr_pipeops_renamecolumns</code>,
+<code>mlr_pipeops_replicate</code>,
+<code>mlr_pipeops_rowapply</code>,
+<code>mlr_pipeops_scale</code>,
+<code>mlr_pipeops_scalemaxabs</code>,
+<code>mlr_pipeops_scalerange</code>,
+<code>mlr_pipeops_select</code>,
+<code>mlr_pipeops_smote</code>,
+<code>mlr_pipeops_smotenc</code>,
+<code>mlr_pipeops_spatialsign</code>,
+<code>mlr_pipeops_subsample</code>,
+<code>mlr_pipeops_targetinvert</code>,
+<code>mlr_pipeops_targetmutate</code>,
+<code>mlr_pipeops_targettrafoscalerange</code>,
+<code>mlr_pipeops_textvectorizer</code>,
+<code>mlr_pipeops_threshold</code>,
+<code>mlr_pipeops_tunethreshold</code>,
+<code>mlr_pipeops_unbranch</code>,
+<code>mlr_pipeops_updatetarget</code>,
+<code>mlr_pipeops_vtreat</code>,
+<code>mlr_pipeops_yeojohnson</code>
+</p>
+<p>Other Imputation PipeOps: 
+<code>mlr_pipeops_imputeconstant</code>,
+<code>mlr_pipeops_imputehist</code>,
+<code>mlr_pipeops_imputelearner</code>,
+<code>mlr_pipeops_imputemean</code>,
+<code>mlr_pipeops_imputemedian</code>,
+<code>mlr_pipeops_imputemode</code>,
+<code>mlr_pipeops_imputeoor</code>,
+<code>mlr_pipeops_imputesample</code>
+</p>
+
+
+</div>

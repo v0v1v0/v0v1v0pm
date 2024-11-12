@@ -1,0 +1,152 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>identify_gaps</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Identify gaps in mpathsenser mobile sensing data</h2>
+
+<h3>Description</h3>
+
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt="[Stable]"></a>
+</p>
+<p>Oftentimes in mobile sensing, gaps appear in the data as a result of the participant
+accidentally closing the app or the operating system killing the app to save power. This can
+lead to issues later on during data analysis when it becomes unclear whether there are no
+measurements because no events occurred or because the app quit in that period. For example, if
+no screen on/off event occur in a 6-hour period, it can either mean the participant did not
+turn on their phone in that period or that the app simply quit and potential events were
+missed. In the latter case, the 6-hour missing period has to be compensated by either removing
+this interval altogether or by subtracting the gap from the interval itself (see examples).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">identify_gaps(
+  db,
+  participant_id = NULL,
+  min_gap = 60,
+  sensor = "Accelerometer"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>db</code></td>
+<td>
+<p>A database connection to an m-Path Sense database.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>participant_id</code></td>
+<td>
+<p>A character string identifying a single participant. Use
+<code>get_participants</code> to retrieve all participants from the database.
+Leave empty to get data for all participants.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min_gap</code></td>
+<td>
+<p>The minimum time (in seconds) passed between two subsequent measurements for it to
+be considered a gap.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sensor</code></td>
+<td>
+<p>One or multiple sensors. See sensors for a list of available
+sensors.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>While any sensor can be used for identifying gaps, it is best to choose a sensor with a
+very high, near-continuous sample rate such as the accelerometer or gyroscope. This function
+then creates time between two subsequent measurements and returns the period in which this time
+was larger than <code>min_gap</code>.
+</p>
+<p>Note that the <code>from</code> and <code>to</code> columns in the output are character vectors in UTC
+time.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A tibble containing the time period of the gaps. The structure of this tibble is as
+follows:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;"> participant_id </td>
+<td style="text-align: left;"> the <code>participant_id</code> of where the gap occurred </td>
+</tr>
+<tr>
+<td style="text-align: left;"> from
+</td>
+<td style="text-align: left;"> the time of the last measurement before the gap </td>
+</tr>
+<tr>
+<td style="text-align: left;"> to             </td>
+<td style="text-align: left;"> the time of the
+first measurement after the gap </td>
+</tr>
+<tr>
+<td style="text-align: left;"> gap            </td>
+<td style="text-align: left;"> the time passed between from and to, in
+seconds </td>
+</tr>
+</table>
+<h3>Warning</h3>
+
+<p>Depending on the sensor that is used to identify the gaps (though this is
+typically the highest frequency sensor, such as the accelerometer or gyroscope), there may be a
+small delay between the start of the gap and the <em>actual</em> start of the gap. For example, if the
+accelerometer samples every 5 seconds, it may be after 4.99 seconds after the last
+accelerometer measurement (so just before the next measurement), the app was killed. However,
+within that time other measurements may still have taken place, thereby technically occurring
+"within" the gap. This is especially important if you want to use these gaps in
+<code>add_gaps</code> since this issue may lead to erroneous results.
+</p>
+<p>An easy way to solve this problem is by taking into account all the sensors of interest when
+identifying the gaps, thereby ensuring there are no measurements of these sensors within the
+gap. One way to account for this is to (as in this example) search for gaps 5 seconds longer
+than you want and then afterwards increasing the start time of the gaps by 5 seconds.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Find the gaps for a participant and convert to datetime
+gaps &lt;- identify_gaps(db, "12345", min_gap = 60) |&gt;
+  mutate(across(c(to, from), ymd_hms)) |&gt;
+  mutate(across(c(to, from), with_tz, "Europe/Brussels"))
+
+# Get some sensor data and calculate a statistic, e.g. the time spent walking
+# You can also do this with larger intervals, e.g. the time spent walking per hour
+walking_time &lt;- get_data(db, "Activity", "12345") |&gt;
+  collect() |&gt;
+  mutate(datetime = ymd_hms(paste(date, time))) |&gt;
+  mutate(datetime = with_tz(datetime, "Europe/Brussels")) |&gt;
+  arrange(datetime) |&gt;
+  mutate(prev_time = lag(datetime)) |&gt;
+  mutate(duration = datetime - prev_time) |&gt;
+  filter(type == "WALKING")
+
+# Find out if a gap occurs in the time intervals
+walking_time |&gt;
+  rowwise() |&gt;
+  mutate(gap = any(gaps$from &gt;= prev_time &amp; gaps$to &lt;= datetime))
+
+## End(Not run)
+</code></pre>
+
+
+</div>

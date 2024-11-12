@@ -1,0 +1,238 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>forest_parametrization</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Landscape forest parametrization</h2>
+
+<h3>Description</h3>
+
+<p>Utility functions to define forest inputs in a landscape:
+</p>
+
+<ul>
+<li>
+<p><code>impute_forests()</code> performs imputation of forest objects from a forest inventory using a forest map to match forest types and topography as covariates. 
+</p>
+</li>
+<li>
+<p><code>modify_forest_structure()</code> uses forest structure rasters supplied by the user to correct forest structure metrics.
+</p>
+</li>
+<li>
+<p><code>check_forests()</code> checks that forests are defined and do not contain missing values in key tree/shrub attributes.
+</p>
+</li>
+</ul>
+<h3>Usage</h3>
+
+<pre><code class="language-R">impute_forests(
+  x,
+  sf_fi,
+  dem,
+  forest_map,
+  var_class = NA,
+  max_distance_km = 100,
+  replace_existing = FALSE,
+  missing_class_imputation = FALSE,
+  missing_class_forest = NULL,
+  merge_trees = TRUE,
+  merge_shrubs = TRUE,
+  progress = TRUE
+)
+
+modify_forest_structure(
+  x,
+  structure_map,
+  variable,
+  map_var = NA,
+  ratio_limits = NULL,
+  minDBH = 7.5,
+  progress = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>An object of class <code>sf</code>. If it contains a column named 'land_cover_type', imputation
+will be performed for locations whose land cover is "wildland". Otherwise, forest imputation is done for all locations.
+For structural corrections or when checking, <code>x</code> should already contain a column named 'forest' containing  <code>forest</code> objects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sf_fi</code></td>
+<td>
+<p>An object of class <code>sf</code> with forest inventory data column 'forest'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dem</code></td>
+<td>
+<p>A digital elevation model (class <code>SpatRaster</code>) with meters as units</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>forest_map</code></td>
+<td>
+<p>An object of class <code>SpatRaster</code> or <code>SpatVector</code> with the forest class map</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var_class</code></td>
+<td>
+<p>Variable name or index containing forest classes in <code>forest_map</code>. If missing the first column is taken.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_distance_km</code></td>
+<td>
+<p>Maximum distance, in km, for forest inventory plot imputation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>replace_existing</code></td>
+<td>
+<p>A logical flag to force the replacement of existing <code>forest</code> objects, when present.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>missing_class_imputation</code></td>
+<td>
+<p>A logical flag to force imputation in locations where forest class is not defined. If <code>missing_class_imputation = TRUE</code>, imputation in those locations will be based on geographic and topographic criteria only.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>missing_class_forest</code></td>
+<td>
+<p>A <code>forest</code> object to be used for locations with missing class.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>merge_trees</code></td>
+<td>
+<p>A logical flag to simplify tree cohorts by merging tree records in DBH classes (see <code>forest_mergeTrees</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>merge_shrubs</code></td>
+<td>
+<p>A logical flag to simplify shrub cohorts by merging shrub records in height classes (see <code>forest_mergeShrubs</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>A logical flag to print console output.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>structure_map</code></td>
+<td>
+<p>An object of class <code>SpatRaster</code> or <code>SpatVector</code> with a forest structural variable map</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>variable</code></td>
+<td>
+<p>Structural variable to correct. See options in details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>map_var</code></td>
+<td>
+<p>Variable name or index containing structural variable in 'structure_map'. If missing the first column is taken.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ratio_limits</code></td>
+<td>
+<p>Limits for ratio of variable in corrections, used to avoid outliers.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>minDBH</code></td>
+<td>
+<p>Minimum diameter for stand metric calculation. If <code>minDBH &gt; 0</code> then those stands with smaller trees will not be corrected
+because of the missing stand metric. A special case occurs for correction following basal area (see details).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Function <code>impute_forests()</code> performs imputation of forest inventory plots on target locations provided that
+they correspond to the same forest class, defined in the input forest map, and are geographically closer than a distance threshold (<code>max_distance_km</code>).
+Among the multiple stands that can have fulfill these two requirements, the function chooses the one that has the most similar elevation
+and position in the N-to-S slopes (i.e. the product of the cosine of aspect and slope). Both topographic
+features are standardized to zero mean and unit standard deviation (using the supplied digital elevation model to calculate those metrics), to make their
+weight on the imputation equal. This imputation method will be more or less successful depending on the resolution of forest classes and
+the number of forest inventory plots available for each of them. Additionally, tree and shrub cohorts can be simplified after imputation (<code>merge_trees</code> and <code>merge_shrubs</code>),
+to reduce the number of records (and hence, speed-up simulations).
+</p>
+<p>Function <code>modify_forest_structure()</code> can be used to modify specific structure variables of the imputed forests
+building on rasters supplied by the user (typically from aerial or satellite LiDAR products). For any given metric,
+the function will calculate the ratio of the structure metric between the target <code>forest</code> object (see <code>stand_basalArea</code>)
+and the input map in the target location. Options for structural variables are the following:
+</p>
+
+<ul>
+<li>
+<p><code>mean_tree_height</code>: Should contain values in cm. Corrects tree heights and diameters (assuming a constant diameter-height relationship).
+</p>
+</li>
+<li>
+<p><code>dominant_tree_height</code>: Should contain values in cm. Corrects tree heights and diameters (assuming a constant diameter-height relationship).
+</p>
+</li>
+<li>
+<p><code>tree_density</code>: Should contain values in individuals per hectare. Corrects tree density.
+</p>
+</li>
+<li>
+<p><code>basal_area</code>: Should contain values in squared meters per hectare (m2/ha). Corrects tree density. Forests that
+</p>
+</li>
+<li>
+<p><code>mean_shrub_height</code>: Should contain values in cm. Corrects shrub cover.
+</p>
+</li>
+</ul>
+<p>Locations where the metric value in the map is missing are left unmodified. The same happens if metric value is zero, to avoid division by zero. A special case occurs
+for correction of basal area. In that case, if there are no trees larger than <code>minDBH</code> but structural map indicates positive values of basal area,
+DBH values will be set to minDBH, and correction of basal area will be performed.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Functions <code>impute_forests()</code> and <code>modify_forest_structure()</code> return a modified object of class <code>sf</code>.
+Function <code>check_forests()</code> returns an invisible data frame with columns indicating missing forest data and missing values in tree or shrub parameters.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Miquel De Cáceres Ainsa, CREAF
+</p>
+<p>Rodrigo Balaguer-Romano, CREAF
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>add_topography()</code>, <code>add_forests()</code>, <code>add_soilgrids()</code>, <code>forest_mergeTrees</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># See package vignettes 'Preparing inputs'
+</code></pre>
+
+
+</div>

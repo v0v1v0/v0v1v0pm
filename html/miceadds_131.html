@@ -1,0 +1,218 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mice.impute.smcfcs</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Substantive Model Compatible Multiple Imputation (Single Level)
+</h2>
+
+<h3>Description</h3>
+
+<p>Computes substantive model compatible multiple imputation (Bartlett et al., 2015;
+Bartlett &amp; Morris, 2015). Several regression functions are allowed (see <code>dep_type</code>).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mice.impute.smcfcs(y, ry, x, wy=NULL, sm, dep_type="norm", sm_type="norm",
+       fac_sd_proposal=1, mh_iter=20, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+
+<p>Incomplete data vector of length <code>n</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ry</code></td>
+<td>
+
+<p>Vector of missing data pattern (<code>FALSE</code> – missing,
+<code>TRUE</code> – observed)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+
+<p>Matrix (<code>n</code> x <code>p</code>) of complete covariates.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wy</code></td>
+<td>
+<p>Logical vector indicating positions where imputations
+should be conducted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sm</code></td>
+<td>
+<p>Formula for substantive model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dep_type</code></td>
+<td>
+<p>Distribution type for variable which is imputed.
+Possible choices are <code>"norm"</code> (normal distribution),
+<code>"lognorm"</code> (lognormal distribution),
+<code>"yj"</code> (Yeo-Johnson distribution,
+see <code>mdmb::yjt_regression</code>), <code>"bc"</code>
+(Box-Cox distribution, see
+<code>mdmb::bct_regression</code>), <code>"logistic"</code>
+(logistic distribution).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sm_type</code></td>
+<td>
+<p>Distribution type for dependent variable in substantive model.
+One of the distribution mentioned in <code>dep_type</code> can be chosen.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fac_sd_proposal</code></td>
+<td>
+<p>Starting value for factor of standard deviation in
+Metropolis-Hastings sampling.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mh_iter</code></td>
+<td>
+<p>Number iterations in Metropolis-Hasting sampling</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments to be passed</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Imputed values are drawn based on a Metropolis-Hastings sampling algorithm
+in which the standard deviation of the proposal distribution is adaptively tuned.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A vector of length <code>nmis=sum(!ry)</code> with imputed values.
+</p>
+
+
+<h3>References</h3>
+
+<p>Bartlett, J. W., &amp; Morris, T. P. (2015). Multiple imputation of covariates by
+substantive-model compatible fully conditional specification.
+<em>Stata Journal, 15</em>(2), 437-456.
+</p>
+<p>Bartlett, J. W., Seaman, S. R., White, I. R., Carpenter, J. R., &amp; Alzheimer's Disease
+Neuroimaging Initiative (2015). Multiple imputation of covariates by fully
+conditional specification: Accommodating the substantive model.
+<em>Statistical Methods in Medical Research, 24</em>(4), 462-487.
+<a href="https://doi.org/10.1177/0962280214521348">doi:10.1177/0962280214521348</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See the <span class="pkg">smcfcs</span> package for an alternative implementation of substantive model
+multiple imputation in a fully conditional specification approach.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+#############################################################################
+# EXAMPLE 1: Substantive model with interaction effects
+#############################################################################
+
+library(mice)
+library(mdmb)
+
+#--- simulate data
+set.seed(98)
+N &lt;- 1000
+x &lt;- stats::rnorm(N)
+z &lt;- 0.5*x + stats::rnorm(N, sd=.7)
+y &lt;- stats::rnorm(N, mean=.3*x - .2*z + .7*x*z, sd=1 )
+dat &lt;- data.frame(x,z,y)
+dat[ seq(1,N,3), c("x","y") ] &lt;- NA
+
+
+#--- define imputation methods
+imp &lt;- mice::mice(dat, maxit=0)
+method &lt;- imp$method
+method["x"] &lt;- "smcfcs"
+
+# define substantive model
+sm &lt;- y ~ x*z
+# define formulas for imputation models
+formulas &lt;- as.list( rep("",ncol(dat)))
+names(formulas) &lt;- colnames(dat)
+formulas[["x"]] &lt;- x ~ z
+formulas[["y"]] &lt;- sm
+formulas[["z"]] &lt;- z ~ 1
+
+#- Yeo-Johnson distribution for x
+dep_type &lt;- list()
+dep_type$x &lt;- "yj"
+
+#-- do imputation
+imp &lt;- mice::mice(dat, method=method, sm=sm, formulas=formulas, m=1, maxit=10,
+                   dep_type=dep_type)
+summary(imp)
+
+#############################################################################
+# EXAMPLE 2: Substantive model with quadratic effects
+#############################################################################
+
+#** simulate data with missings
+set.seed(50)
+n &lt;- 1000
+x &lt;- stats::rnorm(n)
+z &lt;- stats::rnorm(n)
+y &lt;- 0.5 * z + x + x^2 + stats::rnorm(n)
+mm &lt;- stats::runif(n)
+x[sample(1:n, size=370, prob=mm)] &lt;- NA
+z[sample(1:n, size=480, prob=mm)] &lt;- NA
+y[sample(1:n, size=500, prob=mm)] &lt;- NA
+
+df &lt;- data.frame(x=x,y=y,z=z)
+
+#** imputation
+imp &lt;- mice::mice(df, method="smcfcs", sm=y ~ z + x + I(x^2), m=6, maxit=10)
+summary(imp)
+
+#** analysis
+summary(mice::pool(with(imp, stats::lm(y ~ z + x + I(x^2)))))
+
+#** imputation using the smcfcs package
+df$x_sq &lt;- df$x^2
+nonmice &lt;- smcfcs::smcfcs(df, smtype="lm", smformula=y ~ z + x + x_sq,
+             method=c("norm", "", "norm", "x^2"))
+mice::pool(lapply(nonmice$impDatasets, function(x) stats::lm(y ~ z + x + x_sq, data=x)))
+
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,151 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ml.loglik.fn</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Likelihood Functions for mixmeta Models </h2>
+
+<h3>Description</h3>
+
+<p>These functions compute the value of the log-likelihood and the related vectors of first partial derivatives for random-effects meta-analytical models, in terms of model parameters. They are meant to be used internally and not directly run by the users.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">
+ml.loglik.fn(par, Xlist, Zlist, ylist, Slist, nalist, rep, k, q, nall, const,
+  bscov, fix)
+ml.loglik.gr(par, Xlist, Zlist, ylist, Slist, nalist, rep, k, q, nall, const,
+  bscov, fix)
+
+reml.loglik.fn(par, Xlist, Zlist, ylist, Slist, nalist, rep, k, q, nall, const,
+  bscov, fix)
+reml.loglik.gr(par, Xlist, Zlist, ylist, Slist, nalist, rep, k, q, nall, const,
+  bscov, fix)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<p>Assuming a meta-analysis or meta-regression based on <code class="reqn">n</code> units aggregated within <code class="reqn">m</code> (outer-level) groups, <code class="reqn">k</code> outcomes, <code class="reqn">p</code> fixed-effects predictors, and <code class="reqn">q</code> random-effects predictors:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>par </code></td>
+<td>
+<p> a vector representing the random-effects parameters defining the random-effects (co)variance matrix (or multiple matrices for multilevel models).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Xlist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of group-specific design matrices for the fixed-effects part of the model. Rows corresponding to missing outcomes have been excluded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Zlist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of group-specific design matrices for the random-effects part of the model. Each element of this list represents a list of matrices correponding to the (optionally multiple) grouping levels of random effects. In each matrix, rows corresponding to missing outcomes have been excluded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ylist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of group-specific vectors of estimated outcomes. Entries corresponding to missing outcomes have been excluded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Slist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of within-group (co)variance matrices of estimated outcomes. Rows and columns corresponding to missing outcomes have been excluded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nalist </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional list of group-specific logical vectors, identifying missing outcomes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rep </code></td>
+<td>
+<p> matrix with <code class="reqn">m</code> rows where each column identifies the number of repetitions (number of groups) for each grouping level. The first column (outer level) is by definition a vector of 1's.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k, q, nall </code></td>
+<td>
+<p> number of outcomes, number of random-effects predictors (including the intercept), total number of observations (excluding missing), respectively. While usually all are scalars, in the case of multilevel models <code>q</code> can be a numeric vector representing the number of predictors for each level.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>const </code></td>
+<td>
+<p> value of the constant to be included in the (restricted) likelihood, therefore not computed in the <code>iterative algorithms</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bscov </code></td>
+<td>
+<p> a character vector defining the structure of the (co)variance matrix for each level or random effects. See <code>mixmeta</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fix </code></td>
+<td>
+<p> a matrix (or optionally a list of matrices for multilevel models) defining the fixed components of the random-effects part of the model. See <code>mixmeta.control</code> for details.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>These functions are called internally by fitting functions, in particular <code>ml.newton</code> and <code>reml.newton</code>, to compute the (restricted) log-likelihood and its first partial derivatives in terms of random-effects parameters for meta-analytical models.
+</p>
+<p>These functions actually specify the <em>profiled</em> version of the (restricted) likelihood, expressed only in terms of random-effects parameters, while the estimate of the fixed-effects coefficients is computed at each iteration using a generalized least squares estimator, based on the current value of the between-study (co)variance matrix. At convergence, the value of this profiled version is identical to the full (restricted) likelihood. This approach is computationally efficient, as it reduces the number of parameters in the optimization routine, especially for meta-regression models.
+</p>
+<p>The random-effects parameters in <code>par</code> depends on the chosen <code>structure(s)</code> for the random-effects (co)variance matrix (or multiple matrices for multilevel models). The parameterization ensures positive-definiteness. A Cholesky decomposition is then performed on the marginal (co)variance matrix in order to re-express the problem as standard least square equations, an approach which speeds up the computation of matrix inverses and determinants. These equations are finally solved through a QR decomposition, which guarantees stability. More details are provided in the references below.
+</p>
+<p>Some parameters of the fitting procedures are determined through <code>mixmeta.control</code>. Specifically, the user can obtain the Hessian matrix of the estimated parameters (appropriately transformed, see <code>mixmetaCovStruct</code>) in the optimization function by setting <code>hessian=TRUE</code>, and specific settings of the optimization process can be defined by the control list argument <code>optim</code>. These values are passed to the optimization function <code>optim</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>ml.loglik.fn</code> and <code>reml.loglik.fn</code> return the value of the (restricted) log-likelihood for a given set of parameters in <code>par</code>. <code>ml.loglik.gr</code> and <code>reml.loglik.gr</code> return instead the related vector of first partial derivatives.
+</p>
+
+
+<h3>Note</h3>
+
+<p>As stated earlier, these functions are called internally by <code>mixmeta.ml</code> and <code>mixmeta.reml</code>, and are not meant to be used directly. In particular, their code does not contain any check on the arguments provided, which are expected in specific formats. They are however exported in the namespace and documented for completeness.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Antonio Gasparrini &lt;<a href="mailto:antonio.gasparrini@lshtm.ac.uk">antonio.gasparrini@lshtm.ac.uk</a>&gt; and Francesco Sera &lt;<a href="mailto:francesco.sera@lshtm.ac.uk">francesco.sera@lshtm.ac.uk</a>&gt;</p>
+
+
+<h3>References</h3>
+
+<p>Sera F, Armstrong B, Blangiardo M, Gasparrini A (2019). An extended mixed-effects framework for meta-analysis.<em>Statistics in Medicine</em>. 2019;38(29):5429-5444. [Freely available <a href="http://www.ag-myresearch.com/2019_sera_statmed.html"><b>here</b></a>].
+</p>
+<p>Lindstrom MJ and Bates DM (1988). Newton-Raphson and EM algorithms for linear mixed-effects models for repeated-measures data. <em>Journal of the American Statistical Association</em>. <b>83</b>(404):1014–1022.
+</p>
+<p>Harville DA (1977) Maximum likelihood approaches to variance component estimation and to related problems. <em>Journal of
+the American Statistical Association</em>. <b>72</b>(358):320–338.
+</p>
+<p>Pinheiro JC and Bates DM (2000). <em>Mixed-Effects Models in S and S-PLUS</em>. New York, Springer Verlag.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See <code>mixmeta.fit</code> and <code>mixmeta.ml</code> for additional info on the fitting procedures. See <code>mixmeta.control</code> to determine specific parameters of the fitting procedures. See <code>mixmetaCovStruct</code> for (co)variance structures. See <code>chol</code> and <code>qr</code> for info on the Cholesky and QR decomposition.
+See <code>mixmeta-package</code> for an overview of the package and modelling framework.
+</p>
+
+
+</div>

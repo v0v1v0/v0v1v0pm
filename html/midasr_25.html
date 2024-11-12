@@ -1,0 +1,212 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>forecast.midas_r</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Forecast MIDAS regression</h2>
+
+<h3>Description</h3>
+
+<p>Forecasts MIDAS regression given the future values of regressors. For dynamic models (with lagged response variable) there is an option to calculate dynamic forecast, when forecasted values of response variable are substituted into the lags of response variable.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'midas_r'
+forecast(
+  object,
+  newdata = NULL,
+  se = FALSE,
+  level = c(80, 95),
+  fan = FALSE,
+  npaths = 999,
+  method = c("static", "dynamic"),
+  insample = get_estimation_sample(object),
+  show_progress = TRUE,
+  add_ts_info = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>midas_r object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>a named list containing future values of mixed frequency regressors. The default is <code>NULL</code>, meaning that only in-sample data is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>se</code></td>
+<td>
+<p>logical, if <code>TRUE</code>, the prediction intervals are calculated</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>level</code></td>
+<td>
+<p>confidence level for prediction intervals</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fan</code></td>
+<td>
+<p>if TRUE, level is set to seq(50,99,by=1). This is suitable for fan plots</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>npaths</code></td>
+<td>
+<p>the number of samples for simulating prediction intervals</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>the forecasting method, either <code>"static"</code> or <code>"dynamic"</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>insample</code></td>
+<td>
+<p>a list containing the historic mixed frequency data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>show_progress</code></td>
+<td>
+<p>logical, if <code>TRUE</code>, the progress bar is shown if <code>se = TRUE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>add_ts_info</code></td>
+<td>
+<p>logical, if <code>TRUE</code>, the forecast is cast as <code>ts</code> object. Some attempts are made to guess the correct start, by assuming that the response variable is a <code>ts</code> object of <code>frequency</code> 1. If <code>FALSE</code>, then the result is simply a numeric vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments to <code>simulate.midas_r</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Given future values of regressors this function combines the historical values used in the fitting the MIDAS regression model and calculates the forecasts.
+</p>
+
+
+<h3>Value</h3>
+
+<p>an object of class <code>"forecast"</code>, a list containing following elements:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>the name of forecasting method: MIDAS regression, static or dynamic</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>original object of class <code>midas_r</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mean</code></td>
+<td>
+<p>point forecasts</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower</code></td>
+<td>
+<p>lower limits for prediction intervals</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper</code></td>
+<td>
+<p>upper limits for prediction intervals</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fitted</code></td>
+<td>
+<p>fitted values, one-step forecasts</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>residuals</code></td>
+<td>
+<p>residuals from the fitted model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>the original response variable</p>
+</td>
+</tr>
+</table>
+<p>The methods <code>print</code>, <code>summary</code> and <code>plot</code> from package <code>forecast</code> can be used on the object.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Vaidotas Zemlys
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data("USrealgdp")
+data("USunempr")
+
+y &lt;- diff(log(USrealgdp))
+x &lt;- window(diff(USunempr), start = 1949)
+trend &lt;- 1:length(y)
+
+##24 high frequency lags of x included
+mr &lt;- midas_r(y ~ trend + fmls(x, 23, 12, nealmon), start = list(x = rep(0, 3)))
+
+##Forecast horizon
+h &lt;- 3
+##Declining unemployment
+xn &lt;- rep(-0.1, 12*h)
+##New trend values
+trendn &lt;- length(y) + 1:h
+
+##Static forecasts combining historic and new high frequency data
+forecast(mr, list(trend = trendn, x = xn), method = "static")
+
+##Dynamic AR* model
+mr.dyn &lt;- midas_r(y ~ trend + mls(y, 1:2, 1, "*")
+                   + fmls(x, 11, 12, nealmon),
+                  start = list(x = rep(0, 3)))
+
+forecast(mr.dyn, list(trend = trendn, x = xn), method = "dynamic")
+
+##Use print, summary and plot methods from package forecast
+
+fmr &lt;- forecast(mr, list(trend = trendn, x = xn), method = "static")
+fmr
+summary(fmr)
+plot(fmr)
+</code></pre>
+
+
+</div>

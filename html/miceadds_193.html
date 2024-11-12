@@ -1,0 +1,194 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>datlist_create</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Creates Objects of Class <code>datlist</code> or <code>nested.datlist</code>
+</h2>
+
+<h3>Description</h3>
+
+<p>Creates objects of class <code>datlist</code> or <code>nested.datlist</code>.
+</p>
+<p>The functions <code>nested.datlist2datlist</code> and
+<code>datlist2nested.datlist</code> provide list conversions for imputed
+datasets.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">datlist_create(datasets)
+
+nested.datlist_create(datasets)
+
+## S3 method for class 'datlist'
+print(x, ...)
+
+## S3 method for class 'nested.datlist'
+print(x, ...)
+
+nested.datlist2datlist(datlist)
+
+datlist2nested.datlist(datlist, Nimp)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>datasets</code></td>
+<td>
+
+<p>For <code>datlist_create</code>: List of datasets, objects of class
+<code>imputationList</code>, <code>mids</code>, <code>mids.1chain</code>,
+</p>
+<p>For <code>nested.datlist_create</code>: nested list of datasets,
+<code>NestedImputationList</code>, <code>mids.nmi</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Object of classes <code>datlist</code> or
+<code>nested.datlist</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>datlist</code></td>
+<td>
+<p>Object of classes <code>datlist</code>, <code>imputationList</code>,
+<code>nested.datlist</code> or <code>NestedImputationList</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Nimp</code></td>
+<td>
+<p>Vector of length 2 containing numbers of between
+and within imputations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments to be passed</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Object of class <code>datlist</code> or <code>nested.datlist</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+## The function datlist_create is currently defined as
+function (datasets)
+{
+    class(datasets) &lt;- "datlist"
+    return(datasets)
+  }
+
+#############################################################################
+# EXAMPLE 1: Create object of class datlist
+#############################################################################
+
+library(BIFIEsurvey)
+data(data.timss2, package="BIFIEsurvey" )
+datlist &lt;- data.timss2
+
+# class datlist
+obj1 &lt;- miceadds::datlist_create(data.timss2)
+
+#############################################################################
+# EXAMPLE 2: Multiply imputed datasets: Different object classes
+#############################################################################
+
+library(mice)
+data(nhanes2, package="mice")
+set.seed(990)
+
+# nhanes2 data imputation
+imp1 &lt;- miceadds::mice.1chain( nhanes2, burnin=5, iter=25, Nimp=5 )
+# object of class datlist
+imp2 &lt;- miceadds::mids2datlist(imp1)
+# alternatively, one can use datlist_create
+imp2b &lt;- miceadds::datlist_create(imp1)
+# object of class imputationList
+imp3 &lt;- mitools::imputationList(imp2)
+# retransform object in class datlist
+imp2c &lt;- miceadds::datlist_create(imp3)
+str(imp2c)
+
+#############################################################################
+# EXAMPLE 3: Nested multiply imputed datasets
+#############################################################################
+
+library(BIFIEsurvey)
+data(data.timss2, package="BIFIEsurvey" )
+datlist &lt;- data.timss2
+   # list of 5 datasets containing 5 plausible values
+
+#** define imputation method and predictor matrix
+data &lt;- datlist[[1]]
+V &lt;- ncol(data)
+# variables
+vars &lt;- colnames(data)
+# variables not used for imputation
+vars_unused &lt;- miceadds::scan.vec("IDSTUD TOTWGT  JKZONE  JKREP" )
+
+#- define imputation method
+impMethod &lt;- rep("norm", V )
+names(impMethod) &lt;- vars
+impMethod[ vars_unused ] &lt;- ""
+
+#- define predictor matrix
+predM &lt;- matrix( 1, V, V )
+colnames(predM) &lt;- rownames(predM) &lt;- vars
+diag(predM) &lt;- 0
+predM[, vars_unused ] &lt;- 0
+
+# object of class nmi
+imp1 &lt;- miceadds::mice.nmi( datlist, method=impMethod, predictorMatrix=predM,
+                m=4, maxit=3 )
+# object of class nested.datlist
+imp2 &lt;- miceadds::mids2datlist(imp1)
+# object of class NestedImputationList
+imp3 &lt;- miceadds::NestedImputationList(imp2)
+# redefine class nested.datlist
+imp4 &lt;- miceadds::nested.datlist_create(imp3)
+
+#############################################################################
+# EXAMPLE 4: Conversions between nested lists of datasets and lists of datasets
+#############################################################################
+
+library(BIFIEsurvey)
+data(data.timss4, package="BIFIEsurvey" )
+datlist &lt;- data.timss4
+
+# object of class nested.datlist
+datlist1a &lt;- miceadds::nested.datlist_create(datlist)
+# object of class NestedImputationList
+datlist1b &lt;- miceadds::NestedImputationList(datlist)
+
+# conversion to datlist
+datlist2a &lt;- miceadds::nested.datlist2datlist(datlist1a)  # class datlist
+datlist2b &lt;- miceadds::nested.datlist2datlist(datlist1b)  # class imputationList
+
+# convert into a nested list with 2 between nests and 10 within nests
+datlist3a &lt;- miceadds::datlist2nested.datlist(datlist2a, Nimp=c(2,10) )
+datlist3b &lt;- miceadds::datlist2nested.datlist(datlist2b, Nimp=c(4,5) )
+
+## End(Not run)
+</code></pre>
+
+
+</div>

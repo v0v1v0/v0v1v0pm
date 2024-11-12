@@ -1,0 +1,143 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>PredictFastClass</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Prediction of the category to which a mass spectrum belongs using linear regressions of mass spectra.</h2>
+
+<h3>Description</h3>
+
+<p>For each mass peak in a list of mass peaks, a linear regression is performed between the mass spectrum and mass spectra corresponding to a category. This is performed for each category and associated to an Akaike Information Criterium.  Next, the AIC are used to determine the belonging of a mass spectrum to a category. It also provides a probability that the mass spectrum does not belong to any of the input categories.  
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">PredictFastClass(peaks, 
+                 mod_peaks,
+                 Y_mod_peaks,
+                 moz="ALL",
+                 tolerance = 6,
+                 toleranceStep = 2,
+                 normalizeFun = TRUE,
+                 noMatch = 0)  
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>peaks</code></td>
+<td>
+<p>a list of <code>MassPeaks</code> objects (see <code>MALDIquant</code> R package).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mod_peaks</code></td>
+<td>
+<p>an intensity matrix corresponding to mass spectra for which the category is known. Each column is a mass-over-charge value, each row corresponds to a mass spectrum.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Y_mod_peaks</code></td>
+<td>
+<p>a <code>factor</code> with a length equal to the number of mass spectra in <code>mod_peaks</code> and containing the categories of each mass spectrum in <code>mod_peaks</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>moz</code></td>
+<td>
+<p>a <code>vector</code> with the set of shortlisted mass-over-charge values that corresponds to mass-over-charge values in the columns of <code>mod_peaks</code>. By default, all the mass-over-charge values in <code>mod_peaks</code> are used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tolerance</code></td>
+<td>
+<p>a <code>numeric</code> value of accepted tolerance to match peaks to the set of shortlisted mass-over-charge values. It is fixed to 6 Da by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>toleranceStep</code></td>
+<td>
+<p>a <code>numeric</code> value added to the <code>tolerance</code> parameter to match peaks to the set of shortlisted mass-over-charge values. It is fixed to 2 Da by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>normalizeFun</code></td>
+<td>
+<p>a <code>logical</code> value, if <code>TRUE</code> (default) the maximum intensity will be equal to 1, the other intensities will be expressed in ratio to this maximum.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>noMatch</code></td>
+<td>
+<p>a <code>numeric</code> value used to replace intensity values if there is no match detected between peaks and the set of shortlisted mass-over-charge values <code>moz</code>. It is fixed to 0 by default.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Returns a <code>dataframe</code> containing AIC criteria by category for each mass spectrum in <code>peaks</code>. The AIC criterion should be minimal for the most probable category. The <code>pred_cat</code> column is the predicted category for each mass spectrum in <code>peaks</code>. The <code>p_not_in_DB</code> is the minimal p-value of several Fisher tests testing if all the linear coefficients associated to mass spectra of a category are null. It can be interpreted as a p-value that the mass spectrum is not present in the input database.</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+library("MSclassifR")
+library("MALDIquant")
+
+# load mass spectra and their metadata
+data("CitrobacterRKIspectra","CitrobacterRKImetadata", package = "MSclassifR")
+# standard pre-processing of mass spectra
+spectra &lt;- SignalProcessing(CitrobacterRKIspectra)
+# detection of peaks in pre-processed mass spectra
+peaks &lt;- peaks &lt;- MSclassifR::PeakDetection(x = spectra, averageMassSpec=FALSE)
+# matrix with intensities of peaks arranged in rows (each column is a mass-over-charge value)
+IntMat &lt;- MALDIquant::intensityMatrix(peaks)
+rownames(IntMat) &lt;- paste(CitrobacterRKImetadata$Strain_name_spot)
+# remove missing values in the matrix
+IntMat[is.na(IntMat)] &lt;- 0
+# normalize peaks according to the maximum intensity value for each mass spectrum
+IntMat &lt;- apply(IntMat,1,function(x) x/(max(x)))
+# transpose the matrix for statistical analysis
+X &lt;- t(IntMat)
+# define the known categories of mass spectra for the classification
+Y &lt;- factor(CitrobacterRKImetadata$Species)
+
+#Predict species without peak selection using a tolerance of 1 Da
+res = PredictFastClass(peaks=peaks[1:5],
+                       mod_peaks=X,
+                       Y_mod_peaks=Y,
+                       tolerance = 1)
+
+#comparing predicted categories (species) and the truth
+cbind(res$pred_cat,as.character(Y[1:5]))
+
+# The method can be applied after a peak selection step
+a &lt;- SelectionVar(X,
+                  Y,
+                  MethodSelection = c("RFERF"),
+                  MethodValidation = c("cv"),
+                  PreProcessing = c("center","scale","nzv","corr"),
+                  NumberCV = 2,
+                  Metric = "Kappa",
+                  Sizes = c(20:40),
+                  Sampling = "up")
+
+#Predict species from selected peaks using a tolerance of 1 Da
+res = PredictFastClass(peaks=peaks[1:5],
+                       moz = a$sel_moz,
+                       mod_peaks=X,
+                       Y_mod_peaks=Y, tolerance = 1)
+
+#comparing predicted categories (species) and the truth
+cbind(res$pred_cat,as.character(Y[1:5]))
+
+
+</code></pre>
+
+
+</div>

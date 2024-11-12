@@ -1,0 +1,214 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>rcalc</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate the Variance-Covariance of Dependent Correlation Coefficients</h2>
+
+<h3>Description</h3>
+
+<p>Function to calculate the variance-covariance matrix of correlation coefficients computed based on the same sample of subjects. <script id="MathJax-script" async src="../../mathjaxr/doc/mathjax/es5/tex-chtml-full.js"></script></p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">rcalc(x, ni, data, rtoz=FALSE, nfun="min", sparse=FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a formula of the form <code>ri ~ var1 + var2 | study</code>. Can also be a correlation matrix or list thereof. See ‘Details’.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ni</code></td>
+<td>
+<p>vector to specify the sample sizes based on which the correlations were computed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>data frame containing the variables specified via the formula (and the sample sizes).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rtoz</code></td>
+<td>
+<p>logical to specify whether to transform the correlations via Fisher's r-to-z transformation (the default is <code>FALSE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nfun</code></td>
+<td>
+<p>a character string to specify how the ‘common’ sample size within each study should be computed. Possible options are <code>"min"</code> (for the minimum), <code>"harmonic"</code> (for the harmonic mean), or <code>"mean"</code> (for the arithmetic mean). Can also be a function. See ‘Details’.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sparse</code></td>
+<td>
+<p>logical to specify whether the variance-covariance matrix should be returned as a sparse matrix (the default is <code>FALSE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>A meta-analysis of correlation coefficients may involve multiple correlation coefficients extracted from the same study. When these correlations are computed based on the same sample of subjects, then they are typically not independent. The <code>rcalc</code> function can be used to create a dataset with the correlation coefficients (possibly transformed with Fisher's r-to-z transformation) and the corresponding variance-covariance matrix. The dataset and variance-covariance matrix can then be further meta-analyzed using the <code>rma.mv</code> function.
+</p>
+<p>When computing the covariance between two correlation coefficients, we can distinguish two cases:
+</p>
+
+<ol>
+<li>
+<p> In the first case, one of the variables involved in the two correlation coefficients is the same. For example, in \(r_{12}\) and \(r_{13}\), variable 1 is common to both correlation coefficients. This is sometimes called the (partially) ‘overlapping’ case. The covariance between the two correlation coefficients, \(\mbox{Cov}[r_{12}, r_{13}]\), then depends on the degree of correlation between variables 2 and 3 (i.e., \(r_{23}\)).
+</p>
+</li>
+<li>
+<p> In the second case, none of the variables are common to both correlation coefficients. For example, this would be the case if we have correlations \(r_{12}\) and \(r_{34}\) based on 4 variables. This is sometimes called the ‘non-overlapping’ case. The covariance between the two correlation coefficients, \(\mbox{Cov}[r_{12}, r_{34}]\), then depends on \(r_{13}\), \(r_{14}\), \(r_{23}\), and \(r_{24}\).
+</p>
+</li>
+</ol>
+<p>Equations to compute these covariances can be found, for example, in Steiger (1980) and Olkin and Finn (1990).
+</p>
+<p>To use the <code>rcalc</code> function, one needs to construct a data frame that contains a study identifier (say <code>study</code>), two variable identifiers (say <code>var1</code> and <code>var2</code>), the corresponding correlation coefficients (say <code>ri</code>), and the sample sizes based on which the correlation coefficients were computed (say <code>ni</code>). Then the first argument should be a formula of the form <code>ri ~ var1 + var2 | study</code>, argument <code>ni</code> is set equal to the variable name containing the sample sizes, and the data frame containing these variables is specified via the <code>data</code> argument. When using the function for a single study, one can leave out the study identifier from the formula.
+</p>
+<p>When argument <code>rtoz</code> is set to <code>TRUE</code>, then the correlations are transformed with Fisher's r-to-z transformation (Fisher, 1921) and the variance-covariance matrix is computed for the transformed values.
+</p>
+<p>In some cases, the sample size may not be identical within a study (e.g., \(r_{12}\) may have been computed based on 120 subjects while \(r_{13}\) was computed based on 118 subjects due to 2 missing values in variable 3). For constructing the variance-covariance matrix, we need to assume a ‘common’ sample size for all correlation coefficients within the study. Argument <code>nfun</code> provides some options for how the common sample size should be computed. Possible options are <code>"min"</code> (for using the minimum sample size within a study as the common sample size), <code>"harmonic"</code> (for using the harmonic mean), or <code>"mean"</code> (for using the arithmetic mean). The default is <code>"min"</code>, which is a conservative choice (i.e., it will overestimate the sampling variances of coefficients that were computed based on a sample size that was actually larger than the minimum sample size). One can also specify a function via the <code>nfun</code> argument (which should take a numeric vector as input and return a single value).
+</p>
+<p>Instead of specifying a formula, one can also pass a correlation matrix to the function via argument <code>x</code>. Argument <code>ni</code> then specifies the (common) sample size based on which the elements in the correlation matrix were computed. One can also pass a list of correlation matrices via argument <code>x</code>, in which case argument <code>ni</code> should be a vector of sample sizes of the same length as <code>x</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>dat</code></td>
+<td>
+<p>a data frame with the study identifier, the two variable identifiers, a variable pair identifier, the correlation coefficients (possibly transformed with Fisher's r-to-z transformation), and the (common) sample sizes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>V</code></td>
+<td>
+<p>corresponding variance-covariance matrix (given as a sparse matrix when <code>sparse=TRUE</code>).</p>
+</td>
+</tr>
+</table>
+<p>Note that a particular covariance can only be computed when all of the correlation coefficients involved in the covariance equation are included in the dataset. If one or more coefficients needed for the computation are missing, then the resulting covariance will also be missing (i.e., <code>NA</code>).
+</p>
+
+
+<h3>Note</h3>
+
+<p>For raw correlation coefficients, the variance-covariance matrix is computed with \(n-1\) in the denominator (instead of \(n\) as suggested in Steiger, 1980, and Olkin &amp; Finn, 1990). This is more consistent with the usual equation for computing the sampling variance of a correlation coefficient (which also typically uses \(n-1\) in the denominator).
+</p>
+<p>For raw and r-to-z transformed coefficients, the variance-covariance matrix will only be computed when the (common) sample size for a study is at least 5.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Wolfgang Viechtbauer <a href="mailto:wvb@metafor-project.org">wvb@metafor-project.org</a> <a href="https://www.metafor-project.org">https://www.metafor-project.org</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Fisher, R. A. (1921). On the “probable error” of a coefficient of correlation deduced from a small sample. <em>Metron</em>, <b>1</b>, 1–32. <code style="white-space: pre;">⁠http://hdl.handle.net/2440/15169⁠</code>
+</p>
+<p>Olkin, I., &amp; Finn, J. D. (1990). Testing correlated correlations. <em>Psychological Bulletin</em>, <b>108</b>(2), 330–333. <code style="white-space: pre;">⁠https://doi.org/10.1037/0033-2909.108.2.330⁠</code>
+</p>
+<p>Steiger, J. H. (1980). Tests for comparing elements of a correlation matrix. <em>Psychological Bulletin</em>, <b>87</b>(2), 245–251. <code style="white-space: pre;">⁠https://doi.org/10.1037/0033-2909.87.2.245⁠</code>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>rma.mv</code> for a model fitting function that can be used to meta-analyze dependent correlation coefficients.
+</p>
+<p><code>dat.craft2003</code> for an illustrative example.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">############################################################################
+
+### copy data into 'dat' and examine the first 12 rows
+dat &lt;- dat.craft2003
+head(dat, 12)
+
+### construct dataset and var-cov matrix of the correlations
+tmp &lt;- rcalc(ri ~ var1 + var2 | study, ni=ni, data=dat)
+V &lt;- tmp$V
+dat &lt;- tmp$dat
+
+### examine data and var-cov matrix for study 1
+dat[dat$study == 1,]
+blsplit(V, dat$study, round, 4)$`1`
+
+### examine data and var-cov matrix for study 6
+dat[dat$study == 6,]
+blsplit(V, dat$study, round, 4)$`6`
+
+### examine data and var-cov matrix for study 17
+dat[dat$study == 17,]
+blsplit(V, dat$study, round, 4)$`17`
+
+############################################################################
+
+### copy data into 'dat' and examine the first 12 rows
+dat &lt;- dat.craft2003
+head(dat, 12)
+
+### restructure data from study 1 into a correlation matrix
+R1 &lt;- diag(4)
+R1[lower.tri(R1)] &lt;- dat$ri[dat$study == 1]
+R1[upper.tri(R1)] &lt;- t(R1)[upper.tri(R1)]
+rownames(R1) &lt;- colnames(R1) &lt;- c("perf", "acog", "asom", "conf")
+R1
+
+### restructure data from study 3 into a correlation matrix
+R3 &lt;- diag(4)
+R3[lower.tri(R3)] &lt;- dat$ri[dat$study == 3]
+R3[upper.tri(R3)] &lt;- t(R3)[upper.tri(R3)]
+rownames(R3) &lt;- colnames(R3) &lt;- c("perf", "acog", "asom", "conf")
+R3
+
+### an example where a correlation matrix is passed to rcalc()
+rcalc(R1, ni=142)
+
+### an example where a list of correlation matrices is passed to rcalc()
+tmp &lt;- rcalc(list("1"=R1,"3"=R3), ni=c(142,37))
+V &lt;- tmp$V
+dat &lt;- tmp$dat
+
+### examine data and var-cov matrix for study 1
+dat[dat$id == 1,]
+blsplit(V, dat$id, round, 4)$`1`
+
+### examine data and var-cov matrix for study 3
+dat[dat$id == 3,]
+blsplit(V, dat$id, round, 4)$`3`
+
+############################################################################
+</code></pre>
+
+
+</div>

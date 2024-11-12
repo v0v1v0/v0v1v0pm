@@ -1,0 +1,250 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>feature.selection</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Feature Selection</h2>
+
+<h3>Description</h3>
+
+<p>Functions to create functions that perform feature selection (or at
+least feature reduction)  using statistics that access class labels.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">keepAll(data, group)
+fsTtest(fdr, ming=500)
+fsModifiedFisher(q)
+fsPearson(q = NULL, rho)
+fsSpearman(q = NULL, rho)
+fsMedSplitOddsRatio(q = NULL, OR)
+fsChisquared(q = NULL, cutoff)
+fsEntropy(q = 0.9, kind=c("information.gain", "gain.ratio", "symmetric.uncertainty"))
+fsFisherRandomForest(q)
+fsTailRank(specificity=0.9, tolerance=0.5, confidence=0.5)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>A matrix containng the data; columns are samples and rows are features.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>group</code></td>
+<td>
+
+<p>A factor with two levels defining the sample classes.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fdr</code></td>
+<td>
+
+<p>A real number between 0 and 1 specifying the target false discovery rate (FDR).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ming</code></td>
+<td>
+
+<p>An integer specifing the minimum number of features to return;
+overrides the FDR.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>q</code></td>
+<td>
+
+<p>A real number between 0.5 and 1 specifiying the fraction of features to discard.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho</code></td>
+<td>
+
+<p>A real number between 0 and 1 specifying the absolute value of the
+correlation coefficient used to filter features.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>OR</code></td>
+<td>
+
+<p>A real number specifying the desired odds ratio for filtering features.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cutoff</code></td>
+<td>
+
+<p>A real number specifiyng the targeted cutoff rate when using the
+statistic to filter features.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kind</code></td>
+<td>
+
+<p>The kind of information metric to use for filtering features.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>specificity</code></td>
+<td>
+
+<p>See <code>TailRankTest</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tolerance</code></td>
+<td>
+
+<p>See <code>TailRankTest</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>confidence</code></td>
+<td>
+
+<p>See <code>TailRankTest</code>.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Following the usual conventions introduced from the world of
+gene expression microarrays, a typical data matrix is constructed from
+columns representing samples on which we want to make predictions
+amd rows representing the features used to construct the predictive
+model. In this context, we define a <em>feature selector</em> or
+<em>pruner</em> to be a function that accepts a data matrix and a
+two-level factor as its only arguments and returns a logical 
+vector, whose length equals the number of rows in the matrix, where
+'TRUE' indicates features that should be retrained. Most pruning
+functions belong to parametrized families.  We implement this idea
+using a set of function-generating functions, whose arguments are the
+parameters that pick out the desired member of the family.  The return
+value is an instantiation of a particular filtering function.  The
+decison to define things this way is to be able to apply the methods
+in cross-validaiton (or other) loops where we want to ensure that we
+use the same feature selection rule each time.
+</p>
+<p>We have implemented the following algorithms:
+</p>
+
+<ul>
+<li> <p><code>keepAll</code>: retain all features; do nothing.
+</p>
+</li>
+<li> <p><code>fsTtest</code>: Keep features based on the false discovery rate
+from a two-goup t-test, but always retain a specified minimum number
+of genes.
+</p>
+</li>
+<li> <p><code>fsModifiedFisher</code> Retain the top quantile of features
+for the statistic </p>
+<p style="text-align: center;"><code class="reqn">\frac{(m_A - m)^2 + (m_B - m)^2}{v_A + v_B}</code>
+</p>
+
+<p>where m is the mean and v is the variance.
+</p>
+</li>
+<li> <p><code>fsPearson</code>: Retain the top quantile of features based on
+the absolute value of the Pearson correlation with the binary outcome.
+</p>
+</li>
+<li> <p><code>fsSpearman</code>: Retain the top quantile of features based on
+the absolute value of the Spearman correlation with the binary outcome.
+</p>
+</li>
+<li> <p><code>fsMedSplitOddsRatio</code>: Retain the top quantile of
+features based on the odds ratio to predict the binary outcome,
+after first dichotomizing the continuous predictor using a split at
+the median value. 
+</p>
+</li>
+<li> <p><code>fsChisquared</code>: retain the top quantile of features based
+on a chi-squared test comparing the binary outcome to continous
+predictors discretized into ten bins.
+</p>
+</li>
+<li> <p><code>fsEntropy</code>: retain the top quantile of features based on
+one of three information-theoretic measures of entropy. 
+</p>
+</li>
+<li> <p><code>fsFisherRandomForest</code>: retain the top features based on
+their importance in a random forest analysis, after first filtering
+using the modified Fisher statistic. 
+</p>
+</li>
+<li> <p><code>fsTailRank</code>: Retain features that are significant based
+on the TailRank test, which is a measure of whether the tails of the
+distributions are different.
+</p>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>The <code>keepAll</code> function is a "pruner"; it takes the data matrix and
+grouping factor as arguments, and returns a logical vector indicating
+which features to retain.
+</p>
+<p>Each of the other nine functions described here return uses its
+arguments to contruct and return a pruning function,
+<code>f</code>, that has the same interface as <code>keepAll</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes &lt;krc@silicovore.com&gt;
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See <code>Modeler-class</code> and <code>Modeler</code> for details
+about how to train and test models.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(246391)
+data &lt;- matrix(rnorm(1000*36), nrow=1000, ncol=36)
+data[1:50, 1:18] &lt;- data[1:50, 1:18] + 1
+status &lt;- factor(rep(c("A", "B"), each=18))
+
+fsel &lt;- fsPearson(q = 0.9)
+summary(fsel(data, status))
+fsel &lt;- fsPearson(rho=0.3)
+summary(fsel(data, status))
+
+fsel &lt;- fsEntropy(kind="gain.ratio")
+summary(fsel(data, status))
+
+</code></pre>
+
+
+</div>

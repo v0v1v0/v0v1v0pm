@@ -1,0 +1,620 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>spwb_land</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Watershed simulations</h2>
+
+<h3>Description</h3>
+
+<p>Functions to perform simulations on a watershed described by a set of connected grid cells.
+</p>
+
+<ul>
+<li>
+<p>Function <code>spwb_land</code> implements a distributed hydrological model that simulates daily local water balance, from <code>spwb_day</code>,
+on grid cells of a watershed while accounting for overland runoff, subsurface flow and groundwater flow between cells.
+</p>
+</li>
+<li>
+<p>Function <code>growth_land</code> is similar to <code>spwb_land</code>, but includes daily local carbon balance, growth and mortality processes in grid cells,
+provided by <code>growth_day</code>.
+</p>
+</li>
+<li>
+<p>Function <code>fordyn_land</code> extends the previous two functions with the simulation of management, seed dispersal, recruitment
+and resprouting.
+</p>
+</li>
+</ul>
+<h3>Usage</h3>
+
+<pre><code class="language-R">spwb_land(
+  r,
+  sf,
+  SpParams,
+  meteo = NULL,
+  dates = NULL,
+  CO2ByYear = numeric(0),
+  summary_frequency = "years",
+  local_control = defaultControl(soilDomains = "single"),
+  watershed_control = default_watershed_control(),
+  parallelize = FALSE,
+  num_cores = detectCores() - 1,
+  chunk_size = NULL,
+  progress = TRUE
+)
+
+growth_land(
+  r,
+  sf,
+  SpParams,
+  meteo = NULL,
+  dates = NULL,
+  CO2ByYear = numeric(0),
+  summary_frequency = "years",
+  local_control = medfate::defaultControl(soilDomains = "single"),
+  watershed_control = default_watershed_control(),
+  parallelize = FALSE,
+  num_cores = detectCores() - 1,
+  chunk_size = NULL,
+  progress = TRUE
+)
+
+fordyn_land(
+  r,
+  sf,
+  SpParams,
+  meteo = NULL,
+  dates = NULL,
+  CO2ByYear = numeric(0),
+  local_control = medfate::defaultControl(soilDomains = "single"),
+  watershed_control = default_watershed_control(),
+  dispersal_control = default_dispersal_control(),
+  management_function = NULL,
+  parallelize = FALSE,
+  num_cores = detectCores() - 1,
+  chunk_size = NULL,
+  progress = TRUE
+)
+
+cell_neighbors(sf, r)
+
+## S3 method for class 'spwb_land'
+summary(object, ...)
+
+## S3 method for class 'growth_land'
+summary(object, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>r</code></td>
+<td>
+<p>An object of class <code>SpatRaster</code>, defining the raster topology.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sf</code></td>
+<td>
+<p>An object of class <code>sf</code> with the following columns:
+</p>
+
+<ul>
+<li>
+<p><code>geometry</code>: Spatial point geometry corresponding to cell centers.
+</p>
+</li>
+<li>
+<p><code>elevation</code>: Elevation above sea level (in m).
+</p>
+</li>
+<li>
+<p><code>slope</code>: Slope (in degrees).
+</p>
+</li>
+<li>
+<p><code>aspect</code>: Aspect (in degrees).
+</p>
+</li>
+<li>
+<p><code>land_cover_type</code>: Land cover type of each grid cell (values should be 'wildland', 'agriculture', 'rock', 'artificial' or 'water').
+</p>
+</li>
+<li>
+<p><code>forest</code>: Objects of class <code>forest</code>.
+</p>
+</li>
+<li>
+<p><code>soil</code>: Objects of class <code>soil</code> or data frames of physical properties.
+</p>
+</li>
+<li>
+<p><code>state</code>: Objects of class <code>spwbInput</code> or <code>growthInput</code> (optional).
+</p>
+</li>
+<li>
+<p><code>meteo</code>: Data frames with weather data (required if parameter <code>meteo = NULL</code>).
+</p>
+</li>
+<li>
+<p><code>crop_factor</code>: Crop evapo-transpiration factor. Only required for 'agriculture' land cover type.
+</p>
+</li>
+<li>
+<p><code>local_control</code>: A list of control parameters (optional). Used to override function parameter <code>local_control</code> for specific cells (values can be <code>NULL</code> for the remaining ones).
+</p>
+</li>
+<li>
+<p><code>snowpack</code>: An optional numeric vector with the snow water equivalent content of the snowpack in each cell (in mm). If missing it will be initialized to zero.
+</p>
+</li>
+<li>
+<p><code>management_arguments</code>: Lists with management arguments (optional, relevant for <code>fordyn_land</code> only).
+</p>
+</li>
+<li>
+<p><code>result_cell</code>: A logical indicating that local model results are desired (optional, relevant for <code>spwb_land</code> and  <code>growth_land</code> only). Model results are only produced for wildland and agriculture cells. 
+</p>
+</li>
+</ul>
+<p>When using TETIS watershed model, the following columns are also REQUIRED:
+</p>
+
+<ul>
+<li>
+<p><code>depth_to_bedrock</code>: Depth to bedrock (mm).
+</p>
+</li>
+<li>
+<p><code>bedrock_conductivity</code>: Bedrock (saturated) conductivity (in m·day-1).
+</p>
+</li>
+<li>
+<p><code>bedrock_porosity</code>: Bedrock porosity (the proportion of pore space in the rock).
+</p>
+</li>
+</ul>
+<p>When using TETIS watershed model, the following columns are OPTIONAL:
+</p>
+
+<ul>
+<li>
+<p><code>aquifer</code>: A numeric vector with the water content of the aquifer in each cell (in mm). If missing, it will be initialized to zero.
+</p>
+</li>
+<li>
+<p><code>deep_aquifer_loss</code>: A numeric vector with the maximum daily loss to a deeper aquifer (in mm·day-1). If missing all cells take their value from <code>deep_aquifer_loss</code> in <code>default_watershed_control</code>
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SpParams</code></td>
+<td>
+<p>A data frame with species parameters (see <code>SpParamsMED</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meteo</code></td>
+<td>
+<p>Input meteorological data (see <code>spwb_spatial</code> and details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dates</code></td>
+<td>
+<p>A <code>Date</code> object describing the days of the period to be modeled.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CO2ByYear</code></td>
+<td>
+<p>A named numeric vector with years as names and atmospheric CO2 concentration (in ppm) as values. Used to specify annual changes in CO2 concentration along the simulation (as an alternative to specifying daily values in <code>meteo</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary_frequency</code></td>
+<td>
+<p>Frequency in which cell summary will be produced (e.g. "years", "months", ...) (see <code>cut.Date</code>).
+In <code>fordyn_land</code> summaries are always produced at monthly resolution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>local_control</code></td>
+<td>
+<p>A list of control parameters (see <code>defaultControl</code>) for function <code>spwb_day</code> or <code>growth_day</code>. By default,
+parameter <code>soilDomains</code> is set to <code>"single"</code>, meaning a single-domain Richards model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>watershed_control</code></td>
+<td>
+<p>A list of watershed control parameters (see <code>default_watershed_control</code>). Importantly, the sub-model used
+for lateral water flows - either Francés et al. (2007) or Caviedes-Voullième et al. (2023) - is specified there.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallelize</code></td>
+<td>
+<p>Boolean flag to try parallelization (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>num_cores</code></td>
+<td>
+<p>Integer with the number of cores to be used for parallel computation (by default it will use all clusters minus one).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chunk_size</code></td>
+<td>
+<p>Integer indicating the size of chunks to be sent to different processes (by default, the number of spatial elements divided by the number of cores).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>Boolean flag to display progress information for simulations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dispersal_control</code></td>
+<td>
+<p>A list of dispersal control parameters (see <code>default_dispersal_control</code>). If NULL, then dispersal is not simulated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>management_function</code></td>
+<td>
+<p>A function that implements forest management actions (see <code>fordyn</code>).
+of such lists, one per spatial unit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>An object of class <code>spwb_land</code> or <code>groth_land</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional parameters for summary functions</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The default <code>soilDomains = "single"</code> means that vertical bulk soil flows are simulated using a single permeability domain with Richards equation.
+</p>
+<p>Two sub-models are available for lateral water transfer processes (overland flow, sub-surface flow, etc.), either "TETIS"
+(similar to Francés et al. 2007) or "SERGHEI" (Caviedes-Voullième et al. 2023).
+</p>
+<p>IMPORTANT: medfateland needs to be compiled along with SERGHEI model in order to launch simulations with using this
+distributed hydrological model.
+</p>
+<p>When running <code>fordyn_land</code>, the input 'sf' object has to be in a Universal Transverse Mercator (UTM) coordinate system (or any other projection using meters as length unit)
+for appropriate behavior of dispersal sub-model.
+</p>
+<p>Parallel computation is only recommended for watersheds with large number of grid cells (e.g. &gt; 10,000 when using <code>transpirationMode = "granier"</code>).
+In watershed with a small number of cells, parallel computation can result in larger processing times than sequential computation, due
+to the communication overload.
+</p>
+<p>When dealing with large data sets, weather data included in the 'sf' object will likely be very data hungry. In those cases, it is
+recommended to resort on weather interpolation (see <code>spwb_spatial</code>). Weather interpolation can be done using a coarser resolution
+than that of raster 'r', by changing the watershed control parameter called 'weather_aggregation_factor' (see <code>default_watershed_control</code>).
+</p>
+
+
+<h3>Value</h3>
+
+<p>Functions <code>spwb_land</code>, <code>growth_land</code> and <code>fordyn_land</code> return a list of class of the same name as the function with the following elements:
+</p>
+
+<ul>
+<li>
+<p><code>watershed_control</code>: A list with input control parameters.
+</p>
+</li>
+<li>
+<p><code>sf</code>: An object of class <code>sf</code>, similar to the output of <code>spwb_spatial</code>,
+with the following columns:
+</p>
+
+<ul>
+<li>
+<p><code>geometry</code>: Spatial geometry.
+</p>
+</li>
+<li>
+<p><code>state</code>: A list of model input objects for each simulated stand.
+</p>
+</li>
+<li>
+<p><code>aquifer</code>: A numeric vector with the water volume in the aquifer of each cell.
+</p>
+</li>
+<li>
+<p><code>snowpack</code>: A numeric vector with the snowpack water equivalent volume of each cell.
+</p>
+</li>
+<li>
+<p><code>summary</code>: A list of cell summaries, containing the following variables:
+</p>
+
+<ul>
+<li>
+<p><code>MinTemperature</code>: Minimum temperature (degrees Celsius).
+</p>
+</li>
+<li>
+<p><code>MaxTemperature</code>: Maximum temperature (degrees Celsius).
+</p>
+</li>
+<li>
+<p><code>PET</code>: Potential evapotranspiration (in mm).
+</p>
+</li>
+<li>
+<p><code>Rain</code>: Rainfall (in mm).
+</p>
+</li>
+<li>
+<p><code>Snow</code>: Snowfall (in mm).
+</p>
+</li>
+<li>
+<p><code>Snowmelt</code>: Snow melt (in mm).
+</p>
+</li>
+<li>
+<p><code>Interception</code>: Rainfall interception (in mm).
+</p>
+</li>
+<li>
+<p><code>NetRain</code>: Net rainfall, i.e. throughfall, (in mm).
+</p>
+</li>
+<li>
+<p><code>Infiltration</code>: The amount of water infiltrating into the soil (in mm).
+</p>
+</li>
+<li>
+<p><code>InfiltrationExcess</code>: The amount of water exceeding the soil infiltration capacity (in mm).
+</p>
+</li>
+<li>
+<p><code>SaturationExcess</code>: The amount of water that reaches the soil surface because of soil saturation (in mm).
+</p>
+</li>
+<li>
+<p><code>Runon</code>: The amount of water reaching the cell via surface runon (in mm).
+</p>
+</li>
+<li>
+<p><code>Runoff</code>: The amount of water exported from the cell via surface runoff (in mm).
+</p>
+</li>
+<li>
+<p><code>DeepDrainage</code>: The amount of water draining from soil to the aquifer via deep drainage (in mm).
+</p>
+</li>
+<li>
+<p><code>CapillarityRise</code>: Water entering the soil via capillarity rise (mm) from the water table.
+</p>
+</li>
+<li>
+<p><code>SoilEvaporation</code>: Bare soil evaporation (in mm).
+</p>
+</li>
+<li>
+<p><code>Transpiration</code>: Woody plant transpiration (in mm).
+</p>
+</li>
+<li>
+<p><code>HerbTranspiration</code>: Herbaceous transpiration (in mm).
+</p>
+</li>
+<li>
+<p><code>InterflowInput</code>: The amount of water that reaches the soil of the cell from adjacent cells via subsurface flow (in mm).
+</p>
+</li>
+<li>
+<p><code>InterflowOutput</code>: The amount of water that leaves the soil of the cell towards adjacent cells via subsurface flow (in mm).
+</p>
+</li>
+<li>
+<p><code>InterflowBalance</code>: The balance of water circulating via subsurface flow (in mm).
+</p>
+</li>
+<li>
+<p><code>BaseflowInput</code>: The amount of water that reaches the aquifer of the cell from adjacent cells via groundwater flow (in mm).
+</p>
+</li>
+<li>
+<p><code>BaseflowOutput</code>: The amount of water that leaves the aquifer of the cell towards adjacent cells via groundwater flow (in mm).
+</p>
+</li>
+<li>
+<p><code>BaseflowBalance</code>: The balance of water circulating via groundwater flow (in mm).
+</p>
+</li>
+<li>
+<p><code>AquiferExfiltration</code>: The amount of water of the cell that generates surface runoff due to the aquifer reaching the soil surface (in mm).
+</p>
+</li>
+<li>
+<p><code>SWE</code>: Snow water equivalent (in mm) of the snowpack.
+</p>
+</li>
+<li>
+<p><code>RWC</code>: Soil relative water content with respect to field capacity (in percent).
+</p>
+</li>
+<li>
+<p><code>SoilVol</code>: Soil water volume integrated across vertical layers (in mm).
+</p>
+</li>
+<li>
+<p><code>WTD</code>: Saturated soil water table depth (in mm from surface).
+</p>
+</li>
+<li>
+<p><code>DTA</code>: Depth to aquifer (in m from surface).
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p><code>result</code>: A list of cell detailed results (only for those indicated in the input), with contents depending on the local model.
+</p>
+</li>
+<li>
+<p><code>outlet</code>: A logical vector indicating outlet cells.
+</p>
+</li>
+</ul>
+<p>In function <code>fordyn_land</code> the <code>sf</code> object contains additional columns:
+</p>
+
+<ul>
+<li>
+<p><code>forest</code>: A list of <code>forest</code> objects for each simulated stand, to be used in subsequent simulations (see <code>update_landscape</code>).
+</p>
+</li>
+<li>
+<p><code>management_arguments</code>: A list of management arguments for each simulated stand, to be used in subsequent simulations (see <code>update_landscape</code>).
+</p>
+</li>
+<li>
+<p><code>tree_table</code>: A list of data frames for each simulated stand, containing the living trees at each time step.
+</p>
+</li>
+<li>
+<p><code>shrub_table</code>: A list of data frames for each simulated stand, containing the living shrub at each time step.
+</p>
+</li>
+<li>
+<p><code>dead_tree_table</code>: A list of data frames for each simulated stand, containing the dead trees at each time step.
+</p>
+</li>
+<li>
+<p><code>dead_shrub_table</code>: A list of data frames for each simulated stand, containing the dead shrub at each time step.
+</p>
+</li>
+<li>
+<p><code>cut_tree_table</code>: A list of data frames for each simulated stand, containing the cut trees at each time step.
+</p>
+</li>
+<li>
+<p><code>cut_shrub_table</code>: A list of data frames for each simulated stand, containing the cut shrub at each time step.
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p><code>watershed_balance</code>: A data frame with as many rows as days and where columns are components of the water balance at the watershed level (i.e., rain, snow, interception, infiltration, soil evaporation, plant transpiration, ...).
+</p>
+</li>
+<li>
+<p><code>watershed_soil_balance</code>: A data frame with as many rows as days and where columns are components of the water balance at the watershed level restricted to those cells with a soil definition.
+</p>
+</li>
+<li>
+<p><code>outlet_export_m3s</code>: A matrix with daily values of runoff (in m3/s) reaching each of the outlet cells of the landscape. Each outlet drains its own subset of cells, so the
+overall watershed export corresponds to the sum of row values.
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Miquel De Cáceres Ainsa, CREAF.
+</p>
+<p>Maria González-Sanchís, Universitat Politecnica de Valencia.
+</p>
+<p>Daniel Caviedes-Voullième, Forschungszentrum Julich.
+</p>
+<p>Mario Morales-Hernández, Universidad de Zaragoza.
+</p>
+
+
+<h3>References</h3>
+
+<p>Francés, F., Vélez, J.I. &amp; Vélez, J.J. (2007). Split-parameter structure for the automatic calibration of distributed hydrological models. Journal of Hydrology, 332, 226–240.
+</p>
+<p>Caviedes-Voullième, D., Morales-Hernández, M., Norman, M.R. &amp; Ogzen-Xian, I. (2023). SERGHEI (SERGHEI-SWE) v1.0: a performance-portable high-performance parallel-computing shallow-water solver for hydrology and environmental hydraulics. Geoscientific Model Development, 16, 977-1008.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>default_watershed_control</code>, <code>initialize_landscape</code>, <code>spwb_land_day</code>, <code>spwb_day</code>,  <code>growth_day</code>,
+<code>spwb_spatial</code>, <code>fordyn_spatial</code>, <code>dispersal</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Load example watershed data
+data("example_watershed")
+
+# Set crop factor 
+example_watershed$crop_factor &lt;- NA
+example_watershed$crop_factor[example_watershed$land_cover_type=="agriculture"] &lt;- 0.75
+
+# Set request for daily model results in cells number 3, 6 (outlet) and 9
+example_watershed$result_cell &lt;- FALSE
+example_watershed$result_cell[c(3,6,9)] &lt;- TRUE
+
+# Get bounding box to determine limits
+b &lt;- sf::st_bbox(example_watershed)
+b
+
+# Define a raster topology, using terra package, 
+# with the same CRS as the watershed. In this example cells have 100 m side.
+# Coordinates in the 'sf' object are assumed to be cell centers
+r &lt;-terra::rast(xmin = 401380, ymin = 4671820, xmax = 402880, ymax = 4672620, 
+                nrow = 8, ncol = 15, crs = "epsg:32631")
+
+# Load example meteo data frame from package meteoland
+data("examplemeteo")
+  
+# Load default medfate parameters
+data("SpParamsMED")
+  
+# Set simulation period
+dates &lt;- seq(as.Date("2001-01-01"), as.Date("2001-03-31"), by="day")
+
+# Watershed control parameters (TETIS model; Frances et al. 2007)
+ws_control &lt;- default_watershed_control("tetis")
+
+# Launch simulations 
+res &lt;- spwb_land(r, example_watershed, SpParamsMED, examplemeteo, 
+                 dates = dates, summary_frequency = "month",
+                 watershed_control = ws_control)
+                 
+# Print a summary of water balance components
+summary(res)
+
+# Option 'simplify = TRUE' in initialization, may be useful to speed up calculations
+example_simplified &lt;- initialize_landscape(example_watershed, SpParams = SpParamsMED,
+                                           local_control = defaultControl(soilDomains = "single"), 
+                                           simplify = TRUE)
+
+# Launch simulations over simplified landscape (should be considerably faster)
+res_simplified &lt;- spwb_land(r, example_simplified, SpParamsMED, examplemeteo, 
+                            dates = dates, summary_frequency = "month",
+                            watershed_control = ws_control)
+
+
+</code></pre>
+
+
+</div>

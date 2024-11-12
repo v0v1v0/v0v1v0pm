@@ -1,0 +1,277 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>gamem</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Genotype analysis by mixed-effect models</h2>
+
+<h3>Description</h3>
+
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt="[Stable]"></a>
+</p>
+<p>Analysis of genotypes in single experiments using mixed-effect models with
+estimation of genetic parameters.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">gamem(
+  .data,
+  gen,
+  rep,
+  resp,
+  block = NULL,
+  by = NULL,
+  prob = 0.05,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>.data</code></td>
+<td>
+<p>The dataset containing the columns related to, Genotypes,
+replication/block and response variable(s).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gen</code></td>
+<td>
+<p>The name of the column that contains the levels of the genotypes,
+that will be treated as random effect.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rep</code></td>
+<td>
+<p>The name of the column that contains the levels of the
+replications (assumed to be fixed).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resp</code></td>
+<td>
+<p>The response variable(s). To analyze multiple variables in a
+single procedure a vector of variables may be used. For example <code>resp = c(var1, var2, var3)</code>. Select helpers are also allowed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>block</code></td>
+<td>
+<p>Defaults to <code>NULL</code>. In this case, a randomized complete
+block design is considered. If block is informed, then an alpha-lattice
+design is employed considering block as random to make use of inter-block
+information, whereas the complete replicate effect is always taken as
+fixed, as no inter-replicate information was to be recovered (Mohring et
+al., 2015).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>One variable (factor) to compute the function by. It is a shortcut
+to <code>dplyr::group_by()</code>.This is especially useful, for example,
+when the researcher want to fit a mixed-effect model for each environment.
+In this case, an object of class gamem_grouped is returned.
+<code>mgidi()</code> can then be used to compute the mgidi index within each
+environment.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prob</code></td>
+<td>
+<p>The probability for estimating confidence interval for BLUP's
+prediction.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Logical argument. If <code>verbose = FALSE</code> the code are run
+silently.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>gamem</code> analyses data from a one-way genotype testing experiment.
+By default, a randomized complete block design is used according to the following model:
+<script id="MathJax-script" async src="../../mathjaxr/doc/mathjax/es5/tex-chtml-full.js"></script>
+\[Y_{ij} = m + g_i + r_j + e_{ij}\]
+where \(Y_{ij}\) is the response variable of the ith genotype in the <em>j</em>th block;
+<em>m</em> is the grand mean (fixed); \(g_i\) is the effect of the <em>i</em>th genotype
+(assumed to be random); \(r_j\) is the effect of the <em>j</em>th replicate (assumed to be fixed);
+and \(e_{ij}\) is the random error.
+</p>
+<p>When <code>block</code> is informed, then a resolvable alpha design is implemented, according to the following model:
+</p>
+\[Y_{ijk} = m + g_i + r_j + b_{jk} + e_{ijk}\]
+<p>where where \(y_{ijk}\) is the response variable of the <em>i</em>th genotype in the
+<em>k</em>th block of the <em>j</em>th replicate; <em>m</em> is the intercept, \(t_i\) is
+the effect for the <em>i</em>th genotype \(r_j\) is the effect of the <em>j</em>th
+replicate, \(b_{jk}\) is the effect of the <em>k</em>th incomplete block of
+the <em>j</em>th replicate, and \(e_{ijk}\) is the plot error effect
+corresponding to \(y_{ijk}\).
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>gamem</code> or <code>gamem_grouped</code>, which is a
+list with the following items for each element (variable):
+</p>
+
+<ul>
+<li> <p><strong>fixed:</strong> Test for fixed effects.
+</p>
+</li>
+<li> <p><strong>random:</strong> Variance components for random effects.
+</p>
+</li>
+<li> <p><strong>LRT:</strong> The Likelihood Ratio Test for the random effects.
+</p>
+</li>
+<li> <p><strong>BLUPgen:</strong> The estimated BLUPS for genotypes
+</p>
+</li>
+<li> <p><strong>ranef:</strong> The random effects of the model
+</p>
+</li>
+<li> <p><strong>modellme</strong> The mixed-effect model of class <code>lmerMod</code>.
+</p>
+</li>
+<li> <p><strong>residuals</strong> The residuals of the mixed-effect model.
+</p>
+</li>
+<li> <p><strong>model_lm</strong> The fixed-effect model of class <code>lm</code>.
+</p>
+</li>
+<li> <p><strong>residuals_lm</strong> The residuals of the fixed-effect model.
+</p>
+</li>
+<li> <p><strong>Details:</strong> A tibble with the following data: <code>Ngen</code>, the
+number of genotypes; <code>OVmean</code>, the grand mean; <code>Min</code>, the minimum
+observed (returning the genotype and replication/block); <code>Max</code> the
+maximum observed, <code>MinGEN</code> the winner genotype, <code>MaxGEN</code>, the
+loser genotype.
+</p>
+</li>
+<li> <p><strong>ESTIMATES:</strong> A tibble with the values:
+</p>
+
+<ul>
+<li> <p><code>Gen_var</code>, the genotypic variance and ;
+</p>
+</li>
+<li> <p><code>rep:block_var</code> block-within-replicate variance (if
+an alpha-lattice design is used by informing the block in <code>block</code>);
+</p>
+</li>
+<li> <p><code>Res_var</code>, the residual variance;
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠Gen (%), rep:block (%), and Res (%)⁠</code> the respective contribution
+of variance components to the phenotypic variance;
+</p>
+</li>
+<li> <p><code>H2</code>, broad-sense heritability;
+</p>
+</li>
+<li> <p><code>h2mg</code>, heritability on the entry-mean basis;
+</p>
+</li>
+<li> <p><code>Accuracy</code>, the accuracy of selection (square root of
+<code>h2mg</code>);
+</p>
+</li>
+<li> <p><code>CVg</code>, genotypic coefficient of variation;
+</p>
+</li>
+<li> <p><code>CVr</code>, residual coefficient of variation;
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠CV ratio⁠</code>, the ratio between genotypic and residual coefficient of
+variation.
+</p>
+</li>
+</ul>
+</li>
+<li> <p><strong>formula</strong> The formula used to fit the mixed-model.
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Tiago Olivoto <a href="mailto:tiagoolivoto@gmail.com">tiagoolivoto@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Mohring, J., E. Williams, and H.-P. Piepho. 2015. Inter-block information:
+to recover or not to recover it? TAG. Theor. Appl. Genet. 128:1541-54.
+<a href="https://doi.org/10.1007/s00122-015-2530-0">doi:10.1007/s00122-015-2530-0</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>get_model_data()</code> <code>waasb()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(metan)
+
+# fitting the model considering an RCBD
+# Genotype as random effects
+
+rcbd &lt;- gamem(data_g,
+             gen = GEN,
+             rep = REP,
+             resp = c(PH, ED, EL, CL, CW, KW, NR, TKW, NKE))
+
+# Likelihood ratio test for random effects
+get_model_data(rcbd, "lrt")
+
+
+# Variance components
+get_model_data(rcbd, "vcomp")
+
+# Genetic parameters
+get_model_data(rcbd, "genpar")
+
+# random effects
+get_model_data(rcbd, "ranef")
+
+# Predicted values
+predict(rcbd)
+
+# fitting the model considering an alpha-lattice design
+# Genotype and block-within-replicate as random effects
+# Note that block effect was now informed.
+
+alpha &lt;- gamem(data_alpha,
+               gen = GEN,
+               rep = REP,
+               block = BLOCK,
+               resp = YIELD)
+# Genetic parameters
+get_model_data(alpha, "genpar")
+
+# Random effects
+get_model_data(alpha, "ranef")
+
+
+</code></pre>
+
+
+</div>

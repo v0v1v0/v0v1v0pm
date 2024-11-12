@@ -1,0 +1,145 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>makeWeightedClassesWrapper</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Wraps a classifier for weighted fitting where each class receives a weight.</h2>
+
+<h3>Description</h3>
+
+<p>Creates a wrapper, which can be used like any other learner object.
+</p>
+<p>Fitting is performed in a weighted fashion where each observation receives a weight,
+depending on the class it belongs to, see <code>wcw.weight</code>.
+This might help to mitigate problems caused by imbalanced class distributions.
+</p>
+<p>This weighted fitting can be achieved in two ways:
+</p>
+<p>a) The learner already has a parameter for class weighting, so one weight can directly be defined
+per class. Example: “classif.ksvm” and parameter <code>class.weights</code>.
+In this case we don't really do anything fancy. We convert <code>wcw.weight</code> a bit,
+but basically simply bind its value to the class weighting param.
+The wrapper in this case simply offers a convenient, consistent fashion for class weighting -
+and tuning! See example below.
+</p>
+<p>b) The learner does not have a direct parameter to support class weighting, but
+supports observation weights, so <code>hasLearnerProperties(learner, 'weights')</code> is <code>TRUE</code>.
+This means that an individual, arbitrary weight can be set per observation during training.
+We set this weight depending on the class internally in the wrapper. Basically we introduce
+something like a new “class.weights” parameter for the learner via observation weights.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">makeWeightedClassesWrapper(learner, wcw.param = NULL, wcw.weight = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>learner</code></td>
+<td>
+<p>(Learner | <code>character(1)</code>)<br>
+The classification learner.
+If you pass a string the learner will be created via makeLearner.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wcw.param</code></td>
+<td>
+<p>(<code>character(1)</code>)<br>
+Name of already existing learner parameter, which allows class weighting.
+The default (<code>wcw.param = NULL</code>) will use the parameter defined in
+the learner (<code>class.weights.param</code>). During training, the parameter
+must accept a named vector of class weights, where length equals the
+number of classes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wcw.weight</code></td>
+<td>
+<p>(numeric)<br>
+Weight for each class.
+Must be a vector of the same number of elements as classes are in task,
+and must also be in the same order as the class levels are in
+<code>getTaskDesc(task)$class.levels</code>.
+For convenience, one must pass a single number in case of binary classification, which
+is then taken as the weight of the positive class, while the negative class receives a weight
+of 1.
+Default is 1.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Learner.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other wrapper: 
+<code>makeBaggingWrapper()</code>,
+<code>makeClassificationViaRegressionWrapper()</code>,
+<code>makeConstantClassWrapper()</code>,
+<code>makeCostSensClassifWrapper()</code>,
+<code>makeCostSensRegrWrapper()</code>,
+<code>makeDownsampleWrapper()</code>,
+<code>makeDummyFeaturesWrapper()</code>,
+<code>makeExtractFDAFeatsWrapper()</code>,
+<code>makeFeatSelWrapper()</code>,
+<code>makeFilterWrapper()</code>,
+<code>makeImputeWrapper()</code>,
+<code>makeMulticlassWrapper()</code>,
+<code>makeMultilabelBinaryRelevanceWrapper()</code>,
+<code>makeMultilabelClassifierChainsWrapper()</code>,
+<code>makeMultilabelDBRWrapper()</code>,
+<code>makeMultilabelNestedStackingWrapper()</code>,
+<code>makeMultilabelStackingWrapper()</code>,
+<code>makeOverBaggingWrapper()</code>,
+<code>makePreprocWrapper()</code>,
+<code>makePreprocWrapperCaret()</code>,
+<code>makeRemoveConstantFeaturesWrapper()</code>,
+<code>makeSMOTEWrapper()</code>,
+<code>makeTuneWrapper()</code>,
+<code>makeUndersampleWrapper()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+set.seed(123)
+# using the direct parameter of the SVM (which is already defined in the learner)
+lrn = makeWeightedClassesWrapper("classif.ksvm", wcw.weight = 0.01)
+res = holdout(lrn, sonar.task)
+print(calculateConfusionMatrix(res$pred))
+
+# using the observation weights of logreg
+lrn = makeWeightedClassesWrapper("classif.logreg", wcw.weight = 0.01)
+res = holdout(lrn, sonar.task)
+print(calculateConfusionMatrix(res$pred))
+
+# tuning the imbalancy param and the SVM param in one go
+lrn = makeWeightedClassesWrapper("classif.ksvm", wcw.param = "class.weights")
+ps = makeParamSet(
+  makeNumericParam("wcw.weight", lower = 1, upper = 10),
+  makeNumericParam("C", lower = -12, upper = 12, trafo = function(x) 2^x),
+  makeNumericParam("sigma", lower = -12, upper = 12, trafo = function(x) 2^x)
+)
+ctrl = makeTuneControlRandom(maxit = 3L)
+rdesc = makeResampleDesc("CV", iters = 2L, stratify = TRUE)
+res = tuneParams(lrn, sonar.task, rdesc, par.set = ps, control = ctrl)
+print(res)
+# print(res$opt.path)
+
+
+</code></pre>
+
+
+</div>

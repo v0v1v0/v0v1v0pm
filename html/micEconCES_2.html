@@ -1,0 +1,735 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>cesEst</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate a CES function</h2>
+
+<h3>Description</h3>
+
+<p>Estimate a Constant-Elasticity-of-Substitution (CES) function
+with two exogenous variables
+or a nested Constant-Elasticity-of-Substitution (CES) function
+proposed by Sato (1967) with three or four exogenous variables
+by Least Squares.
+The functional forms are shown in the documentation of
+function <code>cesCalc</code>.
+</p>
+<p>Warning: The econometric estimation of a CES function is (almost)
+always very problematic,
+because very different parameter vectors could result in very similar
+values of the objective function (sum of squared residuals).
+Hence, even if the optimizer reports
+that the nonlinear minimization has converged,
+there might be another rather different parameter vector
+that results in a lower sum of squared residuals.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">cesEst( yName, xNames, data, tName = NULL, vrs = FALSE, method = "LM",
+   start = NULL, lower = NULL, upper = NULL, multErr = FALSE,
+   rho1 = NULL, rho2, rho = NULL, returnGridAll = FALSE, 
+   returnGrad = FALSE, random.seed = 123,
+   rhoApprox = c( y = 5e-6, gamma = 5e-6, delta = 5e-6, 
+      rho = 1e-3, nu = 5e-6 ),
+   checkStart = TRUE, ... )
+
+## S3 method for class 'cesEst'
+print( x, digits = max(3, getOption("digits") - 3),
+   ... )
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>yName</code></td>
+<td>
+<p>a string containing the name of the dependent
+variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xNames</code></td>
+<td>
+<p>a vector of two, three or four character strings containing 
+the names of the independent variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>data frame containing the data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tName</code></td>
+<td>
+<p>optional character string specifying the name of the 
+time variable (<code class="reqn">t</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vrs</code></td>
+<td>
+<p>logical. Allow for variable returns to scale?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>character string indicationg the estimation method:
+either <code>"Kmenta"</code> for the Kmenta approximation
+or <code>"LM"</code>, <code>"NM"</code>, <code>"Nelder-Mead"</code>, <code>"BFGS"</code>,
+<code>"CG"</code>, <code>"L-BFGS-B"</code>, <code>"SANN"</code>,
+<code>"Newton"</code>, <code>"PORT"</code>, or <code>"DE"</code>
+for non-linear least-squares (see section ‘Details’).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p>optional numeric vector giving the starting values
+of the parameters in the non-linear estimations
+(see section ‘Details’).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower</code></td>
+<td>
+<p>lower bounds of the parameters
+(see section ‘Details’).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper</code></td>
+<td>
+<p>upper bounds of the parameters
+(see section ‘Details’).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>multErr</code></td>
+<td>
+<p>logical. If <code>TRUE</code>, 
+the error term is assumed to be multiplicative, 
+i.e. <code class="reqn">y = \hat{y} \cdot exp( \epsilon )</code>.
+If <code>FALSE</code> (the default), 
+the error term is assumed to be additive, 
+i.e. <code class="reqn">y = \hat{y} + \epsilon</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho1,rho2,rho</code></td>
+<td>
+<p>numeric scalar or vector at which the coefficients 
+<code class="reqn">\rho_1</code>, <code class="reqn">\rho_2</code>, and/or <code class="reqn">\rho</code>
+should be fixed;
+if argument <code>rho1</code>, <code>rho2</code>, or <code>rho</code> is <code>NULL</code> (default), 
+this coefficient is estimated together
+with the other parameters;
+if these arguments have more than one element,
+a grid search for <code class="reqn">\rho_1</code>, <code class="reqn">\rho_2</code>, 
+and/or <code class="reqn">\rho</code> is performed
+(see section ‘Details’).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>returnGridAll</code></td>
+<td>
+<p>logical value that indicates
+whether the estimates for all values of <code class="reqn">\rho</code>
+obtained during the grid search
+(not just the estimations with the ‘best’ <code class="reqn">\rho</code>)
+should be returned
+(ignored if argument <code>rho</code> is <code>NULL</code>
+or has only a single element).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>returnGrad</code></td>
+<td>
+<p>logical value that indicates
+whether a matrix with the gradients of the dependent variable
+(i.e., <code class="reqn">y</code> if argument <code>multErr</code> is <code>FALSE</code>
+and <code class="reqn">\log(y)</code> if argument <code>multErr</code> is <code>TRUE</code>)
+with respect to the parameters (evaluated at the estimated parameters)
+should be returned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random.seed</code></td>
+<td>
+<p>an integer used to seed R's random number generator.
+This is to ensure replicability when the <code>"SANN"</code>
+or <code>"DE"</code> method is used. Defaults to 123.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rhoApprox</code></td>
+<td>
+<p>numeric vector with exactly 5 elements;
+the endogenous variable of the CES
+and the derivatives with respect to its coefficients
+are calculated using a first-order Taylor series approximation
+at <code class="reqn">\rho=0</code> (non-nested CES)
+or by interpolation between <code class="reqn">\rho</code>, <code class="reqn">\rho_1</code>, 
+or <code class="reqn">\rho_2</code> equal to zero 
+and <code class="reqn">\rho</code>, <code class="reqn">\rho_1</code>, or <code class="reqn">\rho_2</code> 
+equal to <code class="reqn">\pm</code><code>rhoApprox</code>
+(nested CES),
+if the absolute value of the coefficients <code class="reqn">\rho</code>, 
+<code class="reqn">\rho_1</code>, or <code class="reqn">\rho_2</code>
+is smaller than or equal to the corresponding element of this argument
+(see also argument <code>rhoApprox</code> of <code>cesCalc</code>);
+the first element determines the threshold for calculating
+the endogenous variable; 
+the second element determines the threshold for calculating
+the derivatives with respect to <code class="reqn">\gamma</code>;
+the third element determines the threshold for calculating
+the derivatives with respect to <code class="reqn">\delta_1</code>,
+<code class="reqn">\delta_2</code>, and <code class="reqn">\delta</code>;
+the fourth element determines the threshold for calculating
+the derivatives with respect to <code class="reqn">\rho</code>,
+<code class="reqn">\rho_1</code>, and <code class="reqn">\rho_2</code>;
+the fifth element determines the threshold for calculating
+the derivatives with respect to <code class="reqn">\nu</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>checkStart</code></td>
+<td>
+<p>logical. If <code>TRUE</code> (the default),
+it is checked whether the starting values are in the expected ranges
+for a production function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>an object of class <code>cesEst</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>number of digits.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments to <code>cesEst</code> are passed to
+<code>optim</code>, <code>nls.lm</code>,
+<code>nlm</code>, <code>nlminb</code>,
+or <code>DEoptim</code>;
+further arguments to <code>print.cesEst</code> are currently ignored.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><b>Estimation method</b><br>
+Argument <code>method</code> determines the estimation method.
+If it is <code>"Kmenta"</code>,
+the CES is estimated by ordinary least squares using the Kmenta
+approximation;
+otherwise, it is estimated by non-linear least-squares.
+Several different optimizers can be used for the non-linear estimation.
+The optimization method
+<code>LM</code> (Levenberg-Marquardt, see Moré 1978)
+uses <code>nls.lm</code> for the optimization.
+The optimization methods
+<code>NM</code> or <code>Nelder-Mead</code> (Nelder and Mead 1965),
+<code>BFGS</code> (Broyden 1970, Fletcher 1970, Goldfarb 1970, Shanno 1970),
+<code>CG</code> (Conjugate Gradients based on Fletcher and Reeves 1964),
+<code>L-BFGS-B</code> (with box-constraints, Byrd, Lu, Nocedal, and Zhu 1995), and
+<code>SANN</code> (Simulated Annealing, Bélisle 1992)
+use <code>optim</code> for the optimization.
+The optimization method
+<code>Newton</code> (Newton-type, see Dennis and Schnabel 1983
+and Schnabel, Koontz, and Weiss 1985)
+uses <code>nlm</code> for the optimization.
+The optimization method
+<code>PORT</code> (PORT routines, see Gay 1990)
+uses <code>nlminb</code> for the optimization.
+The optimization method
+<code>DE</code> (Differential Evolution, see Storn and Price 1997)
+uses <code>DEoptim</code> for the optimization.
+Analytical gradients are used in the <code>LM</code>, <code>BFGS</code>, <code>CG</code>,
+<code>L-BFGS-B</code>, <code>Newton</code>, and <code>PORT</code> method.<br></p>
+<p><b>Starting values</b><br>
+Argument <code>start</code> should be a numeric vector.
+The order must be as described in the documentation of argument <code>coef</code>
+of function <code>cesCalc</code>.
+However, names of the elements are ignored.
+If argument <code>start</code> is <code>NULL</code>,
+pre-defined starting values are used.
+The starting value of <code class="reqn">\lambda</code> (if present) is set to 0.015;
+the starting values of <code class="reqn">\delta_1</code>, <code class="reqn">\delta_2</code>, 
+and <code class="reqn">\delta</code> (if present) are set to 0.5,
+the starting values of <code class="reqn">\rho_1</code>, <code class="reqn">\rho_2</code>, and
+<code class="reqn">\rho</code> (if present and required) are set to 0.25
+(i.e.\ elasticity of substitution = 0.8 in the two-input case),
+the starting value of <code class="reqn">\nu</code> (if present) is set to 1,
+and the starting value of <code class="reqn">\gamma</code>
+is set to a value
+so that the mean of the error term is zero.
+Hence, in case of an additive error term
+(i.e. argument <code>multErr</code> is set to <code>FALSE</code>, the default) 
+<code class="reqn">\gamma</code> is set to 
+<code>mean( y ) / mean( CES( X, start1 ) )</code>
+and in case of a multiplicative error term
+(i.e. argument <code>multErr</code> is set to <code>TRUE</code>) 
+<code class="reqn">\gamma</code> is set to 
+<code>mean( log( y ) ) - mean( log( CES( X, start1 ) ) )</code>,
+where <code>y</code> is the dependent variable (defined by argument <code>yName</code>),
+<code>X</code> is the set of covariates 
+(defined by arguments <code>xNames</code> and <code>tName</code>),
+<code>CES()</code> defines the (nested) CES function,
+and <code>start1</code> is a coefficient vector 
+with <code class="reqn">\gamma = 1</code> and all other coefficients 
+having the starting values described above.<br></p>
+<p><b>Lower and upper bounds</b><br>
+Arguments <code>lower</code> and <code>upper</code> can be used
+to set lower and upper bounds for the estimated parameters.
+If these arguments are <code>-Inf</code> and <code>Inf</code>, respectively,
+the parameters are estimated without unconstraints.
+By default, arguments <code>lower</code> and <code>upper</code> are both <code>NULL</code>,
+which means that the bounds are set automatically
+depending on the estimation method:
+In case of the <code>L-BFGS-B</code>, <code>PORT</code>, and <code>DE</code> method,
+the lower bound is <code>0</code> for <code class="reqn">\gamma</code>,
+<code class="reqn">\delta_1</code>, <code class="reqn">\delta_2</code>, 
+and <code class="reqn">\delta</code> (if present), 
+<code>-1</code> for <code class="reqn">\rho_1</code>, <code class="reqn">\rho_2</code>, and <code class="reqn">\rho</code>
+(if present),
+and eventually <code>0</code> for <code class="reqn">\nu</code>.
+In case of the <code>L-BFGS-B</code> and <code>PORT</code> method,
+the upper bound is infinity for <code class="reqn">\gamma</code>,
+<code>1</code> for <code class="reqn">\delta_1</code>, <code class="reqn">\delta_2</code>, and
+<code class="reqn">\delta</code> (if present),
+infinity for <code class="reqn">\rho_1</code>, <code class="reqn">\rho_2</code>, and <code class="reqn">\rho</code>
+(if present),
+and eventually infinity for <code class="reqn">\nu</code>.
+Since the ‘Differential Evulation’ algorithm requires finit bounds,
+the upper bounds for the <code>DE</code> method are set
+to <code>1e10</code> for <code class="reqn">\gamma</code>,
+<code>1</code> for <code class="reqn">\delta_1</code>, <code class="reqn">\delta_2</code>, and 
+<code class="reqn">\delta</code> (if present),
+<code>10</code> for <code class="reqn">\rho_1</code>, <code class="reqn">\rho_2</code>, and <code class="reqn">\rho</code>
+(if present),
+and eventually <code>10</code> for <code class="reqn">\nu</code>.
+In case of all other estimation methods,
+the lower and upper bounds are set to <code>-Inf</code> and <code>Inf</code>, respectively,
+because these methods do not support parameter constraints.
+Of course, the user can specify own lower and upper bounds
+by setting arguments <code>lower</code> and <code>upper</code> to numeric vectors
+that should have the same format as argument <code>start</code>
+(see above).<br></p>
+<p><b>Grid search for <code class="reqn">\rho</code></b><br>
+If arguments <code>rho1</code>, <code>rho2</code>, and/or <code>rho</code> have more than one element,
+a one-dimensional, two-dimensional, or three-dimensionsl grid search 
+for <code class="reqn">\rho_1</code>, <code class="reqn">\rho_2</code>, and/or <code class="reqn">\rho</code> is performed.
+The remaining (free) parameters of the CES are estimated by least-squares,
+where <code class="reqn">\rho_1</code>, <code class="reqn">\rho_2</code>, and/or <code class="reqn">\rho</code> are fixed 
+consecutively at each value defined in arguments <code>rho1</code>, <code>rho2</code>,
+and <code>rho</code>, respectively.
+Finally the estimation with the <code class="reqn">\rho_1</code>, <code class="reqn">\rho_2</code>,
+and/or <code class="reqn">\rho</code>
+that results in the smallest sum of squared residuals is chosen
+(and returned).<br></p>
+<p><b>Random numbers</b><br>
+The ‘state’ (or ‘seed’) of R's random number generator
+is saved at the beginning of the <code>cesEst</code> function
+and restored at the end of this function
+so that this function does <em>not</em> affect the generation of random numbers
+although the random seed is set to argument <code>random.seed</code>
+and the ‘SANN’ and ‘DE’ algorithms use random numbers.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>cesEst</code> returns a list of class <code>cesEst</code>
+that has following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>coefficients</code></td>
+<td>
+<p>estimated coefficients/parameters of the CES
+(including a possible fixed <code class="reqn">\rho</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ela</code></td>
+<td>
+<p>constant elasticity/elasticities of substitution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>number of iterations
+(only for non-linear least-squares estimations).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convergence</code></td>
+<td>
+<p>logical value indicating if the non-linear estimation
+has converged (only for non-linear least-squares estimations
+with solvers that have a convergence criterion).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>message</code></td>
+<td>
+<p>additional information from the optimizer
+(only if a message was returned by <code>optim</code> or
+<code>nls.lm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vcov</code></td>
+<td>
+<p>approximate covariance matrix of the estimated parameters
+calculated from the parameters of the linearized model by the Delta method
+(only if argument <code>method</code> is <code>"Kmenta"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cov.unscaled</code></td>
+<td>
+<p>unscaled covariance matrix of the estimated parameters
+(including a possible fixed <code class="reqn">\rho</code>),
+i.e. the inverse of the cross-product of the gradient matrix
+evaluated at the estimated parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fitted.values</code></td>
+<td>
+<p>the fitted values (<code class="reqn">\hat{y}</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>residuals</code></td>
+<td>
+<p>the residuals 
+(i.e. <code class="reqn">y - \hat{y}</code> 
+if argument <code>multErr</code> is <code>FALSE</code> (the default),
+and <code class="reqn">log( y ) - log( \hat{y} )</code>
+if argument <code>multErr</code> is <code>TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rss</code></td>
+<td>
+<p>the sum of the squared residuals 
+(i.e. the value of the objective function of the non-linear 
+least-squares estimation evaluated at the estimated parameters).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>the matched call.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>argument <code>method</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>multErr</code></td>
+<td>
+<p>argument <code>multErr</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p>starting values for the non-linear estimation
+(not for the <code>Kmenta</code> and <code>DE</code> method).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower</code></td>
+<td>
+<p>lower bounds of the parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper</code></td>
+<td>
+<p>upper bounds of the parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho</code></td>
+<td>
+<p>argument <code>rho</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nls.lm</code></td>
+<td>
+<p>object returned by <code>nls.lm</code>
+(only if argument <code>method</code> is <code>"LM"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optim</code></td>
+<td>
+<p>object returned by <code>optim</code>
+(only if argument <code>method</code> is <code>"NM"</code>, <code>"Nelder-Mead"</code>,
+<code>"BFGS"</code>, <code>"CG"</code>, <code>"L-BFGS-B"</code>, or <code>"SANN"</code>)).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nlm</code></td>
+<td>
+<p>object returned by <code>nlm</code>
+(only if argument <code>method</code> is <code>"Newton"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nlminb</code></td>
+<td>
+<p>object returned by <code>nlminb</code>
+(only if argument <code>method</code> is <code>"PORT"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>DEoptim</code></td>
+<td>
+<p>object returned by <code>DEoptim</code>
+(only if argument <code>method</code> is <code>"DE"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>translog</code></td>
+<td>
+<p>estimation results of the (unrestricted) translog model
+returned by <code>translogEst</code>
+(only if argument <code>method</code> is <code>"Kmenta"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kmenta</code></td>
+<td>
+<p>estimation results of the Kmenta approximation
+(a restricted translog model)
+returned by <code>systemfit</code>
+(only if argument <code>method</code> is <code>"Kmenta"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>testKmenta</code></td>
+<td>
+<p>test of the restrictions implied
+by the Kmenta approximation
+(including constant returns to scale
+if argument <code>vrs</code> is <code>FALSE</code>)
+in the unrestricted translog model
+returned by <code>linear.hypothesis</code>
+(only if argument <code>method</code> is <code>"Kmenta"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allRhoSum</code></td>
+<td>
+<p>data frame with summary results of the estimations
+with all values of <code class="reqn">\rho</code> used in the grid search
+(only if a grid search was performed);
+this data frame has follwing columns:
+<code>rho</code> = the value of <code class="reqn">\rho</code>,
+<code>rss</code> = the corresponding sum of squared residuals, and
+(if appropriate for the method used for the estimation)
+<code>convergence</code> = logical value indicating whether the estimation
+converged.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allRhoFull</code></td>
+<td>
+<p>list of estimation results returned by <code>cesEst</code>
+for all values of <code class="reqn">\rho</code> used in the grid search
+(only if a grid search was performed and
+argument <code>returnGridAll</code> is set to <code>TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho1Values,rho2Values,rhoValues</code></td>
+<td>
+<p>numeric vectors giving the values
+that are used in the grid search
+for the coefficients <code class="reqn">\rho_1</code> and <code class="reqn">\rho</code>,
+respectively (only if a grid search was performed).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rssArray</code></td>
+<td>
+<p>matrix or array of the RSS values obtained
+by a two-dimensional or three-dimensional grid search 
+for the coefficients <code class="reqn">\rho_1</code> (first dimension, e.g. rows of a matrix),
+<code class="reqn">\rho_2</code>, and <code class="reqn">\rho</code> (last dimension, e.g. columns of a matrix)
+(only if a two-dimensional or threedimensional grid search was performed).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grad</code></td>
+<td>
+<p>matrix with the gradients of the dependent variable
+(i.e., <code class="reqn">y</code> if argument <code>multErr</code> is <code>FALSE</code>
+and <code class="reqn">\log(y)</code> if argument <code>multErr</code> is <code>TRUE</code>)
+with respect to the parameters evaluated at the estimated parameters
+(only if argument <code>returnGrad</code> is set to <code>TRUE</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Arne Henningsen and Geraldine Henningsen</p>
+
+
+<h3>References</h3>
+
+<p>Bélisle, C.J.P. (1992):
+Convergence theorems for a class of simulated annealing algorithms on Rd,
+Journal of Applied Probability 29, p. 885-895.
+</p>
+<p>Broyden, C.G. (1970):
+The Convergence of a Class of Double-rank Minimization Algorithms,
+Journal of the Institute of Mathematics and Its Applications 6, p. 76-90.
+</p>
+<p>Byrd, R.H., Lu, P., Nocedal, J. and Zhu, C. (1995):
+A limited memory algorithm for bound constrained optimization,
+SIAM J. Scientific Computing 16, p. 1190-1208.
+</p>
+<p>Dennis, J.E. and Schnabel, R.B. (1983):
+Numerical Methods for Unconstrained Optimization and Nonlinear Equations,
+Prentice-Hall, Englewood Cliffs, NJ.
+</p>
+<p>Fletcher, R. (1970):
+A New Approach to Variable Metric Algorithms,
+Computer Journal 13, p. 317-322.
+</p>
+<p>Fletcher, R. and Reeves, C.M. (1964):
+Function minimization by conjugate gradients,
+Computer Journal 7, p. 148-154.
+</p>
+<p>Gay, D.M. (1990):
+Usage Summary for Selected Optimization Routines,
+Computing Science Technical Report No. 153,
+AT&amp;T Bell Laboratories, Murray Hill NJ.
+</p>
+<p>Goldfarb, D. (1970):
+A Family of Variable Metric Updates Derived by Variational Means,
+Mathematics of Computation 24, p. 23-26.
+</p>
+<p>Moré, J.J. (1978):
+The Levenberg-Marquardt algorithm: implementation and theory,
+in G.A. Watson (Ed.), Lecture Notes in Mathematics 630: Numerical Analysis,
+pp. 105-116, Springer-Verlag: Berlin.
+</p>
+<p>Nelder, J.A. and Mead, R. (1965):
+A simplex algorithm for function minimization,
+Computer Journal 7, p. 308-313.
+</p>
+<p>Schnabel, R.B., Koontz, J.E. and Weiss, B.E. (1985):
+A modular system of algorithms for unconstrained minimization,
+ACM Trans. Math. Software, 11, pp. 419-440.
+</p>
+<p>Shanno, D.F. (1970):
+Conditioning of Quasi-Newton Methods for Function Minimization,
+Mathematics of Computation 24, p. 647-656.
+</p>
+<p>Storn, R. and Price, K. (1997):
+Differential Evolution - A Simple and Efficient Heuristic
+for Global Optimization over Continuous Spaces,
+Journal of Global Optimization, 11(4), p. 341-359.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>summary.cesEst</code> for the <code>summary</code> method,
+<code>plot.cesEst</code> for plotting the results
+of the grid search for <code class="reqn">\rho</code>,
+<code>coef.cesEst</code> for several further methods,
+<code>cesCalc</code> for calculations or simulations with the CES,
+<code>translogEst</code> for estimating translog functions, and
+<code>quadFuncEst</code> for estimating quadratic functions.</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">   data( germanFarms, package = "micEcon" )
+   # output quantity:
+   germanFarms$qOutput &lt;- germanFarms$vOutput / germanFarms$pOutput
+   # quantity of intermediate inputs
+   germanFarms$qVarInput &lt;- germanFarms$vVarInput / germanFarms$pVarInput
+
+
+   ## CES: Land &amp; Labor (Levenberg-Marquardt algorithm)
+   cesLandLabor &lt;- cesEst( "qOutput", c( "land", "qLabor" ), germanFarms )
+
+   # variable returns to scale, increased max. number of iter. (LM algorithm)
+   cesLandLaborVrs &lt;- cesEst( "qOutput", c( "land", "qLabor" ), germanFarms,
+      vrs = TRUE, control = nls.lm.control( maxiter = 1000 ) )
+
+   # using the Nelder-Mead optimization method
+   cesLandLaborNm &lt;- cesEst( "qOutput", c( "land", "qLabor" ), germanFarms,
+      method = "NM" )
+
+   # using the BFGS optimization method
+   cesLandLaborBfgs &lt;- cesEst( "qOutput", c( "land", "qLabor" ), germanFarms,
+      method = "BFGS" )
+
+   # using the L-BFGS-B optimization method with constrained parameters
+   cesLandLaborBfgsCon &lt;- cesEst( "qOutput", c( "land", "qLabor" ),
+      germanFarms, method = "L-BFGS-B" )
+
+   # using the CG optimization method
+   cesLandLaborSann &lt;- cesEst( "qOutput", c( "land", "qLabor" ), germanFarms,
+      method = "CG" )
+
+   # using the SANN optimization method
+   # (with decreased number of iteration to decrease execution time)
+   cesLandLaborSann &lt;- cesEst( "qOutput", c( "land", "qLabor" ), germanFarms,
+      method = "SANN", control = list( maxit = 1000 ) )
+
+   # using the Kmenta approximation
+   cesLandLaborKmenta &lt;- cesEst( "qOutput", c( "land", "qLabor" ), germanFarms,
+      method = "Kmenta" )
+
+   # using the PORT optimization routine with unconstrained parameters
+   cesLandLaborPortCon &lt;- cesEst( "qOutput", c( "land", "qLabor" ),
+      germanFarms, vrs = TRUE, method = "PORT", lower = -Inf, upper = Inf )
+
+   # using the PORT optimization routine with constrained parameters and VRS
+   cesLandLaborPortCon &lt;- cesEst( "qOutput", c( "land", "qLabor" ),
+      germanFarms, vrs = TRUE, method = "PORT" )
+
+   # using the Differential Evolution optimization method
+   # (with decreased number of iteration to decrease execution time)
+   cesLandLaborDe &lt;- cesEst( "qOutput", c( "land", "qLabor" ), germanFarms,
+      method = "DE", control = DEoptim.control( itermax = 50 ) )
+
+   ## estimation with a grid search for rho (using the LM algorithm)
+   cesLandInt &lt;- cesEst( "qOutput", c( "land", "qLabor" ),
+      data = germanFarms, rho = seq( from = -0.6, to = 0.9, by = 0.3 ) )
+</code></pre>
+
+
+</div>

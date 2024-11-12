@@ -1,0 +1,376 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>estMantel</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate Mantel correlation (rM) from geolocator, GPS, and/or raster data.</h2>
+
+<h3>Description</h3>
+
+<p>Resampling of uncertainty for migratory connectivity strength, as quantified
+by Mantel correlation (rM), from geolocators, GPS, and/or raster (e.g.,
+genoscape or isotope) data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">estMantel(
+  targetPoints = NULL,
+  originPoints = NULL,
+  isGL,
+  geoBias = NULL,
+  geoVCov = NULL,
+  targetSites = NULL,
+  nBoot = 1000,
+  nSim = ifelse(any(isRaster &amp; isGL), 5000, ifelse(any(isGL), 1000, ifelse(any(isRaster),
+    10, 1))),
+  verbose = 0,
+  alpha = 0.05,
+  resampleProjection = "ESRI:102010",
+  maxTries = 300,
+  maintainLegacyOutput = FALSE,
+  originSites = NULL,
+  isTelemetry = !isGL,
+  isRaster = FALSE,
+  captured = "origin",
+  geoBiasOrigin = geoBias,
+  geoVCovOrigin = geoVCov,
+  targetRaster = NULL,
+  originRaster = NULL,
+  dataOverlapSetting = c("dummy", "none", "named"),
+  originRelAbund = NULL,
+  targetRelAbund = NULL
+)
+
+estCorr(
+  targetPoints = NULL,
+  originPoints = NULL,
+  isGL,
+  geoBias = NULL,
+  geoVCov = NULL,
+  targetSites = NULL,
+  nBoot = 1000,
+  nSim = ifelse(any(isRaster &amp; isGL), 5000, ifelse(any(isGL), 1000, ifelse(any(isRaster),
+    10, 1))),
+  verbose = 0,
+  alpha = 0.05,
+  resampleProjection = "ESRI:102010",
+  maxTries = 300,
+  maintainLegacyOutput = FALSE,
+  originSites = NULL,
+  isTelemetry = !isGL,
+  isRaster = FALSE,
+  captured = "origin",
+  geoBiasOrigin = geoBias,
+  geoVCovOrigin = geoVCov,
+  targetRaster = NULL,
+  originRaster = NULL,
+  dataOverlapSetting = c("dummy", "none", "named"),
+  originRelAbund = NULL,
+  targetRelAbund = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>targetPoints</code></td>
+<td>
+<p>A <code>POINTS</code> from sf
+object, with length number of animals tracked.  Each point indicates the
+point estimate location in the non-release season.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originPoints</code></td>
+<td>
+<p>A <code>POINTS</code> from sf
+object, with length number of animals tracked.  Each point indicates the
+release location of an animal.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>isGL</code></td>
+<td>
+<p>Indicates whether or which animals were tracked with geolocators
+Should be either single TRUE or FALSE value, or vector with length of
+number of animals tracked, with TRUE for animals in  <code>targetPoints</code>
+with geolocators and FALSE for animals without.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>geoBias</code></td>
+<td>
+<p>For GL data, vector of length 2 indicating expected bias
+in longitude and latitude of <code>targetPoints</code>, in
+<code>resampleProjection</code> units (default meters).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>geoVCov</code></td>
+<td>
+<p>For GL data, 2x2 matrix with expected variance/covariance
+in longitude and latitude of <code>targetPoints</code>, in
+<code>resampleProjection</code> units (default meters).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetSites</code></td>
+<td>
+<p>A <code>SpatialPolygons</code>, <code>SpatialPolygonsDataFrame</code>,
+or <code>POLYGONS</code> sf object indicating valid target location(s). Not
+needed unless you want to mask out certain areas (e.g. water) and
+<code>captured</code> is "origin" or you want to use a weighted bootstrap based on
+<code>targetRelAbund</code> for animals captured on the target side.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nBoot</code></td>
+<td>
+<p>Number of bootstrap runs. Animals are sampled with replacement
+for each, to estimate sampling uncertainty.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nSim</code></td>
+<td>
+<p>Tuning parameter for GL or raster data. Affects only the speed;
+1000 seems to work well with our GL data.  Should be integer &gt; 0.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>0 (default) to 3. 0 prints no output during run. 1 prints
+a line every 100 bootstraps.  2 prints a line every bootstrap.
+3 also prints the number of draws (for tuning nSim only).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>Level for confidence/credible intervals provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resampleProjection</code></td>
+<td>
+<p>Projection when sampling from geolocator
+bias/error. This projection needs units = m. Default is Equidistant
+Conic. The default setting preserves distances around latitude = 0 and
+longitude = 0. Other projections may work well, depending on the location
+of <code>targetPoints</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxTries</code></td>
+<td>
+<p>Maximum number of times to run a single GL bootstrap before
+exiting with an error.  Default is 300.  Set to NULL to never stop.  This
+parameter was added to prevent GL setups where some sample points never
+land on target sites from running indefinitely.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maintainLegacyOutput</code></td>
+<td>
+<p>version 0.4.0 of <code>MigConnectivity</code>
+updated the structure of the estimates. If you have legacy code that refers
+to elements within a <code>estMigConnectivity</code> object, you can set this
+to TRUE to also keep the old structure. Defaults to FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originSites</code></td>
+<td>
+<p>A <code>SpatialPolygons</code>, <code>SpatialPolygonsDataFrame</code>,
+or <code>POLYGONS</code> sf object indicating valid origin location(s). Not
+needed unless you want to mask out certain areas (e.g. water) and
+<code>captured</code> is "target" or you want to use a weighted bootstrap based on
+<code>originRelAbund</code> for animals captured on the origin side.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>isTelemetry</code></td>
+<td>
+<p>Indicates whether or which animals were tracked with
+telemetry/GPS (no location uncertainty on either end).
+Should be either single TRUE or FALSE value, or vector with length of
+number of animals tracked, with TRUE or FALSE for each animal in data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>isRaster</code></td>
+<td>
+<p>Indicates whether or which animals were tracked with
+intrinsic markers (e.g., genetics or isotopes), with location uncertainty
+expressed as a raster of probabilities by grid cells, either in
+<code>targetRaster</code> or <code>originRaster</code>. Should be either single TRUE or
+FALSE value, or vector with length of number of animals tracked, with TRUE
+or FALSE for each animal in data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>captured</code></td>
+<td>
+<p>Indicates whether or which animals were captured in the
+origin sites, the target sites, or neither (another phase of the annual
+cycle). Location uncertainty will only be applied where the animal was not
+captured. So this doesn't matter for telemetry data. Should be either single
+"origin" (default), "target", or "neither" value, or a character vector with
+length of number of animals tracked, with "origin", "target", or "neither"
+for each animal.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>geoBiasOrigin</code></td>
+<td>
+<p>For GL data where <code>captured</code>!="origin", vector of
+length 2 indicating expected bias in longitude and latitude of
+<code>originPoints</code>, in <code>resampleProjection</code> units (default meters).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>geoVCovOrigin</code></td>
+<td>
+<p>For GL data where <code>captured</code>!="origin", 2x2 matrix
+with expected variance/covariance in longitude and latitude of
+<code>targetPoints</code>, in <code>resampleProjection</code> units (default meters).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetRaster</code></td>
+<td>
+<p>For intrinsic tracking data, the results of
+<code>isoAssign</code> or a similar function of class <code>intrinsicAssign</code> or
+class <code>RasterBrick</code>/<code>RasterStack</code>, for example from the package
+<code>assignR</code>. In any case, it expresses location uncertainty on target
+range, through a raster of probabilities by grid cells.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originRaster</code></td>
+<td>
+<p>For intrinsic tracking data, the results of
+<code>isoAssign</code> or a similar function of class <code>intrinsicAssign</code> or
+class <code>RasterBrick</code>/<code>RasterStack</code>, for example from the package
+<code>assignR</code>. In any case, it expresses location uncertainty on origin
+range, through a raster of probabilities by grid cells.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dataOverlapSetting</code></td>
+<td>
+<p>When there is more than one type of data, this
+setting allows the user some flexibility for clarifying which type(s) of
+data apply to which animals. Setting "dummy" (the default) indicates that
+there are dummy values within each dataset for the animals that isGL,
+isTelemetry, etc. don't have that data type (FALSE values). If no animals
+have a data type, no dummy values are required. If no animals have more than
+one type of data, the user can simplify processing their data by choosing
+setting "none" here. In this case, there should be no dummy values, and only
+the animals with a type of data should be included in that dataset. The
+third setting ("named") is not yet implemented, but will eventually allow
+another way to allow animals with more than one type of data with named
+animals linking records. When there is only one type of data, it is fastest
+to leave this on the default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originRelAbund</code></td>
+<td>
+<p>the proportion of the total abundance in each of B
+<code>originSites</code>. Used to set up the bootstrap to be weighted by relative
+abundance (for animals captured on the origin side). Either a numeric vector
+of length B that sums to 1, or an mcmc object (such as is produced by
+<code>modelCountDataJAGS</code>) or matrix with at least B columns.
+If there are more than B columns, the relevant columns should be
+labeled "relN[1]" through "relN[B]". Optional, but if you don't set it and
+at least some animals are captured on the origin side, there's potential for
+rM to be biased (if sampling isn't proportional to abundance).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetRelAbund</code></td>
+<td>
+<p>the proportion of the total abundance in each of W
+<code>targetSites</code>. Used to set up the bootstrap to be weighted by relative
+abundance (for animals captured on the target side). Either a numeric vector
+of length W that sums to 1, or an mcmc object (such as is produced by
+<code>modelCountDataJAGS</code>) or matrix with at least W columns.
+If there are more than W columns, the relevant columns should be
+labeled "relN[1]" through "relN[W]". Optional, but if you don't set it and
+at least some animals are captured on the target side, there's potential for
+rM to be biased (if sampling isn't proportional to abundance).</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>estMantel</code> returns a list with elements:
+</p>
+
+<dl>
+<dt><code>corr</code></dt>
+<dd>
+<p>List containing estimates of rM:
+</p>
+
+<ul>
+<li>
+<p><code>sample</code> <code>nBoot</code> sampled values for Mantel
+correlation. Provided to allow the user to compute own summary
+statistics.
+</p>
+</li>
+<li>
+<p><code>mean, se, simpleCI, bcCI, median, point</code> Summary
+statistics for Mantel correlation bootstraps.
+</p>
+</li>
+</ul>
+</dd>
+<dt><code>input</code></dt>
+<dd>
+<p>List containing the inputs to <code>estMantel</code></p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Cohen, E. B., J. A. Hostetler, M. T. Hallworth, C. S. Rushing, T. S. Sillett,
+and P. P. Marra. 2018. Quantifying the strength of migratory connectivity.
+Methods in Ecology and Evolution 9: 513 - 524.
+<a href="https://doi.org/10.1111/2041-210X.12916">doi:10.1111/2041-210X.12916</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>estMC</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data('OVENdata')
+rM1 &lt;- estMantel(isGL=OVENdata$isGL,#Logical vector: light-level GL(T)/GPS(F)
+                 geoBias = OVENdata$geo.bias, # Geolocator location bias
+                 geoVCov = OVENdata$geo.vcov, # Location covariance matrix
+                 targetSites = OVENdata$targetSites,#Nonbreeding/target sites
+                 originPoints = OVENdata$originPoints, # Capture Locations
+                 targetPoints = OVENdata$targetPoints, # Target locations
+                 verbose = 1,   # output options
+                 nBoot = 10, # This is set low for example
+                 resampleProjection = sf::st_crs(OVENdata$targetSites))
+rM1
+str(rM1, max.level = 2)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,299 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ResamplingSameOtherSizesCV</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Resampling for comparing train subsets and sizes</h2>
+
+<h3>Description</h3>
+
+<p><code>ResamplingSameOtherSizesCV</code>
+defines how a task is partitioned for
+resampling, for example in
+<code>resample()</code> or
+<code>benchmark()</code>.
+</p>
+<p>Resampling objects can be instantiated on a
+<code>Task</code>,
+which should define at least one group variable.
+</p>
+<p>After instantiation, sets can be accessed via
+<code style="white-space: pre;">⁠$train_set(i)⁠</code> and
+<code style="white-space: pre;">⁠$test_set(i)⁠</code>, respectively. 
+</p>
+
+
+<h3>Details</h3>
+
+<p>A supervised learning algorithm inputs a train set, and outputs a
+prediction function, which can be used on a test set. If each data
+point belongs to a group (such as geographic region, year, etc), then
+how do we know if it is possible to train on one group, and predict
+accurately on another group? Cross-validation can be used to determine
+the extent to which this is possible, by first assigning fold IDs from
+1 to K to all data (possibly using stratification, usually by group
+and label). Then we loop over test sets (group/fold combinations),
+train sets (same group, other groups, all groups), and compute
+test/prediction accuracy for each combination.  Comparing
+test/prediction accuracy between same and other, we can determine the
+extent to which it is possible (perfect if same/other have similar
+test accuracy for each group; other is usually somewhat less accurate
+than same; other can be just as bad as featureless baseline when the
+groups have different patterns).
+</p>
+<p>This class has more parameters/potential applications than
+<code>ResamplingSameOtherCV</code> and
+<code>ResamplingVariableSizeTrainCV</code>,
+which are older and should only be preferred
+for visualization purposes.
+</p>
+
+
+<h3>Stratification</h3>
+
+<p><code>ResamplingSameOtherSizesCV</code> supports stratified sampling.
+The stratification variables are assumed to be discrete,
+and must be stored in the Task with column role <code>"stratum"</code>.
+In case of multiple stratification variables,
+each combination of the values of the stratification variables forms a stratum.
+</p>
+
+
+<h3>Grouping</h3>
+
+<p><code>ResamplingSameOtherSizesCV</code> supports grouping of observations.
+The grouping variable is assumed to be discrete,
+and must be stored in the Task with column role <code>"group"</code>.
+</p>
+
+
+<h3>Subsets</h3>
+
+<p><code>ResamplingSameOtherSizesCV</code> supports training on different
+subsets of observations.
+The subset variable is assumed to be discrete,
+and must be stored in the Task with column role <code>"subset"</code>.
+</p>
+
+
+<h3>Parameters</h3>
+
+<p>The number of cross-validation folds K should be defined as the
+<code>fold</code> parameter, default 3.
+</p>
+<p>The number of random seeds for down-sampling should be defined as the
+<code>seeds</code> parameter, default 1.
+</p>
+<p>The ratio for down-sampling should be defined as the <code>ratio</code>
+parameter, default 0.5. The min size of same and other sets is
+repeatedly multiplied by this ratio, to obtain smaller sample sizes.
+</p>
+<p>The number of down-sampling sizes/multiplications should be defined as
+the <code>sizes</code> parameter, which can also take two special values:
+default -1 means no down-sampling at all, and 0 means only down-sampling
+to the sizes of the same/other sets.
+</p>
+<p>The <code>ignore_subset</code> parameter should be either <code>TRUE</code> or
+<code>FALSE</code> (default), whether to ignore the <code>subset</code>
+role. <code>TRUE</code> only creates splits for same subset (even if task
+defines <code>subset</code> role), and is useful for subtrain/validation
+splits (hyper-parameter learning). Note that this feature will work on a
+task with <code>stratum</code> and <code>group</code> roles (unlike
+<code>ResamplingCV</code>).
+</p>
+<p>In each subset, there will be about an equal number of observations
+assigned to each of the K folds.
+The train/test splits are defined by all possible combinations of
+test subset, test fold, train subsets (same/other/all), down-sampling
+sizes, and random seeds.
+The splits are stored in
+<code style="white-space: pre;">⁠$instance$iteration.dt⁠</code>.
+</p>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-Resampling-new"><code>Resampling$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Resampling-train_set"><code>Resampling$train_set()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Resampling-test_set"><code>Resampling$test_set()</code></a>
+</p>
+</li>
+</ul>
+<hr>
+<a id="method-Resampling-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Creates a new instance of this R6 class.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Resampling$new(
+  id,
+  param_set = ps(),
+  duplicated_ids = FALSE,
+  label = NA_character_,
+  man = NA_character_
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>id</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Identifier for the new instance.</p>
+</dd>
+<dt><code>param_set</code></dt>
+<dd>
+<p>(paradox::ParamSet)<br>
+Set of hyperparameters.</p>
+</dd>
+<dt><code>duplicated_ids</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)<br>
+Set to <code>TRUE</code> if this resampling strategy may have duplicated row ids in a single training set or test set.
+</p>
+</dd>
+<dt><code>label</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Label for the new instance.</p>
+</dd>
+<dt><code>man</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+String in the format <code style="white-space: pre;">⁠[pkg]::[topic]⁠</code> pointing to a manual page for this object.
+The referenced help package can be opened via method <code style="white-space: pre;">⁠$help()⁠</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-Resampling-train_set"></a>
+
+
+
+<h4>Method <code>train_set()</code>
+</h4>
+
+<p>Returns the row ids of the i-th training set.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Resampling$train_set(i)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>i</code></dt>
+<dd>
+<p>(<code>integer(1)</code>)<br>
+Iteration.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>(<code>integer()</code>) of row ids.
+</p>
+
+
+<hr>
+<a id="method-Resampling-test_set"></a>
+
+
+
+<h4>Method <code>test_set()</code>
+</h4>
+
+<p>Returns the row ids of the i-th test set.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Resampling$test_set(i)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>i</code></dt>
+<dd>
+<p>(<code>integer(1)</code>)<br>
+Iteration.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>(<code>integer()</code>) of row ids.
+</p>
+
+
+
+
+<h3>See Also</h3>
+
+
+<ul>
+<li>
+<p> Blog post
+<a href="https://tdhock.github.io/blog/2023/R-gen-new-subsets/">https://tdhock.github.io/blog/2023/R-gen-new-subsets/</a>
+</p>
+</li>
+<li>
+<p> Package <a href="https://CRAN.R-project.org/package=mlr3"><span class="pkg">mlr3</span></a> for standard
+<code>Resampling</code>, which does not support comparing
+train on same or other groups.
+</p>
+</li>
+<li> <p><code>score</code> and Simulations vignette for more detailed examples.
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">same_other_sizes &lt;- mlr3resampling::ResamplingSameOtherSizesCV$new()
+same_other_sizes$param_set$values$folds &lt;- 5
+</code></pre>
+
+
+</div>

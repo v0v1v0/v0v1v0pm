@@ -1,0 +1,325 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>EAdet</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Epidemic Algorithm for detection of multivariate outliers in incomplete survey data</h2>
+
+<h3>Description</h3>
+
+<p>In <code>EAdet</code> an epidemic is started at a center of the data. The epidemic
+spreads out and infects neighbouring points (probabilistically or deterministically).
+The last points infected are outliers. After running <code>EAdet</code> an imputation
+with <code>EAimp</code> may be run.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">EAdet(
+  data,
+  weights,
+  reach = "max",
+  transmission.function = "root",
+  power = ncol(data),
+  distance.type = "euclidean",
+  maxl = 5,
+  plotting = TRUE,
+  monitor = FALSE,
+  prob.quantile = 0.9,
+  random.start = FALSE,
+  fix.start,
+  threshold = FALSE,
+  deterministic = TRUE,
+  rm.missobs = FALSE,
+  verbose = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a data frame or matrix with data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>a vector of positive sampling weights.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reach</code></td>
+<td>
+<p>if <code>reach = "max"</code> the maximal nearest neighbor distance is
+used as the basis for the transmission function, otherwise the weighted
+<code class="reqn">(1 - (p + 1) / n)</code> quantile of the nearest neighbor distances is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transmission.function</code></td>
+<td>
+<p>form of the transmission function of distance d:
+<code>"step"</code> is a heaviside function which jumps to <code>1</code> at <code>d0</code>,
+<code>"linear"</code> is linear between <code>0</code> and <code>d0</code>, <code>"power"</code> is
+<code>(beta*d+1)^(-p)</code> for <code>p = ncol(data)</code> and <code>beta &lt;- as.single((0.01^(-1 / power) - 1) / d0))</code> as default, <code>"root"</code> is the
+function <code>1-(1-d/d0)^(1/maxl)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>power</code></td>
+<td>
+<p>sets <code>p = power</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distance.type</code></td>
+<td>
+<p>distance type in function <code>dist()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxl</code></td>
+<td>
+<p>maximum number of steps without infection.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plotting</code></td>
+<td>
+<p>if <code>TRUE</code>, the cdf of infection times is plotted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>monitor</code></td>
+<td>
+<p>if <code>TRUE</code>, verbose output on epidemic.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prob.quantile</code></td>
+<td>
+<p>if mads fail, take this quantile absolute deviation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random.start</code></td>
+<td>
+<p>if <code>TRUE</code>, take a starting point at random instead of the
+spatial median.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fix.start</code></td>
+<td>
+<p>force epidemic to start at a specific observation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+<p>infect all remaining points with infection probability above
+the threshold <code>1-0.5^(1/maxl)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>deterministic</code></td>
+<td>
+<p>if <code>TRUE</code>, the number of infections is the expected
+number and the infected observations are the ones with largest infection probabilities.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rm.missobs</code></td>
+<td>
+<p>set <code>rm.missobs=TRUE</code> if completely missing observations
+should be discarded. This has to be done actively as a safeguard to avoid mismatches
+when imputing.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>more output with <code>verbose=TRUE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The form and parameters of the transmission function should be chosen such that the
+infection times have at least a range of 10. The default cutting point to decide on
+outliers is the median infection time plus three times the mad of infection times.
+A better cutpoint may be chosen by visual inspection of the cdf of infection times.
+<code>EAdet</code> calls the function <code>EA.dist</code>, which passes the counterprobabilities
+of infection (a <code class="reqn">n * (n - 1) / 2</code> size vector!) and three parameters (sample
+spatial median index, maximal distance to nearest neighbor and transmission distance =
+reach) as arguments to <code>EAdet</code>. The distances vector may be too large to be passed
+as arguments. Then either the memory size must be increased. Former versions of the
+code used a global variable to store the distances in order to save memory.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>EAdet</code> returns a list whose first component <code>output</code> is a sub-list
+with the following components:
+</p>
+
+<dl>
+<dt><code>sample.size</code></dt>
+<dd>
+<p>Number of observations</p>
+</dd>
+<dt><code>discarded.observations</code></dt>
+<dd>
+<p>Indices of discarded observations</p>
+</dd>
+<dt><code>missing.observations</code></dt>
+<dd>
+<p>Indices of completely missing observations</p>
+</dd>
+<dt><code>number.of.variables</code></dt>
+<dd>
+<p>Number of variables</p>
+</dd>
+<dt><code>n.complete.records</code></dt>
+<dd>
+<p>Number of records without missing values</p>
+</dd>
+<dt><code>n.usable.records</code></dt>
+<dd>
+<p>Number of records with less than half of values
+missing (unusable observations are discarded)</p>
+</dd>
+<dt><code>medians</code></dt>
+<dd>
+<p>Component wise medians</p>
+</dd>
+<dt><code>mads</code></dt>
+<dd>
+<p>Component wise mads</p>
+</dd>
+<dt><code>prob.quantile</code></dt>
+<dd>
+<p>Use this quantile if mads fail, i.e. if one of the mads is 0</p>
+</dd>
+<dt><code>quantile.deviations</code></dt>
+<dd>
+<p>Quantile of absolute deviations</p>
+</dd>
+<dt><code>start</code></dt>
+<dd>
+<p>Starting observation</p>
+</dd>
+<dt><code>transmission.function</code></dt>
+<dd>
+<p>Input parameter</p>
+</dd>
+<dt><code>power</code></dt>
+<dd>
+<p>Input parameter</p>
+</dd>
+<dt><code>maxl</code></dt>
+<dd>
+<p>Maximum number of steps without infection</p>
+</dd>
+<dt><code>min.nn.dist</code></dt>
+<dd>
+<p>Maximal nearest neighbor distance</p>
+</dd>
+<dt><code>transmission.distance</code></dt>
+<dd>
+<p><code>d0</code></p>
+</dd>
+<dt><code>threshold</code></dt>
+<dd>
+<p>Input parameter</p>
+</dd>
+<dt><code>distance.type</code></dt>
+<dd>
+<p>Input parameter</p>
+</dd>
+<dt><code>deterministic</code></dt>
+<dd>
+<p>Input parameter</p>
+</dd>
+<dt><code>number.infected</code></dt>
+<dd>
+<p>Number of infected observations</p>
+</dd>
+<dt><code>cutpoint</code></dt>
+<dd>
+<p>Cutpoint of infection times for outlier definition</p>
+</dd>
+<dt><code>number.outliers</code></dt>
+<dd>
+<p>Number of outliers</p>
+</dd>
+<dt><code>outliers</code></dt>
+<dd>
+<p>Indices of outliers</p>
+</dd>
+<dt><code>duration</code></dt>
+<dd>
+<p>Duration of epidemic</p>
+</dd>
+<dt><code>computation.time</code></dt>
+<dd>
+<p>Elapsed computation time</p>
+</dd>
+<dt><code>initialisation.computation.time</code></dt>
+<dd>
+<p>Elapsed computation time for
+standardisation and calculation of distance matrix</p>
+</dd>
+</dl>
+<p>The further components returned by <code>EAdet</code> are:
+</p>
+
+<dl>
+<dt><code>infected</code></dt>
+<dd>
+<p>Indicator of infection</p>
+</dd>
+<dt><code>infection.time</code></dt>
+<dd>
+<p>Time of infection</p>
+</dd>
+<dt><code>outind</code></dt>
+<dd>
+<p>Indicator of outliers</p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>Beat Hulliger
+</p>
+
+
+<h3>References</h3>
+
+<p>Béguin, C. and Hulliger, B. (2004) Multivariate outlier detection in
+incomplete survey data: the epidemic algorithm and transformed rank correlations,
+JRSS-A, 167, Part 2, pp. 275-294.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>EAimp</code> for imputation with the Epidemic Algorithm.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(bushfirem, bushfire.weights)
+det.res &lt;- EAdet(bushfirem, bushfire.weights)
+</code></pre>
+
+
+</div>

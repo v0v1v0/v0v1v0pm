@@ -1,0 +1,106 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modeltime_fit_workflowset</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit a <code>workflowset</code> object to one or multiple time series</h2>
+
+<h3>Description</h3>
+
+<p>This is a wrapper for <code>fit()</code> that takes a
+<code>workflowset</code> object and fits each model on one or multiple
+time series either sequentially or in parallel.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modeltime_fit_workflowset(
+  object,
+  data,
+  ...,
+  control = control_fit_workflowset()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A workflow_set object, generated with the workflowsets::workflow_set function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A <code>tibble</code> that contains data to fit the models.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Not currently used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>An object used to modify the fitting process. See <code>control_fit_workflowset()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A Modeltime Table containing one or more fitted models.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>control_fit_workflowset()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(tidymodels)
+library(workflowsets)
+library(dplyr)
+library(lubridate)
+library(timetk)
+
+data_set &lt;- m4_monthly
+
+# SETUP WORKFLOWSETS
+
+rec1 &lt;- recipe(value ~ date + id, data_set) %&gt;%
+    step_mutate(date_num = as.numeric(date)) %&gt;%
+    step_mutate(month_lbl = lubridate::month(date, label = TRUE)) %&gt;%
+    step_dummy(all_nominal(), one_hot = TRUE)
+
+mod1 &lt;- linear_reg() %&gt;% set_engine("lm")
+
+mod2 &lt;- prophet_reg() %&gt;% set_engine("prophet")
+
+wfsets &lt;- workflowsets::workflow_set(
+    preproc = list(rec1 = rec1),
+    models  = list(
+        mod1 = mod1,
+        mod2 = mod2
+    ),
+    cross   = TRUE
+)
+
+# FIT WORKFLOWSETS
+# - Returns a Modeltime Table with fitted workflowsets
+
+wfsets %&gt;% modeltime_fit_workflowset(data_set)
+
+</code></pre>
+
+
+</div>

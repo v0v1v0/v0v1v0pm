@@ -1,0 +1,346 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sum_time</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Sum time objects</h2>
+
+<h3>Description</h3>
+
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#deprecated"><img src="../help/figures/lifecycle-deprecated.svg" alt="[Deprecated]"></a>
+</p>
+<p>These functions will be removed on the next <code>mctq</code> version. You can still
+find them in the <a href="https://github.com/giperbio/lubritime"><code>lubritime</code></a>
+package.
+</p>
+<p><code>sum_time()</code> returns the sum of the time from different kinds of date/time
+objects.
+</p>
+<p><code>vct_sum_time()</code> returns the vectorized sum of the time from different kinds
+of date/time objects.
+</p>
+<p>Both functions can be set to work with a circular time frame (see Details to
+learn more).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">sum_time(..., cycle = NULL, reverse = TRUE, na_rm = FALSE)
+
+vct_sum_time(..., cycle = NULL, reverse = TRUE, na_rm = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Objects belonging to one of the following classes:
+<code>Duration</code>, <code>difftime</code>, or
+<code>hms</code>, <code>POSIXct</code>,
+<code>POSIXlt</code>, or <code>Interval</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cycle</code></td>
+<td>
+<p>(optional) A <code>numeric</code> or
+<code>Duration</code> object of length 1, equal or greater
+than 0, indicating the cycle length in seconds. If <code>NULL</code> the function will
+perform a linear sum (see Details to learn more) (default: <code>NULL</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reverse</code></td>
+<td>
+<p>(optional) A <code>logical</code> value indicating if
+the function must use a reverse cycle for negative sums (see Details to
+learn more) (default: <code>TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na_rm</code></td>
+<td>
+<p>(optional) a <code>logical</code> value indicating if
+the function must remove <code>NA</code> values while performing the sum (default:
+<code>FALSE</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+
+
+<h4>
+<code>sum_time()</code> versus <code>vct_sum_time()</code>
+</h4>
+
+<p><code>sum_time()</code> behaves similar to <code>sum()</code>, in the sense that it
+aggregates the time lengths of values in <code>...</code> into a single data point. For
+example, <code>sum_time(c(x, y), z)</code> will have the same output as <code>sum_time(x, y, z)</code>.
+</p>
+<p><code>vct_sum_time()</code> performs a different type of sum (a vectorized one). Instead
+of aggregating the time lengths, the function perform a paired sum between
+elements. For example, <code>vct_sum_time(c(x, y), c(w, z))</code> will return a vector
+like <code>c(sum_time(x, w), sum_time(y, z))</code>. Because of that, <code>vct_sum_time()</code>
+requires that all objects in <code>...</code> have the same length.
+</p>
+
+
+
+<h4>Linear versus circular time</h4>
+
+<p>Time can have different "shapes".
+</p>
+<p>If the objective is to measure the duration (time span) of an event, time is
+usually measured considering a linear frame, with a fixed point of
+<a href="https://en.wikipedia.org/wiki/Origin_(mathematics)">origin</a>. In this
+context, the time value distance itself to infinity in relation to the
+origin.
+</p>
+<div class="sourceCode"><pre>                                   B
+                             |----------|
+                                        A
+                             |---------------------|
+ - inf                                                inf +
+&lt;----------------------------|----------|----------|-------&gt;
+ s                           0          5          10     s
+                           origin
+
+A + B = 10 + 5 = 15s
+</pre></div>
+<p>But that's not the only possible "shape" of time, as it can also be measured
+in other contexts.
+</p>
+<p>In a "time of day" context, time will be linked to the rotation of the
+earth, "resetting" when a new rotation cycle starts. That brings a different
+kind of shape to time: a circular shape. With this shape the time value
+encounters the origin at the end of each cycle.
+</p>
+<div class="sourceCode"><pre>               - &lt;--- h ---&gt; +
+                    origin
+                . . . 0 . . .
+             .                 .
+            .                   .
+           .                     .
+          .                       .
+         .                         .
+         18                        6
+         .                         .
+          .                       .
+           .                     .
+            .                   .
+             .                 .
+                . . . 12 . . .
+
+18 + 6 = 0h
+</pre></div>
+<p>If we transpose this circular time frame to a linear one, it would look like
+this:
+</p>
+<div class="sourceCode"><pre>&lt;----|---------------|---------------|---------------|-----&gt;
+    0h              12h              0h             12h
+  origin                           origin
+</pre></div>
+<p>Note that now the origin is not fix, but cyclical.
+</p>
+<p><code>sum_time()</code> and <code>vct_sum_time()</code> can both operate in either a linear or a
+circular fashion. If <code>cycle = NULL</code> (default), the function will use a
+linear approach. Else, the function will use a circular approach relative to
+the cycle length (e.g, <code>cycle = 86400</code> (1 day)).
+</p>
+
+
+
+<h4>Fractional time</h4>
+
+<p><code>sum_time()</code> uses the <code>%%</code> operator to cycle values.
+Hence, it can be subject to catastrophic loss of accuracy if values in <code>...</code>
+are fractional and much larger than <code>cycle</code>. A warning is given if this is
+detected.
+</p>
+<p><code>%%</code> is a <code>builtin</code> R function that operates like this:
+</p>
+<div class="sourceCode"><pre>function(a, b) {
+    a - floor(a / b) * b
+}
+</pre></div>
+
+
+
+<h4>Negative time cycling</h4>
+
+<p>If the sum of the time is negative, with a <code>cycle</code> assigned and
+<code>reverse = FALSE</code>, <code>sum_time()</code> and <code>vtc_sum_time()</code> will perform the cycle
+considering the absolute value of the sum and return the result with a
+negative signal.
+</p>
+<p>However, If the sum of the time have a negative value, with a <code>cycle</code>
+assigned and <code>reverse = TRUE</code> (default), <code>sum_time()</code> and <code>vtc_sum_time()</code>
+will perform the cycle in reverse, relative to its origin.
+</p>
+<p>Example: If the sum of the time have a -30h time span in a reversed cycle of
+24h, the result will be 18h. By removing the full cycles of -30h you will
+get -6h (-30 + 24), and -6h relative to the origin will be 18h.
+</p>
+<div class="sourceCode"><pre>               - &lt;--- h ---&gt; +
+                    origin
+                . . . 0 . . .
+              .                 .
+            .                   .
+           .                     .
+          .                       .
+         .                         .
+    (-6) 18                        6 (-18)
+         .                         .
+          .                       .
+           .                     .
+            .                   .
+             .                 .
+                . . . 12 . . .
+                    (-12)
+</pre></div>
+
+
+
+<h4>
+<code>Period</code> objects</h4>
+
+<p><code>Period</code> objects are special type of objects
+developed by the lubridate team that
+represents "human units", ignoring possible timeline irregularities. That is
+to say that 1 day as <code>Period</code> can have different time spans, when looking to
+a timeline after a irregularity event.
+</p>
+<p>Since the time span of a <code>Period</code> object can
+fluctuate, <code>sum_time()</code> and <code>vct_sum_time()</code> don't accept this kind of
+object. You can transform it to a <code>Duration</code> object
+and still use the functions, but beware that this can produce errors.
+</p>
+<p>Learn more about <code>Period</code> objects in the <a href="https://r4ds.had.co.nz/dates-and-times.html#periods">Dates and times</a> chapter of
+Wickham &amp; Grolemund book (n.d.).
+</p>
+
+
+
+<h4>
+<code>POSIXt</code> objects</h4>
+
+<p><code>POSIXt</code> objects in <code>...</code> will be stripped of their
+dates. Only the time will be considered.
+</p>
+<p>Both <code>POSIXct</code> and <code>POSIXlt</code> are
+objects that inherits the class <code>POSIXt</code>. Learn more
+about it in <code>?DateTimeClasses</code>.
+</p>
+
+
+
+<h4>
+<code>Interval</code> objects</h4>
+
+<p>By using <code>Interval</code> objects in <code>...</code>, <code>sum_time()</code>
+and <code>vct_sum_time()</code> will consider only their time spans. That is, the
+amount of seconds of the intervals.
+</p>
+<p>Learn more about <code>Interval</code> objects in the <a href="https://r4ds.had.co.nz/dates-and-times.html#periods">Dates and times</a> chapter of
+Wickham &amp; Grolemund (n.d.).
+</p>
+
+
+
+<h4>Timeline irregularities</h4>
+
+<p>This function does not take into account timeline irregularities (e.g.,
+leap years, DST, leap seconds). This may not be an issue for most people, but
+it must be considered when doing time arithmetic.
+</p>
+
+
+
+<h3>Value</h3>
+
+
+<ul>
+<li>
+<p> If <code>cycle = NULL</code>, a <code>Duration</code> object with a
+linear sum of the time from objects in <code>...</code>.
+</p>
+</li>
+<li>
+<p> If <code>cycle != NULL</code>, a <code>Duration</code> object with a
+circular sum of the time from objects in <code>...</code>.
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>Wickham, H., &amp; Grolemund, G. (n.d.). <em>R for data science</em>. (n.p.).
+<a href="https://r4ds.had.co.nz">https://r4ds.had.co.nz</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Non-vectorized sum in an linear time frame
+
+x &lt;- c(as.POSIXct("2020-01-01 15:00:00"), as.POSIXct("1999-05-04 17:30:00"))
+y &lt;- lubridate::as.interval(lubridate::dhours(7), as.Date("1970-05-08"))
+sum_time(x, y)
+#&gt; [1] "142200s (~1.65 days)" # 39:30:00 # Expected
+
+## Non-vectorized sum in a circular time frame of 24 hours
+
+x &lt;- c(lubridate::dhours(25), lubridate::dhours(5), lubridate::dminutes(50))
+sum_time(x, cycle = lubridate::ddays())
+#&gt; [1] "24600s (~6.83 hours)" # 06:50:00 # Expected
+
+x &lt;- c(hms::parse_hm("00:15"), hms::parse_hm("02:30"), hms::as_hms(NA))
+sum_time(x, cycle = lubridate::ddays())
+#&gt; NA # Expected
+sum_time(x, cycle = lubridate::ddays(), na_rm = TRUE)
+#&gt; [1] "9900s (~2.75 hours)" # 02:45:00 # Expected
+
+x &lt;- c(lubridate::dhours(-12), lubridate::dhours(-13))
+sum_time(x, cycle = lubridate::ddays(), reverse = FALSE)
+#&gt; [1] "-3600s (~-1 hours)" # -01:00:00 # Expected
+
+x &lt;- c(lubridate::dhours(-12), lubridate::dhours(-13))
+sum_time(x, cycle = lubridate::ddays(), reverse = TRUE)
+#&gt; [1] "82800s (~23 hours)" # 23:00:00 # Expected
+
+## Vectorized sum in an linear time frame
+
+x &lt;- c(lubridate::dhours(6), NA)
+y &lt;- c(hms::parse_hm("23:00"), hms::parse_hm("10:00"))
+vct_sum_time(x, y)
+#&gt; [1] "104400s (~1.21 days)" NA # 29:00:00 NA # Expected
+vct_sum_time(x, y, na_rm = TRUE)
+#&gt; [1] "104400s (~1.21 days)" "36000s (~10 hours)" # Expected
+
+## Vectorized sum in a circular time frame of 24 hours
+
+x &lt;- c(lubridate::dhours(6), NA)
+y &lt;- c(hms::parse_hm("23:00"), hms::parse_hm("10:00"))
+vct_sum_time(x, y, cycle = lubridate::ddays())
+#&gt; [1] "18000s (~5 hours)" NA  # Expected
+vct_sum_time(x, y, cycle = lubridate::ddays(), na_rm = TRUE)
+#&gt; [1] "18000s (~5 hours)"  "36000s (~10 hours)" # Expected
+
+x &lt;- c(lubridate::dhours(-49), lubridate::dhours(-24))
+y &lt;- c(hms::parse_hm("24:00"), - hms::parse_hm("06:00"))
+vct_sum_time(x, y, cycle = lubridate::ddays(), reverse = FALSE)
+#&gt; [1] "-3600s (~-1 hours)"  "-21600s (~-6 hours)" # Expected
+
+x &lt;- c(lubridate::dhours(-49), lubridate::dhours(-24))
+y &lt;- c(hms::parse_hm("24:00"), - hms::parse_hm("06:00"))
+vct_sum_time(x, y, cycle = lubridate::ddays(), reverse = TRUE)
+#&gt; [1] "82800s (~23 hours)" "64800s (~18 hours)" # Expected
+</code></pre>
+
+
+</div>

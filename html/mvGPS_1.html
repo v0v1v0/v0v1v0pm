@@ -1,0 +1,266 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bal</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Construct Covariate Balance Statistics for Models with Multivariate Exposure</h2>
+
+<h3>Description</h3>
+
+<p>Assessing balance between exposure(s) and confounders is key when performing causal
+analysis using propensity scores. We provide a list of several models to generate
+weights to use in causal inference for multivariate exposures, and test the balancing property of these weights
+using weighted Pearson correlations. In addition, returns the effective sample
+size.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bal(
+  model_list,
+  D,
+  C,
+  common = FALSE,
+  trim_w = FALSE,
+  trim_quantile = 0.99,
+  all_uni = TRUE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model_list</code></td>
+<td>
+<p>character string identifying which methods to use when
+constructing weights. See details for a list of available models</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>D</code></td>
+<td>
+<p>numeric matrix of dimension <code class="reqn">n</code> by <code class="reqn">m</code> designating values of the exposures</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C</code></td>
+<td>
+<p>either a list of numeric matrices of length <code class="reqn">m</code> of dimension 
+<code class="reqn">n</code> by <code class="reqn">p_j</code> designating values of the confounders for each exposure 
+value or if <code>common</code> is TRUE a single matrix of of dimension <code class="reqn">n</code> by
+<code class="reqn">p</code> that represents common confounders for all exposures.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>common</code></td>
+<td>
+<p>logical indicator for whether C is a single matrix of common
+confounders for all exposures. default is FALSE meaning C must be specified
+as list of confounders of length <code class="reqn">m</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trim_w</code></td>
+<td>
+<p>logical indicator for whether to trim weights. default is FALSE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trim_quantile</code></td>
+<td>
+<p>numeric scalar used to specify the upper quantile to 
+trim weights if applicable. default is 0.99</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>all_uni</code></td>
+<td>
+<p>logical indicator. If TRUE then all univariate models specified
+in model_list will be estimated for each exposure. If FALSE will only estimate weights
+for the first exposure</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments to pass to <code>weightit</code> function
+if specifying one of these models in the model_list</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>When using propensity score methods for causal inference it is crucial to
+check the balancing property of the covariates and exposure(s). To do this in
+the multivariate case we first use a weight generating method from the available
+list shown below.
+</p>
+
+
+<h4>Methods Available</h4>
+
+
+<ul>
+<li>
+<p> "mvGPS": Multivariate generalized propensity score using Gaussian densities
+</p>
+</li>
+<li>
+<p> "entropy": Estimating weights using entropy loss
+function without specifying propensity score (Tübbicke 2020)
+</p>
+</li>
+<li>
+<p> "CBPS": Covariate balancing propensity score for continuous treatments
+which adds balance penalty while solving for propensity score parameters (Fong et al. 2018)
+</p>
+</li>
+<li>
+<p> "PS": Generalized propensity score estimated using univariate Gaussian densities
+</p>
+</li>
+<li>
+<p> "GBM": Gradient boosting to estimate the mean function of the propensity score,
+but still maintains Gaussian distributional assumptions (Zhu et al. 2015)
+</p>
+</li>
+</ul>
+<p>Note that only the <code>mvGPS</code> method is multivariate and all others are strictly univariate.
+For univariate methods weights are estimated for each exposure separately
+using the <code>weightit</code> function given the
+confounders for that exposure in <code>C</code> when <code>all_uni=TRUE</code>. To estimate
+weights for only the first exposure set <code>all_uni=FALSE</code>.
+</p>
+
+<p>It is also important to note that the weights for each method can be trimmed at
+the desired quantile by setting <code>trim_w=TRUE</code> and setting <code>trim_quantile</code>
+in \[0.5, 1\]. Trimming is done at both the upper and lower bounds. For further details
+see <code>mvGPS</code> on how trimming is performed.
+</p>
+
+
+<h4>Balance Metrics</h4>
+
+<p>In this package we include three key balancing metrics to summarize balance
+across all of the exposures.
+</p>
+
+<ul>
+<li>
+<p> Euclidean distance
+</p>
+</li>
+<li>
+<p> Maximum absolute correlation
+</p>
+</li>
+<li>
+<p> Average absolute correlation
+</p>
+</li>
+</ul>
+<p><em>Euclidean distance</em> is calculated using the origin point as reference, e.g. for <code>m=2</code>
+exposures the reference point is \[0, 0\]. In this way we are calculating how far
+the observed set of correlation points are from perfect balance.
+</p>
+<p><em>Maximum absolute correlation</em> reports the largest single imbalance between
+the exposures and the set of confounders. It is often a key diagnostic as
+even a single confounder that is sufficiently out of balance can reduce performance.
+</p>
+<p><em>Average absolute correlation</em> is the sum of the exposure-confounder correlations.
+This metric summarizes how well, on average, the entire set of exposures is balanced.
+</p>
+
+
+
+<h4>Effective Sample Size</h4>
+
+<p>Effective sample size, ESS, is defined as
+</p>
+<p style="text-align: center;"><code class="reqn">ESS=(\Sigma_i w_i)^{2}/\Sigma_i w_i^2,</code>
+</p>
+
+<p>where <code class="reqn">w_i</code> are the estimated weights for a particular method (Kish 1965).
+Note that when <code class="reqn">w=1</code> for all units that the <code class="reqn">ESS</code> is equal to the sample size <code class="reqn">n</code>.
+<code class="reqn">ESS</code> decreases when there are extreme weights or high variability in the weights.
+</p>
+
+
+
+<h3>Value</h3>
+
+
+<ul>
+<li> <p><code>W</code>: list of weights generated for each model
+</p>
+</li>
+<li> <p><code>cor_list</code>: list of weighted Pearson correlation coefficients for all confounders specified
+</p>
+</li>
+<li> <p><code>bal_metrics</code>: data.frame with the Euclidean distance, maximum absolute correlation, and average absolute correlation by method
+</p>
+</li>
+<li> <p><code>ess</code>: effective sample size for each of the methods used to generate weights
+</p>
+</li>
+<li> <p><code>models</code>: vector of models used
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>Fong C, Hazlett C, Imai K (2018).
+“Covariate balancing propensity score for a continuous treatment: application to the efficacy of political advertisements.”
+<em>Annals of Applied Statistics</em>, <b>In-Press</b>.<br><br> Kish L (1965).
+<em>Survey Sampling</em>.
+John Wiley \&amp; Sons, New York.<br><br> Tübbicke S (2020).
+“Entropy Balancing for Continuous Treatments.”
+<em>arXiv e-prints</em>.
+2001.06281.<br><br> Zhu Y, Coffman DL, Ghosh D (2015).
+“A boosting algorithm for estimating generalized propensity scores with continuous treatments.”
+<em>Journal of Causal Inference</em>, <b>3</b>(1), 25-40.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#simulating data
+sim_dt &lt;- gen_D(method="u", n=150, rho_cond=0.2, s_d1_cond=2, s_d2_cond=2,
+k=3, C_mu=rep(0, 3), C_cov=0.1, C_var=1, d1_beta=c(0.5, 1, 0),
+d2_beta=c(0, 0.3, 0.75), seed=06112020)
+D &lt;- sim_dt$D
+C &lt;- sim_dt$C
+
+#generating weights using mvGPS and potential univariate alternatives
+require(WeightIt)
+bal_sim &lt;- bal(model_list=c("mvGPS", "entropy", "CBPS", "PS", "GBM"), D,
+C=list(C[, 1:2], C[, 2:3]))
+
+#overall summary statistics
+bal_sim$bal_metrics
+
+#effective sample sizes
+bal_sim$ess
+
+#we can also trim weights for all methods
+bal_sim_trim &lt;- bal(model_list=c("mvGPS", "entropy", "CBPS", "PS", "GBM"), D,
+C=list(C[, 1:2], C[, 2:3]), trim_w=TRUE, trim_quantile=0.9, p.mean=0.5)
+#note that in this case we can also pass additional arguments using in
+#WeighIt package for entropy, CBPS, PS, and GBM such as specifying the p.mean
+
+#can check to ensure all the weights have been properly trimmed at upper and
+#lower bound
+all.equal(unname(unlist(lapply(bal_sim$W, quantile, 0.99))),
+unname(unlist(lapply(bal_sim_trim$W, max))))
+all.equal(unname(unlist(lapply(bal_sim$W, quantile, 1-0.99))),
+unname(unlist(lapply(bal_sim_trim$W, min))))
+
+</code></pre>
+
+
+</div>

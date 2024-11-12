@@ -1,0 +1,152 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mies_survival_comma</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Choose Survivors According to the "Mu , Lambda" ("Comma") Strategy</h2>
+
+<h3>Description</h3>
+
+<p>Choose survivors during a MIES iteration using the "Comma" survival strategy, i.e.
+selecting survivors from the latest generation only, using a <code>Selector</code> operator, and choosing
+"elites" from survivors from previous generations using a different <code>Selector</code> operator.
+</p>
+<p>When <code>n_elite</code> is greater than the number of alive individuals from previous generations,
+then all these individuals from previous generations survive. In this case, it is
+possible that more than <code>mu - n_elite</code> individuals from the current generation survive.
+Similarly, when <code>mu</code> is greater
+than the number of alive individuals from the last generation, then all these individuals survive.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mies_survival_comma(inst, mu, survival_selector, n_elite, elite_selector, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>inst</code></td>
+<td>
+<p>(<code>OptimInstance</code>)<br>
+Optimization instance to evaluate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu</code></td>
+<td>
+<p>(<code>integer(1)</code>)<br>
+Population target size, non-negative integer.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>survival_selector</code></td>
+<td>
+<p>(<code>Selector</code>)<br><code>Selector</code> operator that selects surviving individuals depending on configuration values
+and objective results. When <code>survival_selector$operate()</code> is called, then objectives that
+are being minimized are multiplied with -1 (through <code>mies_get_fitnesses</code>), since <code>Selector</code>s always try to maximize fitness.<br>
+The <code>Selector</code> must be primed on <code>inst$search_space</code>; this <em>includes</em> the "budget" component
+when performing multi-fidelity optimization.<br>
+The given <code>Selector</code> may <em>not</em> return duplicates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_elite</code></td>
+<td>
+<p>(<code>integer(1)</code>)<br>
+Number of individuals to carry over from previous generations. <code>n_elite</code> individuals will be selected
+by <code>elite_selector</code>, while <code>mu - n_elite</code> will be selected by <code>survival_selector</code> from the most
+recent generation. <code>n_elite</code> may be 0 (no elitism), in which case only individuals from the newest
+generation survive. <code>n_elite</code> must be strictly smaller than <code>mu</code> to permit any optimization progress.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>elite_selector</code></td>
+<td>
+<p>(<code>Selector</code>)<br><code>Selector</code> operator that selects "elites", i.e. surviving individuals from previous generations,
+depending on configuration values
+and objective results. When <code>elite_selector$operate()</code> is called, then objectives that
+are being minimized are multiplied with -1 (through <code>mies_get_fitnesses()</code>), since <code>Selector</code>s always try to maximize fitness.<br>
+The <code>Selector</code> must be primed on <code>inst$search_space</code>; this <em>includes</em> the "budget" component
+when performing multi-fidelity optimization.<br>
+The given <code>Selector</code> may <em>not</em> return duplicates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>(any)<br>
+Ignored, for compatibility with other <code style="white-space: pre;">⁠mies_survival_*⁠</code> functions.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>invisible <code>data.table</code>: The value of <code>inst$archive$data</code>, changed
+in-place with <code>eol</code> set to the current generation for non-survivors.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other mies building blocks: 
+<code>mies_evaluate_offspring()</code>,
+<code>mies_generate_offspring()</code>,
+<code>mies_get_fitnesses()</code>,
+<code>mies_init_population()</code>,
+<code>mies_select_from_archive()</code>,
+<code>mies_step_fidelity()</code>,
+<code>mies_survival_plus()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(1)
+library("bbotk")
+lgr::threshold("warn")
+
+# Define the objective to optimize
+objective &lt;- ObjectiveRFun$new(
+  fun = function(xs) {
+    z &lt;- exp(-xs$x^2 - xs$y^2) + 2 * exp(-(2 - xs$x)^2 - (2 - xs$y)^2)
+    list(Obj = z)
+  },
+  domain = ps(x = p_dbl(-2, 4), y = p_dbl(-2, 4)),
+  codomain = ps(Obj = p_dbl(tags = "maximize"))
+)
+
+# Get a new OptimInstance
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 100)
+)
+
+mies_init_population(inst = oi, mu = 3)
+# Usually the offspring is generated using mies_generate_offspring()
+# Here shorter for demonstration purposes.
+offspring = generate_design_random(oi$search_space, 3)$data
+mies_evaluate_offspring(oi, offspring = offspring)
+
+# State before: different generations of individuals. Alive individuals have
+# 'eol' set to 'NA'.
+oi$archive
+
+s = sel("best")
+s$prime(oi$search_space)
+mies_survival_comma(oi, mu = 3, survival_selector = s,
+  n_elite = 2, elite_selector = s)
+
+# sel("best") lets only the best individuals survive.
+# mies_survival_comma selects from new individuals (generation 2 in this case)
+# and old individuals (all others) separately: n_elite = 2 from old,
+# mu - n_elite = 1 from new.
+# The surviving individuals have 'eol' set to 'NA'
+oi$archive
+</code></pre>
+
+
+</div>

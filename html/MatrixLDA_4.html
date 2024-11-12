@@ -1,0 +1,142 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>PredictMN</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Classify matrix-valued data based on a matrix-normal linear discriminant; an object of class "MN". </h2>
+
+<h3>Description</h3>
+
+<p>A function for prediction based on an object of class "MN"; models fit by <code>MatLDA</code> or <code>MN_MLE</code>. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">PredictMN(object, newdata, newclass = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>An object of class "MN"; output from <code>MatLDA</code> or <code>MN_MLE</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>New data to be classified; an <code class="reqn">r \times c \times N_{\rm test}</code> array.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newclass</code></td>
+<td>
+<p>Class labels for new data; should be <code class="reqn">in \left\{1, \dots, J\right\}</code>. Default is <code>NULL</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>pred.class</code></td>
+<td>
+<p>An <code class="reqn">N_{\rm test}</code>-vector of predicted class membership based on the inputed object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>misclass</code></td>
+<td>
+<p>If <code>newclass</code> is non-<code>NULL</code>, returns the misclassification proportion on the test data set.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prob.mat</code></td>
+<td>
+<p>A <code class="reqn">N_{\rm test} \times J</code> matrix with the value of discriminant evaluated at each test data point.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+
+<ul><li>
+<p> Molstad, A. J., and Rothman, A. J. (2018). A penalized likelihood method for classification with matrix-valued predictors. <em>Journal of Computational and Graphical Statistics</em>.
+</p>
+</li></ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Generate realizations of matrix-normal random variables
+## set sample size, dimensionality, number of classes, 
+## and marginal class probabilities
+
+N = 75
+N.test = 150
+
+N.total = N + N.test
+
+r = 16
+p = 16
+C = 3
+
+pi.list = rep(1/C, C)
+
+## create class means
+M.array = array(0, dim=c(r, p, C))
+M.array[3:4, 3:4, 1] = 1
+M.array[5:6, 5:6, 2] = .5
+M.array[3:4, 3:4, 3] = -2
+M.array[5:6, 5:6, 3] = -.5
+
+
+## create covariance matrices U and V
+Uinv = matrix(0, nrow=r, ncol=r)
+for (i in 1:r) {
+	for (j in 1:r) {
+		Uinv[i,j] = .5^abs(i-j)
+	}
+}
+
+
+eoU = eigen(Uinv)
+Uinv.sqrt = tcrossprod(tcrossprod(eoU$vec, diag(eoU$val^(1/2))),eoU$vec)
+
+Vinv = matrix(.5, nrow=p, ncol=p)
+diag(Vinv) = 1 
+eoV = eigen(Vinv)
+Vinv.sqrt = tcrossprod(tcrossprod(eoV$vec, diag(eoV$val^(1/2))),eoV$vec)
+
+## generate N.total realizations of matrix-variate normal data
+set.seed(1)
+dat.array = array(0, dim=c(r,p,N.total))
+class.total = numeric(length=N.total)
+for(jj in 1:N.total){
+	class.total[jj] = sample(1:C, 1, prob=pi.list)
+	dat.array[,,jj] = tcrossprod(crossprod(Uinv.sqrt, matrix(rnorm(r*p), nrow=r)),
+	Vinv.sqrt) + M.array[,,class.total[jj]]
+}
+
+## store generated data 
+X = dat.array[,,1:N]
+X.test = dat.array[,,(N+1):N.total]
+
+class = class.total[1:N]
+class.test = class.total[(N+1):N.total]
+
+## fit matrix-normal model using maximum likelihood
+out = MN_MLE(X = X, class = class)
+
+## use output to classify test set
+check = PredictMN(out, newdata = X.test, newclass = class.test)
+
+## print misclassification proportion
+check$misclass
+</code></pre>
+
+
+</div>

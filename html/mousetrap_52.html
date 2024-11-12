@@ -1,0 +1,274 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mt_reshape</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>General-purpose reshape and aggregation function for mousetrap data.</h2>
+
+<h3>Description</h3>
+
+<p><code>mt_reshape</code> is the general function used in the <code>mousetrap</code>
+package for filtering, merging, reshaping, and aggregating mouse-tracking
+measures or trajectories in combination with other trial data. Several
+additional (wrapper) functions for more specific purposes (cf. "See Also")
+are available.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mt_reshape(
+  data,
+  use = "trajectories",
+  use_variables = NULL,
+  use2 = "data",
+  use2_variables = NULL,
+  subset = NULL,
+  subject_id = NULL,
+  aggregate = FALSE,
+  aggregate_subjects_only = FALSE,
+  .funs = "mean",
+  trajectories_long = TRUE,
+  convert_df = TRUE,
+  mt_id = "mt_id",
+  mt_seq = "mt_seq",
+  aggregation_function = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a mousetrap data object created using one of the mt_import
+functions (see mt_example for details). Alternatively, a trajectory
+array can be provided directly (in this case <code>use</code> will be ignored).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use</code></td>
+<td>
+<p>a character string specifying which data should be reshaped. The
+corresponding data are selected from data using <code>data[[use]]</code>.
+Usually, this value corresponds to either "trajectories",
+"tn_trajectories", or "measures", depending on whether the analysis
+concerns raw trajectories, time-normalized trajectories, or derived
+measures.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_variables</code></td>
+<td>
+<p>a character vector specifying which mouse-tracking
+variables should be reshaped. Corresponds to the column names in case a
+data.frame with mouse-tracking measures is provided. Corresponds to the
+labels of the array dimensions in case a trajectory array is provided. If
+unspecified, all variables will be reshaped.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use2</code></td>
+<td>
+<p>an optional character string specifying where the other trial
+data can be found. Defaults to "data" as <code>data[["data"]]</code> usually
+contains all non mouse-tracking trial data. Alternatively, a data.frame can
+be provided directly.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use2_variables</code></td>
+<td>
+<p>an optional character string (or vector) specifying the
+variables (in <code>data[[use2]]</code>) that should be merged with the data. If
+<code>aggregate==TRUE</code>, the trajectories / measures will be aggregated
+separately for each of the levels of these variables using
+summarize_at.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>a logical expression (passed on to subset) indicating
+elements or rows to keep. If specified, <code>data[[use2]]</code> will be
+subsetted using this expression, and, afterwards, <code>data[[use]]</code> will
+be filtered accordingly.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subject_id</code></td>
+<td>
+<p>an optional character string specifying which column
+contains the subject identifier in <code>data[[use2]]</code>. If specified and
+<code>aggregate==TRUE</code>, aggregation will be performed within subjects
+first.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>aggregate</code></td>
+<td>
+<p>logical indicating whether data should be aggregated. If
+<code>use2_variables</code> are specified, aggregation will be performed
+separately for each of the levels of the <code>use2_variables</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>aggregate_subjects_only</code></td>
+<td>
+<p>logical indicating whether data should only be
+aggregated per subject (if <code>subject_id</code> is specified and
+<code>aggregate==TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.funs</code></td>
+<td>
+<p>the aggregation function(s) passed on to
+<code>summarize_at</code>. By default, the <code>mean</code> is
+calculated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trajectories_long</code></td>
+<td>
+<p>logical indicating if the reshaped trajectories
+should be returned in long or wide format. If <code>TRUE</code>, every recorded
+position in a trajectory is placed in another row (whereby the order of the
+positions is logged in the variable <code>mt_seq</code>). If <code>FALSE</code>, every
+trajectory is saved in wide format and the respective positions are indexed
+by adding an integer to the corresponding label (e.g., <code>xpos_1</code>,
+<code>xpos_2</code>, ...). Only relevant if <code>data[[use]]</code> contains
+trajectories.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convert_df</code></td>
+<td>
+<p>logical indicating if the reshaped data should be converted
+to a <code>data.frame</code> using <code>as.data.frame</code>. This will
+drop potentially existing additional classes (such as
+<code>tbl_df</code>) that result from the internally used
+<code>dplyr</code> functions for data grouping and aggregation. As these
+additional classes might - on rare occasions - cause problems with
+functions from other packages, the reshaped data are converted to "pure"
+data.frames by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mt_id</code></td>
+<td>
+<p>a character string specifying the name of the column that will
+contain the trial identifier in the reshaped data. The values for the trial
+identifier correspond to the <code>rownames</code> of <code>data[[use]]</code> and
+<code>data[[use2]]</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mt_seq</code></td>
+<td>
+<p>a character string specifying the name of the column that will
+contain the integers indicating the order of the mouse positions per
+trajectory in the reshaped data. Only relevant if <code>data[[use]]</code>
+contains trajectories and <code>trajectories_long==TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>aggregation_function</code></td>
+<td>
+<p>Deprecated. Please use <code>.funs</code> instead.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>mt_reshape</code> uses the rownames of <code>data[[use]]</code> and
+<code>data[[use2]]</code> for merging the trajectories / measures and the trial
+data. For convenience (and for trajectories in long format also of
+necessity), an additional column (labelled as specified in the <code>mt_id</code>
+argument) is added to the reshaped data containing the rownames as trial
+identifier.
+</p>
+<p>The main purpose of this function is to reshape the trajectory data into a
+two-dimensional data.frame, as this format is required for many further
+analyses and plots in R.
+</p>
+<p>Besides, it should aid the user in combining data contained in different
+parts of the mousetrap data object, e.g., a condition variable stored in
+<code>data[["data"]]</code> with trajectory data stored in
+<code>data[["trajectories"]]</code> (or mouse-tracking measures stored in
+<code>data[["measures"]]</code>).
+</p>
+<p>Finally, it offers the possibility to aggregate trajectories and measures for
+different conditions and/or subjects.
+</p>
+<p>The package also includes several functions that wrap <code>mt_reshape</code> and
+serve specific purposes. They are often easier to use, and thus recommended
+over <code>mt_reshape</code> unless the utmost flexibility is required. These
+functions are described in the section "See Also".
+</p>
+<p>Note also that many merging, reshaping, and aggregation procedures can be
+performed directly by using some of the basic R functions, e.g., merge
+and aggregate, or through the R packages <code>dplyr</code> or
+<code>reshape2</code>, if desired.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>data.frame</code> containing the reshaped data.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Pascal J. Kieslich
+</p>
+<p>Felix Henninger
+</p>
+
+
+<h3>See Also</h3>
+
+<p>mt_aggregate for aggregating mouse-tracking measures and
+trajectories.
+</p>
+<p>mt_aggregate_per_subject for aggregating mouse-tracking measures and
+trajectories per subject.
+</p>
+<p>mt_export_long for exporting mouse-tracking data in long format.
+</p>
+<p>mt_export_wide for exporting mouse-tracking data in wide format.
+</p>
+<p>inner_join for merging data and <code>summarize_at</code>
+for aggregating data using the <code>dplyr</code> package.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Time-normalize trajectories
+mt_example &lt;- mt_time_normalize(mt_example)
+
+# Reshape time-normalized trajectories data into long format
+# adding Condition variable
+trajectories_long &lt;- mt_reshape(mt_example,
+ use="tn_trajectories",
+ use2_variables="Condition"
+ )
+
+# Reshape time-normalized trajectories data into wide format
+# only keeping xpos and ypos
+# and adding Condition variable
+trajectories_wide &lt;- mt_reshape(mt_example,
+  use="tn_trajectories", use_variables = c("xpos","ypos"),
+  use2_variables = "Condition",
+  trajectories_long = FALSE
+  )
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,156 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>import</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Import m-Path Sense files into a database</h2>
+
+<h3>Description</h3>
+
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt="[Stable]"></a>
+</p>
+<p>Import JSON files from m-Path Sense into a structured database. This function is the bread and
+butter of this package, as it populates the database with data that most of the other functions
+in this package use. It is recommend to first run <code>test_jsons()</code> and, if necessary,
+<code>fix_jsons()</code> to repair JSON files with problematic syntax.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">import(
+  path = getwd(),
+  db,
+  sensors = NULL,
+  batch_size = 24,
+  backend = "RSQLite",
+  recursive = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>path</code></td>
+<td>
+<p>The path to the file directory</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>db</code></td>
+<td>
+<p>Valid database connection, typically created by <code>create_db()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sensors</code></td>
+<td>
+<p>Select one or multiple sensors as in <code>sensors</code>. Leave
+NULL to extract all sensor data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>batch_size</code></td>
+<td>
+<p>The number of files that are to be processed in a single batch.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>backend</code></td>
+<td>
+<p>Name of the database backend that is used. Currently, only RSQLite is supported.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recursive</code></td>
+<td>
+<p>Should the listing recurse into directories?</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>import</code> allows you to specify which sensors to import (even though there may be more in
+the files) and it also allows batching for a speedier writing process. If processing in
+parallel is active, it is recommended that <code>batch_size</code> be a scalar multiple of the number of
+CPU cores the parallel cluster can use. If a single JSON file in the batch causes and error,
+the batch is terminated (but not the function) and it is up to the user to fix the file. This
+means that if <code>batch_size</code> is large, many files will not be processed. Set <code>batch_size</code> to 1
+for sequential (one-by-one) file processing.
+</p>
+<p>Currently, only SQLite is supported as a backend. Due to its concurrency restriction, parallel
+processing works for cleaning the raw data, but not for importing it into the database. This is
+because SQLite does not allow multiple processes to write to the same database at the same
+time. This is a limitation of SQLite and not of this package. However, while files are
+processing individually (and in parallel if specified), writing to the database happens for the
+entire batch specified by <code>batch_size</code> at once. This means that if a single file in the batch
+causes an error, the entire batch is skipped. This is to ensure that the database is not left
+in an inconsistent state.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A message indicating how many files were imported. If all files were imported
+successfully, this functions returns an empty string invisibly. Otherwise the file names of the
+files that were not imported are returned visibly.
+</p>
+
+
+<h3>Parallel</h3>
+
+<p>This function supports parallel processing in the sense that it is able to
+distribute it's computation load among multiple workers. To make use of this functionality, run
+<a href="https://rdrr.io/cran/future/man/plan.html"><code>future::plan("multisession")</code></a> before
+calling this function.
+</p>
+
+
+<h3>Progress</h3>
+
+<p>You can be updated of the progress of this function by using the
+<code>progressr::progress()</code> package. See <code>progressr</code>'s
+<a href="https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html">vignette</a> on
+how to subscribe to these updates.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>create_db()</code> for creating a database for <code>import()</code> to use, <code>close_db()</code> for closing
+this database; <code>index_db()</code> to create indices on the database for faster future processing, and
+<code>vacuum_db()</code> to shrink the database to its minimal size.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+path &lt;- "some/path"
+# Create a database
+db &lt;- create_db(path = path, db_name = "my_db")
+
+# Import all JSON files in the current directory
+import(path = path, db = db)
+
+# Import all JSON files in the current directory, but do so sequentially
+import(path = path, db = db, batch_size = 1)
+
+# Import all JSON files in the current directory, but only the accelerometer data
+import(path = path, db = db, sensors = "accelerometer")
+
+# Import all JSON files in the current directory, but only the accelerometer and gyroscope data
+import(path = path, db = db, sensors = c("accelerometer", "gyroscope"))
+
+# Remember to close the database
+close_db(db)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

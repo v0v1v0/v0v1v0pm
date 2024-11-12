@@ -1,0 +1,270 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>medExtractR</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Extract Medication Entities From Clinical Note</h2>
+
+<h3>Description</h3>
+
+<p>This function identifies medication entities of interest and returns found
+expressions with start and stop positions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">medExtractR(
+  note,
+  drug_names,
+  window_length,
+  unit,
+  max_dist = 0,
+  drug_list = "rxnorm",
+  lastdose = FALSE,
+  lastdose_window_ext = 1.5,
+  strength_sep = NULL,
+  flag_window = 30,
+  dosechange_dict = "default",
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>note</code></td>
+<td>
+<p>Text to search.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>drug_names</code></td>
+<td>
+<p>Vector of drug names of interest to locate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>window_length</code></td>
+<td>
+<p>Length (in number of characters) of window after drug
+in which to look.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>unit</code></td>
+<td>
+<p>Strength unit to look for (e.g., ‘mg’).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_dist</code></td>
+<td>
+<p>Numeric - edit distance to use when searching for <code>drug_names</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>drug_list</code></td>
+<td>
+<p>Vector of known drugs that may end search window. By default calls
+<code>rxnorm_druglist</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lastdose</code></td>
+<td>
+<p>Logical - whether or not last dose time entity should be
+extracted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lastdose_window_ext</code></td>
+<td>
+<p>Numeric - multiplicative factor by which
+<code>window_length</code> should be extended when identifying last dose time.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strength_sep</code></td>
+<td>
+<p>Delimiter for contiguous medication strengths (e.g., ‘-’ for “LTG 200-300”).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>flag_window</code></td>
+<td>
+<p>How far around drug (in number of characters) to look for
+dose change keyword - default fixed to 30. See ‘Details’ section below for further explanation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dosechange_dict</code></td>
+<td>
+<p>List of keywords used to determine if a dose change entity is present.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Parameter settings used in extracting frequency, intake time, route, and duration. Potentially useful
+parameters include <code>freq_dict</code>, <code>intaketime_dict</code>, <code>route_dict</code>, and <code>duration_dict</code>
+(see <code>...</code> argument in <code>extract_entities</code>) to specify frequency or intake time
+dictionaries, as well as ‘freq_fun’, ‘intaketime_fun’, ‘route_fun’, and
+‘duration_fun’ for user-specified extraction functions. If no additional arguments are provided,
+<code>medExtractR_tapering</code> will use <code>extract_generic</code> and the default dictionary for each entity.
+See <code>extract_entities</code> documentation for details.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function uses a combination of regular expressions, rule-based
+approaches, and dictionaries to identify various drug entities of interest.
+Specific medications to be found are specified with <code>drug_names</code>, which
+is not case-sensitive or space-sensitive (e.g., ‘lamotrigine XR’ is treated
+the same as ‘lamotrigineXR’). Entities to be extracted include drug name, strength,
+dose amount, dose, frequency, intake time, route, duration, and time of last dose. See
+<code>extract_entities</code> and <code>extract_lastdose</code> for more details.
+</p>
+<p>When searching for medication names of interest, fuzzy matching may be used.
+The <code>max_dist</code> argument determines the maximum edit distance allowed for
+such matches. If using fuzzy matching, any drug name with less than 5
+characters will only allow an edit distance of 1, regardless of the value of
+<code>max_dist</code>.
+</p>
+<p>The purpose of the <code>drug_list</code> argument is to reduce false positives by removing information that is
+likely to be related to a competing drug, not our drug of interest, By default, this is “rxnorm” which
+calls <code>data(rxnorm_druglist)</code>. A custom drug list in the form of a character string can be supplied instead,
+or can be appended to <code>rxnorm_druglist</code> by specifying <code>drug_list = c("rxnorm", custom_drug_list)</code>.
+<code>medExtractR</code> then uses this list to truncate the search window at the first appearance of an unrelated drug name.
+This uses publicly available data courtesy of the U.S. National Library of Medicine (NLM), National
+Institutes of Health, Department of Health and Human Services; NLM is not responsible for the product and
+does not endorse or recommend this or any other product. See <code>rxnorm_druglist</code> documentation for details.
+</p>
+<p>Most medication entities are searched for in a window after the drug. The
+dose change entity, or presence of a keyword to indicate a non-current drug
+regimen, may occur before the drug name. The <code>flag_window</code> argument
+adjusts the width of the pre-drug window. Both <code>flag_window</code> and <code>dosechange_dict</code>
+are not default arguments to the extended function <code>medExtractR_tapering</code> since that
+extension uses a more flexible search window and extraction procedure. In the tapering extension,
+entity extraction is more flexible, and any entity can be extracted either before
+or after the drug mention. Thus functionality for dose change identification is identical to all
+other dictionary-based entities.
+</p>
+<p>The <code>stength_sep</code> argument is <code>NULL</code> by default, but can be used to
+identify shorthand for morning and evening doses. For example, consider the
+phrase ‘Lamotrigine 300-200’ (meaning 300 mg in the morning and 200 mg
+in the evening). The argument <code>strength_sep = '-'</code> identifies
+the full expression <em>300-200</em> as <em>dose strength</em> in this phrase.
+</p>
+
+
+<h3>Value</h3>
+
+<p>data.frame with entity information. Only extractions from found entities are returned. If no dosing
+information for the drug of interest is found, the following output will be returned: <br></p>
+
+<table>
+<tr>
+<td style="text-align: right;">
+entity    </td>
+<td style="text-align: right;">  expr   </td>
+<td style="text-align: right;">    pos</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+NA </td>
+<td style="text-align: right;">  NA </td>
+<td style="text-align: right;">  NA
+</td>
+</tr>
+</table>
+<p>The “entity” column of the output contains the formatted label for that entity, according to
+the following mapping.<br>
+drug name: “DrugName”<br>
+strength: “Strength”<br>
+dose amount: “DoseAmt”<br>
+dose strength: “DoseStrength”<br>
+frequency: “Frequency”<br>
+intake time: “IntakeTime”<br>
+duration: “Duration”<br>
+route: “Route”<br>
+dose change: “DoseChange”<br>
+time of last dose: “LastDose”<br>
+Sample output:<br></p>
+
+<table>
+<tr>
+<td style="text-align: right;">
+entity    </td>
+<td style="text-align: right;">  expr   </td>
+<td style="text-align: right;">    pos</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+DoseChange</td>
+<td style="text-align: right;">  decrease </td>
+<td style="text-align: right;">  66:74</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+DrugName   </td>
+<td style="text-align: right;"> Prograf </td>
+<td style="text-align: right;">   78:85</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+Strength  </td>
+<td style="text-align: right;">  2 mg   </td>
+<td style="text-align: right;">    86:90</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+DoseAmt   </td>
+<td style="text-align: right;">  1     </td>
+<td style="text-align: right;">     91:92</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+Route   </td>
+<td style="text-align: right;">  by mouth     </td>
+<td style="text-align: right;">     100:108</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+Frequency </td>
+<td style="text-align: right;">  bid    </td>
+<td style="text-align: right;">    109:112</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+LastDose  </td>
+<td style="text-align: right;">  2100    </td>
+<td style="text-align: right;">   129:133
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Nelson SJ, Zeng K, Kilbourne J, Powell T, Moore R. Normalized names for clinical drugs: RxNorm at 6 years.
+J Am Med Inform Assoc. 2011 Jul-Aug;18(4)441-8. doi: 10.1136/amiajnl-2011-000116. Epub 2011 Apr 21.
+PubMed PMID: 21515544; PubMed Central PMCID: PMC3128404.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+note1 &lt;- "Progrf Oral Capsule 1 mg 3 capsules by mouth twice a day - last
+dose at 10pm"
+medExtractR(note1, c("prograf", "tacrolimus"), 60, "mg", 2, lastdose=TRUE)
+note2 &lt;- "Currently on lamotrigine 150-200, but will increase to lamotrigine 200mg bid"
+medExtractR(note2, c("lamotrigine", "ltg"), 130, "mg", 1, strength_sep = "-")
+
+</code></pre>
+
+
+</div>

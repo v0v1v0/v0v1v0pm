@@ -1,0 +1,230 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>estimateD0Robust</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate Number of Prior Degrees of Freedom in a Robust Manner</h2>
+
+<h3>Description</h3>
+
+<p><code>estimateD0Robust</code> underlies other interface functions for estimating
+the number of prior degrees of freedom associated with an unadjusted
+mean-variance curve (or a set of unadjusted mean-variance curves)
+<em>in a robust manner</em>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">estimateD0Robust(
+  z,
+  m,
+  p_low = 0.01,
+  p_up = 0.1,
+  d0_low = 0.001,
+  d0_up = 1e+06,
+  eps = d0_low,
+  nw = gauss.quad(128, kind = "legendre")
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>z</code></td>
+<td>
+<p>A list of which each element is a vector of FZ statistics
+corresponding to a <code>bioCond</code> object (see also "Details").</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>m</code></td>
+<td>
+<p>A vector of numbers of replicates in <code>bioCond</code>
+objects. Must correspond to <code>z</code> one by one in the same
+order.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p_low, p_up</code></td>
+<td>
+<p>Lower- and upper-tail probabilities for Winsorizing the
+FZ statistics associated with each <code>bioCond</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>d0_low, d0_up</code></td>
+<td>
+<p>Positive reals specifying the lower and upper bounds
+of estimated <code class="reqn">d0</code> (i.e., number of prior degrees of freedom).
+<code>Inf</code> is <em>not</em> allowed.
+</p>
+<p>During the estimation process, if <code class="reqn">d0</code> is sure to be less than
+or equal to <code>d0_low</code>, it will be considered as 0, and if it is
+sure to be larger than or equal to <code>d0_up</code>, it will be considered
+as positive infinity.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>The required numeric precision for estimating <code class="reqn">d0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nw</code></td>
+<td>
+<p>A list containing <code>nodes</code> and <code>weights</code> variables for
+calculating the definite integral of a function <code>f</code> over the
+interval <code>[-1, 1]</code>, which is approximated by
+<code>sum(nw$weights * f(nw$nodes))</code>. By default,
+a set of Gauss-Legendre nodes along with the corresponding weights
+calculated by <code>gauss.quad</code> is used.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For each <code>bioCond</code> object with replicate samples, a vector of
+FZ statistics can be deduced from the unadjusted mean-variance curve
+associated with it. More specifically, for each genomic interval in a
+<code>bioCond</code> with replicate samples, its FZ statistic is defined to be
+<code class="reqn">log(t_hat / v0)</code>, where <code class="reqn">t_hat</code> is the observed variance of signal
+intensities of the interval, and <code class="reqn">v0</code> is the interval's prior variance
+read from the corresponding mean-variance curve.
+</p>
+<p>Theoretically, each FZ statistic follows a scaled Fisher's Z distribution
+plus a constant (since the mean-variance curve is not adjusted yet),
+and we derive a robust estimation of <code class="reqn">d0</code> (i.e., number of prior
+degrees of freedom) by
+Winsorizing the FZ statistics of each <code>bioCond</code> and matching the
+resulting sample variance with the theoretical variance of the Winsorized
+distribution, which is calculated by using numerical integration (see
+also "References"). Since the theoretical variance has no compact forms
+regarding <code class="reqn">d0</code>, the matching procedure is achieved by using the method
+of bisection.
+</p>
+<p>Inspired by the ordinary (non-robust) routine for estimating <code class="reqn">d0</code>, we
+derive the final estimate of <code class="reqn">d0</code> by separately applying the function
+<code class="reqn">trigamma(x / 2)</code> to the estimated <code class="reqn">d0</code> from each
+<code>bioCond</code>, taking a weighted average across the results, and applying
+the inverse of the function (achieved by using Newton iteration;
+see also <code>trigamma</code>). Here the
+weights are the numbers of genomic intervals (in the <code>bioCond</code>s) minus
+1 that are used to calculate FZ statistics.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The estimated number of prior degrees of freedom. Note that the
+function returns <code>NA</code> if there are not sufficient genomic intervals
+for estimating it.
+</p>
+
+
+<h3>References</h3>
+
+<p>Phipson, B., et al., <em>Robust Hyperparameter Estimation
+Protects against Hypervariable Genes and Improves Power to Detect
+Differential Expression.</em> Annals of Applied Statistics, 2016.
+<strong>10</strong>(2): p. 946-963.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>bioCond</code> for creating a <code>bioCond</code> object;
+<code>fitMeanVarCurve</code> for fitting a mean-variance curve;
+<code>estimatePriorDfRobust</code> for an interface to <em>robustly</em>
+estimating the number of prior degrees of freedom on <code>bioCond</code>
+objects; <code>varRatio</code> for a description of variance ratio
+factor; <code>scaleMeanVarCurveRobust</code> for <em>robustly</em>
+estimating the variance ratio factor
+for adjusting a mean-variance curve (or a set of curves).
+</p>
+<p><code>estimateD0</code> and <code>scaleMeanVarCurve</code>
+for the ordinary (non-robust) routines for estimating number of prior
+degrees of freedom and variance ratio factor, respectively.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+## Private functions involved.
+
+# For generating random FZ statistics with outliers. Note that the argument
+# scaling controls how extreme outliers are.
+rFZ &lt;- function(n, var.ratio, m, d0, p_low, p_up, scaling) {
+    z &lt;- list()
+    p_low &lt;- p_low * 0.9
+    p_up &lt;- p_up * 0.9
+    for (i in 1:length(n)) {
+        x &lt;- rf(n[i], m[i] - 1, d0)
+        q_low &lt;- qf(p_low, m[i] - 1, d0, lower.tail = TRUE)
+        q_up &lt;- qf(p_up, m[i] - 1, d0, lower.tail = FALSE)
+        f &lt;- x &lt; q_low
+        x[f] &lt;- x[f] / runif(sum(f), 1, scaling)
+        f &lt;- x &gt; q_up
+        x[f] &lt;- x[f] * runif(sum(f), 1, scaling)
+        z[[i]] &lt;- log(var.ratio[i]) + log(x)
+    }
+    z
+}
+
+# Settings.
+n &lt;- c(30000, 40000)
+var.ratio &lt;- c(1.2, 2.5)
+m &lt;- c(2, 3)
+d0 &lt;- 17
+p_low &lt;- 0.01
+p_up &lt;- 0.1
+
+# Compare estimation results from ordinary (non-robust) and robust routines.
+# Case 1: no outliers.
+set.seed(100)
+scaling &lt;- 1
+z &lt;- rFZ(n, var.ratio, m, d0, p_low, p_up, scaling)
+res1 &lt;- estimateD0(z, m)
+res1
+scaleMeanVarCurve(z[1], m[1], res1)
+scaleMeanVarCurve(z[2], m[2], res1)
+res2 &lt;- estimateD0Robust(z, m, p_low, p_up)
+res2
+scaleMeanVarCurveRobust(z[1], m[1], res2, p_low, p_up)
+scaleMeanVarCurveRobust(z[2], m[2], res2, p_low, p_up)
+
+# Case 2: moderate outliers.
+scaling &lt;- 3
+z &lt;- rFZ(n, var.ratio, m, d0, p_low, p_up, scaling)
+res1 &lt;- estimateD0(z, m)
+res1
+scaleMeanVarCurve(z[1], m[1], res1)
+scaleMeanVarCurve(z[2], m[2], res1)
+res2 &lt;- estimateD0Robust(z, m, p_low, p_up)
+res2
+scaleMeanVarCurveRobust(z[1], m[1], res2, p_low, p_up)
+scaleMeanVarCurveRobust(z[2], m[2], res2, p_low, p_up)
+
+# Case 3: extreme outliers.
+scaling &lt;- 10
+z &lt;- rFZ(n, var.ratio, m, d0, p_low, p_up, scaling)
+res1 &lt;- estimateD0(z, m)
+res1
+scaleMeanVarCurve(z[1], m[1], res1)
+scaleMeanVarCurve(z[2], m[2], res1)
+res2 &lt;- estimateD0Robust(z, m, p_low, p_up)
+res2
+scaleMeanVarCurveRobust(z[1], m[1], res2, p_low, p_up)
+scaleMeanVarCurveRobust(z[2], m[2], res2, p_low, p_up)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

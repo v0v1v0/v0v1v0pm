@@ -1,0 +1,203 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>miivs</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Model-implied instrumental variable (MIIV) search</h2>
+
+<h3>Description</h3>
+
+<p>A key step in the MIIV-2SLS approach is to transform the SEM by 
+replacing the latent variables with their scaling indicators 
+minus their errors.  Upon substitution the SEM is transformed 
+from a model with latent variables to one containing observed 
+variables with composite errors. The miivs function 
+automatically makes this transformation. The miivs function
+will also identify equation-specific model-implied 
+instrumental variables in simultaneous equation models
+without latent variables.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">miivs(model)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table><tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>A model specified using lavaan model syntax. See the 
+<code>model</code> argument within the <code>lavaanify</code> 
+function for more information. See the documentation below for a 
+description of how to specify the scaling  indicator in latent 
+variable models and impose equality constraints on the parameter 
+estimates.</p>
+</td>
+</tr></table>
+<h3>Details</h3>
+
+
+<ul><li>
+<p><code>model</code> 
+</p>
+<p>A model specified using the model syntax employed by <span class="pkg">lavaan</span>. 
+The following model syntax operators are currently supported: =~,
+~, ~~ and *. See below for details on default behaviors, 
+how to specify the scaling indicator in latent variable models, 
+and how to impose equality constraints on the parameter estimates. 
+</p>
+<p><strong>Example using Syntax Operators</strong>
+</p>
+<p>In the model below, 'L1 =~ Z1 + Z2 + Z3'  indicates the 
+latent variable L1 is measured by 3 indicators, Z1, Z2, and Z3. Likewise,
+L2 is measured by 3 indicators, Z4, Z5, and Z6. The statement
+'L1 ~ L2' specifies latent variable L1 is regressed on latent 
+variable L2. 'Z1 ~~ Z2' indicates the error of Z2 is allowed to 
+covary with the error of Z3. The label
+LA3 appended to Z3 and Z6 in the measurement model equations 
+constrains the factor loadings for Z3 and Z6 to equality. For 
+additional details on constraints see Equality Constraints 
+and Parameter Restrictions.
+</p>
+<pre>model &lt;- '
+     L1 =~ Z1 + Z2 + LA3*Z3
+     L2 =~ Z4 + Z5 + LA3*Z6
+     L1  ~ L2
+     Z2 ~~ Z3
+  '</pre>
+<p><strong>Scaling Indicators</strong>
+</p>
+<p>Following the <span class="pkg">lavaan</span> model syntax, latent variables are defined 
+using the <code>=~</code> operator.  For first order factors, the scaling 
+indicator chosen is the first observed variable on the RHS of an 
+equation. For the model  below <code>Z1</code> would be chosen as the 
+scaling indicator for <code>L1</code> and <code>Z4</code> would be chosen as 
+the scaling indicator for <code>L2</code>.
+</p>
+<pre>model &lt;- '
+     L1 =~ Z1 + Z2 + Z3
+     L2 =~ Z4 + Z5 + Z6
+  '</pre>
+<p><strong>Equality Constraints and Parameter Restrictions</strong>
+</p>
+<p>Within- and across-equation equality constraints on the factor loading
+and regression coefficients can be imposed directly in the model syntax. 
+To specify equality constraints between different parameters equivalent
+labels should be prepended to the variable name using the 
+* operator. For example, we could constrain the factor 
+loadings for two non-scaling indicators of latent factor <code>L1</code> to 
+equality using the following  model syntax.
+</p>
+<pre>model &lt;- '
+     L1 =~ Z1 + LA2*Z2 + LA2*Z3
+     L2 =~ Z4 + Z5 + Z6
+  '</pre>
+<p>Researchers can also constrain the factor loadings and regression 
+coefficients to specific numeric values in a similar fashion. Below 
+we constrain the regression coefficient  of <code>L1</code> on <code>L2</code> 
+to <code>1</code>.
+</p>
+<pre>model &lt;- '
+     L1 =~ Z1 + Z2 + Z3
+     L2 =~ Z4 + Z5 + Z6
+     L3 =~ Z7 + Z8 + Z9
+     L1  ~ 1*L2 + L3
+  '</pre>
+<p><strong>Higher-order Factor Models</strong>
+</p>
+<p>For example, in the model below, the  scaling indicator for the 
+higher-order factor <code>H1</code> is taken to be <code>Z1</code>, the scaling 
+indicator that would have been assigned to the first lower-order 
+factor <code>L1</code>. The intercepts for lower-order latent variables 
+are set to zero, by default
+</p>
+<pre>model &lt;- '
+     H1 =~ L1 + L2 + L3
+     L1 =~ Z1 + Z2 + Z3
+     L2 =~ Z4 + Z5 + Z6
+     L3 =~ Z7 + Z8 + Z9
+  '</pre>
+<p><strong>Model Defaults</strong>
+</p>
+<p>In addition to those relationships specified in the model syntax 
+<span class="pkg">MIIVsem</span> will automatically include the intercepts of any 
+observed or latent endogenous variable. The intercepts
+for any scaling indicators and lower-order latent variables are
+set to zero. Covariances among exogenous latent
+and observed  variables are included by default when <code>
+  var.cov = TRUE</code>. Where appropriate the covariances of the errors
+of latent and observed dependent variables are also automatically 
+included in the model specification. These defaults correspond 
+to those used by <span class="pkg">lavaan</span> and <code>auto = TRUE</code>, except that 
+endogenous latent variable intercepts are estimated by default, 
+and the intercepts of scaling indicators are fixed to zero.
+</p>
+<p><strong>Invalid Specifications</strong>
+</p>
+<p>Certain model specifications are not currently supported.  For example,
+the scaling indicator of a latent variable is not permitted to
+cross-load on another latent variable. In the model below
+<code>Z1</code>, the scaling indicator for L1, cross-loads on the latent 
+variable <code>L2</code>. Executing a search on the model below will 
+result in the warning: <em>miivs: scaling indicators with a factor 
+complexity greater than 1 are not currently supported</em>.
+</p>
+<pre>model &lt;- '
+    L1 =~ Z1 + Z2 + Z3
+    L2 =~ Z4 + Z5 + Z6 + Z1
+  '</pre>
+<p>In addition, <span class="pkg">MIIVsem</span> does not currently support relations
+where the scaling indicator of a latent variable is also the 
+dependent variable in a regression equation.  For example, the
+model below would not be valid under the current algorithm.
+</p>
+<pre>model &lt;- '
+    L1 =~ Z1 + Z2 + Z3
+    Z1  ~ Z4
+    Z4  ~ Z5 + Z6
+  '</pre>
+
+</li></ul>
+<p>The <code>miivs</code> function displays a table containing the following 
+information for each equation in the system:
+</p>
+
+<ul>
+<li> <p><code>LHS</code> The "dependent" variable.
+</p>
+</li>
+<li> <p><code>RHS</code> The right hand side variables of the transformed equation.
+</p>
+</li>
+<li> <p><code>MIIVs</code> The model-implied instrumental variables for each equation.
+</p>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>A list of model equations.
+</p>
+
+
+<h3>References</h3>
+
+<p>Bollen, K. A. (1996).	An	Alternative	2SLS Estimator	for	Latent	
+Variable	Models.	<em>Psychometrika</em>, 61, 109-121.
+</p>
+<p>Bentler, P. M., and Weeks, D. G. (1980). Linear Structural 
+Equations with Latent Variables. <em>Psychometrika</em>, 45, 289–308.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>miive</code>
+</p>
+
+
+</div>

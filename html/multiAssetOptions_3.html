@@ -1,0 +1,258 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>multiAssetOption</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Finite Difference Method for Multi-Asset Option Valuation
+</h2>
+
+<h3>Description</h3>
+
+<p><code>multiAssetOption</code> generalizes the standard finite difference method to handle mulitple underlying assets, non-uniform grid spacing, non-uniform timestepping, and American exercise. The implementation allows users to vary the option setup (number of underlying assets, call vs. put, European vs. American, etc.) as well as the features of the numerical method (grid spacing, timestepping scheme, etc.). Strike shifting the mesh and Rannacher smoothing are optionally included to remedy problems arising from potential spurious oscillations in the solution.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">multiAssetOption(X)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table><tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+
+<p>list of inputs. List items given in the <b>Details</b> section.
+</p>
+</td>
+</tr></table>
+<h3>Details</h3>
+
+<p>Items of the input list <code>X</code> are as follows:
+</p>
+
+<dl>
+<dt><code>X$opt$nAsset</code></dt>
+<dd>
+<p>integer; number of underlying assets.
+</p>
+</dd>
+<dt><code>X$opt$payType</code></dt>
+<dd>
+<p>case; if 0, digital payoff, if 1, best-of payoff, if 2, worst-of payoff.
+</p>
+</dd>
+<dt><code>X$opt$exerType</code></dt>
+<dd>
+<p>case; if 0, European exercise, if 1, American exercise.
+</p>
+</dd>
+<dt><code>X$opt$pcFlag</code></dt>
+<dd>
+<p>case vector; if 0, call, if 1, put.
+</p>
+</dd>
+<dt><code>X$opt$ttm</code></dt>
+<dd>
+<p>scalar; time to maturity.
+</p>
+</dd>
+<dt><code>X$opt$strike</code></dt>
+<dd>
+<p>vector; option strikes.
+</p>
+</dd>
+<dt><code>X$opt$rf</code></dt>
+<dd>
+<p>scalar; applicable risk-free rate (domestic risk-free rate).
+</p>
+</dd>
+<dt><code>X$opt$q</code></dt>
+<dd>
+<p>vector; holding costs of the option's underlyings (dividends, foreign risk-free rates, etc.).
+</p>
+</dd>
+<dt><code>X$opt$vol</code></dt>
+<dd>
+<p>vector; volatilities of the option's underlyings.
+</p>
+</dd>
+<dt><code>X$opt$rho</code></dt>
+<dd>
+<p>matrix; correlation matrix of the option's underlyings.
+</p>
+</dd>
+<dt><code>X$fd$m</code></dt>
+<dd>
+<p>vector; number of spatial steps for each underlying's domain discretization.
+</p>
+</dd>
+<dt><code>X$fd$leftBound</code></dt>
+<dd>
+<p>vector; near spatial boundaries of each underlying's domain.
+</p>
+</dd>
+<dt><code>X$fd$kMult</code></dt>
+<dd>
+<p>vector; right boundary strike multiples. If 0, far domain boundary calculated via formula given in Kangro and Nicolaides (2000). Otherwise, far domain boundary calculated as the strike multiplied by the strike multiple.
+</p>
+</dd>
+<dt><code>X$fd$density</code></dt>
+<dd>
+<p>vector; impacts the concentration of nodes around the option strike. At 0, nodes are uniformly distributed between the near and far boundaries. Increasing the parameter increases the node concentration around the strike.
+</p>
+</dd>
+<dt><code>X$fd$kShift</code></dt>
+<dd>
+<p>case vector; if 0, no mesh shifting, if 1, adjusts the node spacing such that the strike falls exactly between two nodes, if 2, adjusts the node spacing such that the strike falls exactly on a node. See Tavella and Randall (2000).
+</p>
+</dd>
+<dt><code>X$fd$theta</code></dt>
+<dd>
+<p>scalar; implicitness parameter of the theta method. Chosen between 0 (fully explicit) and 1 (fully implicit).
+</p>
+</dd>
+<dt><code>X$fd$maxSmooth</code></dt>
+<dd>
+<p>integer; number of Rannacher smoothing steps. See Rannacher (1984).
+</p>
+</dd>
+<dt><code>X$fd$tol</code></dt>
+<dd>
+<p>scalar; error tolerance in penalty iteration for American exercise.
+</p>
+</dd>
+<dt><code>X$fd$maxIter</code></dt>
+<dd>
+<p>integer; maximum number of iterations per penalty loop for American exercise.
+</p>
+</dd>
+<dt><code>X$time$tsType</code></dt>
+<dd>
+<p>case; if 0, constant timestep size, if 1, adaptive timestep size. See Forsyth and Vetzal (2002).
+</p>
+</dd>
+<dt><code>X$time$N</code></dt>
+<dd>
+<p>integer; number of total timesteps if not using adaptive timesteps.
+</p>
+</dd>
+<dt><code>X$time$dtInit</code></dt>
+<dd>
+<p>scalar; inital timestep size for adaptive timesteps.
+</p>
+</dd>
+<dt><code>X$time$dNorm</code></dt>
+<dd>
+<p>scalar; target relative change for adaptive timesteps.
+</p>
+</dd>
+<dt><code>X$time$D</code></dt>
+<dd>
+<p>scalar; normalizing parameter for adaptive timesteps.
+</p>
+</dd>
+</dl>
+<p>The classical order for the state vectors output from the function is illustrated by example. With two underlying assets, option values in each state vector are stored in the order: [11, 21, 31, ... , M1, 12, 22, ... , MN] with M being the total number of nodes used in the first asset spatial discretization and N being the total number of nodes in the second.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>multiAssetOption</code> returns a list:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>value</code></td>
+<td>
+<p>matrix of per-unit option values. Each column stores the state of the option value array (collection of option values for all nodes of the spatial mesh) as a vector following the classical order (see <b>Details</b> section). The columns of the matrix are indexed over time, with the first column beginning at option maturity, and subsequent columns moving backward in time.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>S</code></td>
+<td>
+<p>list containing the vectors of spatial grid points associated with each underlying. Vector sizes of underlying spatial grid points need not be equal.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dimS</code></td>
+<td>
+<p>dimension of option value array. This item can be used to reshape the column vectors in <code>value</code> into an appropriately dimensioned array using <code>array( ...  , dim=dimS)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>time</code></td>
+<td>
+<p>vector of times associated with each column of the <code>value</code> item.</p>
+</td>
+</tr>
+</table>
+<p>For each column (time) of the <code>value</code> item, the option value at that time can be calculated as the option's notional amount multiplied by the unit option value interpolated over the <code>S</code> item at the current underlying prices.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Michael Eichenberger and Carlo Rosa
+</p>
+
+
+<h3>References</h3>
+
+<p>Forsyth, P.A., Vetzal, K.R., 2002. Quadratic convergence for valuing American options using a penalty method. <em>SIAM Journal on Scientific Computing</em>, <b>23</b> (6), 2095–2122.
+</p>
+<p>Kangro, R., Nicolaides, R., 2000. Far field boundary conditions for Black-Scholes equations. <em>SIAM Journal on Numerical Analysis</em>, <b>38</b> (4), 1357–1368.
+</p>
+<p>Rannacher, R., 1984. Finite element solution of diffusion problems with irregular data. <em>Numberische Mathematik</em>, <b>43</b>, 309–327.
+</p>
+<p>Tavella, D., Randall, C., 2000. Pricing Financial Instruments: The Finite Difference Method. John Wiley &amp; Sons, Inc., New York.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># european dual-asset digital option example
+
+# initialize inputs list
+X &lt;- list()
+
+# option inputs
+X$opt$nAsset &lt;- 2
+X$opt$payType &lt;- 0
+X$opt$exerType &lt;- 0
+X$opt$pcFlag &lt;- c(1, 0)
+X$opt$ttm &lt;- 0.5
+X$opt$strike &lt;- c(110, 90)
+X$opt$rf &lt;- 0.10
+X$opt$q &lt;- c(0.05, 0.04)
+X$opt$vol &lt;- c(0.20, 0.25)
+X$opt$rho &lt;- matrix(c(1, -0.5, -0.5, 1), X$opt$nAsset, X$opt$nAsset)
+
+# finite difference inputs
+X$fd$m &lt;- c(20, 20)
+X$fd$leftBound &lt;- c(0, 0)
+X$fd$kMult &lt;- c(0, 0)
+X$fd$density &lt;- c(5, 5)
+X$fd$kShift &lt;- c(1, 1)
+X$fd$theta &lt;- 0.5
+X$fd$maxSmooth &lt;- 2
+X$fd$tol &lt;- 1e-7
+X$fd$maxIter &lt;- 3
+
+# timestep inputs
+X$time$tsType &lt;- 0
+X$time$N &lt;- min(X$fd$m) * 4
+X$time$dtInit &lt;- 0.1 / 4^log2(min(X$fd$m)/5)
+X$time$dNorm &lt;- 5 / 2^log2(min(X$fd$m)/5)
+X$time$D &lt;- 0.05
+
+# function check
+output &lt;- multiAssetOption(X)
+</code></pre>
+
+
+</div>

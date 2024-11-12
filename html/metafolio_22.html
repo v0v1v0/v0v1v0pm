@@ -1,0 +1,334 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>meta_sim</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Run a single metapopulation simulation.</h2>
+
+<h3>Description</h3>
+
+<p>This is the master function for running <span class="pkg">metafolio</span> simulations. It runs
+a single iteration of a simulation. The arguments can be manipulated with
+other functions in the package to use this function as part of a portfolio
+analysis.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">meta_sim(
+  n_t = 130,
+  n_pop = 10,
+  stray_decay_rate = 0.1,
+  stray_fraction = 0.02,
+  b = rep(1000, n_pop),
+  spawners_0 = round(b),
+  sigma_v = 0.7,
+  v_rho = 0.4,
+  a_width_param = c(seq(0.08, 0.04, length.out = n_pop/2), rev(seq(0.08, 0.04, length.out
+    = n_pop/2))),
+  optim_temp = seq(13, 19, length.out = n_pop),
+  max_a = thermal_integration(n_pop),
+  env_type = c("sine", "arma", "regime", "linear", "constant"),
+  env_params = list(amplitude = 3.2, ang_frequency = 0.2, phase = runif(1, -pi, pi),
+    mean_value = 15, slope = 0, sigma_env = 0.3),
+  start_assessment = 20,
+  a_lim = c(0.02, 4),
+  b_lim = c(0.5, 1.5),
+  silence_warnings = TRUE,
+  sigma_impl = 0.1,
+  assess_freq = 10,
+  use_cache = FALSE,
+  cache_env = FALSE,
+  add_straying = TRUE,
+  add_impl_error = TRUE,
+  skip_saving_cache = FALSE,
+  decrease_b = 0,
+  debug = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>n_t</code></td>
+<td>
+<p>The number of years.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_pop</code></td>
+<td>
+<p>Number of populations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stray_decay_rate</code></td>
+<td>
+<p>Rate that straying (exponentially) decays with
+distance.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stray_fraction</code></td>
+<td>
+<p>Fraction of fish that stray from natal streams.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b</code></td>
+<td>
+<p>Ricker density-dependent parameter. A vector with one numeric value
+per population.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spawners_0</code></td>
+<td>
+<p>A vector of spawner abundances at the start of the
+simulation. Length of the vector should equal the number of populations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma_v</code></td>
+<td>
+<p>Stock-recruit residual standard deviation of the
+log-deviations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>v_rho</code></td>
+<td>
+<p>AR1 serial correlation of stock-recruit residuals.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>a_width_param</code></td>
+<td>
+<p>Width of the thermal curves by population.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optim_temp</code></td>
+<td>
+<p>Optimal temperatures by population.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_a</code></td>
+<td>
+<p>Maximum Ricker productivity parameters (a) by population.  The
+value obtained at the optimum temperature. Note how the default argument
+uses the <code>thermal_integration</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>env_type</code></td>
+<td>
+<p>The type of environmental time series to generate. One of
+<code>"sine"</code>, <code>"arma"</code>, <code>"regime"</code>, <code>"linear"</code>, or
+<code>"constant"</code>. See <code>generate_env_ts</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>env_params</code></td>
+<td>
+<p>Parameters to pass on to <code>generate_env_ts</code>.
+You must provide the appropriate list given your chosen type of
+environmental signal.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start_assessment</code></td>
+<td>
+<p>Generation to start estimating the stock recruit
+relationship for escapement targets. The assessment is carried out using
+<code>fit_ricker</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>a_lim</code></td>
+<td>
+<p>A vector of length two giving the lower and upper limits for
+Ricker a values. If a value is estimated beyond these limits it will be
+set to the limit value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b_lim</code></td>
+<td>
+<p>A vector of length two giving the lower and upper limits for
+the estimated Ricker b values *as fractions* of the previously assessed
+value. If a value is estimated beyond these limits it will be set to the
+limit value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>silence_warnings</code></td>
+<td>
+<p>Should the warnings be skipped if the Ricker a or b
+values exceed their specified bounds? <code>meta_sim</code> will still print
+other warnings regardless of this argument value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma_impl</code></td>
+<td>
+<p>Implementation standard deviation for the implementation
+error beta distribution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>assess_freq</code></td>
+<td>
+<p>How many generations before re-assessing Ricker a and b
+parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_cache</code></td>
+<td>
+<p>Use the stochastically generated values (stock-recruit
+residuals and possibly environmental time series) from the previous run?
+See the Details section below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cache_env</code></td>
+<td>
+<p>Logical: Should the environmental time series be cached? If
+<code>use_cache = TRUE</code> then this will automatically happen. But, you
+could set <code>cache_env = TRUE</code> and <code>use_cache = FALSE</code> to only
+cache the environmental time series. See the Details section below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>add_straying</code></td>
+<td>
+<p>Implement straying between populations?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>add_impl_error</code></td>
+<td>
+<p>Add implementation error? Implementation error is
+derived using <code>impl_error</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>skip_saving_cache</code></td>
+<td>
+<p>Logical: if <code>TRUE</code> then no data will be cached
+for the next iteration. This will save time when running many simulations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>decrease_b</code></td>
+<td>
+<p>A numeric value to decrease all streams by each generation.
+This is intended to be used to simulate habitat loss, for example though
+stream flow reduction with climate change.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>debug</code></td>
+<td>
+<p>Logical: if <code>TRUE</code> then <code>meta_sim</code> will print a number
+of debugging statements while it runs.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>To use either of the caching options, you must have run <code>meta_sim</code> at
+least once in the current session with both caching arguments set to
+<code>FALSE</code> to generate the cached values first. If you're running many
+iterations of <code>meta_sim</code> and you want to cache, then the first iteration
+should have both cache arguments set to <code>FALSE</code>, and subsequent runs can
+set one or both to <code>TRUE</code>. Internally, <code>meta_sim</code> caches by writing
+the appropriate data to an <code>.rda</code> file in a temporary directory.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list is returned that contains the following elements. All matrices that
+are returned (except the straying matrix) feature populations along the
+columns and generations/years along the rows.
+</p>
+
+<dl>
+<dt><code>A</code></dt>
+<dd>
+<p>A matrix of abundances.</p>
+</dd>
+<dt><code>F</code></dt>
+<dd>
+<p>A matrix of fishing mortality in numbers.</p>
+</dd>
+<dt><code>E</code></dt>
+<dd>
+<p>A matrix of realized escapement.</p>
+</dd>
+<dt><code>Eps</code></dt>
+<dd>
+<p>A matrix of (log) spawner-return residuals. These have been
+log-normal bias corrected so their expected value after exponentiation
+will be one.</p>
+</dd>
+<dt><code>A_params</code></dt>
+<dd>
+<p>A matrix of actual Ricker a parameters.</p>
+</dd>
+<dt><code>Strays_leaving</code></dt>
+<dd>
+<p>A matrix of strays leaving.</p>
+</dd>
+<dt><code>Strays_joining</code></dt>
+<dd>
+<p>A matrix of strays joining.</p>
+</dd>
+<dt><code>env_ts</code></dt>
+<dd>
+<p>A vector of the environmental time series.</p>
+</dd>
+<dt><code>stray_mat</code></dt>
+<dd>
+<p>The straying matrix. These fractions are constant across
+generations/years. Rows and columns are populations.</p>
+</dd>
+<dt><code>n_pop</code></dt>
+<dd>
+<p>The total possible populations as input in the simulation.</p>
+</dd>
+<dt><code>n_t</code></dt>
+<dd>
+<p>The number of generations/years the simulation was run for.</p>
+</dd>
+<dt><code>b</code></dt>
+<dd>
+<p>The original Ricker b values as specified.</p>
+</dd>
+<dt><code>Est_a</code></dt>
+<dd>
+<p>A matrix of estimated Ricker a values.</p>
+</dd>
+<dt><code>Est_b</code></dt>
+<dd>
+<p>A matrix of estimated Ricker b values.</p>
+</dd>
+</dl>
+<h3>Examples</h3>
+
+<pre><code class="language-R">arma_env_params &lt;- list(mean_value = 16, ar = 0.1, sigma_env = 2, ma = 0)
+base1 &lt;- meta_sim(n_pop = 10, env_params = arma_env_params,
+  env_type = "arma", assess_freq = 5)
+
+plot_sim_ts(base1, years_to_show = 70, burn = 30)
+</code></pre>
+
+
+</div>

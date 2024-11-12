@@ -1,0 +1,124 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mmcif_logLik</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Evaluates the Log Composite Likelihood and its Gradient</h2>
+
+<h3>Description</h3>
+
+<p>Evaluates the log composite likelihood and its gradient using adaptive
+Gauss-Hermite quadrature.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mmcif_logLik(
+  object,
+  par,
+  ghq_data = object$ghq_data,
+  n_threads = 1L,
+  is_log_chol = FALSE
+)
+
+mmcif_logLik_grad(
+  object,
+  par,
+  ghq_data = object$ghq_data,
+  n_threads = 1L,
+  is_log_chol = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>an object from <code>mmcif_data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>par</code></td>
+<td>
+<p>numeric vector with parameters. This is either using a log
+Cholesky decomposition for the covariance matrix or the covariance matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ghq_data</code></td>
+<td>
+<p>the Gauss-Hermite quadrature nodes and weights to
+use. It should be a list with two elements called <code>"node"</code>
+and <code>"weight"</code>. A default is provided if <code>NULL</code> is passed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_threads</code></td>
+<td>
+<p>the number of threads to use.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>is_log_chol</code></td>
+<td>
+<p>logical for whether a log Cholesky decomposition is used
+for the covariance matrix or the full covariance matrix.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A numeric vector with either the log composite likelihood or the gradient of
+it.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">if(require(mets)){
+  # prepare the data
+  data(prt)
+
+  # truncate the time
+  max_time &lt;- 90
+  prt &lt;- within(prt, {
+    status[time &gt;= max_time] &lt;- 0
+    time &lt;- pmin(time, max_time)
+  })
+
+  # select the DZ twins and re-code the status
+  prt_use &lt;- subset(prt, zyg == "DZ") |&gt;
+    transform(status = ifelse(status == 0, 3L, status))
+
+  # randomly sub-sample
+  set.seed(1)
+  prt_use &lt;- subset(
+    prt_use, id %in% sample(unique(id), length(unique(id)) %/% 10L))
+
+  n_threads &lt;- 2L
+  mmcif_obj &lt;- mmcif_data(
+    ~ country - 1, prt_use, status, time, id, max_time,
+    2L, strata = country)
+
+  # get the staring values
+  start_vals &lt;- mmcif_start_values(mmcif_obj, n_threads = n_threads)
+
+  # compute the log composite likelihood and the gradient at the starting
+  # values
+  mmcif_logLik(
+    mmcif_obj, start_vals$upper, is_log_chol = TRUE, n_threads = n_threads) |&gt;
+    print()
+  mmcif_logLik_grad(
+    mmcif_obj, start_vals$upper, is_log_chol = TRUE, n_threads = n_threads) |&gt;
+    print()
+}
+
+</code></pre>
+
+
+</div>

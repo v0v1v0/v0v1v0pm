@@ -1,0 +1,281 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>extractModelParameters</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Extract model parameters from MODEL RESULTS section.</h2>
+
+<h3>Description</h3>
+
+<p>Extracts the model parameters from the MODEL RESULTS section of one or more Mplus output files.
+If a particular output file has more than one results section (unstandardized, stdyx, stdy, and/or std),
+a list will be returned. If the <code>target</code> is a directory, all .out files therein will be parsed
+and a single list will be returned, where the list elements are named by the output file name.
+Returned parameters often include the parameter estimate, std. err, param/s.e., and two-tailed p-value.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">extractModelParameters(
+  target = getwd(),
+  recursive = FALSE,
+  filefilter,
+  dropDimensions = FALSE,
+  resultType
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>target</code></td>
+<td>
+<p>the directory containing Mplus output files (.out) to parse OR the single output file to
+be parsed. May be a full path, relative path, or a filename within the working directory.
+Defaults to the current working directory. Example: “C:/Users/Michael/Mplus Runs”</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recursive</code></td>
+<td>
+<p>optional. If <code>TRUE</code>, parse all models nested in subdirectories
+within <code>target</code>. Defaults to <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>filefilter</code></td>
+<td>
+<p>a Perl regular expression (PCRE-compatible) specifying particular output
+files to be parsed within <code>directory</code>. See <code>regex</code> or <a href="http://www.pcre.org/pcre.txt">http://www.pcre.org/pcre.txt</a>
+for details about regular expression syntax.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dropDimensions</code></td>
+<td>
+<p>Relevant only for multi-file parsing. If <code>TRUE</code>, then if only one output
+section (usually unstandardized) is present for all files in the parsed list, then eliminate
+the second-level list (which contains elements for each output section). The result is
+that the elements of the returned list are <code>data.frame</code> objects with the relevant parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resultType</code></td>
+<td>
+<p>N.B.: this parameter is deprecated and will be removed in a future version. The
+new default is to extract all results that are present and return a list (see below for details).
+<code>resultType</code> specified the results section to extract. If <code>raw</code>, the unstandardized
+estimates will be returned. “stdyx”, “stdy”, and “std”
+are the other options, which extract different standardized solutions.
+See the Mplus User's Guide for additional details about the differences in these standardizations.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>If <code>target</code> is a single file, a list containing unstandardized and standardized results will be
+returned. If all standardized solutions are available, the list element will be named: <code>unstandardized</code>,
+<code>stdyx.standardized</code>, <code>stdy.standardized</code>, and <code>std.standardized</code>. If confidence intervals
+are output using OUTPUT:CINTERVAL, then a list element named <code>ci.unstandardized</code> will be included.
+Each of these list elements is a <code>data.frame</code> containing relevant model parameters.
+</p>
+<p>If <code>target</code> is a directory, a list will be returned, where each element contains the results for
+a single file, and the top-level elements are named after the corresponding output file name. Each
+element within this list is itself a list, with elements as in the single file case above.
+</p>
+<p>The core <code>data.frame</code> for each MODEL RESULTS section typically has the following structure:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>paramHeader</code></td>
+<td>
+<p>The header that begins a given parameter set. Example: "FACTOR1 BY"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>param</code></td>
+<td>
+<p>The particular parameter being measured (within <code>paramHeader</code>). Example: "ITEM1"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est</code></td>
+<td>
+<p>Parameter estimate value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>se</code></td>
+<td>
+<p>Standard error of the estimate</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est_se</code></td>
+<td>
+<p>Quotient of <code>est/se</code>, representing z-test/t-test in large samples</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pval</code></td>
+<td>
+<p>Two-tailed p-value for the <code>est_se</code> quotient.</p>
+</td>
+</tr>
+</table>
+<p>In the case of output from Bayesian estimation (ESTIMATOR=BAYES), the <code>data.frame</code> will contain
+a different set of variables, including some of the above, as well as
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>posterior_sd</code></td>
+<td>
+<p>Posterior standard deviation of the estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower_2.5ci</code></td>
+<td>
+<p>Lower 2.5 percentile of the estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper_2.5ci</code></td>
+<td>
+<p>Upper 2.5 percentile (aka 97.5 percentile) of the estimate.</p>
+</td>
+</tr>
+</table>
+<p>Also note that the <code>pval</code> column for Bayesian output represents a one-tailed estimate.
+</p>
+<p>In the case of output from a Monte Carlo study (MONTECARLO: and MODEL POPULATION:), the <code>data.frame</code> will contain
+a different set of variables, including some of the above, as well as
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>population</code></td>
+<td>
+<p>Population parameter value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>average</code></td>
+<td>
+<p>Average parameter estimate across replications.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>population_sd</code></td>
+<td>
+<p>Standard deviation of parameter value in population across replications.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>average_se</code></td>
+<td>
+<p>Average standard error of estimated parameter value across replications.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mse</code></td>
+<td>
+<p>Mean squared error.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cover_95</code></td>
+<td>
+<p>Proportion of replications whose 95% confidence interval for the parameter includes the population value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pct_sig_coef</code></td>
+<td>
+<p>Proportion of replications for which the two-tailed significance test of the parameter is significant (p &lt; .05).</p>
+</td>
+</tr>
+</table>
+<p>In the case of confidence interval output (OUTPUT:CINTERVAL), the list element <code>ci.unstandardized</code> will contain
+a different set of variables, including some of the above, as well as
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>low.5</code></td>
+<td>
+<p>Lower 0.5% CI estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>low2.5</code></td>
+<td>
+<p>Lower 2.5% CI estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>low5</code></td>
+<td>
+<p>Lower 5% CI estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est</code></td>
+<td>
+<p>Parameter estimate value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>up5</code></td>
+<td>
+<p>Upper 5% (i.e., 95%) CI estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>up2.5</code></td>
+<td>
+<p>Upper 2.5% (i.e., 97.5%) CI estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>up.5</code></td>
+<td>
+<p>Upper 0.5% (i.e., 99.5%) CI estimate.</p>
+</td>
+</tr>
+</table>
+<p>If the model contains multiple latent classes, an additional variable, <code>LatentClass</code>,
+will be included, specifying the latent class number. Also, the Categorical Latent Variables section
+will be included as <code>LatentClass</code> "Categorical.Latent.Variables."
+</p>
+<p>If the model contains multiple groups, <code>Group</code> will be included.
+</p>
+<p>If the model contains two-level output (between/within), <code>BetweenWithin</code> will be included.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Michael Hallquist
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>extractModelSummaries</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+ex3.14 &lt;- extractModelParameters(
+	"C:/Program Files/Mplus/Mplus Examples/User's Guide Examples/ex3.14.out")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

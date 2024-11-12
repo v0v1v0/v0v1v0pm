@@ -1,0 +1,382 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>makePriors</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Priors for internal use.</h2>
+
+<h3>Description</h3>
+
+<p>Prepare the given prior settings for internal use in <span class="pkg">INLA</span>. The input of the function <code>makePriors</code> are prior settings for variances and correlation or the full covariance matrix, these are then transformed to the internal parameterisation that <span class="pkg">INLA</span> requires. This function is used internally in the main function <code>meta4diag()</code> but can also be used as a separate function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">makePriors(var.prior = "PC", var2.prior="PC", cor.prior = "PC",
+  var.par = c(3, 0.05), var2.par, cor.par = c(1,-0.1,0.5,-0.95,0.05,0.95,0.05),
+  wishart.par = c(4,1,1,0), init = c(0.01, 0.01, -0.1))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>var.prior</code></td>
+<td>
+
+<p>A string specifying the prior density for the first variance component, options are "PC" for penalised complexity prior, "Invgamma" for inverse gamma prior, "Tnormal" for truncated normal prior, "Unif" for uniform prior which allow the standard deviation uniformaly distributed on [0,1000], "Hcauchy" for half-cauchy prior and  "table" for user specific prior. <code>var.prior</code> can also be set to "Invwishart" for inverse wishart prior for covariance matrix. When <code>var.prior="Invwishart"</code>, no matter what <code>var2.prior</code> and <code>cor.prior</code> are given, the inverse Wishart prior covariance matrix is used for covariance matrix and the <code>wishart.par</code> must be given. Of note, the values of this argument is not case sensitive. The definition of the priors is as following,
+</p>
+
+<ul>
+<li> <p><code>var.prior="Invgamma"</code>: This is a prior for a variance <code class="reqn">\sigma^2</code>. The inverse gamma prior has density, 
+</p>
+<p style="text-align: center;"><code class="reqn">\pi(\sigma^2)=\frac{1}{\Gamma(a)b^a}(\sigma^2)^{-a-1}exp(-\frac{1}{b\sigma^2}),</code>
+</p>
+
+<p>for <code class="reqn">\sigma^2&gt;0</code> where: <code class="reqn">a&gt;0</code> is the shape parameter, <code class="reqn">b&gt;0</code> is the rate (1/scale) parameter.
+The parameters are here <code>c(a, b)</code>, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="Tnormal"</code>: This is a prior for a variance <code class="reqn">\sigma^2</code> and defined as follows. 
+The standard deviation <code class="reqn">\sigma=\sqrt{\sigma^2}</code> is Gaussian distributed with mean <code class="reqn">m</code> and variance <code class="reqn">v</code> but truncated to be positive.
+The parameters are here <code>c(m, v)</code>, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="PC"</code>: This is a prior for a variance <code class="reqn">\sigma^2</code> and defined as follows. 
+The left tail of the distribution of standard deviation <code class="reqn">\sigma</code> has behavior
+</p>
+<p style="text-align: center;"><code class="reqn">P(\sigma&gt;u)=\alpha,</code>
+</p>
+
+<p>which means it is unlikely that the standard deviation <code class="reqn">\sigma</code> to be larger than a value <code class="reqn">u</code> with probability <code class="reqn">\alpha</code>.
+The parameters are here <code>c(u, alpha)</code>, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="Hcauchy"</code>: This is a prior for a variance <code class="reqn">\sigma^2</code> and defined as follows.  
+The standard deviation <code class="reqn">\sigma=\sqrt{\sigma^2}</code> is half-Cauchy distributed with density,
+</p>
+<p style="text-align: center;"><code class="reqn">\pi(\sigma)=\frac{2\gamma}{\pi(\sigma^2+\gamma^2)},</code>
+</p>
+
+<p>where <code class="reqn">\gamma&gt;0</code> is the rate parameter.
+The parameters are here <code>c(gamma)</code>, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="Unif"</code>: This is a prior for a variance <code class="reqn">\sigma^2</code> and defined as follows.  
+The standard deviation <code class="reqn">\sigma=\sqrt{\sigma^2}</code> is uniform distributed on <code class="reqn">(0,\infty)</code>.
+No parameters need to be given for this prior, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="Table"</code>:  This is a prior for a variance <code class="reqn">\sigma^2</code> and defined as follows.  
+Users have to specify a data.frame with 2 columns, 
+one indicates the values of <code class="reqn">\sigma^2</code> and the other one indicates the values of <code class="reqn">\pi(\sigma^2)</code>.
+The parameters are this data frame, see arguments <code>var.par</code>.
+</p>
+</li>
+<li> <p><code>var.prior="Invwishart"</code>: Instead of specifying separate prior distributions for the variance and correlation parameters we could also assume that the covariance matrix <code class="reqn">\Sigma</code> 
+</p>
+<p style="text-align: center;"><code class="reqn">\Sigma \sim Wishart^{-1}_{p}(\nu,R),p=2,</code>
+</p>
+
+<p>where the Wishart distribution has density
+</p>
+<p style="text-align: center;"><code class="reqn">\pi(\Sigma)=\frac{|R|^{\frac{\nu}{2}}}{2^{\frac{p\nu}{2}}\Gamma_{p}(\frac{\nu}{2})}|\Sigma|^{-\frac{\nu+p+1}{2}}exp(-\frac{1}{2}Trace(\frac{R}{\Sigma})), \nu&gt;p+1,</code>
+</p>
+
+<p>Then,
+</p>
+<p style="text-align: center;"><code class="reqn">E(\Sigma)=\frac{R}{\nu-p-1}.</code>
+</p>
+
+<p>The parameters are <code class="reqn">\nu, R_{11},R_{22} and R_{12}</code>, where
+</p>
+<p style="text-align: center;"><code class="reqn">R=\left(\begin{array}{cc}R_{11} &amp; R_{12} \\ R_{21} &amp; R_{22}\end{array}\right)</code>
+</p>
+
+<p>The parameters are here <code>c(nu, R11, R22, R12)</code>, see arguments <code>var.par</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var2.prior</code></td>
+<td>
+
+<p>See <code>var.prior</code>.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cor.prior</code></td>
+<td>
+
+<p>A string specifying the prior density for the correlation, options are "PC" for penalised complexity prior, "Invgamma" for inverse gamma prior, "Beta" for beta prior and "table" for user specific prior. <code>cor.prior</code> can also be set to "Invwishart" for inverse wishart prior for covariance matrix. When <code>cor.prior="Invwishart"</code>, no matter what <code>var.prior</code> and <code>var2.prior</code> are given, the inverse Wishart prior for covariance matrix is used and the <code>wishart.par</code> must be given. Of note, the values of this argument is not case sensitive. The definition of the priors is as following,
+</p>
+
+<ul>
+<li> <p><code>cor.prior="Normal"</code>: This is a prior for a correlation <code class="reqn">\rho</code> and defined as follows. 
+The correlation parameter is constrained to <code class="reqn">[-1, 1]</code>. We reparameterise the correlation parameter <code class="reqn">\rho</code> using Fisher's z-transformation as 
+</p>
+<p style="text-align: center;"><code class="reqn">\rho^{\star}=logit(\frac{\rho+1}{2}),</code>
+</p>
+
+<p>which assumes values over the whole real line and assign the following prior distribution to <code class="reqn">\rho</code>,
+</p>
+<p style="text-align: center;"><code class="reqn">\rho \sim Gaussian(\mu,\sigma^2).</code>
+</p>
+
+<p>The prior variance of <code class="reqn">2.5</code> and prior mean of <code class="reqn">0</code> corresponds, roughly, to a uniform prior on <code class="reqn">[-1,1]</code> for <code class="reqn">\rho</code> .
+The parameters are here <code>c(mean, variance)</code>, see arguments <code>cor.par</code>.
+</p>
+</li>
+<li> <p><code>cor.prior="PC"</code>: This is a prior for a correlation <code class="reqn">\rho</code> and defined as follows. 
+The prior is defined around at a reference point with value <code class="reqn">\rho_{0}</code>. 
+To define the density behavior, three <code>strategy</code> can be applied. 
+The first strategy is to define the left tail behavior and the density weight on the left-hand side of the reference point <code class="reqn">\rho_{0}</code>,
+</p>
+<p style="text-align: center;"><code class="reqn">P(\rho&lt;u_{1})=a_{1},</code>
+</p>
+<p> and </p>
+<p style="text-align: center;"><code class="reqn">P(\rho&lt;\rho_{0})=\omega,</code>
+</p>
+
+<p>which means it is unlikely that the value of <code class="reqn">\rho</code> is smaller than a small value <code class="reqn">u_{1}</code> with probability <code class="reqn">a_{1}</code> and 
+the probability that <code class="reqn">\rho</code> is smaller than <code class="reqn">\rho_0</code> is <code class="reqn">\omega</code>.
+The parameters for the first strategy are here <code>c(1, rho0, omega, u1, a1, NA, NA)</code>, see arguments <code>cor.par</code>.
+The second strategy is to define the right tail behavior and the density weight on the left-hand side of the reference point <code class="reqn">\rho_{0}</code>,
+</p>
+<p style="text-align: center;"><code class="reqn">P(\rho&gt;u_{2})=a_{2},</code>
+</p>
+<p> and </p>
+<p style="text-align: center;"><code class="reqn">P(\rho&lt;\rho_{0})=\omega,</code>
+</p>
+
+<p>which means it is unlikely that the value of <code class="reqn">\rho</code> is larger than a big value <code class="reqn">u_{2}</code> with probability <code class="reqn">a_{2}</code> and 
+the probability that <code class="reqn">\rho</code> is smaller than <code class="reqn">\rho_0</code> is <code class="reqn">\omega</code>. 
+The parameters for the second strategy are here <code>c(2, rho0, omega, NA, NA, u2, a2)</code>, see arguments <code>cor.par</code>.
+The third strategy is to define both tail behaviors,
+</p>
+<p style="text-align: center;"><code class="reqn">P(\rho&lt;u_{1})=a_{1},</code>
+</p>
+<p> and </p>
+<p style="text-align: center;"><code class="reqn">P(\rho&gt;u_{2})=a_{2}.</code>
+</p>
+
+<p>The parameters for the third strategy are here <code>c(3, rho0, NA, u1, a1, u2, a2)</code>, see arguments <code>cor.par</code>.
+The parameters of the PC prior for the correlation here is <code>c(strategy, rho0, omega, u1, a1, u2, a2)</code>, see arguments <code>cor.par</code>.
+</p>
+</li>
+<li> <p><code>cor.prior="Beta"</code>: This is a prior for a correlation <code class="reqn">\rho</code> and defined as follows. 
+The correlation parameter <code class="reqn">\rho</code> has a <code class="reqn">Beta(a,b)</code> distribution scaled to have domain in <code class="reqn">(-1, 1)</code>:
+</p>
+<p style="text-align: center;"><code class="reqn">\pi(\rho)=0.5\frac{\Gamma(a+b)}{\Gamma(a)\Gamma(b)}\rho^{a-1}(1-\rho)^{b-1}</code>
+</p>
+<p>,
+where <code class="reqn">a,b&gt;0</code> are the shape parameter.
+The parameters are here <code>c(a, b)</code>, see arguments <code>cor.par</code>.
+</p>
+</li>
+<li> <p><code>cor.prior="Table"</code>: This is a prior for a correlation <code class="reqn">\rho</code> and defined as follows.  
+Users have to specify the data.frame with 2 columns, one indicates the values of <code class="reqn">\rho</code> and the other one indicates the values of <code class="reqn">\pi(\rho)</code>.
+The parameters are this data frame, see arguments <code>cor.par</code>.
+</p>
+</li>
+<li> <p><code>cor.prior="Invwishart"</code>: Instead of specifying separate prior distributions for the hyperparameters we could also assume that the covariance matrix <code class="reqn">\Sigma</code> 
+</p>
+<p style="text-align: center;"><code class="reqn">\Sigma \sim Wishart^{-1}_{p}(\nu,R),p=2,</code>
+</p>
+
+<p>where the inverse Wishart distribution has density
+</p>
+<p style="text-align: center;"><code class="reqn">\pi(\Sigma)=\frac{|R|^{\frac{\nu}{2}}}{2^{\frac{p\nu}{2}}\Gamma_{p}(\frac{\nu}{2})}|\Sigma|^{-\frac{\nu+p+1}{2}}exp(-\frac{1}{2}Trace(\frac{R}{\Sigma})), \nu&gt;p+1,</code>
+</p>
+
+<p>Then,
+</p>
+<p style="text-align: center;"><code class="reqn">E(\Sigma)=\frac{R}{\nu-p-1}.</code>
+</p>
+
+<p>The parameters are <code class="reqn">\nu, R_{11},R_{22} and R_{12}</code>, where
+</p>
+<p style="text-align: center;"><code class="reqn">R=\left(\begin{array}{cc}R_{11} &amp; R_{12} \\ R_{21} &amp; R_{22}\end{array}\right)</code>
+</p>
+
+<p>The parameters are here <code>c(nu, R11, R22, R12)</code>, see arguments <code>cor.par</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var.par</code></td>
+<td>
+
+<p>A numerical vector specifying the parameter of the prior density for the first variance component. 
+</p>
+
+<ul>
+<li> <p><code>var.par=c(rate, shape)</code> when <code>var.prior="Invgamma"</code>.
+</p>
+</li>
+<li> <p><code>var.par=c(u, alpha)</code> when <code>var.prior="PC"</code>.
+</p>
+</li>
+<li> <p><code>var.par=c(m, v)</code> when <code>var.prior="Tnormal"</code>.
+</p>
+</li>
+<li> <p><code>var.par=c(gamma)</code> when <code>var.prior="Hcauchy"</code>.
+</p>
+</li>
+<li> <p><code>var.par=c()</code> when <code>var.prior="Unif"</code>.
+</p>
+</li>
+<li> <p><code>var.par</code> is a data frame with 2 columns, one indicates the values of <code class="reqn">\sigma^2</code> and the other one indicates the values of <code class="reqn">\pi(\sigma^2)</code> when <code>var.prior="Table"</code>.
+</p>
+</li>
+<li> <p><code>var.par</code> doesn't need to be given when <code>var.prior="Invwishart"</code>.
+</p>
+</li>
+</ul>
+<p>See also argument <code>var.prior</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var2.par</code></td>
+<td>
+
+<p>A numerical vector specifying the parameter of the prior density for the second variance component. If not given, function will copy the setting for the first variance component. The definition of the priors is the same as for <code>var.par</code>. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cor.par</code></td>
+<td>
+
+<p>A numerical vector specifying the parameter of the prior density for the correlation. See also <code>examples</code>.
+</p>
+
+<ul>
+<li> <p><code>cor.par=c(mean, variance)</code> when <code>cor.prior="normal"</code>.
+</p>
+</li>
+<li> <p><code>cor.par=c(strategy, rho0, omega, u1, a1, u2, a2)</code> when <code>cor.prior="PC"</code>.
+</p>
+</li>
+<li> <p><code>cor.par=c(a, b)</code> when <code>var.prior="beta"</code>.
+</p>
+</li>
+<li> <p><code>cor.par</code> is a data frame with 2 columns, one indicates the values of <code class="reqn">\rho</code> and the other one indicates the values of <code class="reqn">\pi(\rho)</code> when <code>cor.prior="Table"</code>.
+</p>
+</li>
+<li> <p><code>cor.par</code> doesn't need to be given when <code>cor.prior="Invwishart"</code>.
+</p>
+</li>
+</ul>
+<p>See also argument <code>cor.prior</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wishart.par</code></td>
+<td>
+
+<p>A numerical vector specifying the parameter of the prior density for the covariance matrix. <code>wishart.par</code> must be given and <code>wishart.par=c(nu, R11, R22, R12)</code> when any of <code>var.prior</code>, <code>var2.prior</code> or <code>cor.prior</code> is <code>"Invwishart"</code>. See also <code>examples</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+
+<p>A numerical vector specifying the initial value of the first variance, the second variance and correlation.
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list of prior settings with the components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>prec1</code></td>
+<td>
+<p>a list of prior settings for the first log precision (the log inverse of the first variance in the model).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prec2</code></td>
+<td>
+<p>a list of prior settings for the second log precision (the log inverse of the second variance in the model).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cor</code></td>
+<td>
+<p>a list of prior settings for the transformed correlation (some functions of correlation in the model).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambdas</code></td>
+<td>
+<p>a vector of rate parameters for the PC correlation if <code>cor.prior="PC"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>density</code></td>
+<td>
+<p>a list of prior densities for precisions and correlations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>original.setting</code></td>
+<td>
+<p>a list of input prior settings.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wishart.flag</code></td>
+<td>
+<p>Boolean indicating whether a inverse Wishart prior is setting or not.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Jingyi Guo and Andrea Riebler 
+</p>
+
+
+<h3>References</h3>
+
+<p>Simpson DP, Martins TG, Riebler A, Fuglstad GA, Rue H, Sorbye SH (2014) Penalised Model Component Complexity: A principled, Practical Approach to Constructing Priors. Arxiv e-prints. 1403.4630  
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+if(requireNamespace("INLA", quietly = TRUE)){
+require("INLA", quietly = TRUE)
+makePriors(var.prior = "PC", cor.prior = "PC", var.par = c(3, 0.05), 
+  cor.par = c(1, -0.1, 0.5, -0.95, 0.05, NA, NA))
+makePriors(var.prior = "PC", cor.prior = "PC", var.par = c(3, 0.05), 
+  cor.par = c(2, -0.1, 0.5, NA, NA, 0.95, 0.05))
+makePriors(var.prior = "PC", cor.prior = "PC", var.par = c(3, 0.05), 
+  cor.par = c(3, -0.1, NA, -0.95, 0.05, 0.95, 0.05))
+makePriors(var.prior = "invgamma", cor.prior = "normal", 
+  var.par = c(0.25, 0.025), cor.par = c(0, 5))
+makePriors(var.prior = "invwishart", wishart.par=c(4,1,2,0.1))
+}
+
+## End(Not run)
+</code></pre>
+
+
+</div>

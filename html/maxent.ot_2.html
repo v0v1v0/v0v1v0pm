@@ -1,0 +1,241 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>cross_validate</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Cross-validate bias parameters for constraint weights.</h2>
+
+<h3>Description</h3>
+
+<p>Performs k-fold cross-validation of a data set and a set of input bias
+parameters. Cross-validation allows the space of bias parameters to be
+searched to find the settings that best support generalization to unseen data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">cross_validate(
+  input,
+  k,
+  mu_values,
+  sigma_values,
+  grid_search = FALSE,
+  output_path = NA,
+  out_sep = ",",
+  control_params = NA,
+  upper_bound = DEFAULT_UPPER_BOUND,
+  encoding = "unknown",
+  model_name = NA,
+  allow_negative_weights = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>input</code></td>
+<td>
+<p>The input data frame/data table/tibble. This should contain one
+or more OT tableaux consisting of mappings between underlying and surface
+forms with observed frequency and violation profiles. Constraint violations
+must be numeric.
+</p>
+<p>For an example of the data frame format, see inst/extdata/sample_data_frame.csv.
+You can read this file into a data frame using read.csv or into a tibble
+using dplyr::read_csv.
+</p>
+<p>This function also supports the legacy OTSoft file format. You can use this
+format by passing in a file path string to the OTSoft file rather than a
+data frame.
+</p>
+<p>For examples of OTSoft format, see inst/extdata/sample_data_file.txt.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>The number of folds to use in cross-validation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu_values</code></td>
+<td>
+<p>A vector or list of mu bias parameters to use in
+cross-validation. Parameters may either be scalars, in which case the
+same mu parameter will be applied to every constraint, or vectors/lists
+containing a separate mu bias parameter for each constraint.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma_values</code></td>
+<td>
+<p>A vector or list of sigma bias parameters to use in
+cross-validation. Parameters may either be scalars, in which case the
+same sigma parameter will be applied to every constraint, or vectors/lists
+containing a separate sigma bias parameter for each constraint.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grid_search</code></td>
+<td>
+<p>(optional) If TRUE, the Cartesian product of the values
+in <code>mu_values</code> and <code>sigma_values</code> will be validated. For example, if
+<code>mu_values = c(0, 1)</code> and <code>sigma_values = c(0.1, 1)</code>, cross-validation will
+be done on the mu/sigma pairs <code style="white-space: pre;">⁠(0, 0.1), (0, 1), (1, 0.1), (1, 1)⁠</code>. If
+FALSE (default), cross-validation will be done on each pair of values at
+the same indices in <code>mu_values</code> and <code>sigma_values</code>. For example, if
+<code>mu_values = c(0, 1)</code> and <code>sigma_values = c(0.1, 1)</code>, cross-validation will
+be done on the mu/sigma pairs <code style="white-space: pre;">⁠(0, 0.1), (1, 1)⁠</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output_path</code></td>
+<td>
+<p>(optional) A string specifying the path to a file to
+which the cross-validation results will be saved. If the file exists it
+will be overwritten. If this argument isn't provided, the output will not
+be written to a file.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>out_sep</code></td>
+<td>
+<p>(optional) The delimiter used in the output files.
+Defaults to tabs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control_params</code></td>
+<td>
+<p>(optional) A named list of control parameters that
+will be passed to the optim function. See the documentation
+of that function for details. Note that some parameter settings may
+interfere with optimization. The parameter <code>fnscale</code> will be overwritten
+with <code>-1</code> if specified, since this must be treated as a maximization
+problem.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper_bound</code></td>
+<td>
+<p>(optional) The maximum value for constraint weights.
+Defaults to 100.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>encoding</code></td>
+<td>
+<p>(optional) The character encoding of the input file. Defaults
+to "unknown".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model_name</code></td>
+<td>
+<p>(optional) A name for the model. If not provided, the file
+name will be used if the input is a file path. If the input is a data frame
+the name of the variable will be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allow_negative_weights</code></td>
+<td>
+<p>(optional) Whether the optimizer should allow
+negative weights. Defaults to FALSE.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The cross-validation procedure is as follows:
+</p>
+
+<ol>
+<li>
+<p> Randomly divide the data into k partitions.
+</p>
+</li>
+<li>
+<p> Iterate through every combination of mu and sigma specified in the
+input arguments (see the documentation for the <code>grid_search</code> argument
+for details on how this is done).
+</p>
+</li>
+<li>
+<p> For each combination, for each of the k partitions, train a model
+on the other (k-1) partitions using <code>optimize_weights</code> and then run
+<code>predict_probabilities</code> on the remaining partition.
+</p>
+</li>
+<li>
+<p> Record the mean log likelihood the models apply to the held-out
+partitions.
+</p>
+</li>
+</ol>
+<h3>Value</h3>
+
+<p>A data frame with the following columns:
+</p>
+
+<ul>
+<li> <p><code>model_name</code>: the name of the model
+</p>
+</li>
+<li> <p><code>mu</code>: the value(s) of mu tested
+</p>
+</li>
+<li> <p><code>sigma</code>: the value(s) of sigma tested
+</p>
+</li>
+<li> <p><code>folds</code>: the number of folds
+</p>
+</li>
+<li> <p><code>mean_ll</code>: the mean log likelihood of k-fold cross-validation
+using these bias parameters
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">  # Get paths to OTSoft file. Note that you can also pass dataframes into
+  # this function, as described in the documentation for `optimize`.
+  data_file &lt;- system.file(
+      "extdata", "amp_demo_grammar.csv", package = "maxent.ot"
+  )
+  tableaux_df &lt;- read.csv(data_file)
+
+  # Define mu and sigma parameters to try
+  mus &lt;- c(0, 1)
+  sigmas &lt;- c(0.01, 0.1)
+
+  # Do 2-fold cross-validation
+  cross_validate(tableaux_df, 2, mus, sigmas)
+
+  # Do 2-fold cross-validation with grid search of parameters
+  cross_validate(tableaux_df, 2, mus, sigmas, grid_search=TRUE)
+
+  # You can also use vectors/lists for some/all of the bias parameters to set
+  # separate biases for each constraint
+  mus_v &lt;- list(
+    c(0, 1),
+    c(1, 0)
+  )
+  sigmas_v &lt;- list(
+    c(0.01, 0.1),
+    c(0.1, 0.01)
+  )
+
+  cross_validate(tableaux_df, 2, mus_v, sigmas_v)
+
+  # Save cross-validation results to a file
+  tmp_output &lt;- tempfile()
+  cross_validate(tableaux_df, 2, mus, sigmas, output_path=tmp_output)
+</code></pre>
+
+
+</div>

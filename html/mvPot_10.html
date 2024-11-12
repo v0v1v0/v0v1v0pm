@@ -1,0 +1,146 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>scoreEstimation</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Gradient score function for the Brown–Resnick model.</h2>
+
+<h3>Description</h3>
+
+<p>Compute the peaks-over-threshold gradient score function for the Brown–Resnick model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">scoreEstimation(
+  obs,
+  loc,
+  vario,
+  weightFun = NULL,
+  dWeightFun = NULL,
+  nCores = 1L,
+  cl = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obs</code></td>
+<td>
+<p>List of vectors exceeding an R-threshold, see de Fondeville and Davison (2018) for more details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loc</code></td>
+<td>
+<p>Matrix of coordinates as given by <code>expand.grid()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vario</code></td>
+<td>
+<p>Semi-variogram function taking a vector of coordinates as input.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weightFun</code></td>
+<td>
+<p>Function of weights.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dWeightFun</code></td>
+<td>
+<p>Partial derivative function of <code>weightFun</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nCores</code></td>
+<td>
+<p>Number of cores used for the computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+<p>Cluster instance as created by <code>makeCluster</code> of the <code>parallel</code> package.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Parameters for <code>weightFun</code> and <code>dWeightFun</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function computes the gradient score based on the representation developed by Wadsworth et al. (2014).
+Margins must have been standardized. The weighting function must be differentiable and verify some properties
+for consistency, see de Fondeville and Davison (2018) for more details.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Evaluation of the gradient score function for the set of observations <code>obs</code> and semi-variogram <code>vario</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Raphael de Fondeville
+</p>
+
+
+<h3>References</h3>
+
+<p>de Fondeville, R. and Davison A. (2018). High-dimensional peaks-over-threshold inference. Biometrika, 105(3), 575-592.
+</p>
+<p>Wadsworth, J. L. and J. A. Tawn (2014). Efficient inference for spatial extreme value
+processes associated to log-Gaussian random functions. Biometrika, 101(1), 1-15.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#Define variogram function
+vario &lt;- function(h){
+   1 / 2 * norm(h,type = "2")^1.5
+}
+
+#Define locations
+loc &lt;- expand.grid(1:4, 1:4)
+
+#Simulate data
+obs &lt;- simulPareto(1000, loc, vario)
+
+#Evaluate risk functional
+sums &lt;- sapply(obs, sum)
+
+#Define weighting function
+weightFun &lt;- function(x, u){
+ x * (1 - exp(-(sum(x / u) - 1)))
+}
+
+#Define partial derivative of weighting function
+dWeightFun &lt;- function(x, u){
+(1 - exp(-(sum(x / u) - 1))) + (x / u) * exp( - (sum(x / u) - 1))
+}
+
+#Select exceedances
+threshold &lt;- quantile(sums, 0.9)
+exceedances &lt;- obs[sums &gt; threshold]
+
+#Evaluate gradient score function
+scoreEstimation(exceedances, loc, vario, weightFun = weightFun, dWeightFun, u = threshold)
+</code></pre>
+
+
+</div>

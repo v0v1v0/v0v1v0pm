@@ -1,0 +1,352 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mixmeta</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Fitting Standard and Extended Meta-Analysis and Meta-Regression Models </h2>
+
+<h3>Description</h3>
+
+<p>The function <code>mixmeta</code> performs various meta-analytical models under a common mixed-effects framework, including standard univariate fixed and random-effects meta-analysis and meta-regression, and non-standard extensions such as multivariate, multilevel, longitudinal, and dose-response models. The function <code>mixmeta.fit</code> is a wrapper for actual fitting functions based on different estimation methods, usually called internally. See <code>mixmeta-package</code> for an overview.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mixmeta(formula, S, data, random, method="reml", bscov="unstr", offset, subset,
+  contrasts=NULL, na.action, model=TRUE, control=list())
+
+mixmeta.fit(X, Z, y, S, groups, method, bscov, control)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<p>Assuming a meta-analysis or meta-regression based on <code class="reqn">n</code> units aggregated within <code class="reqn">m</code> (outer-level) groups, <code class="reqn">k</code> outcomes, <code class="reqn">p</code> fixed-effects predictors, and <code class="reqn">q</code> random-effects predictors:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula </code></td>
+<td>
+<p> an object of class <code>"formula"</code> (or one that can be coerced to that class) offering a symbolic description of the linear predictor for the fixed-effects part of the model. Alternatively, for meta-analysis with no fixed-effects predictors, a single  vector (for univariate models) or matrix-type object (for multivariate models). Terms in <code>formula</code> must be vector or matrix-type objects, optionally provided in the <code>data</code> argument below. See <code>mixmetaFormula</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>S </code></td>
+<td>
+<p> series of within-unit variances (or (co)variance matrices for multivariate models) of the estimated outcome(s). For univariate models, this is usually a <code class="reqn">n</code>-dimensional vector. For multivariate models, it can be provided as: a <code class="reqn">m</code>-dimensional list of <code class="reqn">k \times k</code> matrices; a tri-dimensional <code class="reqn">k \times k \times m</code> array; a matrix or data frame with <code class="reqn">n</code> rows and <code class="reqn">k(k+1)/2</code> or <code class="reqn">k</code> columns, depending on the availability of the within-unit correlations. <code>mixmeta.fit</code> accepts only the last option. Optionally, for more complex error structures, this argument can be omitted and passed through <code>addSlist</code> in <code>control</code>. See Details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data </code></td>
+<td>
+<p> an optional data frame, list or environment (or object coercible by <code>as.data.frame</code> to a data frame) containing the variables in <code>formula</code> and <code>random</code>. If not found in <code>data</code>, the variables are taken from <code>environment(formula)</code>, typically the environment from which <code>mixmeta</code> is called.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random </code></td>
+<td>
+<p> a one-sided formula (or a list of formulae for multilevel models) offering a symbolic description of the linear predictor(s) and grouping structure for the random-effects part of the model. The usual form is <code>~ z1 + ... + zq | g</code>, with the grouping factor separated from the linear predictor by the symbol <code>'|'</code>. Multiple levels with the same linear predictor can be defined by separating multiple grouping factors using the symbol <code>'/'</code>. Alternatively, in a list form the grouping factors can also be provided as list names. In both cases, the levels are considered nested (from outer to inner following the order). See <code>mixmetaFormula</code> and Details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method </code></td>
+<td>
+<p> estimation method: <code>"fixed"</code> for fixed-effects models, <code>"ml"</code> or <code>"reml"</code> for random-effects models fitted through (restricted) maximum likelihood, <code>"mm"</code> for random-effects models fitted through method of moments, and <code>"vc"</code> for random-effects models fitted through variance components. See Details below. If <code>"model.frame"</code>, the model frame is returned, as in <code>lm</code> or <code>glm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bscov </code></td>
+<td>
+<p> a character vector defining the structure of the random-effects (co)variance matrices. Default to <code>"unstr"</code> (unstructured). Names corresponding to grouping factors (see <code>random</code> above) can be used to refer to specific random-effects levels for non-default values. If unnamed, the values can be recycled. Among various <code>(co)variance structures</code>, the user can select <code>"diag"</code> (diagonal), <code>"cs"</code> (compound symmetry), <code>"hcs"</code> (heterogeneous compound symmetry), <code>"ar1"</code> (autoregressive of first order), or <code>"fixed"</code> (fixed). See also Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offset </code></td>
+<td>
+<p> optionally, a <code class="reqn">n</code>-dimensional numeric vector used to specify an a priori known component in the linear predictor. One or more <code>offset</code> terms can be included in the formula instead or as well. See <code>model.offset</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset </code></td>
+<td>
+<p> an optional vector specifying a subset of observations to be used in the fitting process.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>contrasts </code></td>
+<td>
+<p> an optional list. See the <code>contrasts.arg</code> of <code>model.matrix</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na.action </code></td>
+<td>
+<p> a function which indicates what should happen when the data contain <code>NA</code>s. Default to <code>na.action</code> setting of <code>options</code>, usually <code>na.omit</code>. <code>na.exclude</code> can be useful. See details on <code>missing values</code> in <code>mixmeta</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model </code></td>
+<td>
+<p> a logical value indicating whether the model frame should be included as a component of the returned value. See the <code>model.frame</code> method function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control </code></td>
+<td>
+<p> list of parameters for controlling the fitting process. These are passed to  <code>mixmeta.control</code> to replace otherwise selected default values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X </code></td>
+<td>
+<p> a <code class="reqn">n \times p</code> design matrix containing the <code class="reqn">p</code> fixed-effects predictors, appropriately ordered by <code>groups</code>. Usually produced internally by <code>mixmeta</code> from <code>formula</code> above.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Z </code></td>
+<td>
+<p> a <code class="reqn">n \times q</code> design matrix (or a list of design matrices for multilevel models) containing the <code class="reqn">q</code> random-effects predictors, appropriately ordered by <code>groups</code>. Usually produced internally by <code>mixmeta</code> from <code>random</code> above.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y </code></td>
+<td>
+<p> a <code class="reqn">n</code>-dimensional vector (for univariate models) or <code class="reqn">m \times k</code> matrix (for multivariate models) of outcomes, appropriately ordered by <code>groups</code>. Usually produced internally by <code>mixmeta</code> from <code>formula</code> above.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>groups </code></td>
+<td>
+<p> matrix with <code class="reqn">n</code> rows, with each column identifying the groups for each level of random-effects, appropriately ordered. Usually produced internally by <code>mixmeta</code> from <code>random</code> above.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function <code>mixmeta</code> resembles standard regression functions in <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span>. See <code>lme</code> in particular, or <code>lm</code> or <code>glm</code>, for information on most of the arguments. Internally, this function assembles the data components, defines the (potentially multiple) grouping levels and re-order the data accordingly, and then pass them to <code>mixmeta.fit</code>. This is a wrapper for actual fitting functions that are automatically selected. Functions other than <code>mixmeta</code> are not expected to be called directly for model fitting.
+</p>
+<p>Fixed or random-effects models for meta-analysis are simply defined using <code>y ~ 1</code> in <code>formula</code>, where <code>y</code> is a response vector optionally stored in <code>data</code>. In  meta-regression models, other terms are added in the right-hand side of the formula as <code>y ~ x1 + ... + xp</code>, defining the linear meta-predictor. Factors, variable transformations and interactions are allowed, following the usual formula specification (see <code>mixmetaFormula</code>).
+</p>
+<p>In this standard usage, each of the <code class="reqn">n</code> rows is assumed to represent a single estimate of an outcome from a set of independent studies. In random-effects models, the grouping structure is automatically derived by assigning a group to each row of data (with <code class="reqn">m=n</code>). Extensions to multivariate models (<code class="reqn">k&gt;1</code>) are straightforward, and only require using a matrix in the left-hand side, where each of the <code class="reqn">k</code> columns represents a different outcome, or the form <code>cbind(y1, ..., yk) ~ 1</code>. See <code>mixmetaFormula</code>.
+</p>
+<p>Non-standard random-effects models can be specified through the optional argument <code>random</code>. This is commonly represented by a one-sided formula, whose basic random-intercept form is <code>~ 1 | g</code>, where <code>g</code> is a grouping factor. A more complex linear meta-predictor for the random-effects part can be also specified by <code>~ z1 + ... + zq | g</code>.  The argument <code>random</code> also accepts a list of one-sided formulae referring to multiple random-effects levels (see <code>mixmetaFormula</code>). The use of <code>random</code> extends the standard meta-analytical setting by relaxing the assumption of independence between units, allowing multiple estimates from the same group (with <code class="reqn">m&lt;n</code>) and multiple nested grouping levels. This provides the possibility to fit longitudinal, multilevel, and dose-response meta-analysis, among other extensions. See the examples below.
+</p>
+<p>The argument <code>bscov</code> allows the definition of specific structures for the random-effects (co)variance matrices corresponding the each level. The default unstructured form requires <code>kq(kq+1)/2</code> parameters for a single-level meta-analysis. The choice of other structures reduces the number of parameters, although requiring stronger assumptions. More information and complete list of options is available at a specific help page (see <code>mixmetaCovStruct</code>).
+</p>
+<p>The within-unit (co)variances are provided through the argument <code>S</code>, usually as a matrix. If the correlations are available, each of the <code class="reqn">m</code> row represents the <code class="reqn">k(k+1)/2</code> vectorized entries of the lower triangle of the related (co)variance matrix, taken by column (see <code>xpndMat</code>). If correlations are not available, each row represents the <code class="reqn">k</code> variances, and the correlations are inputted internally through the argument <code>Scor</code> of the <code>control</code> list (see <code>inputcov</code>). For more complex error structures that span multiple units, the argument <code>S</code> can be omitted and passed through <code>addSlist</code> in <code>control</code>, although requiring the observations to be re-ordered accordingly to groups (see <code>mixmeta.control</code>).
+</p>
+<p>Different estimator are available in the package <code>mixmeta</code> and chosen through the argument <code>method</code>, with related fitting functions called internally. In the current version, the options are:
+</p>
+
+<ul>
+<li> <p><code>method="fixed"</code>: <code>Fixed-effects estimator</code>
+</p>
+</li>
+<li> <p><code>method="ml"</code>: <code>Maximum likelihood (ML) estimator</code>
+</p>
+</li>
+<li> <p><code>method="reml"</code>: <code>Restricted maximum likelihood (REML) estimator</code>
+</p>
+</li>
+<li> <p><code>method="mm"</code>: <code>Method of moments estimator</code>
+</p>
+</li>
+<li> <p><code>method="vc"</code>: <code>Variance components estimator</code>
+</p>
+</li>
+</ul>
+<p>Note that non-standard random-effects models and the use of structured (co)variance matrices are only available for <code>"ml"</code> and <code>"reml"</code> methods. See their help pages for further details on the estimation procedures, following the links above.
+</p>
+<p>Missing values are allowed in both sides of <code>formula</code>. In the case of missing predictors (right-hand side of <code>formula</code>), the related unit is entirely excluded from estimation. In contrast, a unit still contributes to estimation if at least outcome is non-missing. This behaviour is different from standard regression functions such as <code>lm</code> or <code>glm</code>. Before the call to <code>mixmeta.fit</code>, units matching such stricter missing definition are removed from the the model frame. The missing pattern in <code>S</code> must be consistent with that in <code>y</code>. See further details on handling <code>missing values</code> in <code>mixmeta</code>.
+</p>
+<p>The fitting procedure can be controlled through the additional terms specified in <code>control</code>, which are passed to the function <code>mixmeta.control</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The <code>mixmeta</code> function typically returns a list object of class <code>"mixmeta"</code> representing the meta-analytical model fit, as described in <code>mixmetaObject</code>. When <code>method="data.frame"</code>, the model is not fitted and the model frame is returned, namely a data frame with special attributes (see the default method <code>model.frame</code>) and, in this case, the additional class <code>"data.frame.mixmeta"</code>.
+</p>
+<p>The wrapper function <code>mixmeta.fit</code> is usually called internally in <code>mixmeta</code>, and returns an intermediate list object with some of the components expected in the <code>"mixmeta"</code> class.
+</p>
+<p>Several method functions for regression objects are available, either default or specifically written for the <code>"mixmeta"</code> class. See <code>mixmetaObject</code> for a complete list.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Antonio Gasparrini &lt;<a href="mailto:antonio.gasparrini@lshtm.ac.uk">antonio.gasparrini@lshtm.ac.uk</a>&gt; and Francesco Sera &lt;<a href="mailto:francesco.sera@lshtm.ac.uk">francesco.sera@lshtm.ac.uk</a>&gt;</p>
+
+
+<h3>References</h3>
+
+<p>Sera F, Gasparrini A. (2019). An extended mixed-effects framework for meta-analysis.<em>Statistics in Medicine</em>. 2019;38(29):5429-5444. [Freely available <a href="http://www.ag-myresearch.com/2019_sera_statmed.html"><b>here</b></a>].
+</p>
+<p>Gasparrini A, Armstrong B, Kenward MG (2012). Multivariate meta-analysis for non-linear and other multi-parameter associations. <em>Statistics in Medicine</em>. <b>31</b>(29):3821–3839. [Freely available <a href="http://www.ag-myresearch.com/2012_gasparrini_statmed.html"><b>here</b></a>].
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See additional info on the estimation procedures at the related page of the fitting functions See <code>mixmetaFormula</code> for the use of formulae to define the fixed and random parts of the model. See alternative <code>(co)variance structures</code> for likelihood-based estimation methods. See handling of <code>missing values</code> in <code>mixmeta</code>. See <code>lme</code>, <code>lm</code> or <code>glm</code> for standard regression functions. See <code>mixmeta-package</code> for an overview of this modelling framework.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">### STANDARD MODELS
+
+# RANDOM-EFFECTS META-ANALYSIS, ESTIMATED WITH REML
+model &lt;- mixmeta(logor, logorvar, data=bcg)
+summary(model)
+
+# RANDOM-EFFECTS META-REGRESSION, ESTIMATED WITH ML
+model &lt;- mixmeta(logor~ablat, logorvar, data=bcg, method="ml")
+summary(model)
+
+
+### MAIN METHOD FUNCTIONS
+
+# COEFFICIENTS AND (CO)VARIANCE MATRIX
+coef(model)
+vcov(model)
+
+# RESIDUALS AND FITTED VALUES
+residuals(model)
+fitted(model)
+
+# MODEL FRAME AND MODEL MATRIX
+model.frame(model)
+model.matrix(model)
+
+# LOG-LIKELIHOOD AND AIC VALUE
+logLik(model)
+AIC(model)
+
+# COCHRAN Q TEST FOR RESIDUAL HETEROGENEITY
+qtest(model)
+
+
+### PREDICTIONS
+
+# PREDICTED EFFECTS
+predict(model)
+predict(model, se=TRUE)
+predict(model, newdata=data.frame(ablat=2:5*10), ci=TRUE)
+
+# BEST LINEAR UNBIASED PREDICTION
+blup(model)
+blup(model, pi=TRUE)
+
+# SEE help(predict.mixmeta) AND help(BLUP.mixmeta) FOR MORE INFO
+
+
+### MULTIVARIATE MODELS
+
+### BIVARIATE MODELS
+model &lt;- mixmeta(cbind(PD,AL) ~ pubyear, S=berkey98[5:7], data=berkey98)
+summary(model)
+residuals(model)
+
+### MULTIVARIATE META-ANALYSIS WITH MORE THAN 2 OUTCOMES
+y &lt;- as.matrix(fibrinogen[2:5])
+S &lt;- as.matrix(fibrinogen[6:15])
+model &lt;- mixmeta(y, S)
+summary(model)
+predict(model, se=TRUE)
+predict(model, se=TRUE, aggregate="outcome")
+
+
+### OTHER EXTENSIONS
+
+# MULTILEVEL META-ANALYSIS
+model &lt;- mixmeta(effect, var, random= ~ 1|district/study, data=school)
+summary(model)
+# SEE help(school) AND help(thrombolytic) FOR MORE EXAMPLES
+
+# DOSE-RESPONSE META-ANALYSIS (SIMPLIFIED)
+model &lt;- mixmeta(logrr ~ 0 + dose, S=se^2, random= ~ 0 + dose|id, data=alcohol,
+ subset=!is.na(se))
+summary(model)
+# SEE help(alcohol) FOR MORE EXAMPLES
+
+# LONGITUDINAL META-ANALYSIS
+model &lt;- mixmeta(logOR~time, S=logORvar, random=~I(time-15)|study, data=gliomas)
+summary(model)
+# SEE help(gliomas) AND help(dbs) FOR MORE EXAMPLES
+
+
+### FIXED-EFFECTS MODELS AND ALTERNATIVE ESTIMATORS
+
+# FIXED-EFFECTS MODEL
+model &lt;- mixmeta(sbp~ish, S=sbp_se^2, data=hyp, method="fixed")
+summary(model)
+
+# METHOD OF MOMENTS
+S &lt;- as.matrix(hsls[5:10])
+model &lt;- mixmeta(cbind(b1,b2,b3), S, data=hsls, method="mm")
+summary(model)
+
+# VARIANCE COMPONENTS ESTIMATOR
+model &lt;- mixmeta(cbind(PD,AL)~pubyear, S=berkey98[5:7], data=berkey98,
+  method="vc")
+summary(model)
+
+
+### IN THE PRESENCE OF MISSING VALUES
+
+# RUN THE MODEL
+y &lt;- as.matrix(smoking[11:13])
+S &lt;- as.matrix(smoking[14:19])
+model &lt;- mixmeta(y, S)
+summary(model)
+model.frame(model)
+
+# SEE help(na.omit.data.frame.mixmeta) FOR MORE EXAMPLES
+
+
+### WHEN WITHIN-STUDY COVIARIANCES ARE NOT AVAILABLE AND/OR NEED TO BE INPUTTED
+
+# GENERATE S
+(S &lt;- inputcov(hyp[c("sbp_se","dbp_se")], cor=hyp$rho))
+
+# RUN THE MODEL
+model &lt;- mixmeta(cbind(sbp,dbp), S=S, data=hyp)
+
+# INPUTTING THE CORRELATION DIRECTLY IN THE MODEL
+model &lt;- mixmeta(cbind(y1,y2), cbind(V1,V2), data=p53, control=list(Scor=0.95))
+summary(model)
+
+# SEE help(hyp) AND help(p53) FOR MORE EXAMPLES
+
+
+### STRUCTURING THE BETWEEN-STUDY (CO)VARIANCE
+
+# DIAGONAL
+S &lt;- as.matrix(hsls[5:10])
+model &lt;- mixmeta(cbind(b1,b2,b3), S, data=hsls, bscov="diag")
+summary(model)
+model$Psi
+
+# COMPOUND SYMMETRY
+model &lt;- mixmeta(cbind(b1,b2,b3), S, data=hsls, bscov="cs")
+summary(model)
+model$Psi
+
+# SEE help(mixmetaCovStruct) FOR DETAILS AND ADDITIONAL EXAMPLES
+
+
+### USE OF THE CONTROL LIST
+
+# PRINT THE ITERATIONS AND CHANGE THE DEFAULT FOR STARTING VALUES
+y &lt;- as.matrix(smoking[11:13])
+S &lt;- as.matrix(smoking[14:19])
+model &lt;- mixmeta(y, S, control=list(showiter=TRUE, igls.inititer=20))
+
+# SEE help(mixmeta.control) FOR FURTHER DETAILS
+</code></pre>
+
+
+</div>

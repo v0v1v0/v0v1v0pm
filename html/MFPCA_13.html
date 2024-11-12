@@ -1,0 +1,209 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>FCP_TPA</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>The functional CP-TPA algorithm</h2>
+
+<h3>Description</h3>
+
+<p>This function implements the functional CP-TPA (FCP-TPA) algorithm, that 
+calculates a smooth PCA for 3D tensor data (i.e. <code>N</code> observations of 2D 
+images with dimension <code>S1 x S2</code>). The results are given in a 
+CANDECOMP/PARAFRAC (CP) model format </p>
+<p style="text-align: center;"><code class="reqn">X = \sum_{k = 1}^K d_k \cdot u_k 
+\circ v_k \circ w_k</code>
+</p>
+<p>  where 
+<code class="reqn">\circ</code> stands for the outer product, <code class="reqn">d_k</code> is a scalar and 
+<code class="reqn">u_k, v_k, w_k</code> are eigenvectors for each direction of the tensor. In 
+this representation, the outer product <code class="reqn">v_k \circ w_k</code> can
+be regarded as the <code class="reqn">k</code>-th eigenimage, while <code class="reqn">d_k \cdot u_k</code> 
+represents the vector of individual scores for this eigenimage and each 
+observation.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">FCP_TPA(
+  X,
+  K,
+  penMat,
+  alphaRange,
+  verbose = FALSE,
+  tol = 1e-04,
+  maxIter = 15,
+  adaptTol = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>The data tensor of dimensions <code>N x S1 x S2</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>K</code></td>
+<td>
+<p>The number of eigentensors to be calculated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>penMat</code></td>
+<td>
+<p>A list with entries <code>v</code> and <code>w</code>, containing a 
+roughness penalty matrix for each direction of the image. The algorithm 
+does not induce smoothness along observations (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alphaRange</code></td>
+<td>
+<p>A list of length 2 with entries <code>v</code> and <code>w</code> , 
+containing the range of smoothness parameters to test for each direction.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, computational details are given on 
+the standard output during calculation of the FCP_TPA.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>A numeric value, giving the tolerance for relative error values in
+the algorithm. Defaults to <code>1e-4</code>. It is automatically multiplied by 
+10 after <code>maxIter</code> steps, if <code>adaptTol = TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxIter</code></td>
+<td>
+<p>A numeric value, the maximal iteration steps. Can be doubled, 
+if <code>adaptTol = TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>adaptTol</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, the tolerance is adapted (multiplied
+by 10), if the algorithm has not converged after <code>maxIter</code> steps and 
+another <code>maxIter</code> steps are allowed with the increased tolerance, see 
+Details. Use with caution. Defaults to <code>TRUE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The smoothness of the eigenvectors <code class="reqn">v_k, w_k</code> is induced by penalty 
+matrices for both image directions, that are weighted by smoothing parameters
+<code class="reqn">\alpha_{vk}, \alpha_{wk}</code>. The eigenvectors <code class="reqn">u_k</code> are not smoothed, 
+hence the algorithm does not induce smoothness along observations.
+</p>
+<p>Optimal smoothing parameters are found via a nested generalized cross 
+validation. In each iteration of the TPA (tensor power algorithm), the GCV 
+criterion is optimized via <code>optimize</code> on the interval 
+specified via <code>alphaRange$v</code> (or <code>alphaRange$w</code>, respectively).
+</p>
+<p>The FCP_TPA algorithm is an iterative algorithm. Convergence is assumed if 
+the relative difference between the actual and the previous values are all 
+below the tolerance level <code>tol</code>. The tolerance level is increased 
+automatically, if the algorithm has not converged after <code>maxIter</code> steps 
+and if <code>adaptTol = TRUE</code>. If the algorithm did not converge after
+<code>maxIter</code> steps (or <code>2 * maxIter</code>) steps, the function throws a
+warning.
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>d</code></td>
+<td>
+<p>A vector of length <code>K</code>, containing the numeric weights 
+<code class="reqn">d_k</code> in the CP model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>U</code></td>
+<td>
+<p>A matrix of dimensions <code>N x K</code>, 
+containing the eigenvectors <code class="reqn">u_k</code> in the first dimension.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>V</code></td>
+<td>
+<p>A 
+matrix of dimensions <code>S1 x K</code>, containing the eigenvectors <code class="reqn">v_k</code> 
+in the second dimension.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>W</code></td>
+<td>
+<p>A matrix of dimensions <code>S2 x K</code>, 
+containing the eigenvectors <code class="reqn">w_k</code> in the third dimension.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>G. I. Allen, "Multi-way Functional Principal Components 
+Analysis", IEEE International Workshop on Computational Advances in 
+Multi-Sensor Adaptive Processing, 2013.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>fcptpaBasis</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"> # set.seed(1234)
+ 
+ N &lt;- 100
+ S1 &lt;- 75
+ S2 &lt;- 75
+
+ # define "true" components
+ v &lt;- sin(seq(-pi, pi, length.out = S1))
+ w &lt;- exp(seq(-0.5, 1, length.out = S2))
+ 
+ # simulate tensor data with dimensions N x S1 x S2
+ X &lt;- rnorm(N, sd = 0.5) %o% v %o% w
+ 
+ # create penalty matrices (penalize first differences for each dimension)
+ Pv &lt;- crossprod(diff(diag(S1)))
+ Pw &lt;- crossprod(diff(diag(S2)))
+ 
+ # estimate one eigentensor
+ res &lt;- FCP_TPA(X, K = 1, penMat = list(v = Pv, w = Pw),
+             alphaRange = list(v = c(1e-4, 1e4), w = c(1e-4, 1e4)),
+             verbose = TRUE)
+ 
+ # plot the results and compare to true values
+ plot(res$V)
+ points(v/sqrt(sum(v^2)), pch = 20)
+ legend("topleft", legend = c("True", "Estimated"), pch = c(20, 1))
+ 
+ plot(res$W)
+ points(w/sqrt(sum(w^2)), pch = 20)
+ legend("topleft", legend = c("True", "Estimated"), pch = c(20, 1))
+</code></pre>
+
+
+</div>

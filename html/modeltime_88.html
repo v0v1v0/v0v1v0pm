@@ -1,0 +1,368 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modeltime_forecast</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Forecast future data</h2>
+
+<h3>Description</h3>
+
+<p>The goal of <code>modeltime_forecast()</code> is to simplify the process of
+forecasting future data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modeltime_forecast(
+  object,
+  new_data = NULL,
+  h = NULL,
+  actual_data = NULL,
+  conf_interval = 0.95,
+  conf_by_id = FALSE,
+  conf_method = "conformal_default",
+  keep_data = FALSE,
+  arrange_index = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A Modeltime Table</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>new_data</code></td>
+<td>
+<p>A <code>tibble</code> containing future information to forecast.
+If <code>NULL</code>, forecasts the calibration data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>h</code></td>
+<td>
+<p>The forecast horizon (can be used instead of <code>new_data</code> for
+time series with no exogenous regressors).
+Extends the calibration data <code>h</code> periods into the future.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>actual_data</code></td>
+<td>
+<p>Reference data that is combined with the output tibble and given a <code>.key = "actual"</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf_interval</code></td>
+<td>
+<p>An estimated confidence interval based on the calibration data.
+This is designed to estimate future confidence from <em>out-of-sample prediction error</em>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf_by_id</code></td>
+<td>
+<p>Whether or not to produce confidence interval estimates by an ID feature.
+</p>
+
+<ul>
+<li>
+<p> When <code>FALSE</code>, a global model confidence interval is provided.
+</p>
+</li>
+<li>
+<p> If <code>TRUE</code>, a local confidence interval is provided group-wise for each time series ID.
+To enable local confidence interval, an <code>id</code> must be provided during <code>modeltime_calibrate()</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf_method</code></td>
+<td>
+<p>Algorithm used to produce confidence intervals. All CI's are Conformal Predictions. Choose one of:
+</p>
+
+<ul>
+<li> <p><code>conformal_default</code>: Uses <code>qnorm()</code> to compute quantiles from out-of-sample (test set) residuals.
+</p>
+</li>
+<li> <p><code>conformal_split</code>: Uses the split method split conformal inference method described by Lei <em>et al</em> (2018)
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep_data</code></td>
+<td>
+<p>Whether or not to keep the <code>new_data</code> and <code>actual_data</code> as extra columns in the results.
+This can be useful if there is an important feature in the <code>new_data</code> and <code>actual_data</code> needed
+when forecasting.
+Default: <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>arrange_index</code></td>
+<td>
+<p>Whether or not to sort the index in rowwise chronological order (oldest to newest) or to
+keep the original order of the data.
+Default: <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Not currently used</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <code>modeltime_forecast()</code> function prepares a forecast for visualization with
+with <code>plot_modeltime_forecast()</code>. The forecast is controlled by <code>new_data</code> or <code>h</code>,
+which can be combined with existing data (controlled by <code>actual_data</code>).
+Confidence intervals are included if the incoming Modeltime Table has been
+calibrated using <code>modeltime_calibrate()</code>.
+Otherwise confidence intervals are not estimated.
+</p>
+<p><strong>New Data</strong>
+</p>
+<p>When forecasting you can specify future data using <code>new_data</code>.
+This is a future tibble with date column and columns for xregs
+extending the trained dates and exogonous regressors (xregs) if used.
+</p>
+
+<ul>
+<li> <p><strong>Forecasting Evaluation Data</strong>: By default, the <code>new_data</code> will use the <code>.calibration_data</code>
+if <code>new_data</code> is not provided.
+This is the equivalent of using <code>rsample::testing()</code> for getting test data sets.
+</p>
+</li>
+<li> <p><strong>Forecasting Future Data</strong>: See <code>timetk::future_frame()</code> for creating future tibbles.
+</p>
+</li>
+<li> <p><strong>Xregs</strong>: Can be used with this method
+</p>
+</li>
+</ul>
+<p><strong>H (Horizon)</strong>
+</p>
+<p>When forecasting, you can specify <code>h</code>. This is a phrase like "1 year",
+which extends the <code>.calibration_data</code> (1st priority) or the <code>actual_data</code> (2nd priority)
+into the future.
+</p>
+
+<ul>
+<li> <p><strong>Forecasting Future Data</strong>: All forecasts using <code>h</code> are
+<em><strong>extended after the calibration data or actual_data</strong></em>.
+</p>
+</li>
+<li>
+<p> Extending <code>.calibration_data</code> - Calibration data is given 1st priority, which is
+desirable <em>after refitting</em> with <code>modeltime_refit()</code>.
+Internally, a call is made to <code>timetk::future_frame()</code> to
+expedite creating new data using the date feature.
+</p>
+</li>
+<li>
+<p> Extending <code>actual_data</code> - If <code>h</code> is provided, and the modeltime table has not been
+calibrated, the "actual_data" will be extended into the future. This is useful
+in situations where you want to go directly from <code>modeltime_table()</code> to <code>modeltime_forecast()</code>
+without calibrating or refitting.
+</p>
+</li>
+<li> <p><strong>Xregs</strong>: Cannot be used because future data must include new xregs.
+If xregs are desired, build a future data frame and use <code>new_data</code>.
+</p>
+</li>
+</ul>
+<p><strong>Actual Data</strong>
+</p>
+<p>This is reference data that contains the true values of the time-stamp data.
+It helps in visualizing the performance of the forecast vs the actual data.
+</p>
+<p>When <code>h</code> is used and the Modeltime Table has <em>not been calibrated</em>, then the
+actual data is extended into the future periods that are defined by <code>h</code>.
+</p>
+<p><strong>Confidence Interval Estimation</strong>
+</p>
+<p>Confidence intervals (<code>.conf_lo</code>, <code>.conf_hi</code>) are estimated based on the normal estimation of
+the testing errors (out of sample) from <code>modeltime_calibrate()</code>.
+The out-of-sample error estimates are then carried through and
+applied to applied to any future forecasts.
+</p>
+<p>The confidence interval can be adjusted with the <code>conf_interval</code> parameter. The algorithm used
+to produce confidence intervals can be changed with the <code>conf_method</code> parameter.
+</p>
+<p><em>Conformal Default Method:</em>
+</p>
+<p>When <code>conf_method = "conformal_default"</code> (default), this method uses <code>qnorm()</code>
+to produce a 95% confidence interval by default. It estimates a normal (Gaussian distribution)
+based on the out-of-sample errors (residuals).
+</p>
+<p>The confidence interval is <em>mean-adjusted</em>, meaning that if the mean of the residuals
+is non-zero, the confidence interval is adjusted to widen the interval to capture
+the difference in means.
+</p>
+<p><em>Conformal Split Method:</em>
+</p>
+<p>When <code style="white-space: pre;">⁠conf_method = "conformal_split⁠</code>, this method uses the split conformal inference method
+described by Lei <em>et al</em> (2018). This is also implemented in the <code>probably</code> R package's
+<code>int_conformal_split()</code> function.
+</p>
+<p><em>What happens to the confidence interval after refitting models?</em>
+</p>
+<p>Refitting has no affect on the confidence interval since this is calculated independently of
+the refitted model. New observations typically improve
+future accuracy, which in most cases makes the out-of-sample confidence intervals conservative.
+</p>
+<p><strong>Keep Data</strong>
+</p>
+<p>Include the new data (and actual data) as extra columns with the results of the model forecasts.
+This can be helpful when the new data includes information useful to the forecasts.
+An example is when forecasting <em>Panel Data</em> and the new data contains
+ID features related to the time series group that the forecast belongs to.
+</p>
+<p><strong>Arrange Index</strong>
+</p>
+<p>By default, <code>modeltime_forecast()</code> keeps the original order of the data.
+If desired, the user can sort the output by <code>.key</code>, <code>.model_id</code> and <code>.index</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A tibble with predictions and time-stamp data. For ease of plotting and calculations,
+the column names are transformed to:
+</p>
+
+<ul>
+<li> <p><code>.key</code>: Values labeled either "prediction" or "actual"
+</p>
+</li>
+<li> <p><code>.index</code>: The timestamp index.
+</p>
+</li>
+<li> <p><code>.value</code>: The value being forecasted.
+</p>
+</li>
+</ul>
+<p>Additionally, if the Modeltime Table has been previously calibrated using <code>modeltime_calibrate()</code>,
+you will gain confidence intervals.
+</p>
+
+<ul>
+<li> <p><code>.conf_lo</code>: The lower limit of the confidence interval.
+</p>
+</li>
+<li> <p><code>.conf_hi</code>: The upper limit of the confidence interval.
+</p>
+</li>
+</ul>
+<p>Additional descriptive columns are included:
+</p>
+
+<ul>
+<li> <p><code>.model_id</code>: Model ID from the Modeltime Table
+</p>
+</li>
+<li> <p><code>.model_desc</code>: Model Description from the Modeltime Table
+</p>
+</li>
+</ul>
+<p>Unnecessary columns are <em>dropped</em> to save space:
+</p>
+
+<ul>
+<li> <p><code>.model</code>
+</p>
+</li>
+<li> <p><code>.calibration_data</code>
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>Lei, Jing, et al. "Distribution-free predictive inference for regression."
+<em>Journal of the American Statistical Association</em> 113.523 (2018): 1094-1111.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(dplyr)
+library(timetk)
+library(parsnip)
+library(rsample)
+
+# Data
+m750 &lt;- m4_monthly %&gt;% filter(id == "M750")
+
+# Split Data 80/20
+splits &lt;- initial_time_split(m750, prop = 0.9)
+
+# --- MODELS ---
+
+# Model 1: prophet ----
+model_fit_prophet &lt;- prophet_reg() %&gt;%
+    set_engine(engine = "prophet") %&gt;%
+    fit(value ~ date, data = training(splits))
+
+
+# ---- MODELTIME TABLE ----
+
+models_tbl &lt;- modeltime_table(
+    model_fit_prophet
+)
+
+# ---- CALIBRATE ----
+
+calibration_tbl &lt;- models_tbl %&gt;%
+    modeltime_calibrate(new_data = testing(splits))
+
+# ---- ACCURACY ----
+
+calibration_tbl %&gt;%
+    modeltime_accuracy()
+
+# ---- FUTURE FORECAST ----
+
+calibration_tbl %&gt;%
+    modeltime_forecast(
+        new_data    = testing(splits),
+        actual_data = m750
+    )
+
+# ---- ALTERNATIVE: FORECAST WITHOUT CONFIDENCE INTERVALS ----
+# Skips Calibration Step, No Confidence Intervals
+
+models_tbl %&gt;%
+    modeltime_forecast(
+        new_data    = testing(splits),
+        actual_data = m750
+    )
+
+# ---- KEEP NEW DATA WITH FORECAST ----
+# Keeps the new data. Useful if new data has information
+#  like ID features that should be kept with the forecast data
+
+calibration_tbl %&gt;%
+    modeltime_forecast(
+        new_data      = testing(splits),
+        keep_data     = TRUE
+    )
+
+</code></pre>
+
+
+</div>

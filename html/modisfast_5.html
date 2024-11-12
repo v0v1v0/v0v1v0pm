@@ -1,0 +1,180 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mf_get_url</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Build the URL(s) of the data to download</h2>
+
+<h3>Description</h3>
+
+<p>Builds the OPeNDAP URL(s) of the spatiotemporal datacube to download, given a collection, variables, region and time range of interest.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mf_get_url(
+  collection,
+  variables = NULL,
+  roi,
+  time_range,
+  output_format = "nc4",
+  single_netcdf = TRUE,
+  opt_param = NULL,
+  credentials = NULL,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>collection</code></td>
+<td>
+<p>string. mandatory. Collection of interest (see details of mf_get_url).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>variables</code></td>
+<td>
+<p>string vector. optional. Variables to retrieve for the collection of interest. If not specified (default) all available variables will be extracted (see details of mf_get_url).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>roi</code></td>
+<td>
+<p>object of class <code>sf</code>. mandatory. Area of region of interest. Must be a Simple feature collection with geometry type POLYGON, composed of one or several rows (i.e. one or several ROIs), and with at least two columns: 'id' (an identifier for the roi) and 'geom' (the geometry).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>time_range</code></td>
+<td>
+<p>date(s) / POSIXlt of interest . mandatory. Single date/datetime or time frame : vector with start and end dates/times (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output_format</code></td>
+<td>
+<p>string. Output data format. optional. Available options are : "nc4" (default), "ascii", "json"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>single_netcdf</code></td>
+<td>
+<p>boolean. optional. Get the URL either as a single file that encompasses the whole time frame (TRUE) or as multiple files (1 for each date) (FALSE). Default to TRUE. Currently enabled only for MODIS and VIIRS collections.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>opt_param</code></td>
+<td>
+<p>list of optional arguments. optional. (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>credentials</code></td>
+<td>
+<p>vector string of length 2 with username and password. optional if the function mf_login was previously executed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>boolean. optional. Verbose (default TRUE)</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Argument <code>collection</code> : Collections available can be retrieved with the function mf_list_collections
+</p>
+<p>Argument <code>variables</code> : For each collection, variables available can be retrieved with the function mf_list_variables
+</p>
+<p>Argument <code>time_range</code> : Can be provided either as i) a single date (e.g. <code>as.Date("2017-01-01"))</code> or ii) a time frame provided as two bounding dates (starting and ending time) ( e.g. <code>as.Date(c("2010-01-01","2010-01-30"))</code>) or iii) a POSIXlt single time (e.g. <code>as.POSIXlt("2010-01-01 18:00:00")</code>) or iv) a POSIXlt time range (e.g. <code>as.POSIXlt(c("2010-01-01 18:00:00","2010-01-02 09:00:00"))</code>) for the half-hourly collection (GPM_3IMERGHH.06). If POSIXlt, times must be in UTC.
+</p>
+<p>Argument <code>single_netcdf</code> : for MODIS and VIIRS products from LP DAAC: download the data as a single file encompassing the whole time frame (TRUE) or as multiple files : one for each date, which is the behavious for the other collections - GPM and SMAP) (FALSE) ?
+</p>
+<p>Argument <code>opt_param</code> : list of parameters related to the queried OPeNDAP server and the roi. See mf_get_opt_param for additional details. This list can be retrieved outside the function with the function mf_get_opt_param. If not provided, it will be automatically calculated within the mf_get_url function. However, providing it fastens the processing time.
+It might be particularly useful to precompute it with mf_get_opt_param in case the function is used within a loop for a single ROI.
+</p>
+<p>Argument <code>credentials</code> : Login to the OPeNDAP servers is required to use the function. Login can be done either within the function or outside with the function mf_login
+</p>
+
+
+<h3>Value</h3>
+
+<p>a data.frame with one row for each dataset to download and 5 columns :
+</p>
+
+<dl>
+<dt>id_roi</dt>
+<dd>
+<p>Identifier of the ROI</p>
+</dd>
+<dt>time_start</dt>
+<dd>
+<p>Start Date/time for the dataset</p>
+</dd>
+<dt>collection</dt>
+<dd>
+<p>Name of the collection</p>
+</dd>
+<dt>name</dt>
+<dd>
+<p>Indicative name for the dataset</p>
+</dd>
+<dt>url</dt>
+<dd>
+<p>https OPeNDAP URL of the dataset</p>
+</dd>
+</dl>
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+
+### First login to EOSDIS Earthdata with username and password.
+# To create an account go to : https://urs.earthdata.nasa.gov/.
+username &lt;- "earthdata_un"
+password &lt;- "earthdata_pw"
+log &lt;- mf_login(credentials = c(username,password))
+
+### Get the URLs to download the following datasets :
+# MODIS Terra LST Daily (MOD11A1.061) (collection)
+# Day + Night bands (LST_Day_1km,LST_Night_1km) (variables)
+# over a 50km x 70km region of interest (roi)
+# for the time frame 2017-01-01 to 2017-01-30 (30 days) (time_range)
+
+roi &lt;- sf::st_as_sf(data.frame(
+id = "roi_test",
+geom="POLYGON ((-5.82 9.54, -5.42 9.55, -5.41 8.84, -5.81 8.84, -5.82 9.54))"),
+wkt="geom",crs = 4326)
+
+time_range = as.Date(c("2017-01-01","2017-01-30"))
+
+(urls_mod11a1 &lt;- mf_get_url(
+collection = "MOD11A1.061",
+variables = c("LST_Day_1km","LST_Night_1km"),
+roi = roi,
+time_range = time_range
+))
+
+## Download the data :
+
+res_dl &lt;- mf_download_data(urls_mod11a1)
+
+## Import as terra::SpatRast
+
+modis_ts &lt;- mf_import_data(dirname(res_dl$destfile[1]), collection = "MOD11A1.061")
+
+## Plot the data
+
+terra::plot(modis_ts)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

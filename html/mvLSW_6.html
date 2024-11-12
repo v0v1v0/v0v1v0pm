@@ -1,0 +1,225 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvEWS</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multivariate Evolutionary Wavelet Spectrum</h2>
+
+<h3>Description</h3>
+
+<p>Calculates the multivariate Evolutionary Wavelet Spectrum 
+(mvEWS) of a multivariate locally stationary time series.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">  mvEWS(X, filter.number = 1, family = "DaubExPhase", 
+    smooth = TRUE, type = "all", kernel.name = "daniell", 
+    kernel.param = floor(sqrt(nrow(X))), optimize = FALSE, 
+    smooth.Jset = NA, bias.correct = TRUE, tol = 1e-10,
+    verbose = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>A multivariate time series object of class <code>ts</code>, 
+<code>zoo</code>, <code>xts</code> or <code>matrix</code>. The length of the 
+time series must be <code class="reqn">2^J</code> for positive integer J.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>filter.number</code></td>
+<td>
+<p>Integer number defining the number of 
+vanishing moments of the wavelet function. By default, 
+<code>filter.number=1</code> and so defining the Haar wavelet.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>Character string specifying the wavelet family. 
+Only two options are available, either 
+<code>"DaubExPhase"</code> (default) or <code>"DaubLeAsymm"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>smooth</code></td>
+<td>
+<p>Logical, should the mvEWS should be smoothed?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>How should the smoothing be performed? If <code>"all"</code>
+(default) then the same smoothing kernel is applied to all 
+levels, else if <code>"by.level"</code> then a different smoothing 
+kernel is applied to each level.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kernel.name</code></td>
+<td>
+<p>Name of smoothing kernel to be supplied 
+to <code>kernel()</code>. Kernel <code>"daniell"</code> is defined by 
+default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kernel.param</code></td>
+<td>
+<p>Parameters to be passed to <code>kernel()</code>. 
+This argument must be a vector if <code>type="all"</code>, otherwise
+it must be a matrix with each column defining the kernel parameters 
+for each <code>log2(nrow(X))</code> levels from coarse to fine. If 
+the name is <code>"dirichlet"</code> or <code>"fejer"</code> 
+then <code>kernel.param</code> must have length 2 (or a matrix with 
+2 rows) which are supplied to <code>kernel()</code> as arguments 
+<code>m</code> and <code>r</code> respectively. Note that the width of the 
+kernel cannot be larger than the time series length. This is set by 
+default as the square root of the length of the time series.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optimize</code></td>
+<td>
+<p>Logical, should the smoothing be optimized? 
+If <code>FALSE</code> (default) then smoothing is performed as 
+specified with <code>kernel.name</code> and <code>kernel.param</code>. 
+Otherwise, <code>kernel.param</code> defines the upper parameter bound 
+in determining the optimal kernel is determined by minimising 
+the generalized cross-validation gamma deviance criterion.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>smooth.Jset</code></td>
+<td>
+<p>Integer vector indicating with levels to be 
+included in the calculation of the generalized cross-validation 
+gamma deviance criterion. This argument is only used if 
+<code>type="all"</code> and is set as <code>NA</code> by default, 
+implying that all levels should be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bias.correct</code></td>
+<td>
+<p>Logical, should the correction be applied 
+to address the bias in the raw mvEWS estimator.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>Tolerance in applying matrix regularisation 
+to ensure each mvEWS matrix per location and level to be 
+strictly positive definite.	If <code>NA</code> or <code>-Inf</code> then 
+the threshold is not applied. This is 1e-10 by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Logical. Controls the printing of messages whist 
+the computations progress. Set as <code>FALSE</code> as default.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This command evaluates the multivariate evolutionary wavelet 
+spectrum of a multivariate locally stationary wavelet time series. 
+The order of operations are as follows:
+</p>
+<p>Calculate the non-decimated wavelet coefficients <code class="reqn">\{d^{(p)}_{j,k}\}</code> 
+for levels j = 1,...,J, locations k = 0,...,T-1 (T=<code class="reqn">2^J</code>) 
+and channels p = 1,...,P(=<code>ncol(X)</code>). The raw periodogram matrices 
+are then evaluated by <code class="reqn">I^{(p,q)}_{j,k} = d^{p}_{j,k}d^{q}_{j,k}</code> 
+between any channel pair p &amp; q.
+</p>
+<p>The above estimator is inconsistent and so the matrix sequence is 
+smoothed: <code class="reqn">\tilde{I}^{(p,q)}_{j,k} = \sum_i W_i I^{(p,q)}_{j,k+i}</code>. 
+The kernel weights <code class="reqn">W_i</code> are derived from the <code>kernel</code> command 
+and satisfy <code class="reqn">W_i=W_{-i}</code> and <code class="reqn">\sum_i W_i = 1</code>. The optimal 
+parameter for the smoothing kernel is determined by minimising the 
+generalized cross-validation gamma deviance criterion 
+(see Ombao et al., 2005).
+</p>
+<p>The raw wavelet periodogram is also a biased estimator. A correction is 
+subsequently applied to the smoothed estimate as follows:
+</p>
+<p style="text-align: center;"><code class="reqn">\hat{S}_{j,k} =\sum_{l=1}^{J} (A^{-1})_{j,l} \hat{I}_{l,k}</code>
+</p>
+
+<p>Here, <code class="reqn">A</code> denotes the wavelet autocorrelation inner product matrix.
+</p>
+<p>If chosen to, the mvEWS matrices at each level and location, 
+<code class="reqn">\hat{S}_{j,k}</code>, is regularised to ensure positive definiteness.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>mvLSW</code>, invisibly.
+</p>
+
+
+<h3>References</h3>
+
+<p>Taylor, S.A.C., Park, T.A. and Eckley, I. (2019) Multivariate 
+locally stationary wavelet analysis with the mvLSW R package.
+<em>Journal of statistical software</em> <strong>90</strong>(11) pp. 1–16,
+doi: 10.18637/jss.v090.i11.
+</p>
+<p>Park, T., Eckley, I. and Ombao, H.C. (2014) Estimating 
+time-evolving partial coherence between signals via multivariate 
+locally stationary wavelet processes. <em>Signal Processing, 
+IEEE Transactions on</em> <strong>62</strong>(20) pp. 5240-5250.
+</p>
+<p>Ombao, H., von Sachs, R. and Guo, W. (2005) SLEX analysis 
+of multivariate nonstationary time series. <em>Journal 
+of the American Statistical Association</em> <strong>100</strong>(470)
+pp.519-531.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>ts</code>, <code>wd</code>, <code>kernel</code>, <code>as.mvLSW</code>, <code>ipndacw</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Sample bivariate locally stationary time series
+set.seed(100)
+X &lt;- matrix(rnorm(2 * 2^8), ncol = 2)
+X[1:2^7, 2] &lt;- 3 * (X[1:2^7, 2] + 0.95 * X[1:2^7, 1])
+X[-(1:2^7), 2] &lt;- X[-(1:2^7), 2] - 0.95 * X[-(1:2^7), 1]
+X[-(1:2^7), 1] &lt;- X[-(1:2^7), 1] * 4
+X &lt;- as.ts(X)
+
+## Haar wavelet, apply same smoothing to all levels &amp; optimize
+EWS &lt;- mvEWS(X, kernel.name = "daniell", kernel.param = 20, 
+  optimize = TRUE)
+summary(EWS)
+plot(EWS, style = 2, info = 1)
+
+## Over smoothed EWS
+EWS_smooth &lt;- mvEWS(X, filter.number = 10, family = "DaubLeAsymm",
+  kernel.name = "modified.daniell", kernel.param = c(5, 5),
+  optimize = FALSE)
+summary(EWS_smooth)
+plot(EWS_smooth, style = 2, info = 1)
+</code></pre>
+
+
+</div>

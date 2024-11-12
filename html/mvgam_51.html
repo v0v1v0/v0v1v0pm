@@ -1,0 +1,440 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>get_mvgam_priors</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Extract information on default prior distributions for an mvgam model</h2>
+
+<h3>Description</h3>
+
+<p>This function lists the parameters that can have their prior distributions
+changed for a given <code>mvgam</code> model, as well listing their default distributions
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">get_mvgam_priors(
+  formula,
+  trend_formula,
+  data,
+  data_train,
+  family = "poisson",
+  knots,
+  trend_knots,
+  use_lv = FALSE,
+  n_lv,
+  use_stan = TRUE,
+  trend_model = "None",
+  trend_map,
+  drift = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>A <code>character</code> string specifying the GAM observation model formula. These are exactly like the formula
+for a GLM except that smooth terms, <code>s()</code>, <code>te()</code>, <code>ti()</code>, <code>t2()</code>, as well as time-varying
+<code>dynamic()</code> terms, can be added to the right hand side
+to specify that the linear predictor depends on smooth functions of predictors
+(or linear functionals of these). In <code>nmix()</code> family models, the <code>formula</code> is used to
+set up a linear predictor for the detection probability. Details of the formula syntax used by <span class="pkg">mvgam</span>
+can be found in <code>mvgam_formulae</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trend_formula</code></td>
+<td>
+<p>An optional <code>character</code> string specifying the GAM process model formula. If
+supplied, a linear predictor will be modelled for the latent trends to capture process model evolution
+separately from the observation model. Should not have a response variable specified on the left-hand side
+of the formula (i.e. a valid option would be <code>~ season + s(year)</code>). Also note that you should not use
+the identifier <code>series</code> in this formula to specify effects that vary across time series. Instead you should use
+<code>trend</code>. This will ensure that models in which a <code>trend_map</code> is supplied will still work consistently
+(i.e. by allowing effects to vary across process models, even when some time series share the same underlying
+process model). This feature is only currently available for <code>RW()</code>, <code>AR()</code> and <code>VAR()</code> trend models.
+In <code>nmix()</code> family models, the <code>trend_formula</code> is used to set up a linear predictor for the underlying
+latent abundance. Be aware that it can be very challenging to simultaneously estimate intercept parameters
+for both the observation mode (captured by <code>formula</code>) and the process model (captured by <code>trend_formula</code>).
+Users are recommended to drop one of these using the <code>- 1</code> convention in the formula right hand side.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A <code>dataframe</code> or <code>list</code> containing the model response variable and covariates
+required by the GAM <code>formula</code> and optional <code>trend_formula</code>. Should include columns:
+#'</p>
+
+<ul>
+<li>
+<p><code>series</code> (a <code>factor</code> index of the series IDs; the number of levels should be identical
+to the number of unique series labels (i.e. <code>n_series = length(levels(data$series))</code>))
+</p>
+</li>
+<li>
+<p><code>time</code> (<code>numeric</code> or <code>integer</code> index of the time point for each observation).
+For most dynamic trend types available in <code>mvgam</code> (see argument <code>trend_model</code>), time should be
+measured in discrete, regularly spaced intervals (i.e. <code>c(1, 2, 3, ...)</code>). However you can
+use irregularly spaced intervals if using <code>trend_model = CAR(1)</code>, though note that any
+temporal intervals that are exactly <code>0</code> will be adjusted to a very small number
+(<code>1e-12</code>) to prevent sampling errors. See an example of <code>CAR()</code> trends in <code>CAR</code>
+</p>
+</li>
+</ul>
+<p>Should also include any other variables to be included in the linear predictor of <code>formula</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data_train</code></td>
+<td>
+<p>Deprecated. Still works in place of <code>data</code> but users are recommended to use
+<code>data</code> instead for more seamless integration into <code>R</code> workflows</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p><code>family</code> specifying the exponential observation family for the series. Currently supported
+families are:
+</p>
+
+<ul>
+<li>
+<p><code>gaussian()</code> for real-valued data
+</p>
+</li>
+<li>
+<p><code>betar()</code> for proportional data on <code style="white-space: pre;">⁠(0,1)⁠</code>
+</p>
+</li>
+<li>
+<p><code>lognormal()</code> for non-negative real-valued data
+</p>
+</li>
+<li>
+<p><code>student_t()</code> for real-valued data
+</p>
+</li>
+<li>
+<p><code>Gamma()</code> for non-negative real-valued data
+</p>
+</li>
+<li>
+<p><code>bernoulli()</code> for binary data
+</p>
+</li>
+<li>
+<p><code>poisson()</code> for count data
+</p>
+</li>
+<li>
+<p><code>nb()</code> for overdispersed count data
+</p>
+</li>
+<li>
+<p><code>binomial()</code> for count data with imperfect detection when the number of trials is known;
+note that the <code>cbind()</code> function must be used to bind the discrete observations and the discrete number
+of trials
+</p>
+</li>
+<li>
+<p><code>beta_binomial()</code> as for <code>binomial()</code> but allows for overdispersion
+</p>
+</li>
+<li>
+<p><code>nmix()</code> for count data with imperfect detection when the number of trials
+is unknown and should be modeled via a State-Space N-Mixture model.
+The latent states are Poisson, capturing the 'true' latent
+abundance, while the observation process is Binomial to account for
+imperfect detection.
+See <code>mvgam_families</code> for an example of how to use this family</p>
+</li>
+</ul>
+<p>Note that only <code>nb()</code> and <code>poisson()</code> are available if using <code>JAGS</code> as the backend.
+Default is <code>poisson()</code>.
+See <code>mvgam_families</code> for more details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>knots</code></td>
+<td>
+<p>An optional <code>list</code> containing user specified knot values to be used for basis construction.
+For most bases the user simply supplies the knots to be used, which must match up with the k value supplied
+(note that the number of knots is not always just <code>k</code>). Different terms can use different numbers of knots,
+unless they share a covariate</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trend_knots</code></td>
+<td>
+<p>As for <code>knots</code> above, this is an optional <code>list</code> of knot values for smooth
+functions within the <code>trend_formula</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_lv</code></td>
+<td>
+<p><code>logical</code>. If <code>TRUE</code>, use dynamic factors to estimate series'
+latent trends in a reduced dimension format. Only available for
+<code>RW()</code>, <code>AR()</code> and <code>GP()</code> trend models. Defaults to <code>FALSE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_lv</code></td>
+<td>
+<p><code>integer</code> the number of latent dynamic factors to use if <code>use_lv == TRUE</code>.
+Cannot be <code>&gt; n_series</code>. Defaults arbitrarily to <code>min(2, floor(n_series / 2))</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_stan</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, the model will be compiled and sampled using
+Hamiltonian Monte Carlo with a call to <code>cmdstan_model</code> or
+a call to <code>stan</code>. Note that
+there are many more options when using <code>Stan</code> vs <code>JAGS</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trend_model</code></td>
+<td>
+<p><code>character</code> or  <code>function</code> specifying the time series dynamics for the latent trend. Options are:
+</p>
+
+<ul>
+<li> <p><code>None</code> (no latent trend component; i.e. the GAM component is all that contributes to the linear predictor,
+and the observation process is the only source of error; similarly to what is estimated by <code>gam</code>)
+</p>
+</li>
+<li> <p><code>'RW'</code> or <code>RW()</code>
+</p>
+</li>
+<li> <p><code>'AR1'</code> or <code>AR(p = 1)</code>
+</p>
+</li>
+<li> <p><code>'AR2'</code> or <code>AR(p = 2)</code>
+</p>
+</li>
+<li> <p><code>'AR3'</code> or <code>AR(p = 3)</code>
+</p>
+</li>
+<li> <p><code>'CAR1'</code> or <code>CAR(p = 1)</code>
+</p>
+</li>
+<li> <p><code>'VAR1'</code>  or <code>VAR()</code>(only available in <code>Stan</code>)
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠'PWlogistic⁠</code>, <code>'PWlinear'</code> or <code>PW()</code> (only available in <code>Stan</code>)
+</p>
+</li>
+<li> <p><code>'GP'</code> or <code>GP()</code> (Gaussian Process with squared exponential kernel;
+only available in <code>Stan</code>)</p>
+</li>
+</ul>
+<p>For all trend types apart from <code>GP()</code>, <code>CAR()</code> and <code>PW()</code>, moving average and/or correlated
+process error terms can also be estimated (for example, <code>RW(cor = TRUE)</code> will set up a
+multivariate Random Walk if <code>n_series &gt; 1</code>). See mvgam_trends for more details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trend_map</code></td>
+<td>
+<p>Optional <code>data.frame</code> specifying which series should depend on which latent
+trends. Useful for allowing multiple series to depend on the same latent trend process, but with
+different observation processes. If supplied, a latent factor model is set up by setting
+<code>use_lv = TRUE</code> and using the mapping to set up the shared trends. Needs to have column names
+<code>series</code> and <code>trend</code>, with integer values in the <code>trend</code> column to state which trend each series
+should depend on. The <code>series</code> column should have a single unique entry for each series in the
+data (names should perfectly match factor levels of the <code>series</code> variable in <code>data</code>). Note that
+if this is supplied, the intercept parameter in the process model will NOT be automatically suppressed.
+See examples for details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>drift</code></td>
+<td>
+<p>Deprecated. If you wish to estimate drift parameters, include parametric fixed effects
+of 'time' in your formulae instead.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Users can supply a model formula, prior to fitting the model, so that default priors can be inspected and
+altered. To make alterations, change the contents of the <code>prior</code> column and supplying this
+<code>data.frame</code> to the <code>mvgam</code> function using the argument <code>priors</code>. If using <code>Stan</code> as the backend,
+users can also modify the parameter bounds by modifying the <code>new_lowerbound</code> and/or <code>new_upperbound</code> columns.
+This will be necessary if using restrictive distributions on some parameters, such as a Beta distribution
+for the trend sd parameters for example (Beta only has support on  <code>(0,1)</code>), so the upperbound cannot
+be above <code>1</code>. Another option is to make use of the prior modification functions in <code>brms</code>
+(i.e. <code>prior</code>) to change prior distributions and bounds (just use the name of the parameter that
+you'd like to change as the <code>class</code> argument; see examples below)
+</p>
+
+
+<h3>Value</h3>
+
+<p>either a <code>data.frame</code> containing the prior definitions (if any suitable
+priors can be altered by the user) or <code>NULL</code>, indicating that no priors in the model
+can be modified through the <code>mvgam</code> interface
+</p>
+
+
+<h3>Note</h3>
+
+<p>Only the <code>prior</code>, <code>new_lowerbound</code> and/or <code>new_upperbound</code> columns of the output
+should be altered when defining the user-defined priors for the <code>mvgam</code> model. Use only if you are
+familiar with the underlying probabilistic programming language. There are no sanity checks done to
+ensure that the code is legal (i.e. to check that lower bounds are smaller than upper bounds, for
+example)
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nicholas J Clark
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mvgam</code>, <code>mvgam_formulae</code>, <code>prior</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Simulate three integer-valued time series
+library(mvgam)
+dat &lt;- sim_mvgam(trend_rel = 0.5)
+
+# Get a model file that uses default mvgam priors for inspection (not always necessary,
+# but this can be useful for testing whether your updated priors are written correctly)
+mod_default &lt;- mvgam(y ~ s(series, bs = 're') +
+              s(season, bs = 'cc') - 1,
+              family = nb(),
+              data = dat$data_train,
+              trend_model = AR(p = 2),
+              run_model = FALSE)
+
+# Inspect the model file with default mvgam priors
+code(mod_default)
+
+# Look at which priors can be updated in mvgam
+test_priors &lt;- get_mvgam_priors(y ~ s(series, bs = 're') +
+                              s(season, bs = 'cc') - 1,
+                              family = nb(),
+                              data = dat$data_train,
+                              trend_model = AR(p = 2))
+test_priors
+
+# Make a few changes; first, change the population mean for the series-level
+# random intercepts
+test_priors$prior[2] &lt;- 'mu_raw ~ normal(0.2, 0.5);'
+
+# Now use stronger regularisation for the series-level AR2 coefficients
+test_priors$prior[5] &lt;- 'ar2 ~ normal(0, 0.25);'
+
+# Check that the changes are made to the model file without any warnings by
+# setting 'run_model = FALSE'
+mod &lt;- mvgam(y ~ s(series, bs = 're') +
+            s(season, bs = 'cc') - 1,
+            family = nb(),
+            data = dat$data_train,
+            trend_model = AR(p = 2),
+            priors = test_priors,
+            run_model = FALSE)
+code(mod)
+
+# No warnings, the model is ready for fitting now in the usual way with the addition
+# of the 'priors' argument
+
+# The same can be done using 'brms' functions; here we will also change the ar1 prior
+# and put some bounds on the ar coefficients to enforce stationarity; we set the
+# prior using the 'class' argument in all brms prior functions
+brmsprior &lt;- c(prior(normal(0.2, 0.5), class = mu_raw),
+              prior(normal(0, 0.25), class = ar1, lb = -1, ub = 1),
+              prior(normal(0, 0.25), class = ar2, lb = -1, ub = 1))
+brmsprior
+
+mod &lt;- mvgam(y ~ s(series, bs = 're') +
+            s(season, bs = 'cc') - 1,
+          family = nb(),
+          data = dat$data_train,
+          trend_model = AR(p = 2),
+          priors = brmsprior,
+          run_model = FALSE)
+code(mod)
+
+# Look at what is returned when an incorrect spelling is used
+test_priors$prior[5] &lt;- 'ar2_bananas ~ normal(0, 0.25);'
+mod &lt;- mvgam(y ~ s(series, bs = 're') +
+            s(season, bs = 'cc') - 1,
+            family = nb(),
+            data = dat$data_train,
+            trend_model = AR(p = 2),
+            priors = test_priors,
+            run_model = FALSE)
+code(mod)
+
+# Example of changing parametric (fixed effect) priors
+simdat &lt;- sim_mvgam()
+
+# Add a fake covariate
+simdat$data_train$cov &lt;- rnorm(NROW(simdat$data_train))
+
+priors &lt;- get_mvgam_priors(y ~ cov + s(season),
+                          data = simdat$data_train,
+                          family = poisson(),
+                          trend_model = AR())
+
+# Change priors for the intercept and fake covariate effects
+priors$prior[1] &lt;- '(Intercept) ~ normal(0, 1);'
+priors$prior[2] &lt;- 'cov ~ normal(0, 0.1);'
+
+mod2 &lt;- mvgam(y ~ cov + s(season),
+             data = simdat$data_train,
+             trend_model = AR(),
+             family = poisson(),
+             priors = priors,
+             run_model = FALSE)
+code(mod2)
+
+# Likewise using 'brms' utilities (note that you can use
+# Intercept rather than `(Intercept)`) to change priors on the intercept
+brmsprior &lt;- c(prior(normal(0.2, 0.5), class = cov),
+              prior(normal(0, 0.25), class = Intercept))
+brmsprior
+
+mod2 &lt;- mvgam(y ~ cov + s(season),
+             data = simdat$data_train,
+             trend_model = AR(),
+             family = poisson(),
+             priors = brmsprior,
+             run_model = FALSE)
+code(mod2)
+
+# The "class = 'b'" shortcut can be used to put the same prior on all
+# 'fixed' effect coefficients (apart from any intercepts)
+set.seed(0)
+dat &lt;- mgcv::gamSim(1, n = 200, scale = 2)
+dat$time &lt;- 1:NROW(dat)
+mod &lt;- mvgam(y ~ x0 + x1 + s(x2) + s(x3),
+            priors = prior(normal(0, 0.75), class = 'b'),
+            data = dat,
+            family = gaussian(),
+            run_model = FALSE)
+code(mod)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,160 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvbutils-package</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>How to use the mvbutils package</h2>
+
+<h3>Description</h3>
+
+<p>Package <span class="pkg">mvbutils</span> is a collection of utilities offering the following main features:
+</p>
+
+<ul>
+<li>
+<p> Hierarchical organization of projects (AKA tasks) and sub-tasks, allowing switching within a single R session, searching and moving objects through the hierarchy, objects in ancestor tasks always visible from child (sub)tasks, etc. See <code>cd</code>.
+</p>
+</li>
+<li>
+<p> Improved function, text, and script editing facilities, interfacing with whichever text editor you prefer. The R command line is not frozen while editing, and you can have multiple edit windows open. Scriptlets can be edited as expressions, for subsequent calls to <code>eval</code>. Function documentation can be stored as plain text after the function definition, and will be found by <code>help</code> even if the function isn't part of a package. There is also a complete automatic text-format backup system for functions &amp; text. See <code>fixr</code>.
+</p>
+</li>
+<li>
+<p> Automated package construction, including production of Rd-format from plain text documentation. Packages can be edited &amp; updated while loaded, without needing to quit/rebuild/reinstall. See <code>mvbutils.packaging.tools</code>.
+</p>
+</li>
+<li>
+<p> "Lazy loading" for individual objects, allowing fast and transparent access to collections of biggish objects where only a few objects are used at a time. See <code>mlazy</code>.
+</p>
+</li>
+<li>
+<p> Miscellaneous goodies: local/nested functions (<code>mlocal</code>), display of what-calls-what (<code>foodweb</code>), multiple replacement (<code>multirep</code>), nicely-formatted latex tables (<code>xtable.mvb</code>), numerous lower-level lower-level utility functions and operators (<code>mvbutils.utils</code>, <code>mvbutils.operators</code>, <code>extract.named</code>, <code>mcut</code>, <code>search.for.regexpr</code>, <code>strip.missing</code>, <code>FOR</code> )
+</p>
+</li>
+</ul>
+<p>To get the full features of the <span class="pkg">mvbutils</span> package– in particular, the project organization– you need to start R in the same directory every time (your "ROOT task"), and then switch to whichever project from inside R; see <code>cd</code>. Various <code>options</code> always need to be set to make <code>fixr</code> and the <span class="pkg">debug</span> package work the way you want, so one advantage of the start-in-the-same directory-approach is that you can keep all your project-independent <code>options()</code>, library loads, etc., in a single <code>.First</code> function or ".Rprofile" file, to be called automatically when you start R. However, many features (including support for the <span class="pkg">debug</span> package) will work even if you don't follow this suggestion.
+</p>
+<p>The remaining sections of this document cover details that most users don't know about; there's no need to read them when you are just starting out with <code>mvbutils</code>.
+</p>
+
+
+<h3>Housekeeping info</h3>
+
+<p>On loading, the <span class="pkg">mvbutils</span> package creates a new environment in the search path, called <code>mvb.session.info</code>, which stores some housekeeping information. <code>mvb.session.info</code> is never written to disk, and disappears when the R session finishes. [For Splus users: <code>mvb.session.info</code> is similar to frame 0.] You should never change anything in <code>mvb.session.info</code> by hand, but it is sometimes useful to look at some of the variables there:
+</p>
+
+<ul>
+<li> <p><code>.First.top.search</code> is the directory R started in (your ROOT task).
+</p>
+</li>
+<li> <p><code>.Path</code> shows the currently-attached part of the task hierarchy.
+</p>
+</li>
+<li> <p><code>base.xxx</code> is the original copy of an overwritten system function, e.g. <code>library</code>
+</p>
+</li>
+<li> <p><code>fix.list</code> keeps track of objects being edited via <code>fixr</code>
+</p>
+</li>
+<li> <p><code>session.start.time</code> is the value of <code>Sys.time()</code> when <code>mvbutils</code> was loaded
+</p>
+</li>
+<li> <p><code>source.list</code> is used by <code>source.mvb</code> to allow nesting of sources
+</p>
+</li>
+<li> <p><code>r.window.handle</code> is used by the <span class="pkg">handy</span> package (Windows only)
+</p>
+</li>
+<li> <p><code>partial.namespaces</code> is used to alleviate difficulties with unloadable data files– see <code>mvbutils.packaging.tools</code>
+</p>
+</li>
+<li>
+<p> things whose name starts with ".." are environments used in live-editing packages
+</p>
+</li>
+<li> <p><code>maintained.packages</code> is a list of the latter
+</p>
+</li>
+</ul>
+<h3>Redefined functions</h3>
+
+<p>On loading, package <span class="pkg">mvbutils</span> redefines a few system functions: <code>lockEnvironment</code>, <code>importIntoEnv</code> <code>loadNamespace</code>, <code>print.function</code>, <code>help</code>, <code>rbind.data.frame</code> and, by default, <code>library</code>, <code>savehistory</code>, <code>loadhistory</code>, and <code>save.image</code>. (The original version of routine <code>xxx</code> can always be obtained via <code>base.xxx</code> if you really need it.) The modifications, which are undone when you unload <code>mvbutils</code>, should have [almost] no side-effects. Briefly:
+</p>
+
+<ul>
+<li> <p><code>library</code> is modified so that its default <code>pos</code> argument is just under the ROOT workspace (the one that was on top when <code>mvbutils</code> was loaded), which is needed by <code>cd</code>. This means that packages no longer get attached by default always in position 2.
+</p>
+</li>
+<li> <p><code>lockEnvironment</code> and <code>importIntoEnv</code> are modified to allow live-editing of your own maintained packages– no change to default behaviour.
+</p>
+</li>
+<li> <p><code>loadNamespace</code> has the default value of its "partial" argument altered, to let you bypass <code>.onLoad</code> for selected faulty packages– see <code>mvbutils.packaging.tools</code> and look for <code>partial.namespaces</code>. This allows the loading of certain ".RData" files which otherwise crash from hidden attempts to load a namespace. It lets you get round some truly horrendous problems arising from faults with 3rd-party packages, as well as problems when you stuff up your own packages.
+</p>
+</li>
+<li> <p><code>rbind.data.frame</code> does not ignore zero-row arguments (so it takes account of their factor levels, for example).
+</p>
+</li>
+<li> <p><code>rbind.data.frame</code>: dimensioned elements (i.e. matrices &amp; arrays within data.frames) no longer have any extra attributes removed. Hence, for example, you can (if you are also using my <code>nicetime</code> package) <code>rbind</code> two data frames that both have POSIXct-matrix elements without turning them into raw seconds and losing timezones.
+</p>
+</li>
+<li> <p><code>help</code> and <code>?</code> are modified so that, if <code>utils:::help</code> can't find help for a function (but not a method, dataset, or package), it will look instead for a <code>doc</code> attribute of the function to display in a pager/browser using <code>dochelp</code>. Character objects with a ".doc" extension will also be found and displayed. This lets you write and distribute "informal help".
+</p>
+</li>
+<li> <p><code>loadhistory</code> and <code>savehistory</code> are modified so that they use the <em>current</em> "R_HISTFILE" environment variable if it set. This can be set dynamically during an R session using <code>Sys.setenv</code>. Standard R behaviour is to respect "R_HISTFILE" iff it is set <em>before</em> the R session starts, but not to track it during a session. If "R_HISTFILE" is not set, then <code>cd</code> will on first use set "R_HISTFILE" to "&lt;&lt;ROOT task&gt;&gt;/.RHistory", so that same the history file will be used throughout each and every session.
+</p>
+</li>
+<li> <p><code>save.image</code> is modified to call <code>Save</code> instead; this will behave exactly the same for workspaces not using <code>mvbutils</code> task-hierarchy feature or the <span class="pkg">debug</span> package, but otherwise will prevent problems with <code>mtrace</code>d functions and <code>mlazy</code>ed objects.
+</p>
+</li>
+<li> <p><code>print.function</code> is modified to let you go on seamlessly using functions written prior to R 2.14 in conjunction with the <code>srcref</code> system imposed by R 2.14; see <code>fixr</code>.
+</p>
+</li>
+</ul>
+<p>Some of these redefinitions are optional and can be turned off if you really want: <code>loadhistory</code>, <code>savehistory</code>, <code>save.image</code>, <code>library</code>, <code>lockEnvironment</code>, <code>importIntoEnv</code>, and <code>loadNamespace</code>. To turn them off, set <code>options(mvbutils.replacements=FALSE)</code> <em>before</em> loading <code>mvbutils</code>. However, I really don't recommend doing so; it will prevent <code>cd</code> etc, <code>fixr</code>, and the package-maintenance tools from working properly, and if you use <code>debug</code> you will probably cause yourself trouble when you forgetfully <code>save.image</code> an <code>mtrace</code>d function. You can also set the "mvbutils.replacements" option to a character vector comprising some or all of the above names, so that only those happen; if so, you're on your own. The other replacements are unavoidable (but should not be apparent for packages that don't import <code>mvbutils</code>).
+</p>
+<p>After <code>mvbutils</code> has loaded, you can undo the modification of a function <code>xxx</code> by calling <code>assign.to.base( "xxx", base.xxx)</code>. Exceptions are <code>help</code>, <code>?</code>, <code>print.function</code>, <code>rbind.data.frame</code> which are intrinsic to <code>mvbutils. Unloading </code>mvbutils' will undo all the modifications.
+</p>
+
+
+<h4>Nicer posixt behaviour</h4>
+
+<p><code>POSIXct</code> etc have some nasty behaviour, and <code>mvbutils</code> used to include some functions that ameliorated things. I've moved them into a separate package <span class="pkg">nicetime</span>, available on request.
+</p>
+
+
+
+<h3>Ess and mvbutils</h3>
+
+<p>For ESS users: I'm not an Emacs user and so haven't tried ESS with the <span class="pkg">mvbutils</span> package myself, but a read-through of the ESS documentation (as of ~2005) suggests that a couple of ESS variables may need changing to get the two working optimally. Please check the ESS documentation for further details on these points. I will update this helpfile when/if I receive more feedback on what works (though there hasn't been ESS feedback in ~8 years...).
+</p>
+
+<ul>
+<li> <p><code>cd</code> changes the search list, so you may need to alter "ess-change-sp-regex" in ESS.
+</p>
+</li>
+<li> <p><code>cd</code> also changes the prompt, so you may need to alter "inferior-ess-prompt". Prompts have the form WORD1/WORD2/.../WORDn&gt; where WORDx is a letter followed by zero or more letters, underscores, periods, or digits.
+</p>
+</li>
+<li> <p><code>move</code> can add/remove objects in workspaces other than the top one, so if ESS relies on stored internal summaries of "what's where", these may need updating.
+</p>
+</li>
+</ul>
+<h3>Display bugs</h3>
+
+<p>If you have a buggy Linux display where <code>readline()</code> always returns the cursor to the start of the line, overwriting any prompt, then try <code>options( cd.extra.CR=TRUE)</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Mark Bravington</p>
+
+
+<h3>See Also</h3>
+
+<p><code>cd</code>, <code>fixr</code>, <code>mlazy</code>, <code>flatdoc</code>, <code>dochelp</code>, <code>maintain.packages</code>, <code>source.mvb</code>, <code>mlocal</code>, <code>do.in.envir</code>, <code>foodweb</code>, <code>mvbutils.operators</code>, <code>mvbutils.utils</code>, <code>mvbutils.packaging.tools</code>, package <span class="pkg">debug</span>
+</p>
+
+
+</div>

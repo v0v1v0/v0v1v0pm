@@ -1,0 +1,190 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mixed.mdmr</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit Mixed-MDMR models</h2>
+
+<h3>Description</h3>
+
+<p><code>mixed.mdmr</code> allows users to conduct multivariate distance matrix
+regression (MDMR) in the context of a (hierarchically) clustered sample
+without inflating Type-I error rates as a result of the violation of the
+independence assumption. This is done by invoking a mixed-effects modeling
+framework, in which clustering/grouping variables are specified as random
+effects and the covariate effects of interest are fixed effects. The input
+to <code>mixed.mdmr</code> largely reflects the input of the <code>lmer</code>
+function from the package <code>lme4</code> insofar as the specification of
+random and fixed effects are concerned (see Arguments for details). Note that
+this function simply controls for the random effects in order to test the
+fixed effects; it does not facilitate point estimation or inference on the
+random effects.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mixed.mdmr(fmla, data, D = NULL, G = NULL, use.ssd = 1,
+  start.acc = 1e-20, ncores = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>fmla</code></td>
+<td>
+<p>A one-sided linear formula object describing both the fixed-effects and random-effects part of the model, beginning with an ~ operator, which is followed by the terms to include in the model, separated by + operators. Random-effects terms are distinguished by vertical bars (|) separating expressions for design matrices from grouping factors. Two vertical bars (||) can be used to specify multiple uncorrelated random effects for the same grouping variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A mandatory data frame containing the variables named in formula.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>D</code></td>
+<td>
+<p>Distance matrix computed on the outcome data. Can be either a
+matrix or an R <code>dist</code> object. Either <code>D</code> or <code>G</code>
+must be passed to <code>mdmr()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>G</code></td>
+<td>
+<p>Gower's centered similarity matrix computed from <code>D</code>.
+Either <code>D</code> or <code>G</code> must be passed to <code>mdmr</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use.ssd</code></td>
+<td>
+<p>The proportion of the total sum of squared distances (SSD)
+that will be targeted in the modeling process. In the case of non-Euclidean
+distances, specifying <code>use.ssd</code> to be slightly smaller than 1.00 (e.g.,
+0.99) can substantially lower the computational burden of <code>mixed.mdmr</code>
+while maintaining well-controlled Type-I error rates and only sacrificing
+a trivial amount of power. In the case of Euclidean distances the
+computational burden of <code>mixed.mdmr</code> is small, so <code>use.ssd</code> should
+be set to 1.00.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start.acc</code></td>
+<td>
+<p>Starting accuracy of the Davies (1980) algorithm
+implemented in the <code>davies</code> function in the <code>CompQuadForm</code>
+package (Duchesne &amp;  De Micheaux, 2010) that <code>mdmr()</code> uses to compute
+MDMR p-values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+<p>Integer; if <code>ncores</code> &gt; 1, the <code>parallel</code>
+package is used to speed computation. Note: Windows users must set
+<code>ncores = 1</code> because the <code>parallel</code> pacakge relies on forking. See
+<code>mc.cores</code> in the <code>mclapply</code> function in the
+<code>parallel</code> pacakge for more details.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object with six elements and a summary function. Calling
+<code>summary(mixed.mdmr.res)</code> produces a data frame comprised of:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Statistic</code></td>
+<td>
+<p>Value of the corresponding MDMR test statistic</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Numer DF</code></td>
+<td>
+<p>Numerator degrees of freedom for the corresponding effect</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p-value</code></td>
+<td>
+<p>The p-value for each effect.</p>
+</td>
+</tr>
+</table>
+<p>In addition to the information in the three columns comprising
+<code>summary(res)</code>, the <code>res</code> object also contains:
+</p>
+<table><tr style="vertical-align: top;">
+<td><code>p.prec</code></td>
+<td>
+<p>A data.frame reporting the precision of each p-value. If
+analytic p-values were computed, these are the maximum error bound of the
+p-values reported by the <code>davies</code> function in <code>CompQuadForm</code>. If
+permutation p-values were computed, it is the standard error of each
+permutation p-value.</p>
+</td>
+</tr></table>
+<p>Note that the printed output of <code>summary(res)</code> will truncate p-values
+to the smallest trustworthy values, but the object returned by
+<code>summary(res)</code> will contain the p-values as computed. The reason for
+this truncation differs for analytic and permutation p-values. For an
+analytic p-value, if the error bound of the Davies algorithm is larger than
+the p-value, the only conclusion that can be drawn with certainty is that
+the p-value is smaller than (or equal to) the error bound.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Daniel B. McArtor (dmcartor@gmail.com) [aut, cre]
+</p>
+
+
+<h3>References</h3>
+
+<p>Davies, R. B. (1980). The Distribution of a Linear Combination of
+chi-square Random Variables. Journal of the Royal Statistical Society.
+Series C (Applied Statistics), 29(3), 323-333.
+</p>
+<p>Duchesne, P., &amp; De Micheaux, P. L. (2010). Computing the distribution of
+quadratic forms: Further comparisons between the Liu-Tang-Zhang
+approximation and exact methods. Computational Statistics and Data
+Analysis, 54(4), 858-862.
+</p>
+<p>McArtor, D. B. (2017). Extending a distance-based approach to multivariate
+multiple regression (Doctoral Dissertation).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data("clustmdmrdata")
+
+# Get distance matrix
+D &lt;- dist(Y.clust)
+
+# Regular MDMR without the grouping variable
+mdmr.res &lt;- mdmr(X = X.clust[,1:2], D = D, perm.p = FALSE)
+
+# Results look significant
+summary(mdmr.res)
+
+# Account for grouping variable
+mixed.res &lt;- mixed.mdmr(~ x1 + x2 + (x1 + x2 | grp),
+                        data = X.clust, D = D)
+
+# Signifance was due to the grouping variable
+summary(mixed.res)
+
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,181 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>RMSD_DIF</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>RMSD effect size statistic to quantify category-level DIF</h2>
+
+<h3>Description</h3>
+
+<p>This function computes a set of RMSD "badness-of-fit" statistics when investing
+DIF across a set of grouping variables. In a first step, a (potentially highly constrained)
+multiple group model is fitted, while in a second step the item (and person) parameters
+are estimated based on all examines across all groups. Category level DIF is assessed
+based on how well the pseudo-table of counts match the (constrained) probability functions
+implied by the original multiple group model (while also weighing across the implied density
+function of the latent traits). If the RSMD fit is poor, indicating non-ignorable DIF,
+then the multiple-group model should be adjusted to better account for the large response bias
+due to using a pooled model. See Lee and von Davier (2020) and Buchholz and Hartig (2019) for details.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">RMSD_DIF(pooled_mod, flag = 0, probfun = TRUE, dentype = "norm")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>pooled_mod</code></td>
+<td>
+<p>a multiple-group model (used to compute the model-implied
+probability in the goodness-of-fit test)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>flag</code></td>
+<td>
+<p>a numeric value used as a cut-off to help flag larger RMSD values
+(e.g., <code>flag = .03</code> will highlight only categories with RMSD values greater than
+.03)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>probfun</code></td>
+<td>
+<p>logical; use probability functions to compute RMSD? If FALSE, the expected score
+functions will be integrated instead, which may be useful for collapsing across the
+categories in polytomous items</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dentype</code></td>
+<td>
+<p>density to use for the latent trait.
+Can be <code>'norm'</code> to use a normal Gaussian density where the mean/variance are extracted
+from the model object(default), <code>'snorm'</code> for a standard normal distribution,
+or <code>'empirical'</code> to use the density estimate obtained via the E-table</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Phil Chalmers <a href="mailto:rphilip.chalmers@gmail.com">rphilip.chalmers@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Buchholz, J., and Hartig, J. (2019). Comparing Attitudes Across Groups: An IRT-Based Item-Fit Statistic
+for the Analysis of Measurement Invariance. <em>Applied Psychological Measurement, 43</em>(3), 241-250.
+<a href="https://doi.org/10.1177/0146621617748323">doi:10.1177/0146621617748323</a>
+</p>
+<p>Lee, S. S., and von Davier, M. (2020). Improving measurement properties of the PISA home
+possessions scale through partial invariance modeling.
+<em>Psychological test and assessment modeling</em>, 62(1):55-83.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>DIF</code>, <code>DRF</code>, <code>multipleGroup</code>, <code>empirical_ES</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+
+#----- generate some data
+set.seed(12345)
+a &lt;- a2 &lt;- matrix(abs(rnorm(15,1,.3)), ncol=1)
+d &lt;- d2 &lt;- matrix(rnorm(15,0,.7),ncol=1)
+
+# item 1 has DIF
+d2[1] &lt;- d[1] - .5
+a2[1] &lt;- a[1] + 1
+
+itemtype &lt;- rep('2PL', nrow(a))
+N &lt;- 1000
+dataset1 &lt;- simdata(a, d, N, itemtype)
+dataset2 &lt;- simdata(a2, d2, N, itemtype)
+dat &lt;- rbind(dataset1, dataset2)
+group &lt;- c(rep('D1', N), rep('D2', N))
+
+#-----
+
+# fully pooled model
+pooled_mod &lt;- multipleGroup(dat, 1, group=group,
+   invariance = c(colnames(dat), 'free_mean', 'free_var'))
+coef(pooled_mod, simplify=TRUE)
+
+RMSD_DIF(pooled_mod)
+RMSD_DIF(pooled_mod, dentype = 'empirical')
+RMSD_DIF(pooled_mod, flag = .03)
+
+# more freely estimated model (item 1 has 2 parameters estimated)
+MGmod &lt;- multipleGroup(dat, 1, group=group,
+                       invariance = c(colnames(dat)[-1], 'free_mean', 'free_var'))
+coef(MGmod, simplify=TRUE)
+
+# RMSD in item.1 now reduced (MG model accounts for DIF)
+RMSD_DIF(MGmod)
+RMSD_DIF(MGmod, flag = .03)
+
+
+#################
+# polytomous example
+set.seed(12345)
+a &lt;- a2 &lt;- matrix(rlnorm(20,.2,.3))
+
+# for the graded model, ensure that there is enough space between the intercepts,
+# otherwise closer categories will not be selected often (minimum distance of 0.3 here)
+diffs &lt;- t(apply(matrix(runif(20*4, .3, 1), 20), 1, cumsum))
+diffs &lt;- -(diffs - rowMeans(diffs))
+d &lt;- d2 &lt;- diffs + rnorm(20)
+
+# item 1 has slope + dif for first intercept parameter
+d2[1] &lt;- d[1] - .5
+a2[1] &lt;- a[1] + 1
+
+itemtype &lt;- rep('graded', nrow(a))
+N &lt;- 1000
+dataset1 &lt;- simdata(a, d, N, itemtype)
+dataset2 &lt;- simdata(a2, d2, N, itemtype)
+dat &lt;- rbind(dataset1, dataset2)
+group &lt;- c(rep('D1', N), rep('D2', N))
+
+#-----
+
+# fully pooled model
+pooled_mod &lt;- multipleGroup(dat, 1, group=group,
+         invariance = c(colnames(dat), 'free_mean', 'free_var'))
+coef(pooled_mod, simplify=TRUE)
+
+# Item_1 fits poorly in several categories (RMSD &gt; .05)
+RMSD_DIF(pooled_mod)
+RMSD_DIF(pooled_mod, flag = .05)
+RMSD_DIF(pooled_mod, flag = .1, probfun = FALSE) # use expected score function
+
+# more freely estimated model (item 1 has more parameters estimated)
+MGmod &lt;- multipleGroup(dat, 1, group=group,
+                       invariance = c(colnames(dat)[-1], 'free_mean', 'free_var'))
+coef(MGmod, simplify=TRUE)
+
+# RMSDs in Item_1 now reduced (MG model better accounts for DIF)
+RMSD_DIF(MGmod)
+RMSD_DIF(MGmod, flag = .05)
+RMSD_DIF(MGmod, probfun = FALSE, flag = .1) # use expected score function
+
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,97 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>nlme_function</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Helper functions to create nlme models from mmkin row objects</h2>
+
+<h3>Description</h3>
+
+<p>These functions facilitate setting up a nonlinear mixed effects model for
+an mmkin row object. An mmkin row object is essentially a list of mkinfit
+objects that have been obtained by fitting the same model to a list of
+datasets. They are used internally by the <code>nlme.mmkin()</code> method.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">nlme_function(object)
+
+nlme_data(object)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table><tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>An mmkin row object containing several fits of the same model to different datasets</p>
+</td>
+</tr></table>
+<h3>Value</h3>
+
+<p>A function that can be used with nlme
+</p>
+<p>A <code>groupedData</code> object
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>nlme.mmkin</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">sampling_times = c(0, 1, 3, 7, 14, 28, 60, 90, 120)
+m_SFO &lt;- mkinmod(parent = mkinsub("SFO"))
+d_SFO_1 &lt;- mkinpredict(m_SFO,
+  c(k_parent = 0.1),
+  c(parent = 98), sampling_times)
+d_SFO_1_long &lt;- mkin_wide_to_long(d_SFO_1, time = "time")
+d_SFO_2 &lt;- mkinpredict(m_SFO,
+  c(k_parent = 0.05),
+  c(parent = 102), sampling_times)
+d_SFO_2_long &lt;- mkin_wide_to_long(d_SFO_2, time = "time")
+d_SFO_3 &lt;- mkinpredict(m_SFO,
+  c(k_parent = 0.02),
+  c(parent = 103), sampling_times)
+d_SFO_3_long &lt;- mkin_wide_to_long(d_SFO_3, time = "time")
+
+d1 &lt;- add_err(d_SFO_1, function(value) 3, n = 1)
+d2 &lt;- add_err(d_SFO_2, function(value) 2, n = 1)
+d3 &lt;- add_err(d_SFO_3, function(value) 4, n = 1)
+ds &lt;- c(d1 = d1, d2 = d2, d3 = d3)
+
+f &lt;- mmkin("SFO", ds, cores = 1, quiet = TRUE)
+mean_dp &lt;- mean_degparms(f)
+grouped_data &lt;- nlme_data(f)
+nlme_f &lt;- nlme_function(f)
+# These assignments are necessary for these objects to be
+# visible to nlme and augPred when evaluation is done by
+# pkgdown to generate the html docs.
+assign("nlme_f", nlme_f, globalenv())
+assign("grouped_data", grouped_data, globalenv())
+
+library(nlme)
+m_nlme &lt;- nlme(value ~ nlme_f(name, time, parent_0, log_k_parent_sink),
+  data = grouped_data,
+  fixed = parent_0 + log_k_parent_sink ~ 1,
+  random = pdDiag(parent_0 + log_k_parent_sink ~ 1),
+  start = mean_dp)
+summary(m_nlme)
+plot(augPred(m_nlme, level = 0:1), layout = c(3, 1))
+# augPred does not work on fits with more than one state
+# variable
+#
+# The procedure is greatly simplified by the nlme.mmkin function
+f_nlme &lt;- nlme(f)
+plot(f_nlme)
+</code></pre>
+
+
+</div>

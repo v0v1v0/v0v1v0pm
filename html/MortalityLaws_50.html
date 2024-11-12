@@ -1,0 +1,184 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>LawTable</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compute Life Tables from Parameters of a Mortality Law</h2>
+
+<h3>Description</h3>
+
+<p>Compute Life Tables from Parameters of a Mortality Law
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">LawTable(x, par, law, sex = NULL, lx0 = 1e+05, ax = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Vector of ages at the beginning of the age interval.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>par</code></td>
+<td>
+<p>The parameters of the mortality model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>law</code></td>
+<td>
+<p>The name of the mortality law/model to be used. e.g.
+<code>gompertz</code>, <code>makeham</code>, ... To investigate all the possible options,
+see <code>availableLaws</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sex</code></td>
+<td>
+<p>Sex of the population considered here. Default: <code>NULL</code>.
+This argument affects the first two values in the life table ax column.
+If sex is specified the values are computed based on the Coale-Demeny method
+and are slightly different for males than for females.
+Options: <code>NULL, male, female, total</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lx0</code></td>
+<td>
+<p>Radix. Default: 100 000.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ax</code></td>
+<td>
+<p>Numeric scalar. Subject-time alive in age-interval for those who
+die in the same interval. If <code>NULL</code> this will be estimated. A common
+assumption is <code>ax = 0.5</code>, i.e. the deaths occur in the middle of
+the interval. Default: <code>NULL</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The "life table" is also called "mortality table" or "actuarial table".
+This shows, for each age, what the probability is that a person of that
+age will die before his or her next birthday, the expectation of life across
+different age ranges or the survivorship of people from a certain population.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The output is of the <code>"LifeTable"</code> class with the components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>lt</code></td>
+<td>
+<p>Computed life table;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p><code>Call</code> in which all of the specified arguments are
+specified by their full names;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>process_date</code></td>
+<td>
+<p>Time stamp.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Marius D. Pascariu
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>LifeTable</code>
+<code>MortalityLaw</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Example 1 --- Makeham --- 4 tables ----------
+x1 = 45:100
+L1 = "makeham"
+C1 = matrix(c(0.00717, 0.07789, 0.00363,
+              0.01018, 0.07229, 0.00001,
+              0.00298, 0.09585, 0.00002,
+              0.00067, 0.11572, 0.00078),
+            nrow = 4, dimnames = list(1:4, c("A", "B", "C")))
+
+LawTable(x = 45:100, par = C1, law = L1)
+
+# WARNING!!!
+
+# It is important to know how the coefficients have been estimated. If the
+# fitting of the model was done over the [x, x+) age-range, the LawTable
+# function can be used to create a life table only for age x onward.
+
+# What can go wrong?
+
+# ** Example 1B - is OK.
+LawTable(x = 45:100, par = c(0.00717, 0.07789, 0.00363), law = L1)
+
+# ** Example 1C - Not OK, because the life expectancy at age 25 is
+# equal with life expectancy at age 45 in the previous example.
+LawTable(x = 25:100, par = c(0.00717, 0.07789, 0.00363), law = L1)
+
+# Why is this happening?
+
+# If we have a model that covers only a part of the human mortality curve
+# (e.g. adult mortality), in fitting the x vector is scaled down, meaning
+# age (x) becomes (x - min(x) + 1). And, the coefficients are estimated on
+# a scaled x in ordered to obtain meaningful estimates. Otherwise the
+# optimization process might not converge.
+
+# What can we do about it?
+
+# a). Know which mortality laws are rescaling the x vector in the fitting
+# process. If these models are fitted with the MortalityLaw() function, you
+# can find out like so:
+A &lt;- availableLaws()$table
+A[, c("CODE", "SCALE_X")]
+
+# b). If you are using one of the models that are applying scaling,
+# be aware over what age-range the coefficients have been estimated. If they
+# have been estimated using, say, ages 50 to 80, you can use the
+# LawTable() to build a life tables from age 50 onwards.
+
+
+# Example 2 --- Heligman-Pollard -- 1 table ----
+x2 = 0:110
+L2 = "HP"
+C2 = c(0.00223, 0.01461, 0.12292, 0.00091,
+       2.75201, 29.01877, 0.00002, 1.11411)
+
+LawTable(x = x2, par = C2, law = L2)
+
+# Because "HP" is not scaling down the x vector, the output is not affected
+# by the problem described above.
+
+# Check
+LawTable(x = 3:110, par = C2, law = L2)
+# Note the e3 = 70.31 in both tables
+</code></pre>
+
+
+</div>

@@ -1,0 +1,235 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>count_multinom</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Count How Many Samples Satisfy Linear Inequalities (Multinomial)</h2>
+
+<h3>Description</h3>
+
+<p>Draws prior/posterior samples for product-multinomial data and counts how many samples are
+inside the convex polytope defined by
+(1) the inequalities <code>A*x &lt;= b</code> or
+(2) the convex hull over the vertices V.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">count_multinom(
+  k = 0,
+  options,
+  A,
+  b,
+  V,
+  prior = rep(1, sum(options)),
+  M = 5000,
+  steps,
+  start,
+  cmin = 0,
+  maxiter = 500,
+  burnin = 5,
+  progress = TRUE,
+  cpu = 1
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>the number of choices for each alternative ordered by item type (e.g.
+<code>c(a1,a2,a3,  b1,b2)</code> for a ternary and a binary item type).
+The length of <code>k</code> must be equal to the sum of <code>options</code>.
+The default <code>k=0</code> is equivalent to sampling from the prior.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>options</code></td>
+<td>
+<p>number of observable categories/probabilities for each item
+type/multinomial distribution, e.g., <code>c(3,2)</code> for a ternary and binary item.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>A</code></td>
+<td>
+<p>a matrix defining the convex polytope via <code>A*x &lt;= b</code>.
+The columns of <code>A</code> do not include the last choice option per item type and
+thus the number of columns must be equal to <code>sum(options-1)</code>
+(e.g., the column order of <code>A</code> for <code>k = c(a1,a2,a2, b1,b2)</code>
+is <code>c(a1,a2, b1)</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b</code></td>
+<td>
+<p>a vector of the same length as the number of rows of <code>A</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>V</code></td>
+<td>
+<p>a matrix of vertices (one per row) that define the polytope of
+admissible parameters as the convex hull over these points
+(if provided, <code>A</code> and <code>b</code> are ignored).
+Similar as for <code>A</code>, columns of <code>V</code> omit the last value for each
+multinomial condition (e.g., a1,a2,a3,b1,b2 becomes a1,a2,b1).
+Note that this method is comparatively slow since it solves linear-programming problems
+to test whether a point is inside  a polytope (Fukuda, 2004) or to run the Gibbs sampler.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>the prior parameters of the Dirichlet-shape parameters.
+Must have the same length as <code>k</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M</code></td>
+<td>
+<p>number of posterior samples drawn from the encompassing model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>steps</code></td>
+<td>
+<p>an integer vector that indicates the row numbers at which the matrix <code>A</code>
+is split for a stepwise computation of the Bayes factor (see details).
+<code>M</code> can be a vector with the number of samples drawn
+in each step from the (partially) order-constrained models  using Gibbs sampling.
+If <code>cmin&gt;0</code>, samples are drawn for each step until <code>count[i]&gt;=cmin</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p>only relevant if <code>steps</code> is defined or <code>cmin&gt;0</code>:
+a vector with starting values in the interior of the polytope.
+If missing, an approximate maximum-likelihood estimate is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cmin</code></td>
+<td>
+<p>if <code>cmin&gt;0</code>: minimum number of counts per step in the automatic stepwise procedure.
+If <code>steps</code> is not defined, <code>steps=c(1,2,3,4,...)</code> by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>if <code>cmin&gt;0</code>: maximum number of sampling runs in the automatic stepwise procedure.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p>number of burnin samples per step that are discarded. Since the
+maximum-likelihood estimate is used as a start value (which is updated for each step in
+the stepwise procedure in <code>count_multinom</code>), the <code>burnin</code>
+number can be smaller than in other MCMC applications.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>whether a progress bar should be shown (if <code>cpu=1</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpu</code></td>
+<td>
+<p>either the number of CPUs used for parallel sampling, or a parallel
+cluster  (e.g., <code>cl &lt;- parallel::makeCluster(3)</code>).
+All arguments of the function call are passed directly to each core,
+and thus the total number of samples is <code>M*number_cpu</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a list with the elements
+</p>
+<p>a matrix with the columns
+</p>
+
+<ul>
+<li>
+<p><code>count</code>: number of samples in polytope / that satisfy order constraints
+</p>
+</li>
+<li>
+<p><code>M</code>: the  total number of samples in each step
+</p>
+</li>
+<li>
+<p><code>steps</code>: the <code>"steps"</code> used to sample from the polytope
+(i.e., the row numbers of <code>A</code> that were considered stepwise)
+</p>
+</li>
+</ul>
+<p>with the attributes:
+</p>
+
+<ul>
+<li>
+<p><code>proportion</code>: estimated probability that samples are in polytope
+</p>
+</li>
+<li>
+<p><code>se</code>: standard error of probability estimate
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>Hoijtink, H. (2011). Informative Hypotheses: Theory and Practice for Behavioral and Social Scientists. Boca Raton, FL: Chapman &amp; Hall/CRC.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>bf_multinom</code>, <code>count_binom</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">### frequencies:
+#           (a1,a2,a3, b1,b2,b3,b4)
+k &lt;- c(1, 5, 9, 5, 3, 7, 8)
+options &lt;- c(3, 4)
+
+### linear order constraints
+# a1&lt;a2&lt;a3   AND   b2&lt;b3&lt;.50
+# (note: a2&lt;a3 &lt;=&gt; a2 &lt; 1-a1-a2 &lt;=&gt; a1+2*a2 &lt; 1)
+# matrix A:
+#             (a1,a2, b1,b2,b3)
+A &lt;- matrix(
+  c(
+    1, -1, 0, 0, 0,
+    1, 2, 0, 0, 0,
+    0, 0, 0, 1, -1,
+    0, 0, 0, 0, 1
+  ),
+  ncol = sum(options - 1), byrow = TRUE
+)
+b &lt;- c(0, 1, 0, .50)
+
+# count prior and posterior samples and get BF
+prior &lt;- count_multinom(0, options, A, b, M = 2e4)
+posterior &lt;- count_multinom(k, options, A, b, M = 2e4)
+count_to_bf(posterior, prior)
+
+bf_multinom(k, options, A, b, M = 10000)
+bf_multinom(k, options, A, b, cmin = 5000, M = 1000)
+</code></pre>
+
+
+</div>

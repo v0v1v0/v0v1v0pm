@@ -1,0 +1,292 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>NMIwaldtest</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Wald Test for Nested Multiply Imputed Datasets
+</h2>
+
+<h3>Description</h3>
+
+<p>Performs a Wald test for nested multiply imputed datasets (<code>NMIwaldtest</code>)
+and ordinary multiply imputed datasets (<code>MIwaldtest</code>),
+see Reiter and Raghunathan (2007).
+The corresponding statistic is also called the <code class="reqn">D_1</code> statistic.
+</p>
+<p>The function <code>create.designMatrices.waldtest</code> is a helper function
+for the creation of design matrices.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">NMIwaldtest(qhat, u, Cdes=NULL, rdes=NULL, testnull=NULL)
+
+MIwaldtest(qhat, u, Cdes=NULL, rdes=NULL, testnull=NULL)
+
+## S3 method for class 'NMIwaldtest'
+summary(object, digits=4,...)
+
+## S3 method for class 'MIwaldtest'
+summary(object, digits=4,...)
+
+create.designMatrices.waldtest(pars, k)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>qhat</code></td>
+<td>
+
+<p>List or array of estimated parameters
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>u</code></td>
+<td>
+
+<p>List or array of estimated covariance matrices of parameters
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Cdes</code></td>
+<td>
+
+<p>Design matrix <code class="reqn">C</code> for parameter test (see Details)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rdes</code></td>
+<td>
+
+<p>Constant vector <code class="reqn">r</code> (see Details)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>testnull</code></td>
+<td>
+
+<p>Vector containing names of parameters which should be tested for
+a parameter value of zero.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>Object of class <code>NMIwaldtest</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>Number of digits after decimal for print</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments to be passed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pars</code></td>
+<td>
+<p>Vector of parameter names</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>Number of linear hypotheses which should be tested</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The Wald test is performed for a linear hypothesis <code class="reqn">C \bold{\theta}=r</code>
+for a parameter vector <code class="reqn">\bold{\theta}</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>List with following entries
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>stat</code></td>
+<td>
+<p>Data frame with test statistic</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>qhat</code></td>
+<td>
+<p>Transformed parameter according to linear hypothesis</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>u</code></td>
+<td>
+<p>Covariance matrix of transformed parameters</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>The function <code>create.designMatrices.waldtest</code> is a helper
+function for the creation of design matrices.
+</p>
+
+
+<h3>References</h3>
+
+<p>Reiter, J. P. and Raghunathan, T. E. (2007). The multiple adaptations of multiple
+imputation. <em>Journal of the American Statistical Association, 102</em>(480), 1462-1471.
+<a href="https://doi.org/10.1198/016214507000000932">doi:10.1198/016214507000000932</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>NMIcombine</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+#############################################################################
+# EXAMPLE 1: Nested multiple imputation and Wald test | TIMSS data
+#############################################################################
+
+library(BIFIEsurvey)
+data(data.timss2, package="BIFIEsurvey" )
+datlist &lt;- data.timss2
+# remove first four variables
+M &lt;- length(datlist)
+for (ll in 1:M){
+    datlist[[ll]] &lt;- datlist[[ll]][, -c(1:4) ]
+}
+
+#***************
+# (1) nested multiple imputation using mice
+imp1 &lt;- miceadds::mice.nmi( datlist,  m=3, maxit=2 )
+summary(imp1)
+
+#**** Model 1: Linear regression with interaction effects
+res1 &lt;- with( imp1, stats::lm( likesc ~ female*migrant + female*books  ) )
+pres1 &lt;- miceadds::pool.mids.nmi( res1 )
+summary(pres1)
+
+# test whether both interaction effects equals zero
+pars &lt;- dimnames(pres1$qhat)[[3]]
+des &lt;- miceadds::create.designMatrices.waldtest( pars=pars, k=2)
+Cdes &lt;- des$Cdes
+rdes &lt;- des$rdes
+Cdes[1, "female:migrant"] &lt;- 1
+Cdes[2, "female:books"] &lt;- 1
+wres1 &lt;- miceadds::NMIwaldtest( qhat=pres1$qhat, u=pres1$u, Cdes=Cdes, rdes=rdes )
+summary(wres1)
+
+# a simpler specification is the use of "testnull"
+testnull &lt;- c("female:migrant", "female:books")
+wres1b &lt;- miceadds::NMIwaldtest( qhat=qhat, u=u, testnull=testnull )
+summary(wres1b)
+
+#**** Model 2: Multivariate linear regression
+res2 &lt;- with( imp1, stats::lm( cbind( ASMMAT, ASSSCI ) ~
+                           0 + I(1*(female==1)) + I(1*(female==0))   ) )
+pres2 &lt;- miceadds::pool.mids.nmi( res2 )
+summary(pres2)
+
+# test whether both gender differences equals -10 points
+pars &lt;- dimnames(pres2$qhat)[[3]]
+  ##  &gt; pars
+  ##  [1] "ASMMAT:I(1 * (female==1))" "ASMMAT:I(1 * (female==0))"
+  ##  [3] "ASSSCI:I(1 * (female==1))" "ASSSCI:I(1 * (female==0))"
+
+des &lt;- miceadds::create.designMatrices.waldtest( pars=pars, k=2)
+Cdes &lt;- des$Cdes
+rdes &lt;- c(-10,-10)
+Cdes[1, "ASMMAT:I(1*(female==1))"] &lt;- 1
+Cdes[1, "ASMMAT:I(1*(female==0))"] &lt;- -1
+Cdes[2, "ASSSCI:I(1*(female==1))"] &lt;- 1
+Cdes[2, "ASSSCI:I(1*(female==0))"] &lt;- -1
+
+wres2 &lt;- miceadds::NMIwaldtest( qhat=pres2$qhat, u=pres2$u, Cdes=Cdes, rdes=rdes )
+summary(wres2)
+
+# test only first hypothesis
+wres2b &lt;- miceadds::NMIwaldtest( qhat=pres2$qhat, u=pres2$u, Cdes=Cdes[1,,drop=FALSE],
+                         rdes=rdes[1] )
+summary(wres2b)
+
+#############################################################################
+# EXAMPLE 2: Multiple imputation and Wald test | TIMSS data
+#############################################################################
+
+library(BIFIEsurvey)
+data(data.timss2, package="BIFIEsurvey" )
+dat &lt;- data.timss2[[1]]
+dat &lt;- dat[, - c(1:4) ]
+
+# perform multiple imputation
+imp &lt;- mice::mice( dat, m=6, maxit=3 )
+
+# define analysis model
+res1 &lt;- with( imp, lm( likesc ~ female*migrant + female*books  ) )
+pres1 &lt;- mice::pool( res1 )
+summary(pres1)
+
+# Wald test for zero interaction effects
+qhat &lt;- mitools::MIextract(res1$analyses, fun=coef)
+u &lt;- mitools::MIextract(res1$analyses, fun=vcov)
+pars &lt;- names(qhat[[1]])
+des &lt;- miceadds::create.designMatrices.waldtest( pars=pars, k=2)
+Cdes &lt;- des$Cdes
+rdes &lt;- des$rdes
+Cdes[1, "female:migrant"] &lt;- 1
+Cdes[2, "female:books"] &lt;- 1
+
+# apply MIwaldtest function
+wres1 &lt;- miceadds::MIwaldtest( qhat, u, Cdes, rdes )
+summary(wres1)
+
+# use again "testnull"
+testnull &lt;- c("female:migrant", "female:books")
+wres1b &lt;- miceadds::MIwaldtest( qhat=qhat, u=u, testnull=testnull )
+summary(wres1b)
+
+#***** linear regression with cluster robust standard errors
+
+# convert object of class mids into a list object
+datlist_imp &lt;- miceadds::mids2datlist( imp )
+# define cluster
+idschool &lt;- as.numeric( substring( data.timss2[[1]]$IDSTUD, 1, 5 ) )
+# linear regression
+res2 &lt;- lapply( datlist_imp, FUN=function(data){
+           miceadds::lm.cluster( data=data, formula=likesc ~ female*migrant + female*books,
+                            cluster=idschool ) } )
+# extract parameters and covariance matrix
+qhat &lt;- lapply( res2, FUN=function(rr){ coef(rr) } )
+u &lt;- lapply( res2, FUN=function(rr){ vcov(rr) } )
+# perform Wald test
+wres2 &lt;- miceadds::MIwaldtest( qhat, u, Cdes, rdes )
+summary(wres2)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

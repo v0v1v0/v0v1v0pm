@@ -1,0 +1,194 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>adm_rows</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Add administration lines to a dataset</h2>
+
+<h3>Description</h3>
+
+<p>The <code>adm_rows()</code> function adds an one or several administration lines to a dataset provided as a proper data.frame or within a 'mrgsolve' model. Used in combination with <code>obs_rows()</code> and <code>add_covariates()</code>, it helps the creation of datasets in the proper format for simulations with 'mrgsolve' or parameter estimation with 'mapbayr', as explained in data_helpers.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">adm_rows(x, ...)
+
+## S3 method for class 'data.frame'
+adm_rows(
+  x,
+  ID = NULL,
+  time = NULL,
+  evid = 1L,
+  cmt,
+  amt,
+  mdv = 1L,
+  addl = NULL,
+  ss = NULL,
+  ii = NULL,
+  rate = NULL,
+  .datehour = NULL,
+  ...
+)
+
+## S3 method for class 'missing'
+adm_rows(...)
+
+## S3 method for class 'mrgmod'
+adm_rows(x, cmt = adm_cmt(x), rate = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>either a data.frame or a 'mrgsolve' model object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional columns or arguments for <code>mrgsolve::ev()</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ID</code></td>
+<td>
+<p>subject ID (default is 1)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>time</code></td>
+<td>
+<p>event time. Default is 0 if no previous events. Mind consistency with <code>.datehour</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>evid</code></td>
+<td>
+<p>event identification (default is 1 for administration, 0 for observation)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cmt</code></td>
+<td>
+<p>compartment (no default, except if <code style="white-space: pre;">⁠[ADM]⁠</code> was tagged in the <code style="white-space: pre;">⁠$CMT⁠</code> block in model code. See <code>examples</code>.)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>amt</code></td>
+<td>
+<p>dose amount (for administration records only)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mdv</code></td>
+<td>
+<p>missing dependent value (default is 1 for administration records)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>addl</code></td>
+<td>
+<p>additional dose (optional)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ss</code></td>
+<td>
+<p>steady-state (optional, is this dose the last of an infinity of administration? Yes, 1, or no, 0)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ii</code></td>
+<td>
+<p>inter-dose interval (optional, use it with <code>ss</code> and <code>addl</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rate</code></td>
+<td>
+<p>rate of administration (optional, set to -2 if you model zero-order infusion. See <code>examples</code>.)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.datehour</code></td>
+<td>
+<p>a object of class POSIXct, a number or a character vector that can be passed to <code>parse_datehour()</code>. Using <code>.datehour</code> will update the value of <code>time</code> in the dataset, with units in hours. Mind consistency with the <code>time</code> argument.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a data.frame, or a 'mrgsolve' model with a dataset in the <code style="white-space: pre;">⁠@args$data⁠</code> slot (accessible with <code>get_data()</code>).
+</p>
+
+
+<h3>See Also</h3>
+
+<p>data_helpers
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Create a dataset from scratch
+adm_rows(amt = 100, cmt = 1)
+
+# Pipe-friendly addition of administration record to a pre-existing dataset
+library(magrittr)
+adm_rows(amt = 100, cmt = 1) %&gt;%
+  adm_rows(time = 3, amt = 200, cmt = 1, addl = 3, ii = 1)
+
+# Inform times using the `.datehour` argument:
+adm_rows(.datehour = "2020-01-01 11:11", amt = 100, cmt = 1) %&gt;%
+  adm_rows(.datehour = "2020-01-02 22:22", amt = 200, cmt = 1) %&gt;%
+  adm_rows(time = 48, amt = 300, cmt = 1)
+
+# Start from a 'mrgsolve' model
+library(mrgsolve)
+house() %&gt;%
+  adm_rows(amt = 100, cmt = 1) %&gt;%
+  adm_rows(time = 3, amt = 200, cmt = 1, addl = 3, ii = 1) %&gt;%
+  mrgsim(delta = 1)
+
+# Default administration compartments
+# Set default administration compartments in the code with `[ADM]`
+model &lt;- mcode("model", "
+$CMT @annotated
+DEPOT : Depot [ADM]
+CENTR : Central
+", compile = FALSE)
+adm_cmt(model)
+
+# Thus, no need to manually specify `cmt = 1` anymore.
+model %&gt;%
+  adm_rows(amt = 100) %&gt;%
+  adm_rows(time = 3, amt = 200, addl = 3, ii = 1) %&gt;%
+  get_data()
+
+# Automatic lines duplication if multiple depot compartments
+# Automatic `rate = -2` increment if model with 0-order absorption
+model &lt;- mcode("model", "
+$PARAM DUR = 1.0
+$CMT @annotated
+DEPOT : Depot [ADM]
+CENTR : Central [ADM]
+$MAIN
+D_CENTR = DUR ;
+", compile = FALSE)
+adm_cmt(model)
+
+model %&gt;%
+  adm_rows(amt = 100) %&gt;%
+  adm_rows(time = 3, amt = 200, addl = 3, ii = 1) %&gt;%
+  get_data()
+</code></pre>
+
+
+</div>

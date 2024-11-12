@@ -1,0 +1,402 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pre.install</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Update a source and/or installed package from a task package</h2>
+
+<h3>Description</h3>
+
+<p>See <code>mvbutils.packaging.tools</code> before reading or experimenting!
+</p>
+<p><code>pre.install</code> creates a "source package" from a "task package", ready for first-time installation using <code>install.pkg</code>. You must have called <code>maintain.packages( mypack)</code> at some point in your R session before <code>pre.install( mypack)</code> etc.
+</p>
+<p><code>patch.install</code> is normally sufficient for subsequent maintenance of an already-installed package (ie you rarely need call <code>install.pkg</code> again). Again, <code>maintain.packages</code> must have been called earlier. It's also expected that the package has been loaded via <code>library()</code> before <code>patch.install</code> is called, but this may not be required. <code>patch.install</code> first calls <code>pre.install</code> and then modifies the installed package accordingly on-the-fly, so there is no need to re-load or re-build or re-install. <code>patch.install</code> also updates the help system with immediate effect, i.e. during the current R session. You don't need to call <code>patch.install</code> after every little maintenance change to your package during an R session; it's usually only necessary when (i) you want updated help, or (ii) you want to make the changes "permanent". However, it's not a problem to call <code>patch.install</code> quite often. <code>patch.installed</code> is a synonym for <code>patch.install</code>.
+</p>
+<p>It's possible to tweak the source-package-creation process, and this is what 'pre.install.hook..." is for; see <b>Details</b> and section on <b>Overriding defaults</b> below.
+</p>
+<p><code>spkg</code> is a rarely-needed utility that returns the folder of source package created by <code>pre.install</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R"> # 95% of the time you just need:
+ # pre.install( pkg)
+ # patch.install( pkg)
+ # Your own hook: pre.install.hook.&lt;&lt;mypack&gt;&gt;( default.list, &lt;&lt;myspecialargs&gt;&gt;, ...)
+ pre.install( pkg, character.only=FALSE, force.all.docs=FALSE,
+     dir.above.source="+", autoversion=getOption("mvb.autoversion", TRUE),
+     R.target.version=getRversion(), ...)
+ patch.installed( pkg, character.only=FALSE, force.all.docs=FALSE,
+     help.patch=TRUE, DLLs.only=FALSE,
+     update.installed.cache=getOption("mvb.update.installed.cache", TRUE),
+     pre.inst=!DLLs.only, dir.above.source="+", R.target.version=getRversion(),
+     autoversion=getOption("mvb.autoversion", TRUE))
+ patch.install(...) # actually, args are exactly as for 'patch.installed'
+ spkg( pkg)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code> pkg</code></td>
+<td>
+<p>package name. Either quoted or unquoted is OK; unquoted will be treated as quoted unless <code>character.only=TRUE</code>. Here and in most other places in <code>mvbutils</code>, you can also specify an actual in-memory-task-package object such as <code>..mypack</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> character.only</code></td>
+<td>
+<p>Default FALSE, which allows unquoted package names. You can set it to TRUE, or just set e.g. <code>char="my@funny@name"</code>, which will trump any use of <code>pkg</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> force.all.docs</code></td>
+<td>
+<p>normally just create help files for objects whose documentation has changed (which will always be generated, regardless of <code>force.all.docs</code>). If TRUE, then recreate help for all documented objects. Can also be a character vector of specific docfile names (usually function names, but can be the names of the Rd file, without path or the Rd extension), in which case those Rd files will be regenerated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> help.patch</code></td>
+<td>
+<p>if TRUE, patch the help of the installed package</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> DLLs.only</code></td>
+<td>
+<p>just synchronize the DLLs and don't bother with other steps (see <b>Compiled code</b>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> default.list</code></td>
+<td>
+<p>list of various things– see under "Overriding..." below</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> ...</code></td>
+<td>
+<p>arguments to pass to your <code>pre.install.hook.XXX</code> function, usually if you want to be able to build different "flavours" of a package (e.g. a trial version vs. a production version, or versions with and without enormous datasets included). In <code>patch.install</code>, <code>...</code> is just shorthand for the arg list of <code>patch.installed</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> update.installed.cache</code></td>
+<td>
+<p>If TRUE, then clear the installed-package cache, so that things like <code>installed.packages</code> work OK. The only reason to set to FALSE could be speed, if you have lots of packages; feedback appreciated. Default is TRUE unless you have set <code>options( mvb.update.installed.cache=FALSE)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> pre.inst</code></td>
+<td>
+<p>?run <code>pre.install</code> first? Default is TRUE unless <code>DLLs.only=TRUE</code>; leave it unless you know better.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> autoversion</code></td>
+<td>
+<p>if TRUE, try to automatically increment the version number in the source (and installed, if <code>patch.install</code>) packages; this means you don't have to change the DESCRIPTION object or file. However, if you have changed the DESCRIPTION object or file's version to something beyond the source/installed version, the larger number will take precedence; hence, you can force a "major" revision by manually increasing the 1st or 2nd component of the version in <b>Description</b>. Only versions with at least 3 levels will be updated:so 1.0.0 will go to 1.0.1, 1.0.0.0 will go to 1.0.0.1, but 1.0 will stay the same. Default is TRUE unless you have set <code>options( mvb.autoversion=FALSE)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> dir.above.source</code></td>
+<td>
+<p>folder within which the source package will go, with a <code>+</code> at the start being shorthand for the task package folder (the default). Hence <code>pre.install( pkg=mypack, dir="+/holder")</code> will lead to creation of "holder/mypack" below the task folder of <code>mypack</code>. Set this manually if you have to maintain different versions of the package for different R versions, or different flavours of the package for other reasons, or if your source package must live in a "subversion tree" (whatever that is).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> R.target.version</code></td>
+<td>
+<p>Not needed 99% of the time; use only if you want to create source package for a different version of R. Supercedes the <code>Rd.version</code> argument of <code>pre.install</code> pre-'mvbutils' 2.5.57, used to control the documentation format. Set <code>R.target.version</code> to something less than "2.10" for ye olde "Rd version 1" format.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>As per the Glossary section of <code>mvbutils.packaging.tools</code>: the "task package" is the directory containing the ".RData" file with the guts of your package, which should be linked into the <code>cd</code> task hierarchy. The "source package" is usually the directory "&lt;&lt;pkg&gt;&gt;" below the task package, which will be created if needs be.
+</p>
+<p>The default behaviour of <code>pre.install</code> is as follows– to change it, see <b>Overriding defaults</b>. A basic source package is created in a sourcedirectory "&lt;&lt;pkg&gt;&gt;" of the current task. The package will have at least a DESCRIPTION file, a NAMESPACE file, a single R source file with name "&lt;&lt;pkg&gt;&gt;.R" in the "R" sourcedirectory, possibly a "sysdata.rda" file in the same place to contain non-functions, and a set of Rd files in the "man" sourcedirectory. Rd files will be auto-created from <code>flatdoc</code> style documentation, although precedence will be given to any pre-existing Rd files found in an "Rd" sourcedirectory of your task, which get copied directly into the package. Any "inst", "demo", "vignettes", "tests", "src", "exec", and "data" sourcedirectories will be copied to the source package, recursively (i.e. including any of <em>their</em> sourcedirectories). There is no compilation of source code, since only a source package is being created; see also <b>Compiled code</b> below.
+</p>
+<p>Most objects in the task package will go into the source package, but there are usually a few you wouldn't want there: objects that are concerned only with how to create the package in the first place, and ephemeral system clutter such as <code>.Random.seed</code>. The default exceptions are: functions <code>pre.install.hook.&lt;&lt;pkg&gt;&gt;</code>, <code>.First.task</code>, and <code>.Last.task</code>; data <code>&lt;&lt;pkg&gt;&gt;.file.exclude.regexes</code>, <code>&lt;&lt;pkg&gt;&gt;.DESCRIPTION</code>, <code>&lt;&lt;pkg&gt;&gt;.VERSION</code>, <code>&lt;&lt;pkg&gt;&gt;.UNSTABLE</code>, <code>forced!exports</code>, <code>.required</code>, <code>.Depends</code>, <code>tasks</code>, <code>.Traceback</code>, <code>.packageName</code>, <code>last.warning</code>, <code>.Last.value</code>, <code>.Random.seed</code>, <code>.SavedPlots</code>; and any character vector whose name ends with ".doc".
+</p>
+<p>All pre-existing files in the "man", "src", "tests", "exec", "demo", "inst", and "R" sourcedirectories of the source-package directory will be removed (unless you have some <code>mlazy</code> objects; see below). If a file ".Rbuildignore" file is present in the task package, it's copied to the package directory, but I've never gotten this feature to work (NB I should include a facility in the pre-install hook for this). To exclude files that would otherwise be copied, i.e. those in "inst/demo/src/data" folders, create a character vector of regexes called <code>&lt;&lt;pkg&gt;&gt;.file.exclude.regexes</code>; any file matching any of these won't be copied. If there is a "changes.txt" file in the task package, it will be copied to the "inst" sourcedirectory of the package, as will any files in the task's own "inst" sourcedirectory. A DESCRIPTION file will be created, preferably from a <code>&lt;&lt;pkg&gt;&gt;.DESCRIPTION</code> <em>object</em> in the task package; see <code>mvbutils.packaging.tools</code> for more. Any "Makefile.*" in the task package will be copied, as will any in the "src" sourcedirectory (not sure why both places are allowed). No other files or sourcedirectories in the package directory will be created or removed, but some essential files will be modified.
+</p>
+<p>If a NAMESPACE file is present in the task (usually no need), then it is copied directly to the package. If not, then <code>pre.install</code> will generate a NAMESPACE file by calling <code>make.NAMESPACE</code>, which makes reasonable guesses about what to import, export, and S3methodize. What is &amp; isn't an S3 method is generally deduced OK (see <code>make.NAMESPACE</code> for gruesome details), but you can override the defaults via the pre-install hook. FWIW, since adding the package-creation features to <code>mvbutils</code>, I have never bothered explicitly writing a NAMESPACE file for any of my packages. By default, only <em>documented</em> functions are exported (i.e. visible to the user or other packages); the rest are only available to other functions in your package.
+</p>
+<p>The R source file will contain functions only. Any <code>doc</code> and <code>export.me</code> attributes are dropped, but other attributes are kept; in particular, source code is kept in the <code>source</code> attribute.
+</p>
+<p>If any of the Rd files starts with a period, e.g. ".dotty.name", it will be renamed to e.g. "01.dotty.name.Rd" to avoid some problems with RCMD. This should never matter, but just so you know...
+</p>
+<p>To speed up conversion of documentation, a list of raw &amp; converted documentation is stored in the file "doc2Rd.info.rda" in the task package, and conversion is only done for objects whose raw documentation has changed, unless <code>force.all.docs</code> is TRUE.
+</p>
+<p><code>pre.install</code> creates a file "funs.rda" in the package's "R" sourcedirectory, which is subsequently used by <code>patch.installed</code>. The function <code>build.pkg</code> (or R CMD BUILD) and friends will omit this file (currently with a complaint, which I intend to fix eventually, but which does not cause trouble).
+</p>
+
+
+<h4>Compiled code</h4>
+
+<p><code>patch.install</code> does not compile source code; currently, you need to do that yourself, though I might add support for that if I can work a sufficiently general mechanism. If you use R to do your compilation, then <code>install.pkg</code> should work after <code>pre.install</code>, though you may need <code>detach("package:mypack", unload=T)</code> first and that will disrupt your R session. Alternatively, you may be able to use R CMD SHLIB to create the DLL directly, which you can then copy into the "libs" sourcedirectory of the installed package, without needing to re-install. I haven't tried this, but colleagues have reported success.
+</p>
+<p>If, like me, you pre-compile your own DLLs manually (not allowed on CRAN, but fine for distribution to other users on the same OS), then you can put the DLLs into a folder "inst/libs" of the task (see next for Windows); they will end up as usual in the "libs" folder of the installed package, even though R itself hasn't compiled them. On Windows, put the DLLs one level deeper in "inst/libs/&lt;&lt;arch&gt;&gt;" instead, where "&lt;&lt;arch&gt;&gt;" is found from <code>.Platform$r_arch</code>; for 32-bit Windows, it's currently "i386". All references in this section to "libs", whether in the task or source or installed package, should be taken as meaning "libs/&lt;&lt;arch&gt;&gt;".
+</p>
+<p>To load your package's DLLs, call <code>library.dynam</code> in the <code>.onLoad</code> function, for example like this:
+</p>
+<pre>
+  .onLoad &lt;- function( libname, pkgname){
+    library.dynam( 'my_first_dll', package=pkgname)
+    library.dynam( 'my_other_dll', package=pkgname)  # fine to have several DLLs
+  }
+</pre>
+<p>To automatically load all DLLs, you can copy the body of <code>mvbutils:::generic.dll.loader</code> into your own <code>.onLoad</code>, or just include a call to <code>generic.dll.loader(libname,pkgname)</code> if you don't mind having dependence on <code>mvbutils</code>.
+</p>
+<p>After the package has been installed for the first time, I change my compiler settings so that the DLL is created directly in the installed package's "libs" folder; this means I can use the compiler's debugger while R is running. To accommodate this, <code>patch.install</code> behaves as follows:
+</p>
+
+<ul>
+<li>
+<p> any new DLLs in the task package are copied to the installed package;
+</p>
+</li>
+<li>
+<p> any DLLs in the installed package but not in the task package are deleted;
+</p>
+</li>
+<li>
+<p> for any DLLs in both task &amp; installed, both copies are synchronized to the <em>newer</em> version;
+</p>
+</li>
+<li>
+<p> the source package always matches the task package
+</p>
+</li>
+</ul>
+<p>You can call <code>patch.install( mypack, DLLs.only=TRUE)</code> if you only want the DLL-synching step.
+</p>
+<p>(Before version 2.5.57, <code>mvbutils</code> allowed more latitude in where you could put your home-brewed DLLs, but it just made life more confusing. The only place that now works is as above.)
+</p>
+
+
+
+<h4>Data objects</h4>
+
+<p>Data objects are handled a bit differently to the recommendations in "R extensions" and elsewhere– but the end result for the package user is the same, or better. The changes have been made to speed up package maintenance, and to improve useability. Specifically:
+</p>
+
+<ul>
+<li>
+<p> Undocumented data objects live only in the package's namespace, i.e. visible only to your functions.
+</p>
+</li>
+<li>
+<p> Documented data objects appear both in the visible part of the package (i.e. in the search path), and in the namespace. [The R standard is that these should not be visible in the namespace, but this doesn't seem sensible to me.]
+</p>
+</li>
+<li>
+<p> The easiest way to export a data object, is to "document" it by putting its name into an alias line of the doc attribute of an existing function. (Alias lines are single-word lines directly after the first line of the doc attr.)
+</p>
+</li>
+<li>
+<p> To document a data object <code>xxx</code> in its own right, include a flat-format text object <code>xxx.doc</code> in your task package; see <code>doc2Rd</code>. <code>xxx.doc</code> itself won't appear in the packaged object, but will result in documentation for <code>xxx</code> <em>and</em> any other data objects that are given as alias lines.
+</p>
+</li>
+<li>
+<p> Big data objects can be set up for transparent individual lazy-loading (see below) to save time &amp; memory, but lazy-loading is otherwise off by default for individual data objects.
+</p>
+</li>
+<li>
+<p> There is no need for the user ever to call <code>data</code> to access a dataset in the package, and in fact it won't work.
+</p>
+</li>
+</ul>
+<p>Note that the <code>data(...)</code> function has been pretty much obsolete since the advent of lazy-loading in R 2.0; see R-news #4/2.
+</p>
+<p>In terms of package structure, as opposed to operation, there is no "data" sourcedirectory. Data lives either in the "sysdata.rdb/rdx" files in the "R" sourcedirectory (but can still be user-visible, which is not normally the case for objects in those files), or in the "mlazy" sourcedirectory for those objects with individual lazy-loading.
+</p>
+
+
+<h5>Big data objects</h5>
+
+<p>Lazy-loading objects cached with <code>mlazy</code> are handled specially, to speed up <code>pre.install</code>. Such objects get their cache-files copied to "inst/mlazy", and the <code>.onLoad</code> is prepended with code that will load them on demand. By default, they are exported if and only if documented, and are not locked. The following objects are not packaged by default, even if <code>mlazy</code>ed: <code>.Random.seed</code>, <code>.Traceback</code>, <code>last.warning</code>, and <code>.Saved.plots</code>. These are <code>mlazy</code>ed automatically if <code>options( mvb.quick.cd)</code> is <code>TRUE</code>– see <code>cd</code>.
+</p>
+
+
+
+
+<h4>Documentation and exporting</h4>
+
+
+
+<h5>Package documentation</h5>
+
+<p>Just because you have a package <span class="pkg">Splendid</span>, it doesn't follow that a user will be able to figure out how to use it from the alphabetical list of functions in <code>library( help=Splendid)</code>; even if you've written vignettes, it may not be obvious which to use. The recommended way to provide a package overview is via "package documentation", which the user accesses via <code>package?Splendid</code>. You can write this in a text object called e.g. "Splendid.package.doc", which will be passed through <code>doc2Rd</code> with an extra "docType{package}" field added. The first line should start e.g. "Splendid-package" and the corresponding ".Rd" file will be put first into the index. Speaking as a frequently bewildered would-be user of others' packages– and one who readily gives up if the "help" is impenetrable– I urge you to make use of this feature!
+</p>
+
+
+
+<h5>Vignettes</h5>
+
+<p>See <code>mvbutils.packaging.tools</code>.
+</p>
+
+
+
+<h5>Bare minimum for export</h5>
+
+<p>Only documented functions and data are exported from your package (unless you resort to the subterfuge described in the subsection after this). Documented things are those found by <code>find.documented( doc="any")</code>. The simplest way to document something is just to add its name as an "alias line" to the existing documentation of another function, before the first empty line. For example, if you're already using <code>flatdoc</code> to document <code>my.beautiful.function</code>, you can technically "document" and thus export other functions like so:
+</p>
+<pre>
+  structure( function( blahblahblah)...
+  ,doc=flatdoc())
+  my.beautiful.function    package:splendid
+  other.exported.function.1
+  other.exported.function.2
+</pre>
+<p>The package will build &amp; install OK even if you don't provide USAGE and ARGUMENTS sections for the other functions. Of course, R CMD CHECK wouldn't like it (and may have a point on this occasion). If you just are after "legal" (for R CMD CHECK) albeit unhelpful documentation for some of your functions that you can't face writing proper doco for yet, see <code>make.usage.section</code> and <code>make.argument.section</code>.
+</p>
+
+
+
+<h5>Exporting undocumented things and vice versa</h5>
+
+<p>A bit naughty (RCMD CHECK complains), but quite doable. Note that "things" can be data objects, not just functions. Simply write a pre-install hook (see <b>Overriding defaults</b>) that includes something like this:
+</p>
+<pre>
+  pre.install.hook.mypack &lt;- function( hooklist) {
+    hooklist$nsinfo$exports &lt;- c( hooklist$nsinfo$exports, "my.undocumented.thing")
+  return( hooklist)
+  }
+</pre>
+<p>You can follow a similar approach if you want to document something but <em>not</em> to export it (so that it can only be accessed by <code>Splendid:::unexported.thing</code>. This probably isn't naughty.
+</p>
+
+
+
+
+<h4>Overriding defaults</h4>
+
+<p>Source package folder can be controlled via <code>options("mvbutils.sourcepkgdir.postfix")</code>, as per "Folders and different R versions" in <code>mvbutils.packaging.tools</code>. You'd only need to do this if you have multiple R versions installed that require different source-package formats (something that does not often change).
+</p>
+<p>If a function <code>pre.install.hook.&lt;&lt;pkgname&gt;&gt;</code> exists in the task "&lt;&lt;pkgname&gt;&gt;", it will be called during <code>pre.install</code>. It will be passed one list-mode argument, containing default values for various installation things that can be adjusted; and it should return a list with the same names. It will also be passed any <code>...</code> arguments to <code>pre.install</code>, which can be used e.g. to set "production mode" vs "informal mode" of the end product. For example, you might call <code>preinstall(mypack,modo="production")</code> and then write a function <code>pre.install.hook.mypack( hooklist, modo)</code> that includes or excludes certain files depending on the value of <code>modo</code>. The hook can do two things: sort out any file issues not adequately handled by <code>pre.install</code>, and/or change the following elements in the list that is passed in. The return value should be the possibly-modified list. Hook list elements are:
+</p>
+
+<dl>
+<dt>copies</dt>
+<dd>
+<p>files to copy directly</p>
+</dd>
+<dt>dll.paths</dt>
+<dd>
+<p>DLLs to copy directly</p>
+</dd>
+<dt>extra.filecontents</dt>
+<dd>
+<p>named list; each element is the contents of a text file, the corresponding name being the path of the file to create eg <code>"inst/src/utils.pas"</code>— a nonstandard name</p>
+</dd>
+<dt>extra.docs</dt>
+<dd>
+<p>names of character-mode objects that constitute flat-format documentation</p>
+</dd>
+<dt>description</dt>
+<dd>
+<p>named elements of DESCRIPTION file</p>
+</dd>
+<dt>task.path</dt>
+<dd>
+<p>path of task (ready-to-install package will be created as a sourcedirectory in this)</p>
+</dd>
+<dt>has.namespace</dt>
+<dd>
+<p>should a namespace be used?</p>
+</dd>
+<dt>use.existing.NAMESPACE</dt>
+<dd>
+<p>ignore default and just copy the existing NAMESPACE file?</p>
+</dd>
+<dt>nsinfo</dt>
+<dd>
+<p>default namespace information, to be written iff <code>has.namespace==TRUE</code> and <code>use.existing.NAMESPACE==FALSE</code></p>
+</dd>
+<dt>exclude.funs</dt>
+<dd>
+<p>any functions <b>not</b> to include</p>
+</dd>
+<dt>exclude.data</dt>
+<dd>
+<p>non-functions to exclude from <code>system.rda</code></p>
+</dd>
+<dt>dont.check.visibility</dt>
+<dd>
+<p>either TRUE (default default), FALSE, or a specified character vector, to say which objects are <em>not</em> to be checked for "globality" by RCMD CHECK (using the <code>globalVariables</code> mechanism). Leave alone if you don't understand this. You can change the "default default" via <code>options( mvb_dont_check_visibility=FALSE)</code>.</p>
+</dd>
+</dl>
+<p>There are two reasons for using a hook rather than directly setting parameters in <code>pre.install</code>. The first is that <code>pre.install</code> will calculate sensible but non-obvious default values for most things, and it is easier to change the defaults than to set them up from scratch in the call. The second is that once you have written a hook, you can forget about it– you don't have to remember special argument values each time you call <code>pre.install</code> for that task.
+</p>
+
+
+<h5>Debugging a pre install hook</h5>
+
+<p>To understand what's in the list and how to write a pre-install hook, the easiest way is probably to write a dummy one and then <code>mtrace</code> it before calling <code>pre.install(mypack)</code>. However, it's all a bit clunky at present (July 2011). Because the hook only exists in the "..mypack" shadow environment, <code>mtrace</code> won't find it automatically, so you'll need <code>mtrace( pre.install.hook.mypack, from=..mypack)</code>. That's fine, but if you then modify the source of your hook function, you'll get an error following the "Reapplying trace..." message. So you need to do <code>mtrace.off</code> <em>before</em> saving your edited hook-function source, and then <code>mtrace</code> the hook again before calling <code>pre.install(mypack)</code>. To be fixed, if I can work out how...
+</p>
+
+
+
+
+<h4>Different versions of r</h4>
+
+<p>R seems to be rather fond of changing the structural requirements of source &amp; installed packages. <code>mvbutils</code> tries to shield you from those arcane and ephemeral details– usually, your task package will not need changing, and <code>pre.install</code> will automatically generate source &amp; installed packages in whatever format R currently requires. However, sometimes you do at least need to be able to build different "instances" of your package for different versions of R. The <code>sourcedir</code> and maybe the <code>R.target.version</code> arguments of <code>pre.install</code> may help with this.
+</p>
+<p>But if you need to build instances of your package for a different version of R, then you may need this argument (and <code>dir.above.source</code>). I try to keep <code>mvbutils</code> up-to-date with R's fairly frequent revisions to package structure rules, with the aim that you (or I) can easily produce a source/binary-source package for a version of R later than the one you're using right now, merely by setting <code>R.target.version</code>. However, be warned that this may not always be enough; there might at some point be changes in R that will require you to be running the appropriate R version (and an appropriate version of <code>mvbutils</code>) just to recreate/rebuild your package in an appropriate form.
+</p>
+<p>The nuances of <code>R.target.version</code> change with the changing tides of R versions, but the whole point of <code>pre.install</code> etc is that you shouldn't really need to know about those details; <code>mvbutils</code> tries to look after them for you. For example, though: as of 10/2011, the "detailed behaviour" is to enforce namespaces if <code>R.target.version</code> &gt;= 2.14, regardless of whether your package has a <code>.onLoad</code> or not.
+</p>
+
+
+<h5>Packages without namespaces pre r2 14</h5>
+
+<p>You used to be allowed to build packages without namespaces– not to be encouraged for general distribution IMO, but occasionally a useful shortcut for your own stuff nevertheless (mainly because everything is "exported", documented or not). For R &lt;= 2.14, <code>mvbutils</code> will decide for itself whether your package is meant to be namespaced, based on whether any of the following apply: there is a NAMESPACE file in the task package; there is a <code>.onLoad</code> function in the task; there is an "Imports" directive in the DESCRIPTION file.
+</p>
+
+
+
+
+<h3>Author(s)</h3>
+
+<p>Mark Bravington</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mvbutils.packaging.tools</code>, <code>cd</code>, <code>doc2Rd</code>, <code>maintain.packages</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Workflow for simple case:
+cd( task.above.mypack)
+maintain.packages( mypack)
+# First-time setup, or after major R version changes:
+pre.install( mypack)
+install.pkg( mypack)
+library( mypack)
+# ... do stuff
+# Subsequent maintenance:
+maintain.packages( mypack) # only once per session, usually at the start
+library( mypack) # maybe optional
+# ...do various things involving changes to mypack, then...
+patch.install( mypack) # keep disk image up-to-date
+# Prepare copies for distribution
+build.pkg( mypack) # for Linux or CRAN
+build.pkg.binary( mypack) # for Windows or Macs
+check.pkg( mypack) # if you like that sort of thing
+
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,247 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>optimize_weights</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Optimize MaxEnt OT constraint weights</h2>
+
+<h3>Description</h3>
+
+<p>Optimizes constraint weights given a data set and optional biases. If no
+bias arguments are provided, the bias term(s) will not be included in the
+optimization.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">optimize_weights(
+  input,
+  bias_input = NA,
+  mu = NA,
+  sigma = NA,
+  control_params = NA,
+  upper_bound = DEFAULT_UPPER_BOUND,
+  encoding = "unknown",
+  model_name = NA,
+  allow_negative_weights = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>input</code></td>
+<td>
+<p>The input data frame/data table/tibble. This should contain one
+or more OT tableaux consisting of mappings between underlying and surface
+forms with observed frequency and violation profiles. Constraint violations
+must be numeric.
+</p>
+<p>For an example of the data frame format, see inst/extdata/sample_data_frame.csv.
+You can read this file into a data frame using read.csv or into a tibble
+using dplyr::read_csv.
+</p>
+<p>This function also supports the legacy OTSoft file format. You can use this
+format by passing in a file path string to the OTSoft file rather than a
+data frame.
+</p>
+<p>For examples of OTSoft format, see inst/extdata/sample_data_file.txt.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bias_input</code></td>
+<td>
+<p>(optional)
+A data frame/data table/tibble containing the bias mus and sigmas. Each row
+corresponds to an individual constraint, and consists of three columns:
+<code>Constraint</code>, which contains the constraint name, <code>Mu</code>, which contains the
+mu, and <code>Sigma</code>, which contains the sigma. If this argument is provided,
+the mu and sigma arguments will be ignored.
+Like the <code>input</code> argument, this function also supports the legacy OTSoft
+file format for this argument. In this case, <code>bias_input</code> should be a path
+to the bias parameters in OTSoft format.
+</p>
+<p>For examples of OTSoft bias format, see inst/extdata/sample_bias_file_otsoft.txt.
+Each row in this file should be the name of the constraint, followed by the
+mu, followed by the sigma (separated by tabs).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu</code></td>
+<td>
+<p>(optional) A scalar or vector that will serve as the mu for each
+constraint in the bias term. Constraint weights will also be initialized to
+this value. If a vector, its length must equal the number of constraints in
+the input file. This value will not be used if <code>bias_file</code> is provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma</code></td>
+<td>
+<p>(optional) A scalar or vector that will serve as the sigma for
+each constraint in the bias term. If a vector, its length must equal the
+number of constraints in the input file. This value will not be used if
+<code>bias_file</code> is provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control_params</code></td>
+<td>
+<p>(optional) A named list of control parameters that
+will be passed to the optim function. See the documentation
+of that function for details. Note that some parameter settings may
+interfere with optimization. The parameter <code>fnscale</code> will be overwritten
+with <code>-1</code> if specified, since this must be treated as a maximization
+problem.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper_bound</code></td>
+<td>
+<p>(optional) The maximum value for constraint weights.
+Defaults to 100.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>encoding</code></td>
+<td>
+<p>(optional) The character encoding of the input file. Defaults
+to "unknown".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model_name</code></td>
+<td>
+<p>(optional) A name for the model. If not provided, the name
+of the variable will be used if the input is a data frame. If the input
+is a path to an OTSoft file, the filename will be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allow_negative_weights</code></td>
+<td>
+<p>(optional) Whether the optimizer should allow
+negative weights. Defaults to FALSE.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The objective function <code class="reqn">J(w)</code> that is optimized is defined as
+</p>
+<p style="text-align: center;"><code class="reqn">J(w) = \sum_{i=1}^{n}{\ln P(y_i|x_i; w)}
+- \sum_{k=1}^{m}{\frac{(w_k - \mu_k)^2}{2\sigma_k^2}}</code>
+</p>
+
+<p>The first term in this equation calculates the natural logarithm of the
+conditional likelihood of the training data under the weights <code class="reqn">w</code>. <code class="reqn">n</code>
+is the number of data points (i.e., the sample size or the sum of the frequency
+column in the input),<code class="reqn">x_i</code> is the input form of the <code class="reqn">i</code>th data
+point, and <code class="reqn">y_i</code> is the observed surface form corresponding to
+<code class="reqn">x_i</code>.<code class="reqn">P(y_i|x_i; w)</code> represents the probability of realizing
+underlying <code class="reqn">x_i</code> as surface <code class="reqn">y_i</code> given weights <code class="reqn">w</code>. This
+probability is defined as
+</p>
+<p style="text-align: center;"><code class="reqn">P(y_i|x_i; w) = \frac{1}{Z_w(x_i)}\exp(-\sum_{k=1}^{m}{w_k f_k(y_i, x_i)})</code>
+</p>
+
+<p>where <code class="reqn">f_k(y_i, x_i)</code> is the number of violations of constraint <code class="reqn">k</code>
+incurred by mapping underlying <code class="reqn">x_i</code> to surface <code class="reqn">y_i</code>. <code class="reqn">Z_w(x_i)</code>
+is a normalization term defined as
+</p>
+<p style="text-align: center;"><code class="reqn">Z(x_i) = \sum_{y\in\mathcal{Y}(x_i)}{\exp(-\sum_{k=1}^{m}{w_k f_k(y, x_i)})}</code>
+</p>
+
+<p>where <code class="reqn">\mathcal{Y}(x_i)</code> is the set of observed surface realizations of
+input <code class="reqn">x_i</code>.
+</p>
+<p>The second term of the equation for calculating the objective function is
+the optional bias term, where <code class="reqn">w_k</code> is the weight of constraint <code class="reqn">k</code>, and
+<code class="reqn">\mu_k</code> and <code class="reqn">\sigma_k</code> parameterize a normal distribution that
+serves as a prior for the value of <code class="reqn">w_k</code>. <code class="reqn">\mu_k</code> specifies the mean
+of this distribution (the expected weight of constraint <code class="reqn">k</code> before
+seeing any data) and <code class="reqn">sigma_k</code> reflects certainty in this value: lower
+values of <code class="reqn">\sigma_k</code> penalize deviations from <code class="reqn">\mu_k</code> more severely,
+and thus require greater amounts of data to move <code class="reqn">w_k</code> away from
+<code class="reqn">mu_k</code>. While increasing <code class="reqn">\sigma_k</code> will improve the fit to the
+training data, it may result in overfitting, particularly for small data
+sets.
+</p>
+<p>A general bias with <code class="reqn">\mu_k = 0</code> for all <code class="reqn">k</code> is commonly used as a
+form of simple regularization to prevent overfitting (see, e.g., Goldwater
+and Johnson 2003). Bias terms have also been used to model proposed
+phonological learning biases; see for example Wilson (2006), White (2013),
+and Mayer (2021, Ch. 4). The choice of <code class="reqn">\sigma</code> depends on the sample
+size. As the number of data points increases, <code class="reqn">\sigma</code> must decrease in
+order for the effect of the bias to remain constant: specifically,
+<code class="reqn">n\sigma^2</code> must be held constant, where <code class="reqn">n</code> is the number of tokens.
+</p>
+<p>Optimization is done using the optim function from the R-core
+statistics library. By default it uses <code>L-BFGS-B</code> optimization, which is a
+quasi-Newtonian method that allows upper and lower bounds on variables.
+Constraint weights are restricted to finite, non-negative values.
+</p>
+<p>If no bias parameters are specified (either the <code>bias_file</code> argument or the
+mu and sigma parameters), optimization will be done without the bias term.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object with the following named attributes:
+</p>
+
+<ul>
+<li> <p><code>weights</code>: A named list of the optimal constraint weights
+</p>
+</li>
+<li> <p><code>log_lik</code>: the log likelihood of the data under the discovered
+weights
+</p>
+</li>
+<li> <p><code>k</code>: the number of constraints
+</p>
+</li>
+<li> <p><code>n</code>: the number of data points in the training set
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">  # Get paths to toy data and bias files.
+  df_file &lt;- system.file(
+      "extdata", "sample_data_frame.csv", package = "maxent.ot"
+  )
+  bias_file &lt;- system.file(
+       "extdata", "sample_bias_data_frame.csv", package = "maxent.ot"
+  )
+  # Fit weights to data with no biases
+  tableaux_df &lt;- read.csv(df_file)
+  optimize_weights(tableaux_df)
+
+  # Fit weights with biases specified in file
+  bias_df &lt;- read.csv(bias_file)
+  optimize_weights(tableaux_df, bias_df)
+
+  # Fit weights with biases specified in vector form
+  optimize_weights(
+      tableaux_df, mu = c(1, 2), sigma = c(100, 200)
+  )
+
+  # Fit weights with biases specified as scalars
+  optimize_weights(tableaux_df, mu = 0, sigma = 1000)
+
+  # Fit weights with mix of scalar and vector biases
+  optimize_weights(tableaux_df, mu = c(1, 2), sigma = 1000)
+
+  # Pass additional arguments to optim function
+  optimize_weights(tableaux_df, control_params = list(maxit = 500))
+
+</code></pre>
+
+
+</div>

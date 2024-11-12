@@ -1,0 +1,199 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>simulate.vlmc_cpp</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Simulate a discrete time series for a vlmc</h2>
+
+<h3>Description</h3>
+
+<p>This function simulates a time series from the distribution estimated by the
+given vlmc object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'vlmc_cpp'
+simulate(
+  object,
+  nsim = 1,
+  seed = NULL,
+  init = NULL,
+  burnin = 0L,
+  sample = c("fast", "slow", "R"),
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>a fitted vlmc object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nsim</code></td>
+<td>
+<p>length of the simulated time series (defaults to 1).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>an optional random seed (see the dedicated section).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+<p>an optional initial sequence for the time series.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p>number of initial observations to discard or <code>"auto"</code> (see the
+dedicated section).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sample</code></td>
+<td>
+<p>specifies which implementation of <code>base::sample()</code> to use.
+See the dedicated section.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The time series can be initiated by a fixed sequence specified via the <code>init</code>
+parameter.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a simulated discrete time series of the same type as the one used to
+build the vlmc with a <code>seed</code> attribute (see the Random seed section). The
+results has also the <code>dts</code> class to hide the <code>seed</code> attribute when using
+<code>print</code> or similar function.
+</p>
+
+
+<h3>sampling method</h3>
+
+<p>The R backend for <code>vlmc()</code> uses <code>base::sample()</code> to generate samples for each
+context. Internally, this function sorts the probabilities of each state in
+decreasing probability order (among other things), which is not needed in our
+case. The C++ backend can be used with three different implementations:
+</p>
+
+<ul>
+<li> <p><code>sample="fast"</code> uses a dedicated C++ implementation adapted to the data structures
+used internally. In general, the simulated time series obtained with this
+implementation will be different from the one generated with the R backend,
+even using the same seed.
+</p>
+</li>
+<li> <p><code>sample="slow"</code> uses another C++ implementation that mimics <code>base::sample()</code> in
+order to maximize the chance to provide identical simulation results regardless
+of the backend (when using the same random seed). This process is not perfect
+as we use the std::lib sort algorithm which is not guaranteed to give identical
+results as the ones of R internal 'revsort'.
+</p>
+</li>
+<li> <p><code>sample="R"</code> uses direct calls to <code>base::sample()</code>. Results are guaranteed
+to be identical between the two backends, but at the price of higher running
+time.
+</p>
+</li>
+</ul>
+<h3>Burn in (Warm up) period</h3>
+
+<p>When using a VLMC for simulation purposes, we are generally interested in
+the stationary distribution of the corresponding Markov chain. To reduce
+the dependence of the samples from the initial values and get closer to
+this stationary distribution (if it exists), it is recommended to discard
+the first samples which are produced in a so-called "burn in" (or "warm
+up") period. The <code>burnin</code> parameter can be used to implement this approach.
+The VLMC is used to produce a sample of size <code>burnin + nsim</code> but the first
+<code>burnin</code> values are discarded. Notice that this burn in values can be
+partially given by the <code>init</code> parameter if it is specified.
+</p>
+<p>If <code>burnin</code> is set to <code>"auto"</code>, the <code>burnin</code> period is set to <code>64 * context_number(object)</code>, following the heuristic proposed in Mächler and
+Bühlmann (2004).
+</p>
+
+
+<h3>Random seed</h3>
+
+<p>This function reproduce the behaviour of <code>stats::simulate()</code>. If <code>seed</code> is
+<code>NULL</code> the function does not change the random generator state and returns
+the value of .Random.seed as a <code>seed</code> attribute in the return value. This
+can be used to reproduce exactly the simulation results by setting
+.Random.seed to this value. Notice that if the random seed has not be
+initialised by R so far, the function issues a call to <code>runif(1)</code> to
+perform this initialisation (as is done in <code>stats::simulate()</code>).
+</p>
+<p>It <code>seed</code> is an integer, it is used in a call to <code>set.seed()</code> before the
+simulation takes place. The integer is saved as a <code>seed</code> attribute in the
+return value. The integer seed is completed by an attribute <code>kind</code> which
+contains the value <code style="white-space: pre;">⁠as.list([RNGkind()])⁠</code> exactly as with
+<code>stats::simulate()</code>. The random generator state is reset to its original
+value at the end of the call.
+</p>
+
+
+<h3>Extended contexts</h3>
+
+<p>As explained in details in <code>loglikelihood.vlmc()</code> documentation and in the
+dedicated <code>vignette("likelihood", package = "mixvlmc")</code>, the first initial
+values of a time series do not in general have a proper context for a VLMC
+with a non zero order. In order to simulate something meaningful for those
+values when <code>init</code> is not provided, we rely on the notion of extended
+context defined in the documents mentioned above. This follows the same
+logic as using <code>loglikelihood.vlmc()</code> with the parameter
+<code>initial="extended"</code>. All vlmc functions that need to manipulate initial
+values with no proper context use the same approach.
+</p>
+
+
+<h3>References</h3>
+
+<p>Mächler, M. and Bühlmann, P. (2004) "Variable Length Markov
+Chains: Methodology, Computing, and Software" Journal of Computational and
+Graphical Statistics, 13 (2), 435-455, <a href="https://doi.org/10.1198/1061860043524">doi:10.1198/1061860043524</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>stats::simulate()</code> for details and examples on the random number
+generator setting
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">pc &lt;- powerconsumption[powerconsumption$week == 5, ]
+dts &lt;- cut(pc$active_power, breaks = c(0, quantile(pc$active_power, probs = c(0.25, 0.5, 0.75, 1))))
+model &lt;- vlmc(dts, min_size = 5)
+new_dts &lt;- simulate(model, 500, seed = 0)
+new_dts_2 &lt;- simulate(model, 500, seed = 0, init = dts[1:5])
+new_dts_3 &lt;- simulate(model, 500, seed = 0, burnin = 500)
+</code></pre>
+
+
+</div>

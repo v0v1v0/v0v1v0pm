@@ -1,0 +1,156 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>diffMC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Pairwise differences between two or more independent MC estimates</h2>
+
+<h3>Description</h3>
+
+<p>Estimates mean (and median) differences in MC, and includes measures of
+uncertainty (SE and CI).  For those measures of uncertainty to be accurate,
+only apply this function to MC estimates where all data sources are
+independent (e.g., different species).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">diffMC(estimates, nSamples = 1e+05, alpha = 0.05, returnSamples = FALSE)
+
+diffStrength(estimates, nSamples = 1e+05, alpha = 0.05, returnSamples = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>estimates</code></td>
+<td>
+<p>List of at least two MC estimates, provided by the estMC
+function. If this is a named list (recommended), the function will use
+these names in labeling the differences.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nSamples</code></td>
+<td>
+<p>A positive integer, number of samples (with replacement)
+to draw from each pair of MC estimates (default 100000).  If set to NULL,
+compares all MC samples from each pair.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>Level for confidence/credible intervals provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>returnSamples</code></td>
+<td>
+<p>Should the function return all the sampled differences?
+Defaults to FALSE to reduce storage requirements. Change to TRUE to
+compute your own summary statistics.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>diffMC</code> returns a list with elements:
+</p>
+
+<dl>
+<dt><code>meanDiff, medianDiff</code></dt>
+<dd>
+<p>Vectors with mean and medians of sampled
+differences for each pairwise comparison. Estimates of difference
+between MC values incorporating parametric uncertainty.</p>
+</dd>
+<dt><code>seDiff</code></dt>
+<dd>
+<p>Vector with standard errors of MC differences for each
+pairwise comparison, estimated from SD of sampled differences.</p>
+</dd>
+<dt><code>simpleCI</code></dt>
+<dd>
+<p>Matrix of <code>1 - alpha</code> confidence intervals for
+MC differences, estimated as <code>alpha/2</code> and <code>1 - alpha/2</code>
+quantiles of <code>sampleMC</code>.</p>
+</dd>
+<dt><code>bcCI</code></dt>
+<dd>
+<p>Matrix of bias-corrected <code>1 - alpha</code> confidence
+intervals for MC differences for each pairwise comparison. Preferable
+to <code>simpleCI</code> when <code>meanDiff</code> is the best estimate of the MC
+difference. <code>simpleCI</code> is preferred when
+<code>medianDiff</code> is a better estimator. When <code>meanDiff==medianDiff</code>,
+these should be identical.  Estimated as the
+<code>pnorm(2 * z0 + qnorm(alpha / 2))</code> and
+<code>pnorm(2 * z0 + qnorm(1 - alpha / 2))</code> quantiles of sampled
+differences, where z0 is the proportion of <code>sampleDiff &lt; meanDiff</code>.</p>
+</dd>
+<dt><code>sampleDiff</code></dt>
+<dd>
+<p>Only provided if <code>returnSamples</code> is TRUE.
+List of sampled values for each pairwise MC difference.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Cohen, E. B., C. S. Rushing, F. R. Moore, M. T. Hallworth, J. A. Hostetler,
+M. Gutierrez Ramirez, and P. P. Marra. 2019. The strength of
+migratory connectivity for birds en route to breeding through the Gulf of Mexico.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data('OVENdata')
+ovenPsi &lt;- estTransition(isGL = OVENdata$isGL, #Logical vector:light-level GL(T)
+                 isTelemetry = !OVENdata$isGL,
+                 geoBias = OVENdata$geo.bias, # Light-level GL location bias
+                 geoVCov = OVENdata$geo.vcov, # Location covariance matrix
+                 targetSites = OVENdata$targetSites, # Non-breeding target sites
+                 originSites = OVENdata$originSites, # Breeding origin sites
+                 originPoints = OVENdata$originPoints, # Capture Locations
+                 targetPoints = OVENdata$targetPoints, # Device target locations
+                 verbose = 0,   # output options
+                 nSamples = 100, # This is set low for example
+                 resampleProjection = sf::st_crs(OVENdata$targetSites))
+ovenEst &lt;- estStrength(targetDist = OVENdata$targetDist, # targetSites distance matrix
+                 originDist = OVENdata$originDist, # originSites distance matrix
+                 originRelAbund = OVENdata$originRelAbund,#Origin relative abund
+                 psi = ovenPsi,
+                 verbose = 1,   # output options
+                 nSamples = 1000)
+fm &lt;- getCMRexample()
+originPos13 &lt;- matrix(c(rep(seq(-99, -81, 2), each = 10),
+                        rep(seq(49, 31, -2), 10)), 100, 2)
+targetPos13 &lt;- matrix(c(rep(seq(-79, -61, 2), each = 10),
+                        rep(seq(9, -9, -2), 10)), 100, 2)
+originPosCMR &lt;- rowsum(originPos13, c(rep(1:2, 5, each = 5),
+                                      rep(3:4, 5, each = 5))) / 25
+targetPosCMR &lt;- rowsum(targetPos13, c(rep(1:2, 5, each = 5),
+                                      rep(3:4, 5, each = 5))) / 25
+originDist &lt;- distFromPos(originPosCMR, 'ellipsoid')
+targetDist &lt;- distFromPos(targetPosCMR, 'ellipsoid')
+originRelAbundTrue &lt;- rep(0.25, 4)
+theorEst &lt;- estStrength(originRelAbund = originRelAbundTrue, psi = fm,
+                  originDist = originDist, targetDist = targetDist,
+                  originSites = 5:8, targetSites = c(3,2,1,4),
+                  nSamples = 1000, verbose = 0,
+                  sampleSize = length(grep("[2-5]", fm$data$data$ch)))
+ovenEst
+theorEst
+diff1 &lt;- diffMC(estimates = list(Ovenbird = ovenEst, Theorybird = theorEst),
+                nSamples = 10000, returnSamples = TRUE)
+
+
+</code></pre>
+
+
+</div>

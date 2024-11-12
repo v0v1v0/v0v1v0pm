@@ -1,0 +1,101 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>task_dataset</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create a Dataset from a Task</h2>
+
+<h3>Description</h3>
+
+<p>Creates a torch dataset from an mlr3 <code>Task</code>.
+The resulting dataset's <code style="white-space: pre;">⁠$.get_batch()⁠</code> method returns a list with elements <code>x</code>, <code>y</code> and <code>index</code>:
+</p>
+
+<ul>
+<li> <p><code>x</code> is a list with tensors, whose content is defined by the parameter <code>feature_ingress_tokens</code>.
+</p>
+</li>
+<li> <p><code>y</code> is the target variable and its content is defined by the parameter <code>target_batchgetter</code>.
+</p>
+</li>
+<li> <p><code>.index</code> is the index of the batch in the task's data.
+</p>
+</li>
+</ul>
+<p>The data is returned on the device specified by the parameter <code>device</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">task_dataset(task, feature_ingress_tokens, target_batchgetter = NULL, device)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>task</code></td>
+<td>
+<p>(<code>Task</code>)<br>
+The task for which to build the dataset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>feature_ingress_tokens</code></td>
+<td>
+<p>(named <code>list()</code> of <code>TorchIngressToken</code>)<br>
+Each ingress token defines one item in the <code style="white-space: pre;">⁠$x⁠</code> value of a batch with corresponding names.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>target_batchgetter</code></td>
+<td>
+<p>(<code style="white-space: pre;">⁠function(data, device)⁠</code>)<br>
+A function taking in arguments <code>data</code>, which is a <code>data.table</code> containing only the target variable, and <code>device</code>.
+It must return the target as a torch tensor on the selected device.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>device</code></td>
+<td>
+<p>(<code>character()</code>)<br>
+The device, e.g. <code>"cuda"</code> or <code>"cpu"</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>torch::dataset</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+task = tsk("iris")
+sepal_ingress = TorchIngressToken(
+  features = c("Sepal.Length", "Sepal.Width"),
+  batchgetter = batchgetter_num,
+  shape = c(NA, 2)
+)
+petal_ingress = TorchIngressToken(
+  features = c("Petal.Length", "Petal.Width"),
+  batchgetter = batchgetter_num,
+  shape = c(NA, 2)
+)
+ingress_tokens = list(sepal = sepal_ingress, petal = petal_ingress)
+
+target_batchgetter = function(data, device) {
+  torch_tensor(data = data[[1L]], dtype = torch_float32(), device)$unsqueeze(2)
+}
+dataset = task_dataset(task, ingress_tokens, target_batchgetter, "cpu")
+batch = dataset$.getbatch(1:10)
+batch
+
+</code></pre>
+
+
+</div>

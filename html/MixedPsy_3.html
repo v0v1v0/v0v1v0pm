@@ -1,0 +1,147 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pseMer</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>PSE/JND from GLMM Estimates Using Bootstrap Method</h2>
+
+<h3>Description</h3>
+
+<p>Estimates the Point of Subjective Equivalence (PSE), the Just Noticeable
+Difference (JND) and the related Standard Errors by means of Bootstrap Method, 
+given an object of class <code>merMod</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pseMer(
+  mer.obj,
+  B = 200,
+  FUN = NULL,
+  alpha = 0.05,
+  ci.type = c("norm", "basic", "perc"),
+  beep = F
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>mer.obj</code></td>
+<td>
+<p>an object of class <code>merMod</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>B</code></td>
+<td>
+<p>integer. Number of bootstrap samples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>FUN</code></td>
+<td>
+<p>an optional, custom made function to specify the required parameters to be estimated.
+If NULL, <code>pseMer</code> estimates PSE and 50%JND of a univariable GLMM with a single intercept and slope.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>significance level of the confidence intervals. Default is 0.05 (95% confidence interval).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ci.type</code></td>
+<td>
+<p>vector of character strings representing the type of intervals required. The value 
+should be any subset of the values accepted by <code>boot.ci</code>: c("norm","basic", "stud", "perc", "bca"). 
+Specify "all" for all five types of intervals. "perc" should be always included for the summary table.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beep</code></td>
+<td>
+<p>logical. If TRUE, a "ping" sound alerts that the simulation is complete. Default is FALSE.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>pseMer</code> estimates PSE and JND (and additional user defined parameters) from a 
+fitted GLMM model (class <code>merMod</code>).
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>pseMer</code> returns a list of length 3 including a summary table (estimate,
+inferior and superior bounds of the confidence interval), the output of <code>bootMer</code>, and that of 
+<code>boot.ci</code>, for further analyses. Confidence intervals in the summary table are
+based on the percentile method.
+</p>
+
+
+<h3>Note</h3>
+
+<p>A first custom function was written in 2012 for the non-CRAN package MERpsychophisics,
+based on the algorithm in Moscatelli et al. (2012). The current function is a wrapper
+of function <code>bootMer</code> and <code>boot.ci</code>. 
+</p>
+<p>Increasing the number of bootstrap samples (<code>B</code>) makes the estimate more reliable. 
+However, this will also increase the duration of the computation.
+</p>
+
+
+<h3>References</h3>
+
+<p>Moscatelli, A., Mezzetti, M., &amp; Lacquaniti, F. (2012). Modeling psychophysical data 
+at the population-level: The generalized linear mixed model. 
+Journal of Vision, 12(11):26, 1-17. doi:10.1167/12.11.26
+</p>
+<p>Bates, D., Mächler, M., Bolker, B., &amp; Walker, S. (2015). Fitting Linear Mixed-Effects 
+Models Using lme4. Journal of Statistical Software, 67(1), 51. https://doi.org/10.18637/jss.v067.i01
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>bootMer</code> and <code>boot.ci</code> for estimation of confidence intervals with the bootstrap method. 
+<code>MixDelta</code> for confidence intervals with delta method.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(lme4)
+#example 1: univariable GLMM
+mod.uni = glmer(formula = cbind(Longer, Total - Longer) ~ X + (1 | Subject),
+family = binomial(link = "probit"), data = simul_data)
+
+BootEstim.uni &lt;- pseMer(mod.uni, B = 100, ci.type = c("perc"))
+
+#example 2: specify custom parameters for multivariable model
+mod.multi &lt;- glmer(cbind(faster, slower) ~ speed * vibration + (1 + speed| subject), 
+family = binomial(link = "probit"), data = vibro_exp3)
+              
+fun2mod = function(mer.obj){
+#allocate space: 4 parameters (jnd_A, jnd_B, pse_A, pse_B)
+jndpse = vector(mode = "numeric", length = 4)
+names(jndpse) = c("pse_0", "pse_32","jnd_0", "jnd_32")
+jndpse[1] = -fixef(mer.obj)[1]/fixef(mer.obj)[2] #pse_0
+jndpse[2] = -(fixef(mer.obj)[1]+fixef(mer.obj)[3])/(fixef(mer.obj)[2]+ fixef(mer.obj)[4]) #pse_0
+jndpse[3] = qnorm(0.75)/fixef(mer.obj)[2] #jnd_0
+jndpse[4] = qnorm(0.75)/(fixef(mer.obj)[2]+ fixef(mer.obj)[4]) #jnd_32
+return(jndpse)
+}
+ 
+BootEstim.multi = pseMer(mod.multi, B = 100, FUN = fun2mod)
+
+</code></pre>
+
+
+</div>

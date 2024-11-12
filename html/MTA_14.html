@@ -1,0 +1,145 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sdev</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Spatial Deviation</h2>
+
+<h3>Description</h3>
+
+<p>Compute the deviation of each territorial unit as regards  
+to its geographical neighborhood. Neighborhood is defined either
+by contiguity order, by a distance value or by a personal matrix (travel time...)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">sdev(x, var1, var2, type = "rel", xid, order, dist, mat)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a sf object including var1 and var2.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var1</code></td>
+<td>
+<p>name of the numerator variable in x.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var2</code></td>
+<td>
+<p>name of the denominator variable in x.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>type of deviation; "rel" for relative deviation, "abs" for 
+absolute deviation (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xid</code></td>
+<td>
+<p>identifier field in x (to be used for importing a personal distance matrix). 
+Default to the first column of x. (optional)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>order</code></td>
+<td>
+<p>contiguity order.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dist</code></td>
+<td>
+<p>distance threshold defining the contiguity. The cartesian 
+distance between units centroids is used by default;
+use mat to apply different metrics.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mat</code></td>
+<td>
+<p>a distance matrix (road distance, travel time...) between x units. 
+Row and column names must fit xid identifiers. (optional)</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The relative spatial deviation is the ratio between var1/var2 and 
+var1/var2 in the specified neighborhood. Values greater than 100 indicate 
+that the unit ratio is greater than the ratio in its neighborhood. Values 
+lower than 100 indicate that the unit ratio is lower than the ratio in its 
+neighborhood.<br>
+The absolute spatial deviation is the amount of numerator that could be 
+moved to obtain the same ratio in all units of its neighborhood.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A vector is returned.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Load data
+library(sf)
+com &lt;- st_read(system.file("metroparis.gpkg", package = "MTA"), layer = "com", quiet = TRUE)
+ept &lt;- st_read(system.file("metroparis.gpkg", package = "MTA"), layer = "ept", quiet = TRUE)
+cardist &lt;- read.table(system.file("cardist.txt", package = "MTA"), check.names = FALSE)
+cardist &lt;- as.matrix(cardist)
+
+# compute absolute spatial deviation in a neighborhood defined by a contiguity
+# order of 1.
+com$sdevabs &lt;- sdev(x = com, var1 = "INC", var2 = "TH", order = 1, type = "abs")
+
+#compute relative spatial deviation in a neighborhood defined within a distance
+# of 5km between communes' centroids
+com$sdevrel &lt;- sdev(x = com, var1 = "INC", var2 = "TH", type = "rel", dist = 5000)
+
+# compute absolute spatial deviation in a neighborhood defined within a road
+# travel time of 10 minutes by car
+com$scardevabs &lt;- sdev(x = com, var1 = "INC", var2 = "TH", type = "abs", dist = 10, mat = cardist)
+
+# compute relative spatial deviation in a neighborhood defined within a road
+# travel time of 10 minutes by car
+com$scardevrel &lt;- sdev(x = com, var1 = "INC", var2 = "TH", type = "rel", dist = 10, mat = cardist)
+
+if(require(mapsf)){
+# relative deviation map
+# set breaks
+bks &lt;- c(min(com$scardevrel), 75, 100, 125, 150, max(com$scardevrel))
+# plot a choropleth map of the relative spatial deviation
+mf_map(x = com, var = "scardevrel", type = "choro", leg_pos = "topleft",
+       leg_title = "Relative Deviation\n(100 = spatial average)",
+       breaks = bks, border = NA,
+       pal = c("#91BFDB", "#E0F3F8", "#FEE090", "#FC8D59", "#D73027"))
+
+# add EPT boundaries
+mf_map(x = ept, col = NA, add = TRUE)
+
+# layout
+mf_layout(title = "Spatial Deviation (neighborhood : 10 minutes by car)",
+          credits = paste0("Sources: GEOFLA® 2015 v2.1, Apur, impots.gouv.fr",
+                           "\nMTA", packageVersion("MTA")),
+          arrow = FALSE)
+}
+</code></pre>
+
+
+</div>

@@ -1,0 +1,175 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>makeFun</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create a function from a formula</h2>
+
+<h3>Description</h3>
+
+<p>Provides an easy mechanism for creating simple "mathematical"
+functions via a formula interface.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">makeFun(object, ...)
+
+## S3 method for class ''function''
+makeFun(
+  object,
+  ...,
+  strict.declaration = TRUE,
+  use.environment = TRUE,
+  suppress.warnings = FALSE
+)
+
+## S3 method for class 'formula'
+makeFun(
+  object,
+  ...,
+  strict.declaration = TRUE,
+  use.environment = TRUE,
+  suppress.warnings = TRUE
+)
+
+## S3 method for class 'lm'
+makeFun(object, ..., transformation = NULL)
+
+## S3 method for class 'glm'
+makeFun(object, ..., type = c("response", "link"), transformation = NULL)
+
+## S3 method for class 'nls'
+makeFun(object, ..., transformation = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>an object from which to create a function.  This should generally
+be specified without naming.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments in the form <code>var = val</code> that
+set default values for the inputs to the function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strict.declaration</code></td>
+<td>
+<p>if <code>TRUE</code> (the default), an error is thrown if
+default values are given for variables not appearing in the <code>object</code> formula.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use.environment</code></td>
+<td>
+<p>if <code>TRUE</code>, then variables implicitly defined in the
+<code>object</code> formula can take default values from the environment at the time
+<code>makeFun</code> is called.  A warning message alerts the user to this situation,
+unless <code>suppress.warnings</code> is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>suppress.warnings</code></td>
+<td>
+<p>A logical indicating whether warnings should be suppressed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transformation</code></td>
+<td>
+<p>a function used to transform the response.
+This can be useful to invert a transformation used on the response
+when creating the model.  If <code>NULL</code>, an attempt will be made to infer
+the transformation from the model formula. A few simple transformations
+(<code>log</code>, <code>log2</code>, <code>sqrt</code>) are recognized.  For other transformations,
+<code>transformation</code> should be provided explicitly.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>one of <code>'response'</code> (default) or <code>'link'</code> specifying scale to be used
+for value of function returned.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The definition of the function is given by the left side of a two-sided formula
+or the right side of a one-sided formula.
+The right
+side lists at least one of the inputs to the function.
+The inputs to the function are all variables appearing on either the left
+or right sides of the formula.  Those appearing in the right side will
+occur in the order specified.  Those not appearing in the right side will
+appear in an unspecified order.
+</p>
+<p>When creating a function from a model created with <code>lm</code>, <code>glm</code>, or <code>nls</code>,
+the function produced is a wrapper around the corresponding version of <code>predict</code>.
+This means that having variables in the model with names that match arguments of
+<code>predict</code> will lead to potentially ambiguous situations and should be avoided.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a function
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">f &lt;- makeFun( sin(x^2 * b) ~ x &amp; y &amp; a); f
+g &lt;- makeFun( sin(x^2 * b) ~ x &amp; y &amp; a, a = 2 ); g
+h &lt;- makeFun( a * sin(x^2 * b) ~ b &amp; y, a = 2, y = 3); h
+ff &lt;- makeFun(~ a*x^b + y ); ff # one sided formula
+gg &lt;- makeFun(cos(a*x^b + y) ~ . ); gg # dummy right-hand side
+if (require(mosaicData)) {
+  model &lt;- lm( log(length) ~ log(width), data = KidsFeet)
+  f &lt;- makeFun(model, transformation = exp)
+  f(8.4)
+  head(KidsFeet, 1)
+}
+
+if (require(mosaicData)) {
+  model &lt;- lm(wage ~ poly(exper, degree = 2), data = CPS85)
+  fit &lt;- makeFun(model)
+  if (require(ggformula)) {
+    gf_point(wage ~ exper, data = CPS85) |&gt;
+    gf_fun(fit(exper) ~ exper, color = "red")
+  }
+}
+if (require(mosaicData)) {
+model &lt;- glm(wage ~ poly(exper, degree = 2), data = CPS85, family = gaussian)
+fit &lt;- makeFun(model)
+  if (require(ggformula)) {
+    gf_jitter(wage ~ exper, data = CPS85) |&gt;
+    gf_fun(fit(exper) ~ exper, color = "red")
+    gf_jitter(wage ~ exper, data = CPS85) |&gt;
+    gf_function(fun = fit, color = "blue")
+  }
+}
+if (require(mosaicData)) {
+model &lt;- nls( wage ~ A + B * exper + C * exper^2, data = CPS85, start = list(A = 1, B = 1, C = 1) )
+fit &lt;- makeFun(model)
+  if (require(ggformula)) {
+    gf_point(wage ~ exper, data = CPS85) |&gt;
+    gf_fun(fit(exper) ~ exper, color = "red")
+  }
+}
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,189 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modeltime_calibrate</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Preparation for forecasting</h2>
+
+<h3>Description</h3>
+
+<p>Calibration sets the stage for accuracy and forecast confidence
+by computing predictions and residuals from out of sample data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modeltime_calibrate(object, new_data, id = NULL, quiet = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A fitted model object that is either:
+</p>
+
+<ol>
+<li>
+<p> A modeltime table that has been created using <code>modeltime_table()</code>
+</p>
+</li>
+<li>
+<p> A workflow that has been fit by <code>fit.workflow()</code> or
+</p>
+</li>
+<li>
+<p> A parsnip model that has been fit using <code>fit.model_spec()</code>
+</p>
+</li>
+</ol>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>new_data</code></td>
+<td>
+<p>A test data set <code>tibble</code> containing future information (timestamps and actual values).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>A quoted column name containing an identifier column identifying time series that are grouped.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quiet</code></td>
+<td>
+<p>Hide errors (<code>TRUE</code>, the default), or display them as they occur?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments passed to <code>modeltime_forecast()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The results of calibration are used for:
+</p>
+
+<ul>
+<li> <p><strong>Forecast Confidence Interval Estimation</strong>: The out of sample residual data is used to calculate the
+confidence interval. Refer to <code>modeltime_forecast()</code>.
+</p>
+</li>
+<li> <p><strong>Accuracy Calculations:</strong> The out of sample actual and prediction values are used to calculate
+performance metrics. Refer to <code>modeltime_accuracy()</code>
+</p>
+</li>
+</ul>
+<p>The calibration steps include:
+</p>
+
+<ol>
+<li>
+<p> If not a Modeltime Table, objects are converted to Modeltime Tables internally
+</p>
+</li>
+<li>
+<p> Two Columns are added:
+</p>
+</li>
+</ol>
+<ul>
+<li> <p><code>.type</code>: Indicates the sample type. This is:
+</p>
+
+<ul>
+<li>
+<p> "Test" if predicted, or
+</p>
+</li>
+<li>
+<p> "Fitted" if residuals were stored during modeling.
+</p>
+</li>
+</ul>
+</li>
+<li> <p><code>.calibration_data</code>:
+</p>
+
+<ul>
+<li>
+<p> Contains a tibble with Timestamps, Actual Values, Predictions and Residuals
+calculated from <code>new_data</code> (Test Data)
+</p>
+</li>
+<li>
+<p> If <code>id</code> is provided, will contain a 5th column that is the identifier variable.
+</p>
+</li>
+</ul>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>A Modeltime Table (<code>mdl_time_tbl</code>) with nested <code>.calibration_data</code> added
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(dplyr)
+library(lubridate)
+library(timetk)
+library(parsnip)
+library(rsample)
+
+# Data
+m750 &lt;- m4_monthly %&gt;% filter(id == "M750")
+
+# Split Data 80/20
+splits &lt;- initial_time_split(m750, prop = 0.8)
+
+# --- MODELS ---
+
+# Model 1: prophet ----
+model_fit_prophet &lt;- prophet_reg() %&gt;%
+    set_engine(engine = "prophet") %&gt;%
+    fit(value ~ date, data = training(splits))
+
+
+# ---- MODELTIME TABLE ----
+
+models_tbl &lt;- modeltime_table(
+    model_fit_prophet
+)
+
+# ---- CALIBRATE ----
+
+calibration_tbl &lt;- models_tbl %&gt;%
+    modeltime_calibrate(
+        new_data = testing(splits)
+    )
+
+# ---- ACCURACY ----
+
+calibration_tbl %&gt;%
+    modeltime_accuracy()
+
+# ---- FORECAST ----
+
+calibration_tbl %&gt;%
+    modeltime_forecast(
+        new_data    = testing(splits),
+        actual_data = m750
+    )
+
+
+</code></pre>
+
+
+</div>

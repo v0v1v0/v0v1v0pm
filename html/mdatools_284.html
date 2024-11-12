@@ -1,0 +1,577 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pls</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Partial Least Squares regression</h2>
+
+<h3>Description</h3>
+
+<p><code>pls</code> is used to calibrate, validate and use of partial least squares (PLS)
+regression model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pls(
+  x,
+  y,
+  ncomp = min(nrow(x) - 1, ncol(x), 20),
+  center = TRUE,
+  scale = FALSE,
+  cv = NULL,
+  exclcols = NULL,
+  exclrows = NULL,
+  x.test = NULL,
+  y.test = NULL,
+  method = "simpls",
+  info = "",
+  ncomp.selcrit = "min",
+  lim.type = "ddmoments",
+  alpha = 0.05,
+  gamma = 0.01,
+  cv.scope = "local"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>matrix with predictors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>matrix with responses.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncomp</code></td>
+<td>
+<p>maximum number of components to calculate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>center</code></td>
+<td>
+<p>logical, center or not predictors and response values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p>logical, scale (standardize) or not predictors and response values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv</code></td>
+<td>
+<p>cross-validation settings (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exclcols</code></td>
+<td>
+<p>columns of x to be excluded from calculations (numbers, names or vector with logical values)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exclrows</code></td>
+<td>
+<p>rows to be excluded from calculations (numbers, names or vector with logical values)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x.test</code></td>
+<td>
+<p>matrix with predictors for test set.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y.test</code></td>
+<td>
+<p>matrix with responses for test set.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>algorithm for computing PLS model (only 'simpls' is supported so far)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>info</code></td>
+<td>
+<p>short text with information about the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncomp.selcrit</code></td>
+<td>
+<p>criterion for selecting optimal number of components (<code>'min'</code> for
+first local minimum of RMSECV and <code>'wold'</code> for Wold's rule.)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lim.type</code></td>
+<td>
+<p>which method to use for calculation of critical limits for residual distances (see details)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>significance level for extreme limits for T2 and Q disances.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma</code></td>
+<td>
+<p>significance level for outlier limits for T2 and Q distances.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv.scope</code></td>
+<td>
+<p>scope for center/scale operations inside CV loop: 'global' — using globally computed mean and std
+or 'local' — recompute new for each local calibration set.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>So far only SIMPLS method [1] is available. Implementation works both with one
+and multiple response variables.
+</p>
+<p>Like in <code>pca</code>, <code>pls</code> uses number of components (<code>ncomp</code>) as a minimum of
+number of objects - 1, number of x variables and the default or provided value. Regression
+coefficients, predictions and other results are calculated for each set of components from 1
+to <code>ncomp</code>: 1, 1:2, 1:3, etc. The optimal number of components, (<code>ncomp.selected</code>),
+is found using first local minumum, but can be also forced to user defined value using function
+(<code>selectCompNum.pls</code>). The selected optimal number of components is used for all
+default operations - predictions, plots, etc.
+</p>
+<p>Cross-validation settings, <code>cv</code>, can be a number or a list. If <code>cv</code> is a number, it
+will be used as a number of segments for random cross-validation (if <code>cv = 1</code>, full
+cross-validation will be preformed). If it is a list, the following syntax can be used:
+<code>cv = list("rand", nseg, nrep)</code> for random repeated cross-validation with <code>nseg</code>
+segments and <code>nrep</code> repetitions or <code>cv = list("ven", nseg)</code> for systematic splits
+to <code>nseg</code> segments ('venetian blinds').
+</p>
+<p>Calculation of confidence intervals and p-values for regression coefficients can by done
+based on Jack-Knifing resampling. This is done automatically if cross-validation is used.
+However it is recommended to use at least 10 segments for stable JK result. See help for
+<code>regcoeffs</code> objects for more details.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns an object of <code>pls</code> class with following fields:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>ncomp </code></td>
+<td>
+<p>number of components included to the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncomp.selected </code></td>
+<td>
+<p>selected (optimal) number of components.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xcenter </code></td>
+<td>
+<p>vector with values used to center the predictors (x).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ycenter </code></td>
+<td>
+<p>vector with values used to center the responses (y).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xscale </code></td>
+<td>
+<p>vector with values used to scale the predictors (x).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>yscale </code></td>
+<td>
+<p>vector with values used to scale the responses (y).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xloadings </code></td>
+<td>
+<p>matrix with loading values for x decomposition.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>yloadings </code></td>
+<td>
+<p>matrix with loading values for y decomposition.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xeigenvals </code></td>
+<td>
+<p>vector with eigenvalues of components (variance of x-scores).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>yeigenvals </code></td>
+<td>
+<p>vector with eigenvalues of components (variance of y-scores).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights </code></td>
+<td>
+<p>matrix with PLS weights.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coeffs </code></td>
+<td>
+<p>object of class <code>regcoeffs</code> with regression coefficients calculated
+for each component.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>info </code></td>
+<td>
+<p>information about the model, provided by user when build the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv </code></td>
+<td>
+<p>information cross-validation method used (if any).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>res </code></td>
+<td>
+<p>a list with result objects (e.g. calibration, cv, etc.)</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Sergey Kucheryavskiy (svkucheryavski@gmail.com)
+</p>
+
+
+<h3>References</h3>
+
+<p>1. S. de Jong, Chemometrics and Intelligent Laboratory Systems 18 (1993) 251-263.
+2. Tarja Rajalahti et al. Chemometrics and Laboratory Systems, 95 (2009), 35-48.
+3. Il-Gyo Chong, Chi-Hyuck Jun. Chemometrics and Laboratory Systems, 78 (2005), 103-112.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Main methods for <code>pls</code> objects:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+ <code>print</code> </td>
+<td style="text-align: left;"> prints information about a <code>pls</code> object.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>summary.pls</code> </td>
+<td style="text-align: left;"> shows performance statistics for the model.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plot.pls</code> </td>
+<td style="text-align: left;"> shows plot overview of the model.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>pls.simpls</code> </td>
+<td style="text-align: left;"> implementation of SIMPLS algorithm.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>predict.pls</code> </td>
+<td style="text-align: left;"> applies PLS model to a new data.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>selectCompNum.pls</code> </td>
+<td style="text-align: left;"> set number of optimal components in the model.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>setDistanceLimits.pls</code> </td>
+<td style="text-align: left;"> allows to change parameters for critical limits.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>categorize.pls</code> </td>
+<td style="text-align: left;"> categorize data rows similar to
+   <code>categorize.pca</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>selratio</code> </td>
+<td style="text-align: left;"> computes matrix with selectivity ratio values.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>vipscores</code> </td>
+<td style="text-align: left;"> computes matrix with VIP scores values.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<p>Plotting methods for <code>pls</code> objects:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+ <code>plotXScores.pls</code> </td>
+<td style="text-align: left;"> shows scores plot for x decomposition.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotXYScores.pls</code> </td>
+<td style="text-align: left;"> shows scores plot for x and y decomposition.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotXLoadings.pls</code> </td>
+<td style="text-align: left;"> shows loadings plot for x decomposition.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotXYLoadings.pls</code> </td>
+<td style="text-align: left;"> shows loadings plot for x and y decomposition.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotXVariance.pls</code> </td>
+<td style="text-align: left;"> shows explained variance plot for x decomposition.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotYVariance.pls</code> </td>
+<td style="text-align: left;"> shows explained variance plot for y decomposition.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotXCumVariance.pls</code> </td>
+<td style="text-align: left;"> shows cumulative explained variance plot for y
+ decomposition.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotYCumVariance.pls</code> </td>
+<td style="text-align: left;"> shows cumulative explained variance plot for y
+ decomposition.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotXResiduals.pls</code> </td>
+<td style="text-align: left;"> shows distance/residuals plot for x decomposition.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotXYResiduals.pls</code> </td>
+<td style="text-align: left;"> shows joint distance plot for x and y decomposition.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotWeights.pls</code> </td>
+<td style="text-align: left;"> shows plot with weights.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotSelectivityRatio.pls</code> </td>
+<td style="text-align: left;"> shows plot with selectivity ratio values.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotVIPScores.pls</code> </td>
+<td style="text-align: left;"> shows plot with VIP scores values.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<p>Methods inherited from <code>regmodel</code> object (parent class for <code>pls</code>):
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+ <code>plotPredictions.regmodel</code> </td>
+<td style="text-align: left;"> shows predicted vs. measured plot.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotRMSE.regmodel</code> </td>
+<td style="text-align: left;"> shows RMSE plot.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotRMSERatio.regmodel</code> </td>
+<td style="text-align: left;"> shows plot for ratio RMSECV/RMSEC values.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>plotYResiduals.regmodel</code> </td>
+<td style="text-align: left;"> shows residuals plot for y values.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+ <code>getRegcoeffs.regmodel</code> </td>
+<td style="text-align: left;"> returns matrix with regression coefficients.</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<p>Most of the methods for plotting data (except loadings and regression coefficients) are also
+available for PLS results (<code>plsres</code>) objects. There is also a randomization test
+for PLS-regression (<code>randtest</code>) and implementation of interval PLS algorithm
+for variable selection (<code>ipls</code>)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">### Examples of using PLS model class
+library(mdatools)
+
+## 1. Make a PLS model for concentration of first component
+## using full-cross validation and automatic detection of
+## optimal number of components and show an overview
+
+data(simdata)
+x = simdata$spectra.c
+y = simdata$conc.c[, 1]
+
+model = pls(x, y, ncomp = 8, cv = 1)
+summary(model)
+plot(model)
+
+## 2. Make a PLS model for concentration of first component
+## using test set and 10 segment cross-validation and show overview
+
+data(simdata)
+x = simdata$spectra.c
+y = simdata$conc.c[, 1]
+x.t = simdata$spectra.t
+y.t = simdata$conc.t[, 1]
+
+model = pls(x, y, ncomp = 8, cv = 10, x.test = x.t, y.test = y.t)
+model = selectCompNum(model, 2)
+summary(model)
+plot(model)
+
+## 3. Make a PLS model for concentration of first component
+## using only test set validation and show overview
+
+data(simdata)
+x = simdata$spectra.c
+y = simdata$conc.c[, 1]
+x.t = simdata$spectra.t
+y.t = simdata$conc.t[, 1]
+
+model = pls(x, y, ncomp = 6, x.test = x.t, y.test = y.t)
+model = selectCompNum(model, 2)
+summary(model)
+plot(model)
+
+## 4. Show variance and error plots for a PLS model
+par(mfrow = c(2, 2))
+plotXCumVariance(model, type = 'h')
+plotYCumVariance(model, type = 'b', show.labels = TRUE, legend.position = 'bottomright')
+plotRMSE(model)
+plotRMSE(model, type = 'h', show.labels = TRUE)
+par(mfrow = c(1, 1))
+
+## 5. Show scores plots for a PLS model
+par(mfrow = c(2, 2))
+plotXScores(model)
+plotXScores(model, comp = c(1, 3), show.labels = TRUE)
+plotXYScores(model)
+plotXYScores(model, comp = 2, show.labels = TRUE)
+par(mfrow = c(1, 1))
+
+## 6. Show loadings and coefficients plots for a PLS model
+par(mfrow = c(2, 2))
+plotXLoadings(model)
+plotXLoadings(model, comp = c(1, 2), type = 'l')
+plotXYLoadings(model, comp = c(1, 2), legend.position = 'topleft')
+plotRegcoeffs(model)
+par(mfrow = c(1, 1))
+
+## 7. Show predictions and residuals plots for a PLS model
+par(mfrow = c(2, 2))
+plotXResiduals(model, show.label = TRUE)
+plotYResiduals(model, show.label = TRUE)
+plotPredictions(model)
+plotPredictions(model, ncomp = 4, xlab = 'C, reference', ylab = 'C, predictions')
+par(mfrow = c(1, 1))
+
+## 8. Selectivity ratio and VIP scores plots
+par(mfrow = c(2, 2))
+plotSelectivityRatio(model)
+plotSelectivityRatio(model, ncomp = 1)
+par(mfrow = c(1, 1))
+
+## 9. Variable selection with selectivity ratio
+selratio = getSelectivityRatio(model)
+selvar = !(selratio &lt; 8)
+
+xsel = x[, selvar]
+modelsel = pls(xsel, y, ncomp = 6, cv = 1)
+modelsel = selectCompNum(modelsel, 3)
+
+summary(model)
+summary(modelsel)
+
+## 10. Calculate average spectrum and show the selected variables
+i = 1:ncol(x)
+ms = apply(x, 2, mean)
+
+par(mfrow = c(2, 2))
+
+plot(i, ms, type = 'p', pch = 16, col = 'red', main = 'Original variables')
+plotPredictions(model)
+
+plot(i, ms, type = 'p', pch = 16, col = 'lightgray', main = 'Selected variables')
+points(i[selvar], ms[selvar], col = 'red', pch = 16)
+plotPredictions(modelsel)
+
+par(mfrow = c(1, 1))
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,294 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>train_magma</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Training Magma with an EM algorithm</h2>
+
+<h3>Description</h3>
+
+<p>The hyper-parameters and the hyper-posterior distribution involved in Magma
+can be learned thanks to an EM algorithm implemented in <code>train_magma</code>.
+By providing a dataset, the model hypotheses (hyper-prior mean parameter and
+covariance kernels) and initialisation values for the hyper-parameters, the
+function computes maximum likelihood estimates of the HPs as well as the
+mean and covariance parameters of the Gaussian hyper-posterior distribution
+of the mean process.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">train_magma(
+  data,
+  prior_mean = NULL,
+  ini_hp_0 = NULL,
+  ini_hp_i = NULL,
+  kern_0 = "SE",
+  kern_i = "SE",
+  common_hp = TRUE,
+  grid_inputs = NULL,
+  pen_diag = 1e-10,
+  n_iter_max = 25,
+  cv_threshold = 0.001,
+  fast_approx = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A tibble or data frame. Required columns: <code>ID</code>, <code>Input</code>
+, <code>Output</code>. Additional columns for covariates can be specified.
+The <code>ID</code> column contains the unique names/codes used to identify each
+individual/task (or batch of data).
+The <code>Input</code> column should define the variable that is used as
+reference for the observations (e.g. time for longitudinal data). The
+<code>Output</code> column specifies the observed values (the response
+variable). The data frame can also provide as many covariates as desired,
+with no constraints on the column names. These covariates are additional
+inputs (explanatory variables) of the models that are also observed at
+each reference <code>Input</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior_mean</code></td>
+<td>
+<p>Hyper-prior mean parameter (m_0) of the mean GP. This
+argument can be specified under various formats, such as:
+</p>
+
+<ul>
+<li>
+<p> NULL (default). The hyper-prior mean would be set to 0 everywhere.
+</p>
+</li>
+<li>
+<p> A number. The hyper-prior mean would be a constant function.
+</p>
+</li>
+<li>
+<p> A vector of the same length as all the distinct Input values in the
+<code>data</code> argument. This vector would be considered as the evaluation
+of the hyper-prior mean function at the training Inputs.
+</p>
+</li>
+<li>
+<p> A function. This function is defined as the hyper_prior mean.
+</p>
+</li>
+<li>
+<p> A tibble or data frame. Required columns: Input, Output. The Input
+values should include at least the same values as in the <code>data</code>
+argument.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ini_hp_0</code></td>
+<td>
+<p>A named vector, tibble or data frame of hyper-parameters
+associated with <code>kern_0</code>, the mean process' kernel. The
+columns/elements should be named according to the hyper-parameters
+that are used in <code>kern_0</code>. If NULL (default), random values are used
+as initialisation. The <code>hp</code> function can be used to draw
+custom hyper-parameters with the correct format.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ini_hp_i</code></td>
+<td>
+<p>A tibble or data frame of hyper-parameters
+associated with <code>kern_i</code>, the individual processes' kernel.
+Required column : <code>ID</code>. The <code>ID</code> column contains the unique
+names/codes used to identify each individual/task. The other columns
+should be named according to the hyper-parameters that are used in
+<code>kern_i</code>. Compared to <code>ini_hp_0</code> should contain an additional
+'noise' column to initialise the noise hyper-parameter of the model. If
+NULL (default), random values are used as initialisation. The
+<code>hp</code> function can be used to draw custom hyper-parameters
+with the correct format.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kern_0</code></td>
+<td>
+<p>A kernel function, associated with the mean GP.
+Several popular kernels
+(see <a href="https://www.cs.toronto.edu/~duvenaud/cookbook/">The Kernel
+Cookbook</a>) are already implemented and can be selected within the
+following list:
+</p>
+
+<ul>
+<li>
+<p> "SE": (default value) the Squared Exponential Kernel (also called
+Radial Basis Function or Gaussian kernel),
+</p>
+</li>
+<li>
+<p> "LIN": the Linear kernel,
+</p>
+</li>
+<li>
+<p> "PERIO": the Periodic kernel,
+</p>
+</li>
+<li>
+<p> "RQ": the Rational Quadratic kernel.
+Compound kernels can be created as sums or products of the above kernels.
+For combining kernels, simply provide a formula as a character string
+where elements are separated by whitespaces (e.g. "SE + PERIO"). As the
+elements are treated sequentially from the left to the right, the product
+operator '*' shall always be used before the '+' operators (e.g.
+'SE * LIN + RQ' is valid whereas 'RQ + SE * LIN' is  not).
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kern_i</code></td>
+<td>
+<p>A kernel function, associated with the individual GPs. ("SE",
+"PERIO" and "RQ" are also available here).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>common_hp</code></td>
+<td>
+<p>A logical value, indicating whether the set of
+hyper-parameters is assumed to be common to all individuals.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grid_inputs</code></td>
+<td>
+<p>A vector, indicating the grid of additional reference
+inputs on which the mean process' hyper-posterior should be evaluated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pen_diag</code></td>
+<td>
+<p>A number. A jitter term, added on the diagonal to prevent
+numerical issues when inverting nearly singular matrices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_iter_max</code></td>
+<td>
+<p>A number, indicating the maximum number of iterations of
+the EM algorithm to proceed while not reaching convergence.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv_threshold</code></td>
+<td>
+<p>A number, indicating the threshold of the likelihood gain
+under which the EM algorithm will stop. The convergence condition is
+defined as the difference of likelihoods between two consecutive steps,
+divided by the absolute value of the last one
+( <code class="reqn">(LL_n - LL_n-1) / |LL_n|</code> ).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fast_approx</code></td>
+<td>
+<p>A boolean, indicating whether the EM algorithm should
+stop after only one iteration of the E-step. This advanced feature is
+mainly used to provide a faster approximation of the model selection
+procedure, by preventing any optimisation over the hyper-parameters.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The user can specify custom kernel functions for the argument
+<code>kern_0</code> and <code>kern_i</code>. The hyper-parameters used in the kernel
+should have explicit names, and be contained within the <code>hp</code>
+argument. <code>hp</code> should typically be defined as a named vector or a
+data frame. Although it is not mandatory for the <code>train_magma</code>
+function to run, gradients can be provided within kernel function
+definition. See for example <code>se_kernel</code> to create a custom
+kernel function displaying an adequate format to be used in Magma.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list, gathering the results of the EM algorithm used for training
+in Magma. The elements of the list are:
+</p>
+
+<ul>
+<li>
+<p> hp_0: A tibble of the trained hyper-parameters for the mean
+process' kernel.
+</p>
+</li>
+<li>
+<p> hp_i: A tibble of all the trained hyper-parameters for the
+individual processes' kernels.
+</p>
+</li>
+<li>
+<p> hyperpost: A sub-list gathering the parameters of the mean processes'
+hyper-posterior distributions, namely:
+</p>
+
+<ul>
+<li>
+<p> mean: A tibble, the hyper-posterior mean parameter
+(<code>Output</code>) evaluated at each training reference <code>Input</code>.
+</p>
+</li>
+<li>
+<p> cov: A matrix, the covariance parameter for the hyper-posterior
+distribution of the mean process.
+</p>
+</li>
+<li>
+<p> pred: A tibble, the predicted mean and variance at <code>Input</code>
+for the mean process' hyper-posterior distribution under a format
+that allows the direct visualisation as a GP prediction.
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p> ini_args: A list containing the initial function arguments and values
+for the hyper-prior mean, the hyper-parameters. In particular, if
+those arguments were set to NULL, <code>ini_args</code> allows us to retrieve
+the (randomly chosen) initialisations used during training.
+</p>
+</li>
+<li>
+<p> seq_loglikelihood: A vector, containing the sequence of log-likelihood
+values associated with each iteration.
+</p>
+</li>
+<li>
+<p> converged: A logical value indicated whether the EM algorithm converged
+or not.
+</p>
+</li>
+<li>
+<p> training_time: Total running time of the complete training.
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">TRUE
+</code></pre>
+
+
+</div>

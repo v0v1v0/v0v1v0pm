@@ -1,0 +1,649 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ml_mcmc</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+MCMC Estimation for Mixed Effects Model
+</h2>
+
+<h3>Description</h3>
+
+<p>Fits a mixed effects model via MCMC. The outcome can be normally distributed
+or ordinal (Goldstein, 2011; Goldstein, Carpenter, Kenward &amp; Levin, 2009).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ml_mcmc( formula, data, iter=3000, burnin=500, print_iter=100, outcome="normal",
+     nu0=NULL, s0=1, psi_nu0_list=NULL, psi_S0_list=NULL, inits_lme4=FALSE,
+     thresh_fac=5.8, ridge=1e-5)
+
+## S3 method for class 'ml_mcmc'
+summary(object, digits=4, file=NULL, ...)
+
+## S3 method for class 'ml_mcmc'
+plot(x, ask=TRUE, ...)
+
+## S3 method for class 'ml_mcmc'
+coef(object, ...)
+
+## S3 method for class 'ml_mcmc'
+vcov(object, ...)
+
+ml_mcmc_fit(y, X, Z_list, beta, Psi_list, sigma2, alpha, u_list, idcluster_list,
+    onlyintercept_list, ncluster_list, sigma2_nu0, sigma2_sigma2_0, psi_nu0_list,
+    psi_S0_list, est_sigma2, est_probit, parameter_index, est_parameter, npar, iter,
+    save_iter, verbose=TRUE, print_iter=500, parnames0=NULL, K=9999, est_thresh=FALSE,
+    thresh_fac=5.8, ridge=1e-5, parm_summary=TRUE )
+
+## exported Rcpp functions
+miceadds_rcpp_ml_mcmc_sample_beta(xtx_inv, X, Z_list, y, u_list, idcluster_list, sigma2,
+     onlyintercept_list, NR, ridge)
+miceadds_rcpp_ml_mcmc_sample_u(X, beta, Z_list, y, ztz_list, idcluster_list,
+    ncluster_list, sigma2, Psi_list, onlyintercept_list, NR, u0_list, ridge)
+miceadds_rcpp_ml_mcmc_sample_psi(u_list, nu0_list, S0_list, NR, ridge)
+miceadds_rcpp_ml_mcmc_sample_sigma2(y, X, beta, Z_list, u_list, idcluster_list,
+     onlyintercept_list, nu0, sigma2_0, NR, ridge)
+miceadds_rcpp_ml_mcmc_sample_latent_probit(X, beta, Z_list, u_list, idcluster_list, NR,
+     y_int, alpha, minval, maxval)
+miceadds_rcpp_ml_mcmc_sample_thresholds(X, beta, Z_list, u_list, idcluster_list, NR, K,
+     alpha, sd_proposal, y_int)
+miceadds_rcpp_ml_mcmc_predict_fixed_random(X, beta, Z_list, u_list, idcluster_list, NR)
+miceadds_rcpp_ml_mcmc_predict_random_list(Z_list, u_list, idcluster_list, NR, N)
+miceadds_rcpp_ml_mcmc_predict_random(Z, u, idcluster)
+miceadds_rcpp_ml_mcmc_predict_fixed(X, beta)
+miceadds_rcpp_ml_mcmc_subtract_fixed(y, X, beta)
+miceadds_rcpp_ml_mcmc_subtract_random(y, Z, u, idcluster, onlyintercept)
+miceadds_rcpp_ml_mcmc_compute_ztz(Z, idcluster, ncluster)
+miceadds_rcpp_ml_mcmc_compute_xtx(X)
+miceadds_rcpp_ml_mcmc_probit_category_prob(y_int, alpha, mu1, use_log)
+miceadds_rcpp_pnorm(x, mu, sigma)
+miceadds_rcpp_qnorm(x, mu, sigma)
+miceadds_rcpp_rtnorm(mu, sigma, lower, upper)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>An <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span> formula in <span class="pkg">lme4</span>-like specification</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Data frame</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+
+<p>Number of iterations
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p>Number of burnin iterations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>print_iter</code></td>
+<td>
+
+<p>Integer indicating that every <code>print_iter</code>th iteration progress
+should be displayed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outcome</code></td>
+<td>
+<p>Outcome distribution: <code>"normal"</code> or <code>"probit"</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nu0</code></td>
+<td>
+<p>Prior sample size</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>s0</code></td>
+<td>
+<p>Prior guess for variance</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inits_lme4</code></td>
+<td>
+<p>Logical indicating whether initial values should
+be obtained from fitting the model in the <span class="pkg">lme4</span> package</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thresh_fac</code></td>
+<td>
+<p>Factor for proposal variance for estimating thresholds
+which is determined as <code>thresh_fac</code><code class="reqn">/N</code> (<code class="reqn">5.8/N</code> as default).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ridge</code></td>
+<td>
+<p>Ridge parameter for covariance matrices in sampling</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>Object of class <code>ml_mcmc</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>Number of digits after decimal used for printing</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>file</code></td>
+<td>
+<p>Optional file name</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments to be passed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Object of class <code>ml_mcmc</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ask</code></td>
+<td>
+<p>Logical indicating whether display of the next plot should be requested
+via clicking</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+
+<p>Outcome vector
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+
+<p>Design matrix fixed effects
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Z_list</code></td>
+<td>
+
+<p>Design matrices random effects
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta</code></td>
+<td>
+
+<p>Initial vector fixed coefficients
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Psi_list</code></td>
+<td>
+
+<p>Initial covariance matrices random effects
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma2</code></td>
+<td>
+
+<p>Initial residual covariance matrix
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>Vector of thresholds</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>u_list</code></td>
+<td>
+
+<p>List with initial values for random effects
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>idcluster_list</code></td>
+<td>
+
+<p>List with cluster identifiers for random effects
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>onlyintercept_list</code></td>
+<td>
+
+<p>List of logicals indicating whether only random intercepts are used
+for a corresponding random effect
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncluster_list</code></td>
+<td>
+
+<p>List containing number of clusters for each random effect
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma2_nu0</code></td>
+<td>
+
+<p>Prior sample size residual variance
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma2_sigma2_0</code></td>
+<td>
+
+<p>Prior guess residual variance
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>psi_nu0_list</code></td>
+<td>
+
+<p>List of prior sample sizes for covariance matrices of random effects
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>psi_S0_list</code></td>
+<td>
+
+<p>List of prior guesses for covariance matrices of random effects
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est_sigma2</code></td>
+<td>
+
+<p>Logical indicating whether residual variance should be estimated
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est_probit</code></td>
+<td>
+
+<p>Logical indicating whether probit model for ordinal outcomes should be estimated
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parameter_index</code></td>
+<td>
+
+<p>List containing integers for saving parameters
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est_parameter</code></td>
+<td>
+
+<p>List of logicals indicating which parameter type should be estimated
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>npar</code></td>
+<td>
+
+<p>Number of parameters
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>save_iter</code></td>
+<td>
+
+<p>Vector indicating which iterations should be used
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+
+<p>Logical indicating whether progress should be displayed
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parnames0</code></td>
+<td>
+
+<p>Optional vector of parameter names
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>K</code></td>
+<td>
+<p>Number of categories</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est_thresh</code></td>
+<td>
+<p>Logical indicating whether thresholds should be estimated</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parm_summary</code></td>
+<td>
+<p>Logical indicating whether a parameter summary table
+should be computed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xtx_inv</code></td>
+<td>
+<p>Matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>NR</code></td>
+<td>
+<p>Integer</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ztz_list</code></td>
+<td>
+<p>List containing design matrices for random effects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>u0_list</code></td>
+<td>
+<p>List containing random effects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nu0_list</code></td>
+<td>
+<p>List with prior sample sizes</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>S0_list</code></td>
+<td>
+<p>List with prior guesses</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma2_0</code></td>
+<td>
+<p>Numeric</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y_int</code></td>
+<td>
+<p>Integer vector</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>minval</code></td>
+<td>
+<p>Numeric</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxval</code></td>
+<td>
+<p>Numeric</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sd_proposal</code></td>
+<td>
+<p>Numeric vector</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N</code></td>
+<td>
+<p>Integer</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Z</code></td>
+<td>
+<p>Matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>u</code></td>
+<td>
+<p>Matrix containing random effects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>idcluster</code></td>
+<td>
+<p>Integer vector</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>onlyintercept</code></td>
+<td>
+<p>Logical</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncluster</code></td>
+<td>
+<p>Integer</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu1</code></td>
+<td>
+<p>Vector</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_log</code></td>
+<td>
+<p>Logical</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu</code></td>
+<td>
+<p>Vector</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma</code></td>
+<td>
+<p>Numeric</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower</code></td>
+<td>
+<p>Vector</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper</code></td>
+<td>
+<p>Vector</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Fits a linear mixed effects model <code class="reqn">y=\bm{X}\bm{beta}+
+\bm{Z}\bm{u}+e</code> with MCMC sampling. In case of ordinal data,
+the ordinal variable <code class="reqn">y</code> is replaced by an underlying latent normally
+distributed variable <code class="reqn">y^\ast</code> and the residual variance is fixed to 1.
+</p>
+
+
+<h3>Value</h3>
+
+<p>List with following entries (selection)
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>sampled_values</code></td>
+<td>
+<p>Sampled values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>par_summary</code></td>
+<td>
+<p>Parameter summary</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Goldstein, H. (2011). <em>Multilevel statistical models</em>. New York: Wiley.
+<a href="https://doi.org/10.1002/9780470973394">doi:10.1002/9780470973394</a>
+</p>
+<p>Goldstein, H., Carpenter, J., Kenward, M., &amp; Levin, K. (2009). Multilevel models with
+multivariate mixed response types. <em>Statistical Modelling, 9</em>(3), 173-197.
+<a href="https://doi.org/10.1177/1471082X0800900301">doi:10.1177/1471082X0800900301</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See also the <span class="pkg">MCMCglmm</span> package for MCMC estimation and
+the <span class="pkg">lme4</span> package for maximum likelihood estimation.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+#############################################################################
+# EXAMPLE 1: Multilevel model continuous data
+#############################################################################
+
+library(lme4)
+
+#*** simulate data
+set.seed(9097)
+
+# number of clusters and units within clusters
+K &lt;- 150
+n &lt;- 15
+iccx &lt;- .2
+idcluster &lt;- rep( 1:K, each=n )
+w &lt;- stats::rnorm( K )
+x &lt;- rep( stats::rnorm( K, sd=sqrt(iccx) ), each=n) +
+               stats::rnorm( n*K, sd=sqrt( 1 - iccx ))
+X &lt;- data.frame(int=1, "x"=x, xaggr=miceadds::gm(x, idcluster),
+        w=rep( w, each=n ) )
+X &lt;- as.matrix(X)
+Sigma &lt;- diag( c(2, .5 ) )
+u &lt;- MASS::mvrnorm( K, mu=c(0,0), Sigma=Sigma )
+beta &lt;- c( 0, .3, .7, 1 )
+Z &lt;- X[, c("int", "x") ]
+ypred &lt;- as.matrix(X) %*% beta + rowSums( Z * u[ idcluster, ] )
+y &lt;- ypred[,1] + stats::rnorm( n*K, sd=1 )
+data &lt;- as.data.frame(X)
+data$idcluster &lt;- idcluster
+data$y &lt;- y
+
+#*** estimate mixed effects model with miceadds::ml_mcmc() function
+formula &lt;- y ~ x + miceadds::gm(x, idcluster) + w + ( 1 + x | idcluster)
+mod1 &lt;- miceadds::ml_mcmc( formula=formula, data=data)
+plot(mod1)
+summary(mod1)
+
+#*** compare results with lme4 package
+mod2 &lt;- lme4::lmer(formula=formula, data=data)
+summary(mod2)
+
+#############################################################################
+# EXAMPLE 2: Multilevel model for ordinal outcome
+#############################################################################
+
+#*** simulate data
+set.seed(456)
+# number of clusters and units within cluster
+K &lt;- 500
+n &lt;- 10
+iccx &lt;- .2
+idcluster &lt;- rep( 1:K, each=n )
+w &lt;- rnorm( K )
+x &lt;- rep( stats::rnorm( K, sd=sqrt(iccx)), each=n) +
+                 stats::rnorm( n*K, sd=sqrt( 1 - iccx ))
+X &lt;- data.frame("int"=1, "x"=x, "xaggr"=miceadds::gm(x, idcluster),
+        w=rep( w, each=n ) )
+X &lt;- as.matrix(X)
+u &lt;- matrix( stats::rnorm(K, sd=sqrt(.5) ), ncol=1)
+beta &lt;- c( 0, .3, .7, 1 )
+Z &lt;- X[, c("int") ]
+ypred &lt;- as.matrix(X) %*% beta + Z * u[ idcluster, ]
+y &lt;- ypred[,1] + stats::rnorm( n*K, sd=1 )
+data &lt;- as.data.frame(X)
+data$idcluster &lt;- idcluster
+alpha &lt;- c(-Inf, -.4, 0, 1.7,  Inf)
+data$y &lt;- cut( y, breaks=alpha, labels=FALSE ) - 1
+
+#*** estimate model
+formula &lt;- y ~ miceadds::cwc(x, idcluster) + miceadds::gm(x,idcluster) + w + ( 1 | idcluster)
+mod &lt;- miceadds::ml_mcmc( formula=formula, data=data, iter=2000, burnin=500,
+                outcome="probit", inits_lme4=FALSE)
+summary(mod)
+plot(mod)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

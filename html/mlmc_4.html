@@ -1,0 +1,185 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>opre_l</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Financial options using an Euler-Maruyama discretisation</h2>
+
+<h3>Description</h3>
+
+<p>Financial options based on scalar geometric Brownian motion and Heston models, similar to Mike Giles' original 2008 Operations Research paper, Giles (2008), using an Euler-Maruyama discretisation
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">opre_l(l, N, option)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>l</code></td>
+<td>
+<p>the level to be simulated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N</code></td>
+<td>
+<p>the number of samples to be computed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>option</code></td>
+<td>
+<p>the option type, between 1 and 5.
+The options are:
+</p>
+
+<dl>
+<dt>1 = European call;</dt>
+<dd></dd>
+<dt>2 = Asian call;</dt>
+<dd></dd>
+<dt>3 = lookback call;</dt>
+<dd></dd>
+<dt>4 = digital call;</dt>
+<dd></dd>
+<dt>5 = Heston model.</dt>
+<dd></dd>
+</dl>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function is based on GPL-2 'Matlab' code by Mike Giles.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A named list containing: </p>
+
+<dl>
+<dt><code>sums</code></dt>
+<dd>
+<p>is a vector of length six <code class="reqn">\left(\sum Y_i, \sum Y_i^2, \sum Y_i^3, \sum Y_i^4, \sum X_i, \sum X_i^2\right)</code> where <code class="reqn">Y_i</code> are iid simulations with expectation <code class="reqn">E[P_0]</code> when <code class="reqn">l=0</code> and expectation <code class="reqn">E[P_l-P_{l-1}]</code> when <code class="reqn">l&gt;0</code>, and <code class="reqn">X_i</code> are iid simulations with expectation <code class="reqn">E[P_l]</code>.
+Note that only the first two components of this are used by the main <code>mlmc()</code> driver, the full vector is used by <code>mlmc.test()</code> for convergence tests etc;</p>
+</dd>
+<dt><code>cost</code></dt>
+<dd>
+<p>is a scalar with the total cost of the paths simulated, computed as <code class="reqn">N \times 4^l</code> for level <code class="reqn">l</code>.</p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>Louis Aslett &lt;louis.aslett@durham.ac.uk&gt;
+</p>
+<p>Mike Giles &lt;Mike.Giles@maths.ox.ac.uk&gt;
+</p>
+<p>Tigran Nagapetyan &lt;nagapetyan@stats.ox.ac.uk&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Giles, M.B. (2008) 'Multilevel Monte Carlo Path Simulation', <em>Operations Research</em>, 56(3), pp. 607–617. Available at: <a href="https://doi.org/10.1287/opre.1070.0496">doi:10.1287/opre.1070.0496</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# These are similar to the MLMC tests for the original
+# 2008 Operations Research paper, using an Euler-Maruyama
+# discretisation with 4^l timesteps on level l.
+#
+# The differences are:
+# -- the plots do not have the extrapolation results
+# -- two plots are log_2 rather than log_4
+# -- the new MLMC driver is a little different
+# -- switch to X_0=100 instead of X_0=1
+#
+# Note the following takes quite a while to run, for a toy example see after
+# this block.
+
+N0   &lt;- 1000 # initial samples on coarse levels
+Lmin &lt;- 2 # minimum refinement level
+Lmax &lt;- 6 # maximum refinement level
+
+test.res &lt;- list()
+for(option in 1:5) {
+  if(option == 1) {
+    cat("\n ---- Computing European call ---- \n")
+    N      &lt;- 1000000 # samples for convergence tests
+    L      &lt;- 5 # levels for convergence tests
+    Eps    &lt;- c(0.005, 0.01, 0.02, 0.05, 0.1)
+  } else if(option == 2) {
+    cat("\n ---- Computing Asian call ---- \n")
+    N      &lt;- 1000000 # samples for convergence tests
+    L      &lt;- 5 # levels for convergence tests
+    Eps    &lt;- c(0.005, 0.01, 0.02, 0.05, 0.1)
+  } else if(option == 3) {
+    cat("\n ---- Computing lookback call ---- \n")
+    N      &lt;- 1000000 # samples for convergence tests
+    L      &lt;- 5 # levels for convergence tests
+    Eps    &lt;- c(0.01, 0.02, 0.05, 0.1, 0.2)
+  } else if(option == 4) {
+    cat("\n ---- Computing digital call ---- \n")
+    N      &lt;- 4000000 # samples for convergence tests
+    L      &lt;- 5 # levels for convergence tests
+    Eps    &lt;- c(0.02, 0.05, 0.1, 0.2, 0.5)
+  } else if(option == 5) {
+    cat("\n ---- Computing Heston model ---- \n")
+    N      &lt;- 2000000 # samples for convergence tests
+    L      &lt;- 5 # levels for convergence tests
+    Eps    &lt;- c(0.005, 0.01, 0.02, 0.05, 0.1)
+  }
+
+  test.res[[option]] &lt;- mlmc.test(opre_l, N, L, N0, Eps, Lmin, Lmax, option = option)
+
+  # print exact analytic value, based on S0=K
+  T   &lt;- 1
+  r   &lt;- 0.05
+  sig &lt;- 0.2
+  K   &lt;- 100
+
+  k   &lt;- 0.5*sig^2/r;
+  d1  &lt;- (r+0.5*sig^2)*T / (sig*sqrt(T))
+  d2  &lt;- (r-0.5*sig^2)*T / (sig*sqrt(T))
+
+  if(option == 1) {
+    val &lt;- K*( pnorm(d1) - exp(-r*T)*pnorm(d2) )
+  } else if(option == 2) {
+    val &lt;- NA
+  } else if(option == 3) {
+    val &lt;- K*( pnorm(d1) - pnorm(-d1)*k - exp(-r*T)*(pnorm(d2) - pnorm(d2)*k) )
+  } else if(option == 4) {
+    val &lt;- K*exp(-r*T)*pnorm(d2)
+  } else if(option == 5) {
+    val &lt;- NA
+  }
+
+  if(is.na(val)) {
+    cat(sprintf("\n Exact value unknown, MLMC value: %f \n", test.res[[option]]$P[1]))
+  } else {
+    cat(sprintf("\n Exact value: %f, MLMC value: %f \n", val, test.res[[option]]$P[1]))
+  }
+
+  # plot results
+  plot(test.res[[option]])
+}
+
+
+# The level sampler can be called directly to retrieve the relevant level sums:
+opre_l(l = 7, N = 10, option = 1)
+
+</code></pre>
+
+
+</div>

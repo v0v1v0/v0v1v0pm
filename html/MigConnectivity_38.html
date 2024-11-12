@@ -1,0 +1,122 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>simCMRData</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Simulate capture-mark-reencounter (CMR) migratory movement data</h2>
+
+<h3>Description</h3>
+
+<p>Simulate capture-mark-reencounter (CMR) migratory movement data
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">simCMRData(psi, banded, r)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>psi</code></td>
+<td>
+<p>Transition probabilities between B origin sites and W target
+sites. B by W matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>banded</code></td>
+<td>
+<p>A vector of the number of released animals from each origin
+site (including those never reencountered in a target site). Length B</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>r</code></td>
+<td>
+<p>A vector (length W) of reencounter probabilities at each target site</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>simCMRData</code> returns a list with the elements:
+</p>
+
+<dl>
+<dt><code>reencountered</code></dt>
+<dd>
+<p>B by W matrix with numbers reencountered at
+each target site, by origin site</p>
+</dd>
+<dt><code>migrated</code></dt>
+<dd>
+<p>B by W matrix with numbers migrated to
+each target site, by origin site. Assumes survival to arrival is 1</p>
+</dd>
+<dt><code>input</code></dt>
+<dd>
+<p>List containing the inputs to function</p>
+</dd>
+</dl>
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+originNames &lt;- c("A", "B", "C")
+nOriginSites &lt;- length(originNames)
+targetNames &lt;- as.character(1:4)
+nTargetSites &lt;- length(targetNames)
+
+psiTrue &lt;- matrix(c(0.5, 0.25, 0.15, 0.1,
+                    0.15, 0.4, 0.25, 0.2,
+                    0.1, 0.15, 0.2, 0.55), nOriginSites, nTargetSites,
+                  TRUE, list(originNames, targetNames))
+psiTrue
+rowSums(psiTrue)
+banded &lt;- c(3000, 6000, 12000); names(banded) &lt;- originNames
+rTrue &lt;- c(0.5, 0.6, 0.4, 0.7) ; names(rTrue) &lt;- targetNames
+nSims &lt;- 10
+reencountered &lt;- psiCalc &lt;- psiEstMCMC &lt;- psiEstBoot &lt;- vector("list", nSims)
+
+set.seed(9001)
+for (i in 1:nSims) {
+  dataCMR &lt;- simCMRData(psiTrue, banded, rTrue)
+  reencountered[[i]] &lt;- dataCMR$reencountered
+  psiCalc[[i]] &lt;- calcTransition(banded = banded, reencountered = reencountered[[i]],
+                                 originNames = originNames, targetNames = targetNames)
+
+  psiEstMCMC[[i]] &lt;- estTransition(originNames = originNames, targetNames = targetNames,
+                              nSamples = 24000, banded = banded,
+                              reencountered = reencountered[[i]],
+                              method = "MCMC", verbose = 1)
+
+  psiEstBoot[[i]] &lt;- estTransition(originNames = originNames, targetNames = targetNames,
+                              nSamples = 400, # this is set low for demonstration
+                              banded = banded,
+                              reencountered = reencountered[[i]],
+                              method = "bootstrap", verbose = 1)
+}
+psiErrorBoot &lt;- sapply(psiEstBoot, function(x) x$psi$mean - psiTrue, simplify = "array")
+psiErrorMCMC &lt;- sapply(psiEstMCMC, function(x) x$psi$mean - psiTrue, simplify = "array")
+psiRhat &lt;- sapply(psiEstMCMC, function(x) max(x$BUGSoutput$summary[,"Rhat"]))
+psiConvergence &lt;- psiRhat &lt; 1.1
+psiErrorMCMC
+(psiBiasMCMC &lt;- apply(psiErrorMCMC, 1:2, mean))
+(psiBiasBoot &lt;- apply(psiErrorBoot, 1:2, mean))
+(psiMAEMCMC &lt;- apply(psiErrorMCMC, 1:2, function(x) mean(abs(x), na.rm = TRUE)))
+(psiMAEBoot &lt;- apply(psiErrorBoot, 1:2, function(x) mean(abs(x), na.rm = TRUE)))
+library(coda)
+psiListsMCMC &lt;- lapply(psiEstMCMC, function(x) as.mcmc.list((x$BUGSoutput)))
+for (i in 1:nSims) {
+  if (!psiConvergence[i])
+    plot(psiListsMCMC[[i]])
+}
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,245 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>resample</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Resample a Learner on a Task</h2>
+
+<h3>Description</h3>
+
+<p>Runs a resampling (possibly in parallel):
+Repeatedly apply Learner <code>learner</code> on a training set of Task <code>task</code> to train a model,
+then use the trained model to predict observations of a test set.
+Training and test sets are defined by the Resampling <code>resampling</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">resample(
+  task,
+  learner,
+  resampling,
+  store_models = FALSE,
+  store_backends = TRUE,
+  encapsulate = NA_character_,
+  allow_hotstart = FALSE,
+  clone = c("task", "learner", "resampling"),
+  unmarshal = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>task</code></td>
+<td>
+<p>(Task).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>learner</code></td>
+<td>
+<p>(Learner).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resampling</code></td>
+<td>
+<p>(Resampling).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>store_models</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Store the fitted model in the resulting object=
+Set to <code>TRUE</code> if you want to further analyse the models or want to
+extract information like variable importance.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>store_backends</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Keep the DataBackend of the Task in the ResampleResult?
+Set to <code>TRUE</code> if your performance measures require a Task,
+or to analyse results more conveniently.
+Set to <code>FALSE</code> to reduce the file size and memory footprint
+after serialization.
+The current default is <code>TRUE</code>, but this eventually will be changed
+in a future release.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>encapsulate</code></td>
+<td>
+<p>(<code>character(1)</code>)<br>
+If not <code>NA</code>, enables encapsulation by setting the field
+<code>Learner$encapsulate</code> to one of the supported values:
+<code>"none"</code> (disable encapsulation),
+<code>"try"</code> (captures errors but output is printed to the console and not logged),
+<code>"evaluate"</code> (execute via <a href="https://CRAN.R-project.org/package=evaluate"><span class="pkg">evaluate</span></a>) and
+<code>"callr"</code> (start in external session via <a href="https://CRAN.R-project.org/package=callr"><span class="pkg">callr</span></a>).
+If <code>NA</code>, encapsulation is not changed, i.e. the settings of the
+individual learner are active.
+Additionally, if encapsulation is set to <code>"evaluate"</code> or <code>"callr"</code>,
+the fallback learner is set to the featureless learner if the learner
+does not already have a fallback configured.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allow_hotstart</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Determines if learner(s) are hot started with trained models in
+<code style="white-space: pre;">⁠$hotstart_stack⁠</code>. See also HotstartStack.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>clone</code></td>
+<td>
+<p>(<code>character()</code>)<br>
+Select the input objects to be cloned before proceeding by
+providing a set with possible values <code>"task"</code>, <code>"learner"</code> and
+<code>"resampling"</code> for Task, Learner and Resampling, respectively.
+Per default, all input objects are cloned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>unmarshal</code></td>
+<td>
+<p><code>Learner</code><br>
+Whether to unmarshal learners that were marshaled during the execution.
+If <code>TRUE</code> all models are stored in unmarshaled form.
+If <code>FALSE</code>, all learners (that need marshaling) are stored in marshaled form.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>ResampleResult.
+</p>
+
+
+<h3>Predict Sets</h3>
+
+<p>If you want to compare the performance of a learner on the training with the performance
+on the test set, you have to configure the Learner to predict on multiple sets by
+setting the field <code>predict_sets</code> to <code>c("train", "test")</code> (default is <code>"test"</code>).
+Each set yields a separate Prediction object during resampling.
+In the next step, you have to configure the measures to operate on the respective Prediction object:
+</p>
+<div class="sourceCode"><pre>m1 = msr("classif.ce", id = "ce.train", predict_sets = "train")
+m2 = msr("classif.ce", id = "ce.test", predict_sets = "test")
+</pre></div>
+<p>The (list of) created measures can finally be passed to <code style="white-space: pre;">⁠$aggregate()⁠</code> or <code style="white-space: pre;">⁠$score()⁠</code>.
+</p>
+
+
+<h3>Parallelization</h3>
+
+<p>This function can be parallelized with the <a href="https://CRAN.R-project.org/package=future"><span class="pkg">future</span></a> package.
+One job is one resampling iteration, and all jobs are send to an apply function
+from <a href="https://CRAN.R-project.org/package=future.apply"><span class="pkg">future.apply</span></a> in a single batch.
+To select a parallel backend, use <code>future::plan()</code>.
+More on parallelization can be found in the book:
+<a href="https://mlr3book.mlr-org.com/chapters/chapter10/advanced_technical_aspects_of_mlr3.html">https://mlr3book.mlr-org.com/chapters/chapter10/advanced_technical_aspects_of_mlr3.html</a>
+</p>
+
+
+<h3>Progress Bars</h3>
+
+<p>This function supports progress bars via the package <a href="https://CRAN.R-project.org/package=progressr"><span class="pkg">progressr</span></a>.
+Simply wrap the function call in <code>progressr::with_progress()</code> to enable them.
+Alternatively, call <code>progressr::handlers()</code> with <code>global = TRUE</code> to enable progress bars
+globally.
+We recommend the <a href="https://CRAN.R-project.org/package=progress"><span class="pkg">progress</span></a> package as backend which can be enabled with
+<code>progressr::handlers("progress")</code>.
+</p>
+
+
+<h3>Logging</h3>
+
+<p>The <a href="https://CRAN.R-project.org/package=mlr3"><span class="pkg">mlr3</span></a> uses the <a href="https://CRAN.R-project.org/package=lgr"><span class="pkg">lgr</span></a> package for logging.
+<a href="https://CRAN.R-project.org/package=lgr"><span class="pkg">lgr</span></a> supports multiple log levels which can be queried with
+<code>getOption("lgr.log_levels")</code>.
+</p>
+<p>To suppress output and reduce verbosity, you can lower the log from the
+default level <code>"info"</code> to <code>"warn"</code>:
+</p>
+<div class="sourceCode"><pre>lgr::get_logger("mlr3")$set_threshold("warn")
+</pre></div>
+<p>To get additional log output for debugging, increase the log level to <code>"debug"</code>
+or <code>"trace"</code>:
+</p>
+<div class="sourceCode"><pre>lgr::get_logger("mlr3")$set_threshold("debug")
+</pre></div>
+<p>To log to a file or a data base, see the documentation of lgr::lgr-package.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The fitted models are discarded after the predictions have been computed in order to reduce memory consumption.
+If you need access to the models for later analysis, set <code>store_models</code> to <code>TRUE</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+
+<ul>
+<li> <p><code>as_benchmark_result()</code> to convert to a BenchmarkResult.
+</p>
+</li>
+<li>
+<p> Chapter in the <a href="https://mlr3book.mlr-org.com/">mlr3book</a>:
+<a href="https://mlr3book.mlr-org.com/chapters/chapter3/evaluation_and_benchmarking.html#sec-resampling">https://mlr3book.mlr-org.com/chapters/chapter3/evaluation_and_benchmarking.html#sec-resampling</a>
+</p>
+</li>
+<li>
+<p> Package <a href="https://CRAN.R-project.org/package=mlr3viz"><span class="pkg">mlr3viz</span></a> for some generic visualizations.
+</p>
+</li>
+</ul>
+<p>Other resample: 
+<code>ResampleResult</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">task = tsk("penguins")
+learner = lrn("classif.rpart")
+resampling = rsmp("cv")
+
+# Explicitly instantiate the resampling for this task for reproduciblity
+set.seed(123)
+resampling$instantiate(task)
+
+rr = resample(task, learner, resampling)
+print(rr)
+
+# Retrieve performance
+rr$score(msr("classif.ce"))
+rr$aggregate(msr("classif.ce"))
+
+# merged prediction objects of all resampling iterations
+pred = rr$prediction()
+pred$confusion
+
+# Repeat resampling with featureless learner
+rr_featureless = resample(task, lrn("classif.featureless"), resampling)
+
+# Convert results to BenchmarkResult, then combine them
+bmr1 = as_benchmark_result(rr)
+bmr2 = as_benchmark_result(rr_featureless)
+print(bmr1$combine(bmr2))
+</code></pre>
+
+
+</div>

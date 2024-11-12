@@ -1,0 +1,369 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ivmediate</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Causal Mediation Analysis with Treatment Noncompliance</h2>
+
+<h3>Description</h3>
+
+<p>'ivmediate' is used to estimate local average causal mediation effects, local
+average natural direct effects and local average treatment effects for 
+compliers using the method of Yamamoto (2013).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ivmediate(model.t, model.m, model.y, ci = TRUE, sims = 1000,
+  boot = TRUE, enc = "enc.name", treat = "treat.name",
+  mediator = "med.name", conf.level = 0.95, long = TRUE,
+  dropobs = FALSE, multicore = FALSE,
+  mc.cores = getOption("mc.cores", 2L))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model.t</code></td>
+<td>
+<p>a fitted model object for actual treatment. Can be of class 
+'lm' or 'glm'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.m</code></td>
+<td>
+<p>a fitted model object for mediator.  Can be of class 'lm', or 
+'glm'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.y</code></td>
+<td>
+<p>a fitted model object for outcome.  Can be of class 'lm', or 
+'glm'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ci</code></td>
+<td>
+<p>a logical value. if 'TRUE' both point estimates and confidence 
+intervals are calculated; if 'FALSE' only point estimates are produced. 
+Default is 'TRUE'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sims</code></td>
+<td>
+<p>number of Monte Carlo draws for nonparametric bootstrap or 
+quasi-Bayesian approximation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot</code></td>
+<td>
+<p>a logical value. if 'FALSE' a quasi-Bayesian approximation is 
+used for confidence intervals; if 'TRUE' nonparametric bootstrap will be 
+used. Default is 'TRUE'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>enc</code></td>
+<td>
+<p>a character string indicating the name of the encouragement 
+variable used in the models. Must be a binary variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>treat</code></td>
+<td>
+<p>a character string indicating the name of the actual treatment 
+variable used in the models.  Must be a binary variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mediator</code></td>
+<td>
+<p>a character string indicating the name of the mediator 
+variable used in the models.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf.level</code></td>
+<td>
+<p>a numeric vector indicating the levels of the returned 
+two-sided confidence intervals. Default is to return the 2.5 and 97.5 
+percentiles of the simulated quantities.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>long</code></td>
+<td>
+<p>a logical value. If 'TRUE', the output will contain the entire 
+sets of simulation draws of the estimated effects. Default is 'TRUE'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dropobs</code></td>
+<td>
+<p>a logical value indicating the behavior when the model frames 
+of 'model.t', 'model.m' and 'model.y' are composed of different 
+observations. If 'TRUE', models will be re-fitted using common data rows.
+If 'FALSE', error is returned. Default is 'FALSE'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>multicore</code></td>
+<td>
+<p>a logical value indicating whether to parallelize 
+simulations into multiple cores. Default is 'FALSE'. Note that this option 
+is currently unavailable on Windows.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mc.cores</code></td>
+<td>
+<p>number of cores to be used in the parallelization of 
+bootstrap or Monte Carlo simulations. Default is the value in the
+'mc.cores' option (see <code>mclapply</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This is the workhorse function for estimating local causal mediation
+effects for compliers using the approach of Yamamoto (2013).
+</p>
+<p>Although the method is quite general and accommodate various types of 
+mediator and outcome variables, the current function can only handle binary
+variables (modeled via <code>glm</code> with <code>family=binomial</code>) and 
+continuous variables (modeled via <code>lm</code>). In addition, when the
+mediator is continuous and its model contains any predictor other than the 
+encouragement and actual treatment, computation of confidence intervals is 
+extremely slow because it requires numerical integration via 
+<code>integrate</code> for each observation in each simulation iteration. 
+Users are advised to use a powerful computer (preferably equipped with 
+multiple CPU cores and a non-Windows operating system) for such
+calculation, especially if the data contain many rows and/or the desired
+number of simulations is large.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>ivmediate</code> returns an object of class '<code>ivmediate</code>', a 
+list that contains the components listed below.  Some of these elements are
+not available depending on the values of the 'ci' and 'long' options.
+</p>
+<p>The function <code>summary</code> (i.e., <code>summary.ivmediate</code>) can be used to
+obtain a table of the results.  The function <code>plot</code> (i.e., 
+<code>plot.ivmediate</code>) can be used to produce a plot of the estimated 
+effects along with their confidence intervals.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>dc0, dc1</code></td>
+<td>
+<p>point estimates for the local average causal mediation 
+effects under the control and treatment conditions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dc0.ci, dc1.ci</code></td>
+<td>
+<p>confidence intervals for the local average causal 
+mediation effects. The confidence levels are set at the value specified in 
+'conf.level'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dc0.issue, dc1.issue</code></td>
+<td>
+<p>number of observations for which the numerical 
+integration via <code>integrate</code> encountered computational problems 
+when calculating dc0 and dc1, respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dc0.inf, dc1.inf</code></td>
+<td>
+<p>number of observations for which the numerical 
+integration produced non-finite values when calculating dc0 and dc1, 
+respectively. (Such values are excluded from the calculation of average 
+effects.)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dc0.sims, dc1.sims</code></td>
+<td>
+<p>vectors of length 'sims' containing simulation 
+draws of local average causal mediation effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>zc0, zc1</code></td>
+<td>
+<p>point estimates for the local average natural direct 
+effects under the control and treatment conditions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>zc0.ci, zc1.ci</code></td>
+<td>
+<p>confidence intervals for the local average natural 
+direct effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>zc0.issue, zc1.issue</code></td>
+<td>
+<p>number of observations for which the numerical 
+integration encountered computational problems when calculating zc0 and 
+zc1, respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>zc0.inf, zc1.inf</code></td>
+<td>
+<p>number of observations for which the numerical 
+integration produced non-finite values for zc0 and zc1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>zc0.sims, zc1.sims</code></td>
+<td>
+<p>vectors of length 'sims' containing simulation 
+draws of local average natural direct effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tauc</code></td>
+<td>
+<p>point estimate for the local average treatment effect.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tauc.ci</code></td>
+<td>
+<p>confidence interval for the local average treatment effect.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tauc.sims</code></td>
+<td>
+<p>a vector of length 'sims' containing simulation draws of 
+the local average treatment effect.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot</code></td>
+<td>
+<p>logical, the 'boot' argument used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>enc</code></td>
+<td>
+<p>a character string indicating the name of the 'enc' variable 
+used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>treat</code></td>
+<td>
+<p>a character string indicating the name of the 'treat' variable 
+used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mediator</code></td>
+<td>
+<p>a character string indicating the name of the 'mediator' 
+variable used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf.level</code></td>
+<td>
+<p>the confidence levels used. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nobs</code></td>
+<td>
+<p>number of observations in the model frame for 'model.t', 
+'model.m' and 'model.y'. May differ from the numbers in the original models 
+input to 'ivmediate' if 'dropobs' was 'TRUE'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sims</code></td>
+<td>
+<p>number of simulation draws used.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Teppei Yamamoto, Massachusetts Institute of Technology, 
+<a href="mailto:teppei@mit.edu">teppei@mit.edu</a>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Tingley, D., Yamamoto, T., Hirose, K., Imai, K. and Keele, L. 
+(2014). "mediation: R package for Causal Mediation Analysis", Journal of 
+Statistical Software, Vol. 59, No. 5, pp. 1-38.
+</p>
+<p>Yamamoto, T. (2013). Identification and Estimation of Causal Mediation 
+Effects with Treatment Noncompliance. Unpublished manuscript.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>plot.ivmediate</code>, <code>summary.ivmediate</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Examples with JOBS II Field Experiment
+
+# ** For illustration purposes a small number of simulations are used **
+
+require(parallel)
+require(MASS)
+
+data(jobs)
+
+a &lt;- lm(comply ~ treat + sex + age + marital + nonwhite + educ + income, 
+        data = jobs)
+b &lt;- glm(job_dich ~ comply + treat + sex + age + marital + nonwhite + educ + income, 
+        data = jobs, family = binomial)
+c &lt;- lm(depress2 ~ job_dich * (comply + treat) + sex + age + marital + nonwhite + educ + income, 
+        data = jobs)
+
+out &lt;- ivmediate(a, b, c, sims = 50, boot = FALSE, 
+                 enc = "treat", treat = "comply", mediator = "job_dich")
+                 
+summary(out)
+plot(out)
+
+# Using non-parametric bootstrap
+out.boot &lt;- ivmediate(a, b, c, sims = 50, boot = TRUE, 
+                 enc = "treat", treat = "comply", mediator = "job_dich")
+                 
+summary(out.boot)
+plot(out.boot)
+
+
+</code></pre>
+
+
+</div>

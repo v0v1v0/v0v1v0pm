@@ -1,0 +1,199 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlmc</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multi-level Monte Carlo estimation</h2>
+
+<h3>Description</h3>
+
+<p>This function is the Multi-level Monte Carlo driver which will sample from the levels of user specified function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mlmc(
+  Lmin,
+  Lmax,
+  N0,
+  eps,
+  mlmc_l,
+  alpha = NA,
+  beta = NA,
+  gamma = NA,
+  parallel = NA,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Lmin</code></td>
+<td>
+<p>the minimum level of refinement.  Must be <code class="reqn">\ge 2</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Lmax</code></td>
+<td>
+<p>the maximum level of refinement.  Must be <code class="reqn">\ge</code> <code>Lmin</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N0</code></td>
+<td>
+<p>initial number of samples which are used for the first 3 levels and for any subsequent levels which are automatically added.
+Must be <code class="reqn">&gt; 0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>the target accuracy of the estimate (root mean square error).
+Must be <code class="reqn">&gt; 0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mlmc_l</code></td>
+<td>
+<p>a user supplied function which provides the estimate for level <code class="reqn">l</code>.
+It must take at least two arguments, the first is the level number to be simulated and the second the number of paths.
+Additional arguments can be taken if desired: all additional <code>...</code> arguments to this function are forwarded to the user defined <code>mlmc_l</code> function.
+</p>
+<p>The user supplied function should return a named list containing one element named <code>sums</code> and second named <code>cost</code>, where:
+</p>
+
+<dl>
+<dt><code>sums</code></dt>
+<dd>
+<p>is a vector of length at least two.
+The first two elements should be <code class="reqn">\left(\sum Y_i, \sum Y_i^2\right)</code> where <code class="reqn">Y_i</code> are iid simulations with expectation <code class="reqn">E[P_0]</code> when <code class="reqn">l=0</code> and expectation <code class="reqn">E[P_l-P_{l-1}]</code> when <code class="reqn">l&gt;0</code>.
+Note that typically the user supplied level sampler will actually return a vector of length six, also enabling use of the <code>mlmc.test()</code> function to perform convergence tests, kurtosis, and telescoping sum checks.
+See <code>mlmc.test()</code> for the definition of these remaining four elements.</p>
+</dd>
+<dt><code>cost</code></dt>
+<dd>
+<p>is a scalar with the total cost of the paths simulated.
+For example, in the financial options samplers included in this package, this is calculated as <code class="reqn">NM^l</code>, where <code class="reqn">N</code> is the number of paths requested in the call to the user function <code>mlmc_l</code>, <code class="reqn">M</code> is the refinement cost factor (<code class="reqn">M=2</code> for <code>mcqmc06_l()</code> and <code class="reqn">M=4</code> for <code>opre_l()</code>), and <code class="reqn">l</code> is the level being sampled.</p>
+</dd>
+</dl>
+<p>See the function (and source code of) <code>opre_l()</code> and <code>mcqmc06_l()</code> in this package for an example of user supplied level samplers.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>the weak error, <code class="reqn">O(2^{-\alpha l})</code>.
+Must be <code class="reqn">&gt; 0</code> if specified.
+If <code>NA</code> then <code>alpha</code> will be estimated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta</code></td>
+<td>
+<p>the variance, <code class="reqn">O(2^{-\beta l})</code>.
+Must be <code class="reqn">&gt; 0</code> if specified.
+If <code>NA</code> then <code>beta</code> will be estimated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma</code></td>
+<td>
+<p>the sample cost, <code class="reqn">O(2^{\gamma l})</code>.
+Must be <code class="reqn">&gt; 0</code> if specified.
+If <code>NA</code> then <code>gamma</code> will be estimated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>if an integer is supplied, R will fork <code>parallel</code> parallel processes and compute each level estimate in parallel.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments which are passed on when the user supplied <code>mlmc_l</code> function is called.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The Multilevel Monte Carlo Method method originated in the works Giles (2008) and Heinrich (1998).
+</p>
+<p>Consider a sequence <code class="reqn">P_0, P_1, \ldots</code>, which approximates <code class="reqn">P_L</code> with increasing accuracy, but also increasing cost, we have the simple identity
+</p>
+<p style="text-align: center;"><code class="reqn">E[P_L] = E[P_0] + \sum_{l=1}^L E[P_l-P_{l-1}],</code>
+</p>
+
+<p>and therefore we can use the following unbiased estimator for <code class="reqn">E[P_L]</code>,
+</p>
+<p style="text-align: center;"><code class="reqn">N_0^{-1} \sum_{n=1}^{N_0} P_0^{(0,n)} + \sum_{l=1}^L \left\{ N_l^{-1} \sum_{n=1}^{N_l} \left(P_l^{(l,n)} - P_{l-1}^{(l,n)}\right) \right\}</code>
+</p>
+
+<p>where <code class="reqn">N_l</code> samples are produced at level <code class="reqn">l</code>.
+The inclusion of the level <code class="reqn">l</code> in the superscript <code class="reqn">(l,n)</code> indicates that the samples used at each level of correction are independent.
+</p>
+<p>Set <code class="reqn">C_0</code>, and <code class="reqn">V_0</code> to be the cost and variance of one sample of <code class="reqn">P_0</code>, and <code class="reqn">C_l, V_l</code> to be the cost and variance of one sample of <code class="reqn">P_l - P_{l-1}</code>, then the overall cost and variance of the multilevel estimator is <code class="reqn">\sum_{l=0}^L N_l C_l</code> and <code class="reqn">\sum_{l=0}^L N_l^{-1} V_l</code>, respectively.
+</p>
+<p>The idea behind the method, is that provided that the product <code class="reqn">V_l C_l</code> decreases with <code class="reqn">l</code>, i.e. the cost increases with level slower than the variance decreases, then one can achieve significant computational savings, which can be formalised as in Theorem 1 of Giles (2015).
+</p>
+<p>For further information on multilevel Monte Carlo methods, see the webpage <a href="https://people.maths.ox.ac.uk/gilesm/mlmc_community.html">https://people.maths.ox.ac.uk/gilesm/mlmc_community.html</a> which lists the research groups working in the area, and their main publications.
+</p>
+<p>This function is based on GPL-2 'Matlab' code by Mike Giles.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A named list containing: </p>
+
+<dl>
+<dt><code>P</code></dt>
+<dd>
+<p>The MLMC estimate;</p>
+</dd>
+<dt><code>Nl</code></dt>
+<dd>
+<p>A vector of the number of samples performed on each level;</p>
+</dd>
+<dt><code>Cl</code></dt>
+<dd>
+<p>Per sample cost at each level.</p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>Louis Aslett &lt;louis.aslett@durham.ac.uk&gt;
+</p>
+<p>Mike Giles &lt;Mike.Giles@maths.ox.ac.uk&gt;
+</p>
+<p>Tigran Nagapetyan &lt;nagapetyan@stats.ox.ac.uk&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Giles, M.B. (2008) 'Multilevel Monte Carlo Path Simulation', <em>Operations Research</em>, 56(3), pp. 607–617. Available at: <a href="https://doi.org/10.1287/opre.1070.0496">doi:10.1287/opre.1070.0496</a>.
+</p>
+<p>Giles, M.B. (2015) 'Multilevel Monte Carlo methods', <em>Acta Numerica</em>, 24, pp. 259–328. Available at: <a href="https://doi.org/10.1017/S096249291500001X">doi:10.1017/S096249291500001X</a>.
+</p>
+<p>Heinrich, S. (1998) 'Monte Carlo Complexity of Global Solution of Integral Equations', <em>Journal of Complexity</em>, 14(2), pp. 151–175. Available at: <a href="https://doi.org/10.1006/jcom.1998.0471">doi:10.1006/jcom.1998.0471</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">mlmc(2, 6, 1000, 0.01, opre_l, option = 1)
+
+mlmc(2, 10, 1000, 0.01, mcqmc06_l, option = 1)
+
+</code></pre>
+
+
+</div>

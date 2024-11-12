@@ -1,0 +1,125 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mapboxer-shiny</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Shiny bindings for mapboxer</h2>
+
+<h3>Description</h3>
+
+<p>Output and render functions for using mapboxer within Shiny
+applications and interactive Rmd documents.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mapboxerOutput(outputId, width = "100%", height = "400px")
+
+renderMapboxer(expr, env = parent.frame(), quoted = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>outputId</code></td>
+<td>
+<p>output variable to read from</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>width, height</code></td>
+<td>
+<p>Must be a valid CSS unit (like <code>'100%'</code>,
+<code>'400px'</code>, <code>'auto'</code>) or a number, which will be coerced to a
+string and have <code>'px'</code> appended.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expr</code></td>
+<td>
+<p>An expression that generates a mapboxer</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>env</code></td>
+<td>
+<p>The environment in which to evaluate <code>expr</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quoted</code></td>
+<td>
+<p>Is <code>expr</code> a quoted expression (with <code>quote()</code>)? This
+is useful if you want to save an expression in a variable.</p>
+</td>
+</tr>
+</table>
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(shiny)
+library(mapboxer)
+
+LAYER_ID &lt;- "mvc"
+
+view &lt;- basicPage(
+  h1("mapboxer"),
+  sliderInput(
+    "slider",
+    "Number of persons injured",
+    min = 0,
+    max = max(motor_vehicle_collisions_nyc$injured),
+    step = 1,
+    value = 0
+  ),
+  checkboxInput("hide", "Hide layer"),
+  mapboxerOutput("map"),
+  htmlOutput("datetime")
+)
+
+server &lt;- function(input, output) {
+  output$map &lt;- renderMapboxer({
+      as_mapbox_source(motor_vehicle_collisions_nyc) %&gt;%
+      mapboxer(
+        center = c(-73.9165, 40.7114),
+        zoom = 10,
+        style = basemap_raster_style(stamen_raster_tiles())
+      ) %&gt;%
+      add_circle_layer(
+        circle_color = "black",
+        popup = "Number of persons injured {{injured}}",
+        id = LAYER_ID
+      ) %&gt;%
+      add_mouse_position_control(
+        "Lng: {{lng}}&lt;/br&gt;Lat: {{lat}}",
+        css_text = "text-align: left; width: 180px;"
+      ) %&gt;%
+      add_navigation_control(pos = "top-left")
+  })
+
+  observeEvent(input$slider, {
+    mapboxer_proxy("map") %&gt;%
+      set_filter(LAYER_ID, list("==", "injured", input$slider)) %&gt;%
+      update_mapboxer()
+  })
+
+  observeEvent(input$hide, {
+    mapboxer_proxy("map") %&gt;%
+      set_layout_property(LAYER_ID, "visibility", !input$hide) %&gt;%
+      update_mapboxer()
+  })
+
+  output$datetime &lt;- renderText({
+    props &lt;- input$map_onclick$props
+    sprintf("&lt;p&gt;%s %s&lt;/p&gt;", props$date, props$time)
+  })
+}
+
+if (interactive()) shinyApp(view, server)
+</code></pre>
+
+
+</div>

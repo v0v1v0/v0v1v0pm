@@ -1,0 +1,126 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MoE_mahala</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Mahalanobis Distance Outlier Detection for Multivariate Response</h2>
+
+<h3>Description</h3>
+
+<p>Computes the Mahalanobis distance between the response variable(s) and the fitted values of linear regression models with multivariate or univariate responses.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MoE_mahala(fit,
+           resids,
+           squared = FALSE,
+           identity = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>fit</code></td>
+<td>
+<p>A fitted <code>lm</code> model, inheriting either the <code>"mlm"</code> or <code>"lm"</code> class.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resids</code></td>
+<td>
+<p>The residuals. Can be residuals for observations included in the model, or residuals arising from predictions on unseen data. Must be coercible to a matrix with the number of columns being the number of response variables. Missing values are not allowed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>squared</code></td>
+<td>
+<p>A logical. By default (<code>FALSE</code>), the generalized interpoint distance is computed. Set this flag to <code>TRUE</code> for the squared value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>identity</code></td>
+<td>
+<p>A logical indicating whether the identity matrix is used in place of the precision matrix in the Mahalanobis distance calculation. Defaults to <code>FALSE</code> for multivariate response data but defaults to <code>TRUE</code> for univariate response data, where <code>TRUE</code> corresponds to the use of the Euclidean distance. Setting <code>identity=TRUE</code> with multivariate data may be advisable when the dimensions of the data are such that the covariance matrix cannot be inverted (otherwise, the pseudo-inverse is used under the <code>FALSE</code> default).</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A vector giving the Mahalanobis distance (or squared Mahalanobis distance) between response(s) and fitted values for each observation.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Keefe Murphy - &lt;<a href="mailto:keefe.murphy@mu.ie">keefe.murphy@mu.ie</a>&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Murphy, K. and Murphy, T. B. (2020). Gaussian parsimonious clustering models with covariates and a noise component. <em>Advances in Data Analysis and Classification</em>, 14(2): 293-325. &lt;<a href="https://doi.org/10.1007/s11634-019-00373-8">doi:10.1007/s11634-019-00373-8</a>&gt;.
+</p>
+<p>Mahalanobis, P. C. (1936). On the generalized distance in statistics. <em>Proceedings of the National Institute of Sciences, India</em>, 2(1): 49-55.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data(ais)
+hema &lt;- as.matrix(ais[,3:7])
+mod  &lt;- lm(hema ~ sex + BMI, data=ais)
+res  &lt;- hema - predict(mod)
+MoE_mahala(mod, res, squared=TRUE)
+
+data(CO2data)
+CO2  &lt;- CO2data$CO2
+GNP  &lt;- CO2data$GNP
+mod2 &lt;- lm(CO2 ~ GNP, data=CO2data)
+pred &lt;- predict(mod2)
+res2 &lt;- CO2 - pred
+maha &lt;- MoE_mahala(mod2, res2)
+
+# Highlight outlying observations
+plot(GNP, CO2, type="n", ylab=expression('CO'[2]))
+lines(GNP, pred, col="red")
+points(GNP, CO2, cex=maha, lwd=2)
+text(GNP, CO2, col="blue", 
+     labels=replace(as.character(CO2data$country), maha &lt; 1, ""))
+     
+# Replicate initialisation strategy using 2 randomly chosen components
+# Repeat the random initialisation if necessary
+# (until 'crit' at convergence is minimised)
+G       &lt;- 3L
+z       &lt;- sample(seq_len(G), nrow(CO2data), replace=TRUE)
+old     &lt;- Inf
+crit    &lt;- .Machine$double.xmax
+while(crit &lt; old)   {
+  Sys.sleep(1)
+  old   &lt;- crit
+  maha  &lt;- NULL
+  plot(GNP, CO2, type="n", ylab=expression('CO'[2]))
+  for(g in seq_len(G)) { 
+   ind  &lt;- which(z == g)
+   mod  &lt;- lm(CO2 ~ GNP, data=CO2data, sub=ind)
+   pred &lt;- predict(mod, newdata=CO2data[,"CO2", drop=FALSE])
+   maha &lt;- cbind(maha, MoE_mahala(mod, CO2 - pred))
+   lines(GNP, pred, col=g + 1L)
+  }
+  min.M &lt;- rowMins(maha)
+  crit  &lt;- sum(min.M)
+  z     &lt;- max.col(maha == min.M)
+  points(GNP, CO2, cex=min.M, lwd=2, col=z + 1L)
+  text(GNP, CO2, col=z + 1L, 
+       labels=replace(as.character(CO2data$country), which(min.M &lt;= 1), ""))
+}
+crit
+</code></pre>
+
+
+</div>

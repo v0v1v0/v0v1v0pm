@@ -1,0 +1,128 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>BGWeights</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Bates-Granger minimal variance model weights</h2>
+
+<h3>Description</h3>
+
+<p>Compute empirical weights based on out of sample forecast variances,
+following Bates and Granger (1969).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">BGWeights(object, ..., data, force.update = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object, ...</code></td>
+<td>
+<p>two or more fitted <code>glm</code> objects, or a
+<code>list</code> of such, or an <code>"averaging"</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a data frame containing the variables in the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>force.update</code></td>
+<td>
+<p>if <code>TRUE</code>, the much less efficient method of
+updating <code>glm</code> function will be  used rather than directly <em>via</em>
+<code>glm.fit</code>. This only applies to <code>glm</code>s, in
+case of other model types <code>update</code> is always used.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Bates-Granger model weights are calculated using prediction covariance. To
+get the estimate of prediction covariance, the models are fitted to
+randomly selected half of <code>data</code> and prediction is done on the
+remaining half.
+These predictions are then used to compute the variance-covariance between
+models, <code class="reqn">\Sigma</code>. Model weights are then calculated as
+<code class="reqn">w_{BG} = (1' \Sigma^{-1} 1)^{-1} 1 \Sigma^{-1}
+</code>,
+where <code class="reqn">1</code> a vector of 1-s.
+</p>
+<p>Bates-Granger model weights may be outside of the <code class="reqn">[0,1]</code> range, which
+may cause the averaged variances to be negative. Apparently this method
+works best when data is large.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A numeric vector of model weights.
+</p>
+
+
+<h3>Note</h3>
+
+<p>For matrix inversion, <code>MASS::ginv()</code> is more stable near singularities
+than <code>solve</code>. It will be used as a fallback if <code>solve</code> fails and
+<span class="pkg">MASS</span> is available.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Carsten Dormann, Kamil Bartoń
+</p>
+
+
+<h3>References</h3>
+
+<p>Bates, J. M. and Granger, C. W. J. 1969 The combination of forecasts.
+<em>Journal of the Operational Research Society</em> <strong>20</strong>, 451-468.
+</p>
+<p>Dormann, C. et al. (2018) Model averaging in ecology: a review of Bayesian,
+information-theoretic, and tactical approaches for predictive inference.
+<em>Ecological Monographs</em> <strong>88</strong>, 485–504.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>Weights</code>, <code>model.avg</code>
+</p>
+<p>Other model weights: 
+<code>bootWeights()</code>,
+<code>cos2Weights()</code>,
+<code>jackknifeWeights()</code>,
+<code>stackingWeights()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">fm &lt;- glm(Prop ~ mortality + dose, family = binomial, Beetle, na.action = na.fail)
+models &lt;- lapply(dredge(fm, evaluate = FALSE), eval)
+ma &lt;- model.avg(models)
+
+# this produces warnings because of negative variances:
+set.seed(78)
+Weights(ma) &lt;- BGWeights(ma, data = Beetle)
+coefTable(ma, full = TRUE)
+
+# SE for prediction is not reliable if some or none of coefficient's SE
+# are available
+predict(ma, data = test.data, se.fit = TRUE)
+coefTable(ma, full = TRUE)
+
+</code></pre>
+
+
+</div>

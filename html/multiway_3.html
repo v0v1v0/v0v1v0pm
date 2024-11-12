@@ -1,0 +1,120 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>const.control</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Auxiliary for Controlling Multi-Way Constraints
+</h2>
+
+<h3>Description</h3>
+
+<p>Auxiliary function for controlling the <code>const</code> argument of the <code>mcr</code>, <code>parafac</code>, and <code>parafac2</code> functions. Applicable when using smoothness constraints.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">const.control(const, df = NULL, degree = NULL, intercept = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>const</code></td>
+<td>
+
+<p>Character vector of length 3 or 4 giving the constraints for each mode. See <code>const</code> for the 24 available options.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+
+<p>Integer vector of length 3 or 4 giving the degrees of freedom to use for the spline basis in each mode. Can also input a single number giving the common degrees of freedom to use for each mode. Defaults to 7 degrees of freedom for each applicable mode.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>degree</code></td>
+<td>
+
+<p>Integer vector of length 3 or 4 giving the polynomial degree to use for the spline basis in each mode. Can also input a single number giving the common polynomial degree to use for each mode. Defaults to degree 3 (cubic) polynomials for each applicable mode.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intercept</code></td>
+<td>
+
+<p>Logical vector of length 3 or 4 indicating whether the spline basis should contain an intercept. Can also input a single logical giving the common intercept indicator to use for each mode. Defaults to <code>TRUE</code> for each applicable mode.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <code>mcr</code>, <code>parafac</code>, and <code>parafac2</code> functions pass the input <code>const</code> to this function to determine the fitting options when using smoothness constraints.
+</p>
+<p>The <code>const</code> function (from <b>CMLS</b> package) describes the available constraint options.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns a list with elements: <code>const</code>, <code>df</code>, <code>degree</code>, and <code>intercept</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nathaniel E. Helwig &lt;helwig@umn.edu&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">##########   EXAMPLE   ##########
+
+# create random data array with Parafac structure
+set.seed(4)
+mydim &lt;- c(30, 10, 8, 10)
+nf &lt;- 4
+aseq &lt;- seq(-3, 3, length.out = mydim[1])
+Amat &lt;- cbind(dnorm(aseq), dchisq(aseq+3.1, df=3),
+              dt(aseq-2, df=4), dgamma(aseq+3.1, shape=3, rate=1))
+Bmat &lt;- svd(matrix(runif(mydim[2]*nf), nrow = mydim[2], ncol = nf), nv = 0)$u
+Cmat &lt;- matrix(runif(mydim[3]*nf), nrow = mydim[3], ncol = nf)
+Cstruc &lt;- Cmat &gt; 0.5
+Cmat &lt;- Cmat * Cstruc
+Dmat &lt;- matrix(runif(mydim[4]*nf), nrow = mydim[4], ncol = nf)
+Xmat &lt;- tcrossprod(Amat, krprod(Dmat, krprod(Cmat, Bmat)))
+Xmat &lt;- array(Xmat, dim = mydim)
+Emat &lt;- array(rnorm(prod(mydim)), dim = mydim)
+Emat &lt;- nscale(Emat, 0, ssnew = sumsq(Xmat))   # SNR = 1
+X &lt;- Xmat + Emat
+
+# fit Parafac model (unimodal and smooth A, orthogonal B, 
+#                    non-negative and structured C, non-negative D)
+set.seed(123)
+pfac &lt;- parafac(X, nfac = nf, nstart = 1, Cstruc = Cstruc, 
+                const = c("unismo", "orthog", "nonneg", "nonneg"))
+pfac
+
+# same as before, but add some options to the unimodality contraints...
+# more knots (df=10), quadratic splines (degree=2), and enforce non-negativity
+cvec &lt;- c("unsmno", "orthog", "nonneg", "nonneg")
+ctrl &lt;- const.control(cvec, df = 10, degree = 2)
+set.seed(123)
+pfac &lt;- parafac(X, nfac = nf, nstart = 1, Cstruc = Cstruc,
+                const = cvec, control = ctrl)
+pfac
+
+</code></pre>
+
+
+</div>

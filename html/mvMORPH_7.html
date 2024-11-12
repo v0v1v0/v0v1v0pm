@@ -1,0 +1,156 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>EIC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Extended Information Criterion (EIC) to compare models fit with <code>mvgls</code> (or <code>mvols</code>) by Maximum Likelihood (ML) or Penalized Likelihood (PL)
+</h2>
+
+<h3>Description</h3>
+
+<p>The EIC (Ishiguro et al. 1997, Kitagawa &amp; Konishi 2010), uses bootstrap to estimate the bias term of the Extended Information Criterion. This criterion allows comparing models fit by Maximum Likelihood (ML) or Penalized Likelihood (PL).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">
+EIC(object, nboot=100L, nbcores=1L, ...)
+  
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+
+<p>An object of class 'mvgls'. See <code>?mvgls</code> or <code>?mvols</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nboot</code></td>
+<td>
+
+<p>The number of boostrap replicates used for estimating the EIC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nbcores</code></td>
+<td>
+
+<p>The number of cores used to speed-up the computations (uses the 'parallel' package)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Options to be passed through.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The Extended Information Criterion (<code>EIC</code>) allows comparing the fit of various models estimated by Penalized Likelihood or Maximum Likelihood (see ?<code>mvgls</code>). Similar to the GIC or the more common AIC, the EIC has the form:
+</p>
+<p style="text-align: center;"><code class="reqn">EIC = -2*(Likelihood) + 2*bias</code>
+</p>
+
+<p>Where <em>Likelihood</em> corresponds to either the full or the restricted likelihood (see the note below), and the bias term is estimated by (semi-parametric) bootstrap simulations rather than by using analytical or approximate solutions (see for instance ?<code>GIC</code>). The smaller the EIC, the better is the model. With small sample sizes, the variability around the bootstrap estimate is expected to be high, and one must increase the number of bootstrap replicates. Parallel computation (argument <code>nbcores</code>) allows to speed-up the computations.
+</p>
+<p>Note: for models estimated by REML, it is generally not possible to compare the restricted likelihoods when the models fit have different fixed effects. However, it is possible to compare models with different fixed effects by using the full likelihood evaluated at the REML estimates (see e.g. Yafune et al. 2006, Verbyla 2019). Both options - evaluating the restricted likelihood or the full likelihood with parameters estimated by REML - are available through the <code>REML</code> argument in the <code>EIC</code> function. The default has been set to <code>REML=FALSE</code> to allow the comparison of models with different fixed effects using the full likelihood evaluated with the REML estimates (see Verbyla 2019).
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list with the following components
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>LogLikelihood</code></td>
+<td>
+<p>the log-likelihood estimated for the model with estimated parameters</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>EIC</code></td>
+<td>
+<p>the EIC criterion</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>se</code></td>
+<td>
+<p>the standard error of the bias term estimated by bootstrap</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bias</code></td>
+<td>
+<p>the values of the bias term estimated from the boostrapped replicates to compute the EIC</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>J. Clavel</p>
+
+
+<h3>References</h3>
+
+<p>Clavel J., Aristide L., Morlon H., 2019. A Penalized Likelihood framework for high-dimensional phylogenetic comparative methods and an application to new-world monkeys brain evolution. Syst. Biol. 68:93-116.
+</p>
+<p>Ishiguro M., Sakamoto Y., Kitagawa G., 1997. Bootstrapping log likelihood and EIC, an extension of AIC. Ann. Inst. Statist. Math. 49:411-434.
+</p>
+<p>Kitagawa G., Konishi S., 2010. Bias and variance reduction techniques for bootstrap information criterion. Ann. Inst. Stat. Math. 62:209-234.
+</p>
+<p>Konishi S., Kitagawa G., 1996. Generalised information criteria in model selection. Biometrika. 83:875-890.
+</p>
+<p>Verbyla A. P., 2019. A note on model selection using information criteria for general linear models estimated using REML. Aust. N. Z. J. Stat. 61:39-50.
+</p>
+<p>Yafune A., Funatogawa T., Ishiguro M., 2005. Extended information criterion (EIC) approach for linear mixed effects models under restricted maximum likelihood (REML) estimation. Statist. Med. 24:3417-3429.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>GIC</code>
+<code>mvgls</code>
+<code>mvols</code>
+<code>manova.gls</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+set.seed(1)
+n &lt;- 32 # number of species
+p &lt;- 50 # number of traits
+
+tree &lt;- pbtree(n=n) # phylogenetic tree
+R &lt;- crossprod(matrix(runif(p*p), ncol=p)) # a random symmetric matrix (covariance)
+# simulate a dataset
+Y &lt;- mvSIM(tree, model="BM1", nsim=1, param=list(sigma=R))
+
+fit1 &lt;- mvgls(Y~1, tree=tree, model="BM", method="H&amp;L")
+fit2 &lt;- mvgls(Y~1, tree=tree, model="OU", method="H&amp;L")
+
+
+EIC(fit1); EIC(fit2)
+
+# We can improve accuracy by increasing the number of bootstrap samples
+# EIC(fit1, nboot=5000, nbcores=8L)
+# EIC(fit2, nboot=5000, nbcores=8L)
+
+</code></pre>
+
+
+</div>

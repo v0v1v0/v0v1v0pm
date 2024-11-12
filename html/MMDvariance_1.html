@@ -1,0 +1,428 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>gsMMD.v</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Gene selection based on variances by using a mixture of marginal distributions</h2>
+
+<h3>Description</h3>
+
+<p>Gene selection based on variances by using the marginal distributions of gene profiles that characterized by a mixture of three-component multivariate distributions. The goal is to detect gene probes having different variances between
+cases and controls.
+Input is an object derived from the class <code>ExpressionSet</code>. The function will obtain initial gene cluster membership by its own.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">gsMMD.v(obj.eSet, 
+      memSubjects, 
+      maxFlag = TRUE, 
+      thrshPostProb = 0.5, 
+      geneNames = NULL, 
+      alpha = 0.05, 
+      iniGeneMethod = "myLeveneTest", 
+      transformFlag = FALSE, 
+      transformMethod = "boxcox", 
+      scaleFlag = TRUE, 
+      criterion = c("cor", "skewness", "kurtosis"), 
+      minL = -10, 
+      maxL = 10, 
+      stepL = 0.1, 
+      eps = 0.001, 
+      ITMAX = 100, 
+      plotFlag = FALSE,
+      quiet=TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obj.eSet</code></td>
+<td>
+<p>an object derived from the class <code>ExpressionSet</code> which contains the matrix of gene expression levels.  The rows of the matrix are genes. The columns of the matrix are subjects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>memSubjects</code></td>
+<td>
+<p>a vector of membership of subjects. <code>memSubjects[i]=1</code> means the <code class="reqn">i</code>-th subject belongs to diseased group, <code class="reqn">0</code> otherwise. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxFlag</code></td>
+<td>
+<p>logical. Indicate how to assign gene class membership. <code>maxFlag</code>=TRUE means that a gene will be assigned
+to a class in which the posterior probability of the gene belongs to this class is maximum. <code>maxFlag</code>=FALSE means that a gene will be assigned to class 1 if the posterior probability of the gene belongs to class 1 is
+greater than <code>thrshPostProb</code>. Similarly, a gene will be assigned to class 1 if the posterior probability of the gene belongs to class 1 is
+greater than <code>thrshPostProb</code>. If  the posterior probability is less than <code>thrshPostProb</code>, the gene
+will be assigned to class 2 (non-differentially variable gene group).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thrshPostProb</code></td>
+<td>
+<p>threshold for posterior probabilities. For example, if the posterior probability that a gene belongs to cluster 1 given its gene expression levels is larger than <code>thrshPostProb</code>, then this gene will be assigned to cluster 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>geneNames</code></td>
+<td>
+<p>an optional character vector of gene names</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>significant level which is equal to <code>1-conf.level</code>, 
+<code>conf.level</code> is the argument for the function <code>t.test</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iniGeneMethod</code></td>
+<td>
+<p>method to get initial 3-cluster partition of genes: 
+(1) genes having higher variance in cases than in controls;
+(2) genes having equal variance between cases and controls;
+(3) genes having lower variance in cases than in controls.
+</p>
+<p>Available methods are: 
+“myAWvar”, 
+“myBFTest”, 
+“myFTest”, 
+“myLeveneTest”, 
+“myLevene.TM”, 
+“myiAWvar.BF”,
+“myiAWvar.Levene”, 
+“myiAWvar.TM”,
+“myLeveneTest”, 
+“myLeveneTest.TM”. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transformFlag</code></td>
+<td>
+<p>logical. Indicate if data transformation is needed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transformMethod</code></td>
+<td>
+<p>method for transforming data. Available methods include "boxcox", "log2", "log10", "log", "none".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scaleFlag</code></td>
+<td>
+<p>logical. Indicate if gene profiles are to be scaled to have mean zero and variance one. If <code>transformFlag=TRUE</code> and <code>scaleFlag=TRUE</code>, then scaling is performed after transformation. To avoid linear dependence of tissue samples after scaling
+gene profiles, we delete one tissue sample after scaling (c.f. details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>criterion</code></td>
+<td>
+<p>if <code>transformFlag=TRUE</code>, <code>criterion</code> indicates what criterion to determine if data looks like normal.  “cor” means using Pearson's correlation. The idea is that the observed quantiles after transformation should be close to theoretical normal quantiles. So we can use Pearson's correlation to check if the scatter plot of theoretical normal quantiles versus observed quantiles is a straightline.  “skewness” means using skewness measure to check if the distribution of the transformed data are close to normal distribution; “kurtosis” means using kurtosis measure to check normality.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>minL</code></td>
+<td>
+<p>lower limit for the <code>lambda</code> parameter used in Box-Cox transformation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxL</code></td>
+<td>
+<p>upper limit for the <code>lambda</code> parameter used in Box-Cox transformation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stepL</code></td>
+<td>
+<p>step increase when searching the optimal <code>lambda</code> parameter used in Box-Cox transformation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>a small positive value. If the absolute value of a value is smaller than <code>eps</code>, this value is regarded as zero.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ITMAX</code></td>
+<td>
+<p>maximum iteration allowed for iterations in the EM algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plotFlag</code></td>
+<td>
+<p>logical. Indicate if the Box-Cox normality plot should be output.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quiet</code></td>
+<td>
+<p>logical. Indicate if intermediate results should be printed out.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>We assume that the distribution of gene expression profiles is 
+a mixture of 3-component multivariate normal distributions 
+<code class="reqn">\sum_{k=1}^{3} \pi_k f_k(x|\theta)</code>. Each component distribution <code class="reqn">f_k</code> 
+corresponds to a gene cluster. The 3 components correspond to 3 gene clusters:
+(1) genes having higher variance in cases than in controls;
+(2) genes having equal variance between cases and controls;
+(3) genes having lower variance in cases than in controls.
+The model parameter vector is <code class="reqn">\theta=(\pi_1</code>, <code class="reqn">\pi_2</code>, 
+<code class="reqn">\pi_3</code>, 
+<code class="reqn">\sigma^2_{c1}</code>, <code class="reqn">\sigma^2_{n1}</code>, <code class="reqn">\mu_{c1}</code>, <code class="reqn">\rho_{c1}</code>, <code class="reqn">\mu_{n1}</code>, 
+<code class="reqn">\rho_{n1}</code>,
+<code class="reqn">\sigma^2_2</code>, <code class="reqn">\mu_{c2}</code>, <code class="reqn">\rho_{c2}</code>, <code class="reqn">\mu_{n2}</code>, <code class="reqn">\rho_{n2}</code>, 
+<code class="reqn">\sigma^2_{c3}</code>, <code class="reqn">\sigma^2_{n3}</code>, 
+<code class="reqn">\mu_{c3}</code>, 
+<code class="reqn">\rho_{c3}</code>, <code class="reqn">\mu_{n3}</code>, <code class="reqn">\rho_{n3}</code>.
+where <code class="reqn">\pi_1</code>, <code class="reqn">\pi_2</code>, and <code class="reqn">\pi_3</code> are the mixing proportions; 
+<code class="reqn">\mu_{c1}</code>, <code class="reqn">\sigma^2_{c1}</code>, and <code class="reqn">\rho_{c1}</code> are 
+the marginal mean, variance, and correlation of gene expression levels 
+of cluster 1 (over-variable genes) for diseased subjects; 
+<code class="reqn">\mu_{n1}</code>, <code class="reqn">\sigma^2_{n1}</code>, and <code class="reqn">\rho_{n1}</code> are 
+the marginal mean, variance, and correlation of gene expression levels 
+of cluster 1 (over-variable genes) for non-diseased subjects; 
+<code class="reqn">\sigma^2_2</code>, <code class="reqn">\mu_{c2}</code>, <code class="reqn">\rho_{c2}</code>, <code class="reqn">\mu_{n2}</code>, and <code class="reqn">\rho_{n2}</code> are the marginal mean, 
+variance, and correlation of gene 
+expression levels of cluster 2 (equal-variable genes); 
+<code class="reqn">\mu_{c3}</code>, <code class="reqn">\sigma^2_{c3}</code>, and <code class="reqn">\rho_{c3}</code> are 
+the marginal mean, variance, and correlation of gene expression levels 
+of cluster 3 (under-variable genes) for diseased subjects; 
+<code class="reqn">\mu_{n3}</code>, <code class="reqn">\sigma^2_{n3}</code>, and <code class="reqn">\rho_{n3}</code> are 
+the marginal mean, variance, and correlation of gene expression levels 
+of cluster 3 (under-variable) for non-diseased subjects. 
+</p>
+<p>Note that genes in cluster 2 are non-differentially variable across
+abnormal and normal tissue samples. Hence there are only 5 parameters for
+cluster 2.
+</p>
+<p>To make sure the identifiability, we set the following contraints: 
+<code class="reqn">\sigma_{c1}&gt;\sigma_{n1}</code> and <code class="reqn">\sigma_{c3}&lt;\sigma_{n3}</code>.
+</p>
+<p>To make sure the marginal covariance matrices are poisitive definite,
+we set the following contraints: 
+<code class="reqn">-1/(n_c-1)&lt;\rho_{c1}&lt;1</code>,
+<code class="reqn">-1/(n_n-1)&lt;\rho_{n1}&lt;1</code>,
+<code class="reqn">-1/(n-1)&lt;\rho_{2}&lt;1</code>,
+<code class="reqn">-1/(n_c-1)&lt;\rho_{c3}&lt;1</code>,
+<code class="reqn">-1/(n_n-1)&lt;\rho_{n3}&lt;1</code>.
+</p>
+<p>We also has the following constraints for the mixing proportion:
+<code class="reqn">\pi_3=1-\pi_1-\pi_2</code>, <code class="reqn">\pi_k&gt;0</code>, <code class="reqn">k=1,2,3</code>.
+</p>
+<p>We apply the EM algorithm to estimate the model parameters. 
+We regard the cluster membership of genes as missing values.
+</p>
+<p>To facilitate the estimation of the parameters,
+we reparametrize the parameter vector as
+<code class="reqn">\theta^*=(\pi_1</code>, <code class="reqn">\pi_2</code>, 
+<code class="reqn">s^2_{c1}</code>, <code class="reqn">\delta_{n1}</code>, <code class="reqn">\mu_{c1}</code>, 
+<code class="reqn">r_{c1}</code>, <code class="reqn">\mu_{n1}</code>, <code class="reqn">r_{n1}</code>,
+<code class="reqn">s^2_2</code>, <code class="reqn">\mu_{c2}</code>, <code class="reqn">r_{c2}</code>, <code class="reqn">\mu_{n2}</code>, <code class="reqn">r_{n2}</code>, 
+<code class="reqn">s^2_{c3}</code>, <code class="reqn">\delta_{n3}</code>, <code class="reqn">\mu_{c3}</code>, <code class="reqn">r_{c3}</code>, <code class="reqn">\mu_{n3}</code>, 
+<code class="reqn">r_{n3})</code>,
+where
+<code class="reqn">\sigma_{n1}=\sigma_{c1}-\exp(\delta_{n1})</code>,
+<code class="reqn">\sigma_{n3}=\sigma_{c3}+\exp(\delta_{n3})</code>,
+<code class="reqn">\rho_{c1}=(\exp(r_{c1})-1/(n_c-1))/(1+\exp(r_{c1}))</code>,
+<code class="reqn">\rho_{n1}=(\exp(r_{n1})-1/(n_n-1))/(1+\exp(r_{n1}))</code>,
+<code class="reqn">\rho_{2}=(\exp(r_{2})-1/(n-1))/(1+\exp(r_{2}))</code>,
+<code class="reqn">\rho_{c3}=(\exp(r_{c3})-1/(n_c-1))/(1+\exp(r_{c3}))</code>,
+<code class="reqn">\rho_{n3}=(\exp(r_{n3})-1/(n_n-1))/(1+\exp(r_{n3}))</code>.
+</p>
+<p>Given a gene, the expression levels of the gene are assumed independent. However, after scaling, the scaled expression levels of the gene are no longer independent and the rank <code class="reqn">r^*=r-1</code> of the covariance matrix for the scaled gene profile will be one less than the rank <code class="reqn">r</code> for the un-scaled gene profile Hence the covariance matrix of the
+gene profile will no longer be positive-definite. 
+To avoid this problem,
+we delete a tissue sample after scaling since its information has been incorrporated by other scaled tissue samples. We arbitrarily select the tissue sample, which has the biggest label number, from the tissue sample group that has larger size than the other tissue sample group. For example, if there are 6 cancer tissue samples and 10 normal tissue samples, we delete the 10-th normal tissue sample after scaling.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list contains 18 elements.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>dat</code></td>
+<td>
+<p>the (transformed) microarray data matrix. If tranformation
+performed, then <code>dat</code> will be different from the input 
+microarray data matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>memSubjects</code></td>
+<td>
+<p>the same as the input <code>memSubjects</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>memGenes</code></td>
+<td>
+<p>a vector of cluster membership of genes. <code class="reqn">1</code> means over-variable gene; <code class="reqn">2</code> means non-differentially variable gene; <code class="reqn">3</code> 
+means under-variable gene.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>memGenes2</code></td>
+<td>
+<p>an variant of the vector of cluster membership of genes. 
+<code class="reqn">1</code> means differentially variable gene; <code class="reqn">0</code> means non-differentially variable gene.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>para</code></td>
+<td>
+<p>parameter estimates (c.f. details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>llkh</code></td>
+<td>
+<p>value of the loglikelihood function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wiMat</code></td>
+<td>
+<p>posterior probability that a gene belongs to a cluster given the expression levels of this gene. Column i is for cluster i.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wiArray</code></td>
+<td>
+<p>posterior probability matrix for different initial gene selection methods.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>memIniMat</code></td>
+<td>
+<p>a matrix of initial cluster membership of genes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>paraIniMat</code></td>
+<td>
+<p>a matrix of parameter estimates based on initial gene cluster membership.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>llkhIniVec</code></td>
+<td>
+<p>a vector of values of loglikelihood function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>memMat</code></td>
+<td>
+<p>a matrix of cluster membership of genes based on the mixture
+of marginal models with initial parameter estimates obtained initial gene cluster membership.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>paraMat</code></td>
+<td>
+<p>a matrix of parameter estimates based on the mixture
+of marginal models with initial parameter estimates obtained initial gene cluster membership.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>llkhVec</code></td>
+<td>
+<p>a vector of values of loglikelihood function based on the mixture of marginal models with initial parameter estimates obtained initial gene cluster membership.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>the parameter used to do Box-Cox transformation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>paraRP</code></td>
+<td>
+<p>parameter estimates for reparametrized parameter vector (c.f. details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>paraIniMatRP</code></td>
+<td>
+<p>a matrix of parameter estimates for reparametrized parameter vector based on initial gene cluster membership.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>paraMatRP</code></td>
+<td>
+<p>a matrix of parameter estimates for reparametrized parameter vector based on the mixture
+of marginal models with initial parameter estimates obtained initial gene cluster membership.</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>The speed of the program is slow for large data sets.
+</p>
+
+
+<h3>Author(s)</h3>
+
+ 
+<p>Xuan Li <a href="mailto:lixuan0759@gmail.com">lixuan0759@gmail.com</a>,
+Yuejiao Fu <a href="mailto:yuejiao@mathstat.yorku.ca">yuejiao@mathstat.yorku.ca</a>,
+Xiaogang Wang <a href="mailto:stevenw@mathstat.yorku.ca">stevenw@mathstat.yorku.ca</a>,
+Dawn L. DeMeo <a href="mailto:redld@channing.harvard.edu">redld@channing.harvard.edu</a>,
+Kelan Tantisira <a href="mailto:rekgt@channing.harvard.edu">rekgt@channing.harvard.edu</a>,
+Scott T. Weiss <a href="mailto:restw@channing.harvard.edu">restw@channing.harvard.edu</a>,
+Weiliang Qiu <a href="mailto:weiliang.qiu@gmail.com">weiliang.qiu@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Li X, Fu Y, Wang X, DeMeo DL, Tantisira K, Weiss ST, Qiu W.
+Detecting Differentially Variable MicroRNAs via Model-Based Clustering.
+<em>International Journal of Genomics</em>. Article ID 6591634, Volumne 2018 (2018).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">      t1 = proc.time()
+      library(ALL)
+      data(ALL)
+      eSet1 &lt;- ALL[1:50, ALL$BT == "B3" | ALL$BT == "T2"]
+      
+      mem.str &lt;- as.character(eSet1$BT)
+      nSubjects &lt;- length(mem.str)
+      memSubjects &lt;- rep(0,nSubjects)
+      # B3 coded as 0, T2 coded as 1
+      memSubjects[mem.str == "T2"] &lt;- 1
+      
+      obj.gsMMD.v &lt;- gsMMD.v(eSet1, memSubjects, transformFlag = FALSE, 
+        transformMethod = "boxcox", scaleFlag = FALSE, 
+        eps = 1.0e-1, ITMAX = 5, quiet = TRUE)
+      print(round(obj.gsMMD.v$para, 3))
+      t2=proc.time()-t1
+      print(t2)
+      
+</code></pre>
+
+
+</div>

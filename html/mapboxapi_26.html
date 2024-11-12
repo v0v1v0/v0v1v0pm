@@ -1,0 +1,151 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mts_create_tileset</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create a tileset with the Mapbox Tiling Service API</h2>
+
+<h3>Description</h3>
+
+<p>After you've uploaded your spatial data to your Mapbox account with <code>mts_create_source</code> and prepared a valid recipe with <code>mts_make_recipe()</code>, you can use your source and recipe to create a vector tileset.  This tileset will be hosted at your Mapbox account.  Once created successfully, you will need to publish the tileset using <code>mts_publish_tileset</code> to use it in Mapbox Studio, Mapbox GL JS, or an R package that can read Mapbox tilesets.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mts_create_tileset(
+  tileset_name,
+  username,
+  recipe,
+  request_name = tileset_name,
+  access_token = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>tileset_name</code></td>
+<td>
+<p>The name of the MTS tileset you intend to create</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>username</code></td>
+<td>
+<p>Your Mapbox username</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recipe</code></td>
+<td>
+<p>An MTS recipe, created with <code>mts_make_recipe()</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>request_name</code></td>
+<td>
+<p>The name of the request; defaults to the tileset name</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>access_token</code></td>
+<td>
+<p>Your Mapbox access token</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The response from the API, formatted as an R list.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><a href="https://docs.mapbox.com/api/maps/mapbox-tiling-service/#create-a-tileset">https://docs.mapbox.com/api/maps/mapbox-tiling-service/#create-a-tileset</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+library(tidycensus)
+library(mapboxapi)
+options(tigris_use_cache = TRUE)
+
+# Get the national data on median age
+us_median_age_tract &lt;- get_acs(
+  geography = "tract",
+  variables = "B01002_001",
+  state = c(state.abb, "DC"),
+  year = 2020,
+  geometry = TRUE
+)
+
+# Get it for counties as well
+us_median_age_county &lt;- get_acs(
+  geography = "county",
+  variables = "B01002_001",
+  year = 2020,
+  geometry = TRUE
+)
+
+# Create a source from the datasets
+mts_create_source(data = us_median_age_tract,
+                  tileset_id = "us_median_age_tract",
+                  username = "your_mapbox_username")
+
+mts_create_source(data = us_median_age_county,
+                  tileset_id = "us_median_age_county",
+                  username = "your_mapbox_username")
+
+# Build out the recipe.  First, create a recipe layer with
+# appropriate options.  We'll want a larger tile size and to restrict the minzoom
+# to 4; a maxzoom of 12 will be fine as we can overzoom beyond that
+#
+# Your source ID will be returned by `mts_create_source()`, so use that value
+tract_layer &lt;- recipe_layer(
+  source = "mapbox://tileset-source/your_mapbox_username/us_median_age_tract",
+  minzoom = 4,
+  maxzoom = 12,
+  tiles = tile_options(layer_size = 2500)
+)
+
+county_layer &lt;- recipe_layer(
+  source = "mapbox://tileset-source/your_mapbox_username/us_median_age_county",
+  minzoom = 2,
+  maxzoom = 5
+)
+
+recipe &lt;- mts_make_recipe(tracts = tract_layer, counties = county_layer)
+
+# Validate the recipe
+mts_validate_recipe(recipe)
+
+# Create a tileset from the recipe
+mts_create_tileset(tileset_name = "median_age_acs",
+                   username = "your_mapbox_username",
+                   recipe = recipe)
+
+# Publish the tileset
+mts_publish_tileset(tileset_name = "median_age_acs",
+                    username = "your_mapbox_username")
+
+# If necessary, update the recipe
+mts_update_recipe(tileset_name = "median_age_acs",
+                  username = "your_mapbox_username",
+                  recipe = new_recipe)
+
+# Publish the tileset again after you've updated the recipe
+mts_publish_tileset(tileset_name = "median_age_acs",
+                    username = "your_mapbox_username")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

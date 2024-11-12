@@ -1,0 +1,336 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvOUTS</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Multivariate continuous trait evolution for a stationary time series (Ornstein-Uhlenbeck model)
+
+</h2>
+
+<h3>Description</h3>
+
+<p>This function allows the fitting of a multivariate Ornstein-Uhlenbeck (OU) model to a time series.
+Species measurement errors or dispersions can also be included in the model.
+
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mvOUTS(times, data, error = NULL, param = list(sigma = NULL, alpha = NULL,
+    vcv = "randomRoot", decomp = c("cholesky","spherical","eigen","qr",
+    "diagonal","upper","lower")), method = c("rpf", "inverse", "pseudoinverse",
+    "univarpf"), scale.height = FALSE, optimization = c("L-BFGS-B", "Nelder-Mead", 
+    "subplex"), control = list(maxit = 20000), precalc = NULL, diagnostic = TRUE, 
+    echo = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>times</code></td>
+<td>
+
+<p>Time series - vector of sample ages.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>Matrix or data frame with species in rows and continuous traits in columns. NA values are allowed.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>error</code></td>
+<td>
+
+<p>Matrix or data frame with species in rows and continuous trait sampling variance (squared standard errors) in columns.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>param</code></td>
+<td>
+
+<p>List of arguments to be passed to the function. See details below.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>Choose between "rpf", "inverse", "pseudoinverse", or "univarpf" for computing the log-likelihood during the fitting process. See details below.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale.height</code></td>
+<td>
+
+<p>Whether the time series should be scaled to unit length or not.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optimization</code></td>
+<td>
+
+<p>Methods used by the optimization routines (see ?optim and ?subplex for details). The "fixed" method returns the log-likelihood function only.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+
+<p>Max. bound for the number of iteration of the optimizer; other options can be fixed in the list (see ?optim or ?subplex).
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>precalc</code></td>
+<td>
+
+<p>Optional. Precalculation of fixed parameters. See ?mvmorph.Precalc for details.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>diagnostic</code></td>
+<td>
+
+<p>Whether the convergence diagnostics should be returned or not.
+
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>echo</code></td>
+<td>
+
+<p>Whether the results must be returned or not.
+
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The mvOUTS function fits a multivariate model of trait evolution on a time series according to an Ornstein-Uhlenbeck process. The user can include measurement errors to the analyzed dataset.
+</p>
+<p>The "method" argument allows the user to try different algorithms for computing the log-likelihood. The <em>"rpf"</em>, <em>"univarpf"</em> (for univariate analysis) methods use fast GLS algorithms based on factorization for avoiding the computation of the inverse of the variance-covariance matrix and its determinant for the log-likelihood estimation. The <em>"inverse"</em> approach uses the <em>"stable"</em> standard explicit computation of the inverse and determinant of the matrix and is therefore slower. The <em>"pseudoinverse"</em> method uses a generalized inverse that is safer for matrix near singularity but highly time consuming. See ?mvLL for details.
+</p>
+<p>Arguments in the <b>"param"</b> <em>list</em> are:
+</p>
+<p><b>"sigma"</b> or <b>"alpha"</b> - Starting values for the likelihood search can be specified through the "alpha" and "sigma" arguments in the param list. It is also possible to test for the significance of the off-diagonal sigma (scatter) and alpha (drift) matrix in the full model by making comparison with a constrained model (using sigma="constraint", or alpha="constraint") in the "param" argument list. You can also provide starting values for the constrained model. For instance, for two traits use sigma=list("constraint", c(0.5,0.5))  (or alpha=list("constraint", c(0.5,0.5))).
+</p>
+<p><b>"decomp"</b> - You can further constrain the alpha matrix by specifying the decomposition of the matrix through the "decomp" argument in the "param" list. Indeed, the multivariate Ornstein-Uhlenbeck model is described by the spectral decomposition of the alpha matrix. Thus it is possible to parameterize the alpha matrix to be decomposable using various parameterizations (e.g., on its eigenvalues with different biological interpretations; Sy et al. 1997, Bartoszek et al. 2012). For a symmetric matrix parameterization the user can choose the <em>"cholesky"</em>, <em>"eigen"</em>, or <em>"spherical"</em> option. 
+For general square (non-symmetric) matrices the <em>"svd"</em>, <em>"qr"</em> and <em>"schur"</em> parameterizations can be used. The <em>"schur"</em> parameterization constrains the eigenvalues of the alpha matrix to be real numbers. The <em>"svd+"</em>, <em>"qr+"</em> or <em>"eigen+"</em> options forces the eigenvalues to be positives by taking their logarithm. It is also possible to specify <em>"diagonal"</em> which is similar to the use of the "constraint" argument for the "alpha" argument, or to use <em>"equal"</em> and <em>"equaldiagonal"</em>. Finally, one can specify that the alpha matrix is <em>"upper"</em> or <em>"lower"</em> triangular (i.e., one process affect the other unilateraly). Details can be found in the package vignette: browseVignettes("mvMORPH").
+</p>
+<p><b>"decompSigma"</b> - The sigma matrix is parameterized by various methods to ensure its positive definiteness (Pinheiro and Bates, 1996). These methods can be accessed through the "decompSigma" argument and are the <em>"cholesky"</em>, <em>"eigen+"</em>, and <em>"spherical"</em> parameterization. The sigma matrix can also be forced to be diagonal using <em>"diagonal"</em> or <em>"equaldiagonal"</em> and forced to have the same variances using <em>"equal"</em>. Details can be found in the package vignette: browseVignettes("mvMORPH").
+</p>
+<p><b>"vcv"</b> - It is possible to specify in the "param" list what kind of variance-covariance matrix to use with the "vcv" argument, depending on how the root is treated. 
+The <em>vcv="randomRoot"</em> option assumes that the value at the root is a random variable with the stationary distribution of the process. The <em>vcv="fixedRoot"</em> option assumes that the root is a fixed parameter.
+</p>
+<p><b>"root"</b> - If root=TRUE, the ancestral state and the optimum (stationary mean) are estimated, otherwise (root=FALSE) the ancestral (initial) state and the optimum (long-term expectation) are assumed to be the same.
+</p>
+<p>Note: for the <b>"decomp"</b> and <b>"decompSigma</b> arguments, an user-defined matrix with integer values taken as indices of the parameters to be estimated can be provided. See ?mvBM and ?mvRWTS.
+</p>
+
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>LogLik </code></td>
+<td>
+<p>The log-likelihood of the optimal model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>AIC </code></td>
+<td>
+<p>Akaike Information Criterion for the optimal model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>AICc </code></td>
+<td>
+<p>Sample size-corrected AIC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>theta </code></td>
+<td>
+<p>Estimated ancestral states.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha </code></td>
+<td>
+<p>Matrix of estimated alpha values (strength of selection, drift matrix).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma </code></td>
+<td>
+<p>Evolutionary rate matrix (scatter).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convergence </code></td>
+<td>
+<p>Convergence status of the optimizing function; "0" indicates convergence. (See ?optim for details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hess.values </code></td>
+<td>
+<p>Reliability of the likelihood estimates calculated through the eigen-decomposition of the hessian matrix. "0" means that a reliable estimate has been reached. See details on ?mvOU.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>param </code></td>
+<td>
+<p>List of model fit parameters (optimization, method, model, number of parameters...).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>llik </code></td>
+<td>
+<p>The log-likelihood function evaluated in the model fit "$llik(par, root.mle=TRUE)".</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Julien Clavel
+
+</p>
+
+
+<h3>References</h3>
+
+<p>Bartoszek K., Pienaar J., Mostad P., Andersson S., Hansen T.F. 2012. A phylogenetic comparative method for studying multivariate adaptation. J. Theor. Biol. 314:204-215.
+</p>
+<p>Clavel J., Escarguel G., Merceron G. 2015. mvMORPH: an R package for fitting multivariate evolutionary models to morphometric data. Methods Ecol. Evol. 6(11):1311-1319.
+</p>
+<p>Hunt G., Bell M.A., Travis M.P. 2008. Evolution toward a new adaptive optimum: phenotypic evolution in a fossil stickleback lineage. Evolution 62(3):700-710.
+</p>
+<p>Pinheiro J.C., Bates D.M. 1996. Unconstrained parameterizations for variance-covariance matrices. Stat. Comput. 6:289-296.
+</p>
+<p>Sy J.P., Taylor J.M.G., Cumberland W.G. 1997. A stochastic model for the analysis of bivariate longitudinal AIDS data. Biometrics. 53:542-555.
+
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mvMORPH</code>
+<code>halflife</code>
+<code>stationary</code>
+<code>mvOU</code>
+<code>mvRWTS</code>
+<code>mvBM</code>
+<code>mvEB</code>
+<code>mvSHIFT</code>
+<code>mvSIM</code>
+<code>LRT</code>
+<code>optim</code>
+</p>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Simulate the time series
+set.seed(14)
+timeseries &lt;- 0:49
+# Parameters with general alpha matrix on two competitive species (or two traits)
+# asymetric (drift) matrix with intervention from the lowest layer
+alpha &lt;- matrix(c(0.15,0,0.1,0.1),2,2) 
+# scatter matrix
+sigma &lt;- matrix(c(0.01,0.005,0.005,0.01),2)
+# ancestral states and long term optimum expectation
+theta &lt;- matrix(c(0,1,0,.5),2) # columns=traits
+
+# Simulate the data
+traits &lt;- mvSIM(timeseries, model="OUTS", param=list(theta=theta, alpha=alpha, sigma=sigma))
+
+# Plot the time series
+matplot(traits,type="o",pch=1,  xlab="Time (relative)")
+
+fit1 &lt;- mvOUTS(timeseries, traits, param=list(decomp="qr"))
+
+fit2 &lt;- mvOUTS(timeseries, traits, param=list(decomp="eigen"))
+
+fit3 &lt;- mvOUTS(timeseries, traits, param=list(decomp="diagonal"))
+
+results &lt;- list(fit1,fit2,fit3)
+aicw(results)
+
+# Simulate under the MLE
+traits2 &lt;- simulate(fit1,tree=timeseries)
+matplot(traits2, type="o", pch=1, xlab="Time (relative)")
+
+mvOUTS(timeseries, traits2, param=list(decomp="eigen"))
+mvOUTS(timeseries, traits2, param=list(decomp="diagonal"))
+mvOUTS(timeseries, traits2, param=list(decomp="upper"))
+mvOUTS(timeseries, traits2, param=list(decomp="lower"))
+
+
+# try user defined constraints
+set.seed(100)
+ts &lt;- 49
+timeseries &lt;- 1:ts
+
+sigma &lt;- matrix(c(0.01,0.005,0.003,0.005,0.01,0.003,0.003,0.003,0.01),3)
+# upper triangular matrix with effect of trait 2 on trait 1.
+alpha &lt;- matrix(c(0.4,0,0,-0.5,0.3,0,0,0,0.2),3,3) 
+theta &lt;- matrix(c(0,0,0,1,0.5,0.5),byrow=TRUE, ncol=3); root=TRUE
+
+data &lt;- mvSIM(timeseries, model="OUTS", param=list(alpha=alpha, 
+              sigma=sigma, theta=theta, root=root, 
+              names_traits=c("sp 1", "sp 2", "sp 3")))
+
+# plot
+matplot(data, type="o", pch=1, xlab="Time (relative)")
+legend("bottomright", inset=.05, legend=colnames(data), pch=19, col=c(1,2,3), horiz=TRUE)
+
+# define an user constrained drift matrix
+indice &lt;- matrix(NA,3,3)
+diag(indice) &lt;- c(1,2,3)
+indice[1,2] &lt;- 4
+
+# fit the model
+fit_1 &lt;- mvOUTS(timeseries, data, param=list(vcv="fixedRoot", decomp=indice))
+fit_2 &lt;- mvOUTS(timeseries, data, param=list(vcv="fixedRoot", decomp="diagonal"))
+
+LRT(fit_1, fit_2)
+
+
+
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,245 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ftmev</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fitting the temporal Metastatistical Extreme Value Distribution (TMEV)</h2>
+
+<h3>Description</h3>
+
+<p>Fit the temporal MEVD distribution TMEV to rainfall observations with a cyclic spline to account for seasonality.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ftmev(
+  data,
+  threshold = 0,
+  minyears = 10,
+  day_year_interaction = FALSE,
+  verbose = FALSE,
+  yday_ti_shape_k = 10,
+  yday_ti_scale_k = 10,
+  year_ti_shape_k = 10,
+  year_ti_scale_k = 10
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>The data to which the TMEV should be fitted to. <code>data</code> must be a data.frame with two columns. 
+The first column must contain dates of class  <code>Date</code>, the second or last column must contain the rainfall 
+values corresponding to datums in the rows. No negative values are allowed. NA values are removed with a warning.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+<p>A numeric that is used to define wet days as values &gt; threshold. 
+<code class="reqn">data &lt;= threshold</code> is set to NA.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>minyears</code></td>
+<td>
+<p>Minimum number of available years for fitting a cyclic spline to the non-stationary data series (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>day_year_interaction</code></td>
+<td>
+<p>Logical. Should an additional year vs day of the year 
+interaction be used for the calculation of the temporal trend in seasonality?  (see details). Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, verbose output of the temporal fitting process is shown during runtime.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>yday_ti_shape_k</code></td>
+<td>
+<p>A numeric that is used to set the dimension of the bases used to represent the smooth term ti() for yday in the formula for shape.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>yday_ti_scale_k</code></td>
+<td>
+<p>A numeric that is used to set the dimension of the bases used to represent the smooth term ti() for yday in the formula for scale.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>year_ti_shape_k</code></td>
+<td>
+<p>A numeric that is used to set the dimension of the bases used to represent the smooth term ti() for year in the formula for shape (only used when day_year_interaction == TRUE).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>year_ti_scale_k</code></td>
+<td>
+<p>A numeric that is used to set the dimension of the bases used to represent the smooth term ti() for year in the formula for scale (only used when day_year_interaction == TRUE).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>With the aim of exploiting the full temporal information for parameter estimation, 
+Falkensteiner et al., (2023) introduced the TMEV, which is an explicitly 
+non-stationary formulation of the MEVD (Marani and Ignaccolo, 2015). Adopting a 
+Weibull distribution for ordinary rainfall events, the assumption of yearly 
+constant coefficients is relaxed by allowing the Weibull
+parameters to fluctuate with time. The TMEV can then be written as  
+</p>
+<p style="text-align: center;"><code class="reqn">F = \frac{1}{T} \sum_{j=1}^T \prod_{k \in A_j} \left( 1-e^{-\left(\frac{x}{C(j,k)}\right)^{w(j,k)}} \right)</code>
+</p>
+
+<p>with <code class="reqn">w &gt; 0</code> and <code class="reqn">C &gt; 0</code> being the Weibull shape and scale parameters, and 
+$A_j \subseteq (1, ..., 366)$ being the wet days in year j. The temporal and 
+the superimposed seasonal dependence on w and c is modeled with a cyclic seasonal 
+effect on the day of the year. 
+</p>
+<p>Technically this is accomplished by fitting a cyclic spline to the daily rainfall 
+values. The following formula is used for the fitting procedure of both the Weibull scale and 
+shape parameter with the function <code>bamlss</code> from package <code>bamlss</code>: 
+</p>
+<p style="text-align: center;"><code class="reqn">parameter = x \sim s(year) + ti(yday, bs = "cc", k = 10)</code>
+</p>
+
+<p>The first effect models the long-term temporal trend of the parameter with a thin-plate spline. 
+The second effect models the superimposed seasonal fluctuations of the parameter 
+with the 'day of the year' with a cyclic cubic regression spline and 10 knots, 
+to ensure a smooth transition between December and January. The number of knots (k)
+in the above equation can be set separately for the year and yday effect as well as 
+separately for the shape and scale parameter of the Weibull distribution. This can be done
+by overwriting the parameters <code>yday_ti_shape_k</code>, <code>yday_ti_scale_k</code>, 
+<code>year_ti_shape_k</code>, <code>year_ti_scale_k</code> in the call to <code>ftmev</code>. Note that 
+these values depend on many factors, such as the structure of the data, the TMEV is fitted to.
+Please refer to the documentation of the packages <code>bamlss</code> and, 
+in particular <code>mgcv</code>.
+</p>
+<p>For data series with lengths &lt; 10 years, the first temporal effect is changed to 
+a simple linear time trend. 
+</p>
+<p>For trend analysis, an additional interaction term can be added to the model formula. 
+The following term models the relationship between the seasonality as day of the year 
+and the year itself with a combination of a thin plate and a cyclic cubic spline:
+</p>
+<p style="text-align: center;"><code class="reqn">ti(year, yday, bs = c("tp", "cc"), d = c(1, 1), k = c(year_ti_k, yday_ti_k))</code>
+</p>
+
+<p>This function returns the parameters of the fitted TMEV distribution as well as some 
+additional fitting results and input parameters useful for further analysis.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of class <code>mevr</code> with components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>c</code></td>
+<td>
+<p> Vector of Weibull scale parameters of the TMEV, each row refers to one event, which is a day for daiyl rainfall.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>w</code></td>
+<td>
+<p> Vector of Weibull shape parameters of the TMEV, each row refers to one event, which is a day for daiyl rainfall.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p> Number of wet events per year. Wet events are defined as rainfall &gt; <code>threshold</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxima</code></td>
+<td>
+<p> Maximum values corresponding to each year.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p> A data frame with the data used to fit the TMEV and the fitted Weibull parameters <code>c</code> and <code>w</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>years</code></td>
+<td>
+<p> Vector of years as YYYY.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+<p> The chosen threshold.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p> The fitted <code>bamlss</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p> The type of distribution ("TMEV").</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>minyears</code></td>
+<td>
+<p> The minimum number of years used to fit the TMEV as provided.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Marc-Andre Falkensteiner, Harald Schellander
+</p>
+
+
+<h3>References</h3>
+
+<p>Marani, M. and Ignaccolo, M. (2015) 'A metastatistical approach to rainfall extremes', Advances in Water Resources. Elsevier Ltd, 79(Supplement C), pp. 121-126. doi: 10.1016/j.advwatres.2015.03.001.
+</p>
+<p>Falkensteiner, M., Schellander, H., Hell, T. (2023) 'Accounting for seasonality in the metastatistical extreme value distribution', (Weather and Climate Extremes, 42, 2023, https://doi.org/10.1016/j.wace.2023.100601).
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>fmev</code>, <code>fsmev</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(dailyrainfall)
+fit &lt;- ftmev(dailyrainfall)
+plot(fit, type = "rl")
+
+# temporal trend of the Weibull parameters 
+pred &lt;- predict(fit)
+pred_year &lt;- predict(fit, term = "year")
+boxplot(c.pred ~ year, data = pred)
+with(pred_year, lines(year - 1970, c.pred.year, type = "b", pch = 20, col = "red"))
+
+</code></pre>
+
+
+</div>

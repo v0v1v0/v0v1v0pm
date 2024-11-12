@@ -1,0 +1,134 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>calc_rsquared</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate R-Squared.</h2>
+
+<h3>Description</h3>
+
+<p>Calculate R-Squared for univariate or multivariate outcomes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">calc_rsquared(y, yhat, ybar = NULL, return_ss_only = FALSE, threads = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>The true outcome. This must be a numeric vector, numeric matrix, or
+coercible to a sparse matrix of class <code>dgCMatrix</code>. See 'Details'
+below for more information.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>yhat</code></td>
+<td>
+<p>The predicted outcome or a list of two matrices whose dot product
+makes the predicted outcome. See 'Details' below for more information.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ybar</code></td>
+<td>
+<p>Numeric scalar or vector; the mean of <code>y</code>. Useful for parallel
+computation in batches.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>return_ss_only</code></td>
+<td>
+<p>Logical. Do you want to forego calculating R-squared and
+only return the sums of squares?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threads</code></td>
+<td>
+<p>Integer number of threads for parallelism; defaults to 1.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>There is some flexibility in what you can pass as <code>y</code> and <code>yhat</code>.
+In general, <code>y</code> can be a numeric vector, numeric matrix, a sparse
+matrix of class <code>dgCMatrix</code> from the <code>Matrix</code> package,
+or any object that can be coerced into a <code>dgCMatrix</code>.
+</p>
+<p><code>yhat</code> can be a numeric vector, numeric matrix, or a list of two
+matrices whose dot product has the same dimensionality as <code>y</code>. If
+<code>yhat</code> is a list of two matrices you may optionally name them <code>x</code>
+and <code>w</code> indicating the order of multiplication (<code>x</code> left
+multiplies <code>w</code>). If unnamed or ambiguously named, then it is assumed
+that <code>yhat[[1]]</code> left multiplies <code>yhat[[2]]</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>return_ss_only = FALSE</code>, <code>calc_rsqured</code> returns a numeric
+scalar R-squared. If <code>return_ss_only = TRUE</code>, <code>calc_rsqured</code>
+returns a vector; the first element is the error sum of squares (SSE) and
+the second element is the total sum of squares (SST). R-squared may then
+be calculated as <code>1 - SSE / SST</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>On some Linux systems, setting <code>threads</code> greater than 1 for parallelism
+may introduce some imprecision in the calculation. As of this writing, the
+cause is still under investigation. In the meantime setting <code>threads = 1</code>
+should fix the issue.
+</p>
+<p>Setting <code>return_ss_only</code> to <code>TRUE</code> is useful for parallel or
+distributed computing for large data sets, particularly when <code>y</code> is
+a large matrix. However if you do parallel execution you MUST pre-calculate
+'ybar' and pass it to the function. If you do not, SST will be calculated
+based on means of each batch independently. The resulting r-squared will
+be incorrect.
+</p>
+<p>See example below for parallel computation with <code>future_map</code>
+from the <code>furr</code> package.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# standard r-squared with y and yhat as vectors
+f &lt;- stats::lm(mpg ~ cyl + disp + hp + wt, data = datasets::mtcars)
+
+y &lt;- f$model$mpg
+
+yhat &lt;- f$fitted.values
+
+calc_rsquared(y = y, yhat = yhat)
+
+# standard r-squared with y as a matrix and yhat containing 'x' and linear coefficients
+s &lt;- summary(f)
+
+x &lt;- cbind(1, as.matrix(f$model[, -1]))
+
+w &lt;- matrix(s$coefficients[, 1], ncol = 1)
+
+calc_rsquared(y = matrix(y, ncol = 1), yhat = list(x, w))
+
+# multivariate r-squared with y and yhat as matrices
+calc_rsquared(y = cbind(y, y), yhat = cbind(yhat, yhat))
+
+# multivariate r-squared with yhat as a linear reconstruction of two matrices
+calc_rsquared(y = cbind(y, y), yhat = list(x, cbind(w,w)))
+</code></pre>
+
+
+</div>

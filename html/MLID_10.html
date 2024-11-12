@@ -1,0 +1,213 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>id</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>(Multilevel) index of dissimilarity</h2>
+
+<h3>Description</h3>
+
+<p>Returns either the standard index of dissimilarity (ID) or its
+multilevel equivalent
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">id(data, vars, levels = NA, expected = FALSE, nsims = 100, omit = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a data frame with <code>ncol(data) &gt;= 2</code>. Each row of the data
+represents a neighbourhood or some other areal unit for which counts of
+population have been made.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vars</code></td>
+<td>
+<p>a character or numeric vector of length 2 or 3 giving either the
+names or columns positions of the variables in <code>data</code> in the following
+order:
+</p>
+
+<ol>
+<li>
+<p> the number of population group Y in each neighbourhood
+</p>
+</li>
+<li>
+<p> the number of population group X in each neighbourhood
+</p>
+</li>
+<li>
+<p> (optional) The total population in each neighbourhood
+</p>
+</li>
+</ol>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>levels</code></td>
+<td>
+<p>a character or numeric vector of minimum length 1 identifying
+either the names or columns positions of the variables in <code>data</code> that
+record to which higher-level grouping each lower-lower level unit belongs.
+If <code>levels = NA</code>, the default, then only the standard index of
+dissimilarity is calculated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expected</code></td>
+<td>
+<p>a logical scaler. Should the expected value of the ID under
+randomisation be calculated? Requires a measure of the total population in
+each neighbourhood. If omitted from <code>vars</code> that total will be calculated
+as <code>sum(X + Y)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nsims</code></td>
+<td>
+<p>a vector, the number of random draws to be used for calculating
+the expected value. Default is 100.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>omit</code></td>
+<td>
+<p>(optional) a character vector containing the names of places to
+search for in the data and to omit from the calculations</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>If <code>Y</code> is the number of population group Y living in each neighbourhood
+and <code>X</code> is the number of population group X then <code>id</code> measures how
+unevenly distributed are the two groups relative to one another and is a
+measure of segregation. In addition, for geographically hierarchichal data,
+scale effects may be explored to examine the scale of geographical
+clustering.
+</p>
+<p>The method works by treating the calculation of the ID as a
+regression problem: if <code>Y</code> is recalculated as the share per
+neighbourhood of the total count of population group Y
+(i.e. <code>Y &lt;- Y / sum(Y)</code>) and <code>X</code> is recalculated in the same way
+for X, then fitting <code>ols &lt;- lm(Y ~ 0, offset = X)</code> generates a set of
+residuals, <code>e &lt;- residuals(ols)</code> where each residual is the difference
+in the share of Y and the share of X per neighbourhood, and the sum of the
+absolute of those residuals can be used to obtain the id:
+<code>id &lt;- 0.5 * sum(abs(e))</code>.
+</p>
+<p>The advantage of calculating the ID in this
+way is that it can be extended to consider geographic hierarchies, where
+neighbourhoods at the base level can be grouped into larger regions at
+the next level, and so forth. Then, for the multilevel index,
+the residuals are estimated at and partitioned between each level of the
+model <em>net</em> of the other levels, allowing scale effects to be
+explored.
+</p>
+<p><code>print(index)</code> displays the ID value, the expected value of
+the ID under randomisation (NA if not calculated), and, for a multilevel
+model, the percentage share of the total variance due to each level
+(a measure of the geographical scale of segregation: see the examples given
+by <code>checkerboard</code>) and the holdback scores -
+see <code>holdback</code>
+</p>
+
+
+<h3>Value</h3>
+
+<p>an object of class <code>index</code>. This is a value between zero and one
+where 0 implies no segreation, and 1 means 'complete segregation' - wherever
+group Y is located, X is not (and vice versa). If <code>expected = TRUE</code> the
+expected value under randomisation also is given. In addition, the object
+contains the following attributes:
+</p>
+
+<ul>
+<li> <p><code>attr(x, "ols")</code> an object of class <code>lm</code>. The OLS
+regression used to calculate the ID. Useful for identifying significant
+residuals (see Example below)
+</p>
+</li>
+<li> <p><code>attr(x, "vars")</code> the names of Y and X in <code>data</code>
+</p>
+</li>
+<li> <p><code>attr(x, "data")</code> a data frame with the population counts
+for Y and X
+</p>
+</li>
+</ul>
+<p>and also, for a multilevel model,
+</p>
+
+<ul>
+<li> <p><code>attr(index, "mlm")</code> an object of class <code>lmerMod</code>.
+Fitted using <code>lmer</code>
+</p>
+</li>
+<li> <p><code>attr(index, "variance")</code> the percentage of the total variance
+due to each level of the model. This indicates the scale at which the
+segregation is most prominent
+</p>
+</li>
+<li> <p><code>attr(index, "holdback")</code> records the percentage change in the
+ID that occurs if, at each level, its contribution to the ID <em>net</em> of
+other levels is heldback (set to zero)
+</p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+<p><code>checkerboard</code> <code>print.index</code>
+<code>holdback</code> <code>residuals.index</code> <code>lmer</code>
+<code>sumup</code>
+</p>
+<p>Harris R (2017) Fitting a multilevel index of segregation in R:
+using the MLID package <a href="http://rpubs.com/profrichharris/MLID">http://rpubs.com/profrichharris/MLID</a>
+</p>
+<p>Harris R (2017) Measuring the scales of segregation: Looking at the
+residential separation of White British and other school children in England
+using a multilevel index of dissimilarity <a href="http://bit.ly/2lQ4r0n">http://bit.ly/2lQ4r0n</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(ethnicities)
+head(ethnicities)
+# Calculate the standard index value
+id(ethnicities, vars = c("Bangladeshi", "WhiteBrit"))
+
+## Not run: 
+# Calculate also the expected value under randomisation
+id(ethnicities, vars = c("Bangladeshi", "WhiteBrit"), expected = TRUE)
+# will generate a warning because the total population per neighbourhood
+# has not been specified
+id(ethnicities, vars = c("Bangladeshi", "WhiteBrit", "Persons"),
+expected = TRUE)
+# The expected value is a high percentage of the actual value so
+# aggregate it into a higher level geography...
+aggdata &lt;- sumup(ethnicities, sumby = "LSOA", drop = "OA")
+head(aggdata)
+
+# Multilevel models
+id(aggdata, vars = c("Bangladeshi", "WhiteBrit"),
+levels = c("MSOA","LAD","RGN"))
+id(aggdata, vars = c("Bangladeshi", "WhiteBrit"),
+levels = c("MSOA","LAD","RGN"), omit = c("Tower Hamlets", "Newham"))
+
+## End(Not run)
+</code></pre>
+
+
+</div>

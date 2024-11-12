@@ -1,0 +1,301 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_tuners_successive_halving</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Hyperparameter Tuning with Successive Halving</h2>
+
+<h3>Description</h3>
+
+<p>Optimizer using the Successive Halving Algorithm (SHA).
+SHA is initialized with the number of starting configurations <code>n</code>, the proportion of configurations discarded in each stage <code>eta</code>, and the minimum <code>r_min</code> and maximum <code style="white-space: pre;">⁠_max⁠</code> budget of a single evaluation.
+The algorithm starts by sampling <code>n</code> random configurations and allocating the minimum budget <code>r_min</code> to them.
+The configurations are evaluated and <code>1 / eta</code> of the worst-performing configurations are discarded.
+The remaining configurations are promoted to the next stage and evaluated on a larger budget.
+The following table is the stage layout for <code>eta = 2</code>, <code>r_min = 1</code> and <code>r_max = 8</code>.</p>
+
+<table>
+<tr>
+<td style="text-align: right;">
+   <code>i</code> </td>
+<td style="text-align: right;"> <code>n_i</code> </td>
+<td style="text-align: right;"> <code>r_i</code> </td>
+</tr>
+<tr>
+<td style="text-align: right;">
+   0 </td>
+<td style="text-align: right;"> 8 </td>
+<td style="text-align: right;"> 1 </td>
+</tr>
+<tr>
+<td style="text-align: right;">
+   1 </td>
+<td style="text-align: right;"> 4 </td>
+<td style="text-align: right;"> 2 </td>
+</tr>
+<tr>
+<td style="text-align: right;">
+   2 </td>
+<td style="text-align: right;"> 2 </td>
+<td style="text-align: right;"> 4 </td>
+</tr>
+<tr>
+<td style="text-align: right;">
+   3 </td>
+<td style="text-align: right;"> 1 </td>
+<td style="text-align: right;"> 8 </td>
+</tr>
+<tr>
+<td style="text-align: right;">
+</td>
+</tr>
+</table>
+<p><code>i</code> is the stage number, <code>n_i</code> is the number of configurations and <code>r_i</code> is the budget allocated to a single configuration.
+</p>
+<p>The number of stages is calculated so that each stage consumes approximately the same budget.
+This sometimes results in the minimum budget having to be slightly adjusted by the algorithm.
+</p>
+
+
+<h3>Dictionary</h3>
+
+<p>This mlr3tuning::Tuner can be instantiated via the dictionary
+mlr3tuning::mlr_tuners or with the associated sugar function <code>mlr3tuning::tnr()</code>:
+</p>
+<div class="sourceCode"><pre>TunerBatchSuccessiveHalving$new()
+mlr_tuners$get("successive_halving")
+tnr("successive_halving")
+</pre></div>
+
+
+<h3>Subsample Budget</h3>
+
+<p>If the learner lacks a natural budget parameter,
+mlr3pipelines::PipeOpSubsample can be applied to use the subsampling rate
+as budget parameter. The resulting mlr3pipelines::GraphLearner is fitted on
+small proportions of the mlr3::Task in the first stage, and on the complete
+task in last stage.
+</p>
+
+
+<h3>Custom Sampler</h3>
+
+<p>Hyperband supports custom paradox::Sampler object for initial
+configurations in each bracket.
+A custom sampler may look like this (the full example is given in the
+<em>examples</em> section):
+</p>
+<div class="sourceCode"><pre># - beta distribution with alpha = 2 and beta = 5
+# - categorical distribution with custom probabilities
+sampler = SamplerJointIndep$new(list(
+  Sampler1DRfun$new(params[[2]], function(n) rbeta(n, 2, 5)),
+  Sampler1DCateg$new(params[[3]], prob = c(0.2, 0.3, 0.5))
+))
+</pre></div>
+
+
+<h3>Progress Bars</h3>
+
+<p><code style="white-space: pre;">⁠$optimize()⁠</code> supports progress bars via the package <a href="https://CRAN.R-project.org/package=progressr"><span class="pkg">progressr</span></a>
+combined with a bbotk::Terminator. Simply wrap the function in
+<code>progressr::with_progress()</code> to enable them. We recommend to use package
+<a href="https://CRAN.R-project.org/package=progress"><span class="pkg">progress</span></a> as backend; enable with <code>progressr::handlers("progress")</code>.
+</p>
+
+
+<h3>Parallelization</h3>
+
+<p>The hyperparameter configurations of one stage are evaluated in parallel with the <a href="https://CRAN.R-project.org/package=future"><span class="pkg">future</span></a> package.
+To select a parallel backend, use the <code>plan()</code> function of the <a href="https://CRAN.R-project.org/package=future"><span class="pkg">future</span></a> package.
+</p>
+
+
+<h3>Logging</h3>
+
+<p>Hyperband uses a logger (as implemented in <a href="https://CRAN.R-project.org/package=lgr"><span class="pkg">lgr</span></a>) from package
+<a href="https://CRAN.R-project.org/package=bbotk"><span class="pkg">bbotk</span></a>.
+Use <code>lgr::get_logger("bbotk")</code> to access and control the logger.
+</p>
+
+
+<h3>Resources</h3>
+
+<p>The <a href="https://mlr-org.com/gallery-all-optimization.html">gallery</a> features a collection of case studies and demos about optimization.
+</p>
+
+<ul>
+<li> <p><a href="https://mlr-org.com/gallery/series/2023-01-15-hyperband-xgboost/">Tune</a> the hyperparameters of XGBoost with Hyperband (Hyperband can be easily swapped with SHA).
+</p>
+</li>
+<li>
+<p> Use data <a href="https://mlr-org.com/gallery/series/2023-01-16-hyperband-subsampling/">subsampling</a> and Hyperband to optimize a support vector machine.
+</p>
+</li>
+</ul>
+<h3>Parameters</h3>
+
+
+<dl>
+<dt><code>n</code></dt>
+<dd>
+<p><code>integer(1)</code><br>
+Number of configurations in the base stage.</p>
+</dd>
+<dt><code>eta</code></dt>
+<dd>
+<p><code>numeric(1)</code><br>
+With every stage, the budget is increased by a factor of <code>eta</code> and only the best <code>1 / eta</code> configurations are promoted to the next stage.
+Non-integer values are supported, but <code>eta</code> is not allowed to be less or equal to 1.</p>
+</dd>
+<dt><code>sampler</code></dt>
+<dd>
+<p>paradox::Sampler<br>
+Object defining how the samples of the parameter space should be drawn.
+The default is uniform sampling.</p>
+</dd>
+<dt><code>repetitions</code></dt>
+<dd>
+<p><code>integer(1)</code><br>
+If <code>1</code> (default), optimization is stopped once all stages are evaluated.
+Otherwise, optimization is stopped after <code>repetitions</code> runs of SHA.
+The bbotk::Terminator might stop the optimization before all repetitions are executed.</p>
+</dd>
+<dt><code>adjust_minimum_budget</code></dt>
+<dd>
+<p><code>logical(1)</code><br>
+If <code>TRUE</code>, the minimum budget is increased so that the last stage uses the maximum budget defined in the search space.</p>
+</dd>
+</dl>
+<h3>Archive</h3>
+
+<p>The bbotk::Archive holds the following additional columns that are specific to SHA:
+</p>
+
+<ul>
+<li> <p><code>stage</code> (<code style="white-space: pre;">⁠integer(1))⁠</code><br>
+Stage index. Starts counting at 0.
+</p>
+</li>
+<li> <p><code>repetition</code> (<code style="white-space: pre;">⁠integer(1))⁠</code><br>
+Repetition index. Start counting at 1.
+</p>
+</li>
+</ul>
+<h3>Super classes</h3>
+
+<p><code>mlr3tuning::Tuner</code> -&gt; <code>mlr3tuning::TunerBatch</code> -&gt; <code>mlr3tuning::TunerBatchFromOptimizerBatch</code> -&gt; <code>TunerBatchSuccessiveHalving</code>
+</p>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-TunerBatchSuccessiveHalving-new"><code>TunerBatchSuccessiveHalving$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-TunerBatchSuccessiveHalving-clone"><code>TunerBatchSuccessiveHalving$clone()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="mlr3tuning" data-topic="Tuner" data-id="format"><a href="../../mlr3tuning/html/Tuner.html#method-Tuner-format"><code>mlr3tuning::Tuner$format()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3tuning" data-topic="Tuner" data-id="help"><a href="../../mlr3tuning/html/Tuner.html#method-Tuner-help"><code>mlr3tuning::Tuner$help()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3tuning" data-topic="Tuner" data-id="print"><a href="../../mlr3tuning/html/Tuner.html#method-Tuner-print"><code>mlr3tuning::Tuner$print()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3tuning" data-topic="TunerBatchFromOptimizerBatch" data-id="optimize"><a href="../../mlr3tuning/html/TunerBatchFromOptimizerBatch.html#method-TunerBatchFromOptimizerBatch-optimize"><code>mlr3tuning::TunerBatchFromOptimizerBatch$optimize()</code></a></span></li>
+</ul></details><hr>
+<a id="method-TunerBatchSuccessiveHalving-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Creates a new instance of this R6 class.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>TunerBatchSuccessiveHalving$new()</pre></div>
+
+
+<hr>
+<a id="method-TunerBatchSuccessiveHalving-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>TunerBatchSuccessiveHalving$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>Source</h3>
+
+<p>Jamieson K, Talwalkar A (2016).
+“Non-stochastic Best Arm Identification and Hyperparameter Optimization.”
+In Gretton A, Robert CC (eds.), <em>Proceedings of the 19th International Conference on Artificial Intelligence and Statistics</em>, volume 51 series Proceedings of Machine Learning Research, 240-248.
+<a href="http://proceedings.mlr.press/v51/jamieson16.html">http://proceedings.mlr.press/v51/jamieson16.html</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">if(requireNamespace("xgboost")) {
+  library(mlr3learners)
+
+  # define hyperparameter and budget parameter
+  search_space = ps(
+    nrounds = p_int(lower = 1, upper = 16, tags = "budget"),
+    eta = p_dbl(lower = 0, upper = 1),
+    booster = p_fct(levels = c("gbtree", "gblinear", "dart"))
+  )
+
+  
+  # hyperparameter tuning on the pima indians diabetes data set
+  instance = tune(
+    tnr("successive_halving"),
+    task = tsk("pima"),
+    learner = lrn("classif.xgboost", eval_metric = "logloss"),
+    resampling = rsmp("cv", folds = 3),
+    measures = msr("classif.ce"),
+    search_space = search_space,
+    term_evals = 100
+  )
+
+  # best performing hyperparameter configuration
+  instance$result
+  
+}
+</code></pre>
+
+
+</div>

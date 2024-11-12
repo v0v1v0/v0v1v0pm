@@ -1,0 +1,316 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>binom_bf_informed</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Evaluates Informed Hypotheses on Multiple Binomial Parameters</h2>
+
+<h3>Description</h3>
+
+<p>Evaluates informed hypotheses on multiple binomial parameters.
+These hypotheses can contain (a mixture of) inequality constraints, equality constraints, and free parameters.
+Informed hypothesis <code class="reqn">H_r</code> states that binomial proportions obey a particular constraint.
+<code class="reqn">H_r</code> can be tested against the encompassing hypothesis <code class="reqn">H_e</code> or the null hypothesis <code class="reqn">H_0</code>.
+Encompassing hypothesis <code class="reqn">H_e</code> states that binomial proportions are free to vary.
+Null hypothesis <code class="reqn">H_0</code> states that category proportions are exactly equal.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">binom_bf_informed(
+  x,
+  n = NULL,
+  Hr,
+  a,
+  b,
+  factor_levels = NULL,
+  cred_level = 0.95,
+  niter = 5000,
+  bf_type = "LogBFer",
+  seed = NULL,
+  maxiter = 1000,
+  nburnin = niter * 0.05
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a vector of counts of successes, or a two-dimensional table (or matrix) with 2 columns, giving the counts of successes
+and failures, respectively</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>numeric. Vector of counts of trials. Must be the same length as <code>x</code>. Ignored if <code>x</code> is a matrix or a table</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Hr</code></td>
+<td>
+<p>string or character. Encodes the user specified informed hypothesis. Use either specified <code>factor_levels</code>
+or indices to refer to parameters. See “Note” section for details on how to formulate informed hypotheses</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>a</code></td>
+<td>
+<p>numeric. Vector with alpha parameters. Must be the same length as <code>x</code>. Default sets all alpha parameters to 1</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b</code></td>
+<td>
+<p>numeric. Vector with beta parameters. Must be the same length as <code>x</code>. Default sets all beta parameters to 1</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>factor_levels</code></td>
+<td>
+<p>character. Vector with category names. Must be the same length as <code>x</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cred_level</code></td>
+<td>
+<p>numeric. Credible interval for the posterior point estimates. Must be a single number between 0 and 1</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>niter</code></td>
+<td>
+<p>numeric. Vector with number of samples to be drawn from truncated distribution</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bf_type</code></td>
+<td>
+<p>character. The Bayes factor type. When the informed hypothesis is compared to the encompassing hypothesis,
+the Bayes factor type can be <code>LogBFer</code>, <code>BFer</code>, or <code>BFre</code>. When the informed hypothesis is compared to the null hypothesis,
+the Bayes factor type can be <code>LogBFr0</code>, <code>BF0r</code>, or <code>BFr0</code>. Default is <code>LogBFer</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>numeric. Sets the seed for reproducible pseudo-random number generation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>numeric. Maximum number of iterations for the iterative updating scheme used in the bridge sampling routine.
+Default is 1,000 to avoid infinite loops</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nburnin</code></td>
+<td>
+<p>numeric. A single value specifying the number of burn-in samples when drawing from the truncated distribution.
+Minimum number of burn-in samples is 10. Default is 5% of the number of samples. Burn-in samples are removed automatically after the sampling.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The model assumes that the data in <code>x</code> (i.e., <code class="reqn">x_1, ..., x_K</code>) are the observations of <code class="reqn">K</code> independent
+binomial experiments, based on <code class="reqn">n_1, ..., n_K</code> observations. Hence, the underlying likelihood is the product of the
+<code class="reqn">k = 1, ..., K</code> individual binomial functions:
+</p>
+<p style="text-align: center;"><code class="reqn">(x_1, ... x_K) ~ \prod Binomial(N_k, \theta_k)</code>
+</p>
+
+<p>Furthermore, the model assigns a beta distribution as prior to each model parameter
+(i.e., underlying binomial proportions). That is:
+</p>
+<p style="text-align: center;"><code class="reqn">\theta_k ~ Beta(\alpha_k, \beta_k)</code>
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>List consisting of the following elements
+</p>
+
+<dl>
+<dt><code>$bf_list</code></dt>
+<dd>
+<p>gives an overview of the Bayes factor analysis:
+</p>
+
+<ul>
+<li> <p><code>bf_type</code>: string. Contains Bayes factor type as specified by the user
+</p>
+</li>
+<li> <p><code>bf</code>: data.frame. Contains Bayes factors for all Bayes factor types
+</p>
+</li>
+<li> <p><code>error_measures</code>: data.frame. Contains for the overall Bayes factor
+the approximate relative mean-squared error <code>re2</code>, the approximate coefficient of variation <code>cv</code>, and the approximate percentage error <code>percentage</code>
+</p>
+</li>
+<li> <p><code>logBFe_equalities</code>: data.frame. Lists the log Bayes factors for all independent equality constrained hypotheses
+</p>
+</li>
+<li> <p><code>logBFe_inequalities</code>: data.frame. Lists the log Bayes factor for all independent inequality constrained hypotheses
+</p>
+</li>
+</ul>
+</dd>
+<dt><code>$cred_level</code></dt>
+<dd>
+<p>numeric. User specified credible interval</p>
+</dd>
+<dt><code>$restrictions</code></dt>
+<dd>
+<p>list that encodes informed hypothesis for each independent restriction:
+</p>
+
+<ul>
+<li> <p><code>full_model</code>: list containing the hypothesis, parameter names, data and prior specifications for the full model.
+</p>
+</li>
+<li> <p><code>equality_constraints</code>: list containing the hypothesis, parameter names, data and prior specifications for each equality constrained hypothesis.
+</p>
+</li>
+<li> <p><code>inequality_constraints</code>: list containing the hypothesis, parameter names, data and prior specifications for each inequality constrained hypothesis.
+In addition, in <code>nr_mult_equal</code> and <code>nr_mult_free</code> encodes which and how many parameters are
+equality constraint or free, in <code>boundaries</code> includes the boundaries of each parameter, in <code>nineq_per_hyp</code> states the number of inequality constraint
+parameters per independent inequality constrained hypothesis, and in <code>direction</code> states the direction of
+the inequality constraint.
+</p>
+</li>
+</ul>
+</dd>
+<dt><code>$bridge_output</code></dt>
+<dd>
+<p>list containing output from bridge sampling function:
+</p>
+
+<ul>
+<li> <p><code>eval</code>: list containing the log prior or posterior evaluations
+(<code>q11</code>) and the log proposal evaluations (<code>q12</code>) for the prior or posterior samples,
+as well as the log prior or posterior evaluations (<code>q21</code>) and the log proposal evaluations (<code>q22</code>)
+for the samples from the proposal distribution
+</p>
+</li>
+<li> <p><code>niter</code>: number of iterations of the iterative updating scheme
+</p>
+</li>
+<li> <p><code>logml</code>: estimate of log marginal likelihood
+</p>
+</li>
+<li> <p><code>hyp</code>: evaluated inequality constrained hypothesis
+</p>
+</li>
+<li> <p><code>error_measures</code>: list containing in <code>re2</code> the approximate
+relative mean-squared error for the marginal likelihood estimate, in <code>cv</code> the approximate
+coefficient of variation for the marginal likelihood estimate (assumes that bridge estimate is unbiased), and
+in <code>percentage</code> the approximate percentage error of the marginal likelihood estimate
+</p>
+</li>
+</ul>
+</dd>
+<dt><code>$samples</code></dt>
+<dd>
+<p>list containing a list for prior samples and a list
+of posterior samples from truncated distributions which were used to evaluate inequality constraints.
+Prior and posterior samples of independent inequality constraints are again saved
+in separate lists. Samples are stored as matrix of dimension <code>nsamples x nparams</code>.</p>
+</dd>
+</dl>
+<h3>Note</h3>
+
+<p>The following signs can be used to encode restricted hypotheses: <code>"&lt;"</code> and <code>"&gt;"</code> for inequality constraints, <code>"="</code> for equality constraints,
+<code>","</code> for free parameters, and <code>"&amp;"</code> for independent hypotheses. The restricted hypothesis can either be a string or a character vector.
+For instance, the hypothesis <code>c("theta1 &lt; theta2, theta3")</code> means
+</p>
+
+<ul>
+<li> <p><code>theta1</code> is smaller than both <code>theta2</code> and <code>theta3</code>
+</p>
+</li>
+<li>
+<p> The parameters <code>theta2</code> and <code>theta3</code> both have <code>theta1</code> as lower bound, but are not influenced by each other.
+</p>
+</li>
+</ul>
+<p>The hypothesis <code>c("theta1 &lt; theta2 = theta3 &amp; theta4 &gt; theta5")</code> means that
+</p>
+
+<ul>
+<li>
+<p> Two independent hypotheses are stipulated: <code>"theta1 &lt; theta2 = theta3"</code> and <code>"theta4 &gt; theta5"</code>
+</p>
+</li>
+<li>
+<p> The restrictions on the parameters <code>theta1</code>, <code>theta2</code>, and <code>theta3</code> do
+not influence the restrictions on the parameters <code>theta4</code> and <code>theta5</code>.
+</p>
+</li>
+<li> <p><code>theta1</code> is smaller than <code>theta2</code> and <code>theta3</code>
+</p>
+</li>
+<li> <p><code>theta2</code> and <code>theta3</code> are assumed to be equal
+</p>
+</li>
+<li> <p><code>theta4</code> is larger than <code>theta5</code>
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>Damien P, Walker SG (2001).
+“Sampling truncated normal, beta, and gamma densities.”
+<em>Journal of Computational and Graphical Statistics</em>, <b>10</b>, 206–215.
+</p>
+<p>Gronau QF, Sarafoglou A, Matzke D, Ly A, Boehm U, Marsman M, Leslie DS, Forster JJ, Wagenmakers E, Steingroever H (2017).
+“A tutorial on bridge sampling.”
+<em>Journal of Mathematical Psychology</em>, <b>81</b>, 80–97.
+</p>
+<p>Frühwirth-Schnatter S (2004).
+“Estimating marginal likelihoods for mixture and Markov switching models using bridge sampling techniques.”
+<em>The Econometrics Journal</em>, <b>7</b>, 143–167.
+</p>
+<p>Sarafoglou A, Haaf JM, Ly A, Gronau QF, Wagenmakers EJ, Marsman M (2021).
+“Evaluating Multinomial Order Restrictions with Bridge Sampling.”
+<em>Psychological Methods</em>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other functions to evaluate informed hypotheses: 
+<code>binom_bf_equality()</code>,
+<code>binom_bf_inequality()</code>,
+<code>mult_bf_equality()</code>,
+<code>mult_bf_inequality()</code>,
+<code>mult_bf_informed()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># data
+x &lt;- c(3, 4, 10, 11)
+n &lt;- c(15, 12, 12, 12)
+# priors
+a &lt;- c(1, 1, 1, 1)
+b &lt;- c(1, 1, 1, 1)
+# informed hypothesis
+factor_levels &lt;- c('binom1', 'binom2', 'binom3', 'binom4')
+Hr            &lt;- c('binom1', '&lt;',  'binom2', '&lt;', 'binom3', '&lt;', 'binom4')
+output_total  &lt;- binom_bf_informed(x, n, Hr, a, b, niter=2e3, factor_levels, seed=2020)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,388 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>dmnorm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Density of (conditional) multivariate normal distribution</h2>
+
+<h3>Description</h3>
+
+<p>This function calculates and differentiates density of 
+(conditional) multivariate normal distribution.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">dmnorm(
+  x,
+  mean,
+  sigma,
+  given_ind = numeric(),
+  log = FALSE,
+  grad_x = FALSE,
+  grad_sigma = FALSE,
+  is_validation = TRUE,
+  control = NULL,
+  n_cores = 1L
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>numeric vector representing the point at which density
+should be calculated. If <code>x</code> is a matrix then each row determines
+a new point.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mean</code></td>
+<td>
+<p>numeric vector representing expectation of multivariate
+normal vector (distribution).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma</code></td>
+<td>
+<p>positively defined numeric matrix representing covariance
+matrix of multivariate normal vector (distribution).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>given_ind</code></td>
+<td>
+<p>numeric vector representing indexes of multivariate
+normal vector which are conditioned at values of <code>x</code> with corresponding 
+indexes i.e. <code>x[given_x]</code> or <code>x[, given_x]</code> if 
+<code>x</code> is a matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>log</code></td>
+<td>
+<p>logical; if <code>TRUE</code> then probabilities (or densities) p are 
+given as log(p) and derivatives will be given respect to log(p).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grad_x</code></td>
+<td>
+<p>logical; if <code>TRUE</code> then the vector of partial derivatives
+of the density function will be calculated respect to each
+element of <code>x</code>. If <code>x</code> is a matrix then gradients will be
+estimated for each row of <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grad_sigma</code></td>
+<td>
+<p>logical; if <code>TRUE</code> then the vector of partial
+derivatives (gradient) of the density function will be calculated respect 
+to each element of <code>sigma</code>. If <code>x</code> is a matrix then gradients 
+will be estimated for each row of <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>is_validation</code></td>
+<td>
+<p>logical value indicating whether input 
+arguments should be validated.  Set it to <code>FALSE</code> to get
+performance boost (default value is <code>TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>a list of control parameters. See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_cores</code></td>
+<td>
+<p>positive integer representing the number of CPU cores
+used for parallel computing. Currently it is not recommended to set
+<code>n_cores &gt; 1</code> if vectorized arguments include less then 100000 elements.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Consider notations from the Details section of 
+<code>cmnorm</code>. The function calculates density 
+<code class="reqn">f(x^{(d)}|x^{(g)})</code> of conditioned multivariate normal vector 
+<code class="reqn">X_{I_{d}} | X_{I_{g}} = x^{(g)}</code>. Where <code class="reqn">x^{(d)}</code> is a subvector of
+<code class="reqn">x</code> associated with <code class="reqn">X_{I_{d}}</code> i.e. unconditioned components.
+Therefore <code>x[given_ind]</code> represents <code class="reqn">x^{(g)}</code> while
+<code>x[-given_ind]</code> is <code class="reqn">x^{(d)}</code>.
+</p>
+<p>If <code>grad_x</code> is <code>TRUE</code> then function additionally estimates the
+gradient respect to both unconditioned and conditioned components:
+</p>
+<p style="text-align: center;"><code class="reqn">\nabla f(x^{(d)}|x^{(g)})=
+\left(\frac{\partial f(x^{(d)}|x^{(g)})}{\partial x_{1}}
+,..., 
+\frac{\partial f(x^{(d)}|x^{(g)})}{\partial x_{m}}\right),</code>
+</p>
+
+<p>where each <code class="reqn">x_{i}</code> belongs either to <code class="reqn">x^{(d)}</code> or <code class="reqn">x^{(g)}</code>
+depending on whether <code class="reqn">i\in I_{d}</code> or <code class="reqn">i\in I_{g}</code> correspondingly.
+In particular subgradients of density function respect to <code class="reqn">x^{(d)}</code> 
+and <code class="reqn">x^{(g)}</code> are of the form:
+</p>
+<p style="text-align: center;"><code class="reqn">\nabla_{x^{(d)}}\ln f(x^{(d)}|x^{(g)}) =
+-\left(x^{(d)}-\mu_{c}\right)\Sigma_{c}^{-1}</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\nabla_{x^{(g)}}\ln f(x^{(d)}|x^{(g)}) =
+-\nabla_{x^{(d)}}f(x^{(d)}|x^{(g)})\Sigma_{d,g}\Sigma_{g,g}^{-1}</code>
+</p>
+
+<p>If <code>grad_sigma</code> is <code>TRUE</code> then function additionally estimates
+the gradient respect to the elements of covariance matrix <code class="reqn">\Sigma</code>.
+For <code class="reqn">i\in I_{d}</code> and <code class="reqn">j\in I_{d}</code> the function calculates:
+</p>
+<p style="text-align: center;"><code class="reqn">
+\frac{\partial \ln f(x^{(d)}|x^{(g)})}{\partial \Sigma_{i, j}} = 
+\left(\frac{\partial \ln f(x^{(d)}|x^{(g)})}{\partial x_{i}} \times 
+\frac{\partial \ln f(x^{(d)}|x^{(g)})}{\partial x_{j}} -
+\Sigma_{c,(i, j)}^{-1}\right) / 
+\left(1 + I(i=j)\right),
+</code>
+</p>
+
+<p>where <code class="reqn">I(i=j)</code> is an indicator function which equals <code class="reqn">1</code> when
+the condition <code class="reqn">i=j</code> is satisfied and <code class="reqn">0</code> otherwise.
+</p>
+<p>For <code class="reqn">i\in I_{d}</code> and <code class="reqn">j\in I_{g}</code> the following formula is used:
+</p>
+<p style="text-align: center;"><code class="reqn">
+\frac{\partial \ln f(x^{(d)}|x^{(g)})}{\partial \Sigma_{i, j}} = 
+-\frac{\partial \ln f(x^{(d)}|x^{(g)})}{\partial x_{i}} \times 
+\left(\left(x^{(g)}-\mu_{g}\right)\Sigma_{g,g}^{-1}\right)_{q_{g}(j)}-
+</code>
+</p>
+<p style="text-align: center;"><code class="reqn">
+-\sum\limits_{k=1}^{n_{d}}(1+I(q_{d}(i)=k))\times
+(\Sigma_{d,g}\Sigma_{g,g}^{-1})_{k,q_{g}(j)}\times
+\frac{\partial \ln f(x^{(d)}|x^{(g)})}{\partial \Sigma_{i, q^{-1}_{d}(k)}},
+</code>
+</p>
+
+<p>where <code class="reqn">q_{g}(j)=\sum\limits_{k=1}^{m} I\left(I_{g,k} \leq j\right)</code>
+and <code class="reqn">q_{d}(i)=\sum\limits_{k=1}^{m} I\left(I_{d,k} \leq i\right)</code>
+represent the order of the <code class="reqn">i</code>-th and <code class="reqn">j</code>-th elements 
+in <code class="reqn">I_{g}</code> and <code class="reqn">I_{d}</code> correspondingly i.e. 
+<code class="reqn">x_{i}=x^{(d)}_{q_{d}(i)}=x_{I_{d, q_{d}(i)}}</code> and 
+<code class="reqn">x_{j}=x^{(g)}_{q_{g}(j)}=x_{I_{g, q_{g}(j)}}</code>.
+Note that <code class="reqn">q_{g}(j)^{-1}</code> and <code class="reqn">q_{d}(i)^{-1}</code> are inverse functions.
+Number of conditioned and unconditioned components are denoted by
+<code class="reqn">n_{g}=\sum\limits_{k=1}^{m}I(k\in I_{g})</code> and 
+<code class="reqn">n_{d}=\sum\limits_{k=1}^{m}I(k\in I_{d})</code> respectively.
+For the case <code class="reqn">i\in I_{g}</code> and <code class="reqn">j\in I_{d}</code> the formula is similar.
+</p>
+<p>For <code class="reqn">i\in I_{g}</code> and <code class="reqn">j\in I_{g}</code> the following formula is used:
+</p>
+<p style="text-align: center;"><code class="reqn">
+\frac{\partial \ln f(x^{(d)}|x^{(g)})}{\partial \Sigma_{i, j}} = 
+-\nabla_{x^{(d)}}\ln f(x^{(d)}|x^{(g)})\times
+\left(x^{(g)}\times(\Sigma_{d,g} \times \Sigma_{g,g}^{-1} \times I_{g}^{*} \times 
+\Sigma_{g,g}^{-1})^{T}\right)^T -
+</code>
+</p>
+<p style="text-align: center;"><code class="reqn">
+-\sum\limits_{k_{1}=1}^{n_{d}}\sum\limits_{k_{2}=k_{1}}^{n_{d}}
+\frac{\partial \ln f(x^{(d)}|x^{(g)})}
+{\partial \Sigma_{q_{d}(k_{1})^{-1}, q_{d}(k_{2})^{-1}}}
+\left(\Sigma_{d,g} \times \Sigma_{g,g}^{-1} \times I_{g}^{*} \times 
+\Sigma_{g,g}^{-1}\times\Sigma_{d,g}^T\right)_{q_{d}(k_{1})^{-1}, 
+q_{d}(k_{2})^{-1}},
+</code>
+</p>
+
+<p>where <code class="reqn">I_{g}^{*}</code> is a square <code class="reqn">n_{g}</code>-dimensional matrix of 
+zeros except <code class="reqn">I_{g,(i,j)}^{*}=I_{g,(j,i)}^{*}=1</code>.
+</p>
+<p>Argument <code>given_ind</code> represents <code class="reqn">I_{g}</code> and it should not 
+contain any duplicates. The order of <code>given_ind</code> elements
+does not matter so it has no impact on the output.
+</p>
+<p>More details on abovementioned differentiation formulas could
+be found in the appendix of E. Kossova and B. Potanin (2018).
+</p>
+<p>Currently <code>control</code> has no input arguments intended for
+the users. This argument is used for some internal purposes
+of the package.
+</p>
+
+
+<h3>Value</h3>
+
+<p>This function returns an object of class "mnorm_dmnorm".<br><br>
+An object of class "mnorm_dmnorm" is a list containing the 
+following components:
+</p>
+
+<ul>
+<li> <p><code>den</code> - density function value at <code>x</code>.
+</p>
+</li>
+<li> <p><code>grad_x</code> - gradient of density respect to <code>x</code> if 
+<code>grad_x</code> or <code>grad_sigma</code> input argument is set to <code>TRUE</code>. 
+</p>
+</li>
+<li> <p><code>grad_sigma</code> - gradient respect to the elements of <code>sigma</code>
+if <code>grad_sigma</code> input argument is set to <code>TRUE</code>.
+</p>
+</li>
+</ul>
+<p>If <code>log</code> is <code>TRUE</code> then <code>den</code> is a log-density
+so output <code>grad_x</code> and <code>grad_sigma</code> are calculated respect 
+to the log-density.
+</p>
+<p>Output <code>grad_x</code> is a Jacobian matrix which rows are gradients of 
+the density function calculated for each row of <code>x</code>. Therefore
+<code>grad_x[i, j]</code> is a derivative of the density function respect to the
+<code>j</code>-th argument at point <code>x[i, ]</code>.
+</p>
+<p>Output <code>grad_sigma</code> is a 3D array such that <code>grad_sigma[i, j, k]</code> 
+is a partial derivative of the density function respect to the 
+<code>sigma[i, j]</code> estimated for the observation <code>x[k, ]</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>E. Kossova., B. Potanin (2018). 
+Heckman method and switching regression model multivariate generalization.
+Applied Econometrics, vol. 50, pages 114-143.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Consider multivariate normal vector:
+# X = (X1, X2, X3, X4, X5) ~ N(mean, sigma)
+
+# Prepare multivariate normal vector parameters
+  # expected value
+mean &lt;- c(-2, -1, 0, 1, 2)
+n_dim &lt;- length(mean)
+  # correlation matrix
+cor &lt;- c(   1,  0.1,  0.2,   0.3,  0.4,
+          0.1,    1, -0.1,  -0.2, -0.3,
+          0.2, -0.1,    1,   0.3,  0.2,
+          0.3, -0.2,  0.3,     1, -0.05,
+          0.4, -0.3,  0.2, -0.05,     1)
+cor &lt;- matrix(cor, ncol = n_dim, nrow = n_dim, byrow = TRUE)
+  # covariance matrix
+sd_mat &lt;- diag(c(1, 1.5, 2, 2.5, 3))
+sigma &lt;- sd_mat %*% cor %*% t(sd_mat)
+
+# Estimate the density of X at point (-1, 0, 1, 2, 3)
+x &lt;- c(-1, 0, 1, 2, 3)
+d.list &lt;- dmnorm(x = x, mean = mean, sigma = sigma)
+d &lt;- d.list$den
+print(d)
+
+# Estimate the density of X at points
+# x=(-1, 0, 1, 2, 3) and y=(-1.2, -1.5, 0, 1.2, 1.5)
+y &lt;- c(-1.5, -1.2, 0, 1.2, 1.5)
+xy &lt;- rbind(x, y)
+d.list.1 &lt;- dmnorm(x = xy, mean = mean, sigma = sigma)
+d.1 &lt;- d.list.1$den
+print(d.1)
+
+# Estimate the density of Xc=(X2, X4, X5 | X1 = -1, X3 = 1) at 
+# point xd=(0, 2, 3) given conditioning values xg=(-1, 1)
+given_ind &lt;- c(1, 3)
+d.list.2 &lt;- dmnorm(x = x, mean = mean, sigma = sigma, 
+                   given_ind = given_ind)
+d.2 &lt;- d.list.2$den
+print(d.2)
+
+# Estimate the gradient of density respect to the argument and 
+# covariance matrix at points 'x' and 'y'
+d.list.3 &lt;- dmnorm(x = xy, mean = mean, sigma = sigma,
+                   grad_x = TRUE, grad_sigma = TRUE)
+# Gradient respect to the argument
+grad_x.3 &lt;- d.list.3$grad_x
+   # at point 'x'
+print(grad_x.3[1, ])
+   # at point 'y'
+print(grad_x.3[2, ])
+# Partial derivative at point 'y' respect 
+# to the 3-rd argument
+print(grad_x.3[2, 3])
+# Gradient respect to the covariance matrix
+grad_sigma.3 &lt;- d.list.3$grad_sigma
+# Partial derivative respect to sigma(3, 5) at 
+# point 'y'
+print(grad_sigma.3[3, 5, 2])
+
+# Estimate the gradient of the log-density function of 
+# Xc=(X2, X4, X5 | X1 = -1, X3 = 1) and Yc=(X2, X4, X5 | X1 = -1.5, X3 = 0)
+# respect to the argument and covariance matrix at 
+# points xd=(0, 2, 3) and yd=(-1.2, 0, 1.5) respectively given
+# conditioning values xg=(-1, 1) and yg=(-1.5, 0) correspondingly
+d.list.4 &lt;- dmnorm(x = xy, mean = mean, sigma = sigma,
+                   grad_x = TRUE, grad_sigma = TRUE,
+                   given_ind = given_ind, log = TRUE)
+# Gradient respect to the argument
+grad_x.4 &lt;- d.list.4$grad_x
+   # at point 'xd'
+print(grad_x.4[1, ])
+   # at point 'yd'
+print(grad_x.4[2, ])
+# Partial derivative at point 'xd' respect to 'xg[2]'
+print(grad_x.4[1, 3])
+# Partial derivative at point 'yd' respect to 'yd[5]'
+print(grad_x.4[2, 5])
+# Gradient respect to the covariance matrix
+grad_sigma.4 &lt;- d.list.4$grad_sigma
+# Partial derivative respect to sigma(3, 5) at 
+# point 'yd'
+print(grad_sigma.4[3, 5, 2])
+
+# Compare analytical gradients from the previous example with
+# their numeric (forward difference) analogues at point 'xd'
+# given conditioning 'xg'
+delta &lt;- 1e-6
+grad_x.num &lt;- rep(NA, 5)
+grad_sigma.num &lt;- matrix(NA, nrow = 5, ncol = 5)
+for (i in 1:5)
+{
+  x.delta &lt;- x
+  x.delta[i] &lt;- x[i] + delta
+  d.list.delta &lt;- dmnorm(x = x.delta, mean = mean, sigma = sigma,
+                         grad_x = TRUE, grad_sigma = TRUE,
+                         given_ind = given_ind, log = TRUE)
+  grad_x.num[i] &lt;- (d.list.delta$den - d.list.4$den[1]) / delta
+   for(j in 1:5)
+   {
+     sigma.delta &lt;- sigma
+     sigma.delta[i, j] &lt;- sigma[i, j] + delta 
+     sigma.delta[j, i] &lt;- sigma[j, i] + delta 
+     d.list.delta &lt;- dmnorm(x = x, mean = mean, sigma = sigma.delta,
+                            grad_x = TRUE, grad_sigma = TRUE,
+                            given_ind = given_ind, log = TRUE)
+     grad_sigma.num[i, j] &lt;- (d.list.delta$den - d.list.4$den[1]) / delta
+   }
+}
+# Comparison of gradients respect to the argument
+h.x &lt;- cbind(analytical = grad_x.4[1, ], numeric = grad_x.num)
+rownames(h.x) &lt;- c("xg[1]", "xd[1]", "xg[2]", "xd[3]", "xd[4]")
+print(h.x)
+# Comparison of gradients respect to the covariance matrix
+h.sigma &lt;- list(analytical = grad_sigma.4[, , 1], numeric = grad_sigma.num)
+print(h.sigma)
+</code></pre>
+
+
+</div>

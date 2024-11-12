@@ -1,0 +1,173 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mies_generate_offspring</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Generate Offspring Through Mutation and Recombination</h2>
+
+<h3>Description</h3>
+
+<p>Generate new proposal individuals to be evaluated using <code>mies_evaluate_offspring()</code>.
+</p>
+<p>Parent individuals are selected using <code>parent_selector</code>, then mutated using <code>mutator</code>, and thend
+recombined using <code>recombinator</code>. If only a subset of these operations is desired, then
+it is possible to set <code>mutator</code> or <code>recombinator</code> to the respective "null"-operators.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mies_generate_offspring(
+  inst,
+  lambda,
+  parent_selector = NULL,
+  mutator = NULL,
+  recombinator = NULL,
+  budget_id = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>inst</code></td>
+<td>
+<p>(<code>OptimInstance</code>)<br>
+Optimization instance to evaluate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>(<code>integer(1)</code>)<br>
+Number of new individuals to generate. This is not necessarily the number with which <code>parent_selector</code>
+gets called, because <code>recombinator</code> could in principle need more than <code>lambda</code> input individuals to
+generate <code>lambda</code> output individuals.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parent_selector</code></td>
+<td>
+<p>(<code>Selector</code> | <code>NULL</code>)<br><code>Selector</code> operator that selects parent individuals depending on configuration values
+and objective results. When <code>parent_selector$operate()</code> is called, then objectives that
+are being minimized are multiplied with -1 (through <code>mies_get_fitnesses()</code>), since <code>Selector</code>s always try to maximize fitness.
+When this is <code>NULL</code> (default), then a <code>SelectorBest</code> us used.<br>
+The <code>Selector</code> must be primed on a superset of <code>inst$search_space</code>; this <em>includes</em> the "budget" component
+when performing multi-fidelity optimization. All components on which <code>selector</code> is primed on must occur in the archive.<br>
+The given <code>Selector</code> <em>may</em> return duplicates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mutator</code></td>
+<td>
+<p>(<code>Mutator</code> | <code>NULL</code>)<br><code>Mutator</code> operation to apply to individuals selected out of <code>inst</code> using <code>parent_selector</code>.<br>
+The <code>Mutator</code> must be primed on a <code>ParamSet</code> similar to <code>inst$search_space</code>,
+but <em>without</em> the "budget" component when <code>budget_id</code> is given (multi-fidelity optimization). Such a
+<code>ParamSet</code> can be generated for example using <code>mies_prime_operators</code>.<br>
+When this is <code>NULL</code> (default), then a <code>MutatorNull</code> is used, effectively disabling mutation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recombinator</code></td>
+<td>
+<p>(<code>Recombinator</code> | <code>NULL</code>)<br><code>Recombinator</code> operation to apply to individuals selected out of <code>int</code> using <code>parent_selector</code> after mutation using <code>mutator</code>.
+The <code>Recombinator</code> must be primed on a <code>ParamSet</code> similar to <code>inst$search_space</code>,
+but <em>without</em> the "budget" component when <code>budget_id</code> is given (multi-fidelity optimization). Such a
+<code>ParamSet</code> can be generated for example using <code>mies_prime_operators</code>.<br>
+When this is <code>NULL</code> (default), then a <code>RecombinatorNull</code> is used, effectively disabling recombination.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>budget_id</code></td>
+<td>
+<p>(<code>character(1)</code> | <code>NULL</code>)<br>
+Budget compnent when doing multi-fidelity optimization. This component of the search space is removed from
+individuals sampled from the archive in <code>inst</code> before giving it to <code>mutator</code> and <code>recombinator</code>.
+Should be <code>NULL</code> when not doing multi-fidelity.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>data.table</code>: A table of configurations proposed as offspring to be evaluated
+using <code>mies_evaluate_offspring()</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other mies building blocks: 
+<code>mies_evaluate_offspring()</code>,
+<code>mies_get_fitnesses()</code>,
+<code>mies_init_population()</code>,
+<code>mies_select_from_archive()</code>,
+<code>mies_step_fidelity()</code>,
+<code>mies_survival_comma()</code>,
+<code>mies_survival_plus()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(1)
+
+library("bbotk")
+lgr::threshold("warn")
+
+# Define the objective to optimize
+objective &lt;- ObjectiveRFun$new(
+  fun = function(xs) {
+    z &lt;- exp(-xs$x^2 - xs$y^2) + 2 * exp(-(2 - xs$x)^2 - (2 - xs$y)^2)
+    list(Obj = z)
+  },
+  domain = ps(x = p_dbl(-2, 4), y = p_dbl(-2, 4)),
+  codomain = ps(Obj = p_dbl(tags = "maximize"))
+)
+
+# Get a new OptimInstance
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 100)
+)
+
+# Demo operators
+m = mut("gauss", sdev = 0.1)
+r = rec("xounif")
+s = sel("random")
+# Operators must be primed
+mies_prime_operators(objective$domain, list(m), list(r), list(s))
+
+# We would normally call mies_init_population, but for reproducibility
+# we are going to evaluate three given points
+
+oi$eval_batch(data.table::data.table(x = 0:2, y = 2:0, dob = 1, eol = NA_real_))
+
+# Evaluated points:
+oi$archive
+
+# Use default operators: no mutation, no recombination, parent_selctor is
+# sel("best") --&gt; get one individual, the one with highest performance in the
+# archive (x = 1, y = 1).
+# (Note 'mies_generate_offspring()' does not modify 'oi')
+mies_generate_offspring(oi, lambda = 1)
+
+# Mutate the selected individual after selection. 'm' has 'sdev' set to 0.1,
+# so the (x = 1, y = 1) is slightly permuted.
+mies_generate_offspring(oi, lambda = 1, mutator = m)
+
+# Recombination, then mutation.
+# Even though lambda is 1, there will be two individuals selected with
+# sel("best") and recombined, because rec("xounif") needs two parents. One
+# of the crossover results is discarded (respecting that 'lambda' is 1),
+# the other is mutated and returned.
+mies_generate_offspring(oi, lambda = 1, mutator = m, recombinator = r)
+
+# General application: select, recombine, then mutate.
+mies_generate_offspring(oi, lambda = 5, parent_selector = s, mutator = m, recombinator = r)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,232 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>es_from_rr_se</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Convert a risk ratio value and standard error to three effect measures (SMD, OR, COR)</h2>
+
+<h3>Description</h3>
+
+<p>Convert a risk ratio value and standard error to three effect measures (SMD, OR, COR)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">es_from_rr_se(
+  rr,
+  logrr,
+  logrr_se,
+  baseline_risk,
+  n_exp,
+  n_nexp,
+  n_cases,
+  n_controls,
+  smd_to_cor = "viechtbauer",
+  rr_to_or = "metaumbrella",
+  reverse_rr
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>rr</code></td>
+<td>
+<p>risk ratio value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logrr</code></td>
+<td>
+<p>log risk ratio value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logrr_se</code></td>
+<td>
+<p>standard error of the log risk ratio</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>baseline_risk</code></td>
+<td>
+<p>proportion of cases in the non-exposed group</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_exp</code></td>
+<td>
+<p>number of participants in the exposed group</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_nexp</code></td>
+<td>
+<p>number of participants in the non-exposed group</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_cases</code></td>
+<td>
+<p>number of cases/events</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_controls</code></td>
+<td>
+<p>number of controls/no-event</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>smd_to_cor</code></td>
+<td>
+<p>formula used to convert the SMD value (converted from RR) into a coefficient correlation (see <code>es_from_cohen_d</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rr_to_or</code></td>
+<td>
+<p>formula used to convert the <code>rr</code> value into an odds ratio (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reverse_rr</code></td>
+<td>
+<p>a logical value indicating whether the direction of the generated effect sizes should be flipped.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function converts the (log) risk ratio (RR) value and its standard error
+to odds ratio (OR) and number needed to treat.
+</p>
+<p><strong>To estimate the odds ratio and its standard error</strong>, various formulas can be used.
+</p>
+<p><strong>A.</strong> First, the approach described in Grant (2014) can be used.
+However, in the paper, only the formula to convert an RR value to a OR value
+is described. To derive the variance, we used this formula to convert the bounds of the 95% CI, which
+were then used to obtain the variance.
+</p>
+<p>This argument requires (rr + baseline_risk + rr_ci_lo + rr_ci_up) to generate a RR.
+The following formulas are used (br = baseline_risk):
+</p>
+<p style="text-align: center;"><code class="reqn">or = \frac{rr * (1 - br)}{1 - rr * br}</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">or\_ci\_lo = \frac{rr\_ci\_lo}{1 - br + br*rr\_ci\_lo}</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">or\_ci\_up = \frac{rr\_ci\_up}{1 - br + br*rr\_ci\_up}</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">logor\_se = \frac{log(or\_ci\_up) - log(or\_ci\_lo)}{2 * qnorm(.975)}</code>
+</p>
+
+<p><strong>B.</strong> Second, the formulas implemented in the metaumbrella package can be used (<code>or_to_rr = "metaumbrella_exp"</code>).
+This argument requires (rr + logrr_se + n_exp + n_nexp) to generate a OR.
+More precisely, we previously developed functions that simulate all combinations of the possible number of cases and controls
+in the exposed and non-exposed groups compatible with the actual value of the RR.
+Then, the functions select the contingency table whose standard error coincides best with the standard error reported.
+The RR value and its standard are obtained from this estimated contingency table.
+</p>
+<p><strong>C.</strong> Third, it is possible to transpose the RR to a OR (<code>rr_to_or = "transpose"</code>).
+This argument requires (rr + logrr_se) to generate a OR.
+It is known that OR and RR are similar when the baseline risk is small.
+Therefore, users can request to simply transpose the RR value &amp; standard error into a OR value &amp; standard error.
+</p>
+<p style="text-align: center;"><code class="reqn">or = rr</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">logor\_se = logrr\_se</code>
+</p>
+
+<p><strong>D.</strong> Fourth, it is possible to recreate the 2x2 table using the dipietrantonj's formulas (<code>rr_to_or = "dipietrantonj"</code>).
+This argument requires (rr + logrr_ci_lo + logrr_ci_lo) to generate a OR. Information on this approach can be retrieved in
+Di Pietrantonj (2006).
+</p>
+<p><strong>To estimate the NNT</strong>, the formulas used are :
+</p>
+<p style="text-align: center;"><code class="reqn">nnt = \frac{1}{br * (1 - rr)}</code>
+</p>
+
+<p><strong>To estimate the Cohen's d value and its standard error</strong>, the function first converts the RR value and standard error into OR and standard error,
+and then converts these values into Cohen's d using the following formulas:
+</p>
+<p style="text-align: center;"><code class="reqn">cohen\_d = \log(or) * \frac{\sqrt{3}}{\pi}</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">cohen\_d\_se = \sqrt{\frac{logor\_se^2 * 3}{\pi^2}}</code>
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>This function estimates and converts between several effect size measures.
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+<code>natural effect size measure</code> </td>
+<td style="text-align: left;"> RR</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+<td style="text-align: left;"> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>converted effect size measure</code> </td>
+<td style="text-align: left;"> OR + NNT</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+<td style="text-align: left;"> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>required input data</code> </td>
+<td style="text-align: left;"> See 'Section 3. Risk Ratio'</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+<td style="text-align: left;"> https://metaconvert.org/html/input.html</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+<td style="text-align: left;"> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Di Pietrantonj C. (2006). Four-fold table cell frequencies imputation in meta analysis. Statistics in medicine, 25(13), 2299–2322. https://doi.org/10.1002/sim.2287
+</p>
+<p>Gosling, C. J., Solanes, A., Fusar-Poli, P., &amp; Radua, J. (2023). metaumbrella: the first comprehensive suite to perform data analysis in umbrella reviews with stratification of the evidence. BMJ mental health, 26(1), e300534. https://doi.org/10.1136/bmjment-2022-300534
+</p>
+<p>Grant R. L. (2014). Converting an odds ratio to a range of plausible relative risks for better communication of research findings. BMJ (Clinical research ed.), 348, f7450. https://doi.org/10.1136/bmj.f7450
+</p>
+<p>Veroniki, A. A., Pavlides, M., Patsopoulos, N. A., &amp; Salanti, G. (2013). Reconstructing 2x2 contingency tables from odds ratios using the Di Pietrantonj method: difficulties, constraints and impact in meta-analysis results. Research synthesis methods, 4(1), 78–94. https://doi.org/10.1002/jrsm.1061
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">es_from_rr_se(rr = 2.12, logrr_se = 0.242, n_exp = 120, n_nexp = 44)
+</code></pre>
+
+
+</div>

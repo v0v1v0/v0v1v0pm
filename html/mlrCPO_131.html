@@ -1,0 +1,951 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>makeCPO</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create a Custom CPO Constructor</h2>
+
+<h3>Description</h3>
+
+<p><code>makeCPO</code> creates a <em>Feature Operation</em> <code>CPOConstructor</code>, i.e. a constructor for a <code>CPO</code> that will
+operate on feature columns. <code>makeCPOTargetOp</code> creates a <em>Target Operation</em> <code>CPOConstructor</code>, which
+creates <code>CPO</code>s that operate on the target column. <code>makeCPORetrafoless</code> creates a <em>Retrafoless</em> <code>CPOConstructor</code>,
+which creates <code>CPO</code>s that may operate on both feature and target columns, but have no retrafo operation. See OperatingType for further
+details on the distinction of these. <code>makeCPOExtendedTrafo</code> creates a <em>Feature Operation</em> <code>CPOConstructor</code> that
+has slightly more flexibility in its data transformation behaviour than <code>makeCPO</code> (but is otherwise identical).
+<code>makeCPOExtendedTargetOp</code> creates a <em>Target Operation</em> <code>CPOConstructor</code> that has slightly more flexibility in its
+data transformation behaviour than <code>makeCPOTargetOp</code> but is otherwise identical.
+</p>
+<p>See example section for some simple custom CPO.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">makeCPO(
+  cpo.name,
+  par.set = makeParamSet(),
+  par.vals = NULL,
+  dataformat = c("df.features", "split", "df.all", "task", "factor", "ordered",
+    "numeric"),
+  dataformat.factor.with.ordered = TRUE,
+  export.params = TRUE,
+  fix.factors = FALSE,
+  properties.data = c("numerics", "factors", "ordered", "missings"),
+  properties.adding = character(0),
+  properties.needed = character(0),
+  properties.target = c("cluster", "classif", "multilabel", "regr", "surv", "oneclass",
+    "twoclass", "multiclass"),
+  packages = character(0),
+  cpo.train,
+  cpo.retrafo
+)
+
+makeCPOExtendedTrafo(
+  cpo.name,
+  par.set = makeParamSet(),
+  par.vals = NULL,
+  dataformat = c("df.features", "split", "df.all", "task", "factor", "ordered",
+    "numeric"),
+  dataformat.factor.with.ordered = TRUE,
+  export.params = TRUE,
+  fix.factors = FALSE,
+  properties.data = c("numerics", "factors", "ordered", "missings"),
+  properties.adding = character(0),
+  properties.needed = character(0),
+  properties.target = c("cluster", "classif", "multilabel", "regr", "surv", "oneclass",
+    "twoclass", "multiclass"),
+  packages = character(0),
+  cpo.trafo,
+  cpo.retrafo
+)
+
+makeCPORetrafoless(
+  cpo.name,
+  par.set = makeParamSet(),
+  par.vals = NULL,
+  dataformat = c("df.all", "task"),
+  dataformat.factor.with.ordered = TRUE,
+  export.params = TRUE,
+  fix.factors = FALSE,
+  properties.data = c("numerics", "factors", "ordered", "missings"),
+  properties.adding = character(0),
+  properties.needed = character(0),
+  properties.target = c("cluster", "classif", "multilabel", "regr", "surv", "oneclass",
+    "twoclass", "multiclass"),
+  packages = character(0),
+  cpo.trafo
+)
+
+makeCPOTargetOp(
+  cpo.name,
+  par.set = makeParamSet(),
+  par.vals = NULL,
+  dataformat = c("df.features", "split", "df.all", "task", "factor", "ordered",
+    "numeric"),
+  dataformat.factor.with.ordered = TRUE,
+  export.params = TRUE,
+  fix.factors = FALSE,
+  properties.data = c("numerics", "factors", "ordered", "missings"),
+  properties.adding = character(0),
+  properties.needed = character(0),
+  properties.target = "cluster",
+  task.type.out = NULL,
+  predict.type.map = c(response = "response"),
+  packages = character(0),
+  constant.invert = FALSE,
+  cpo.train,
+  cpo.retrafo,
+  cpo.train.invert,
+  cpo.invert
+)
+
+makeCPOExtendedTargetOp(
+  cpo.name,
+  par.set = makeParamSet(),
+  par.vals = NULL,
+  dataformat = c("df.features", "split", "df.all", "task", "factor", "ordered",
+    "numeric"),
+  dataformat.factor.with.ordered = TRUE,
+  export.params = TRUE,
+  fix.factors = FALSE,
+  properties.data = c("numerics", "factors", "ordered", "missings"),
+  properties.adding = character(0),
+  properties.needed = character(0),
+  properties.target = "cluster",
+  task.type.out = NULL,
+  predict.type.map = c(response = "response"),
+  packages = character(0),
+  constant.invert = FALSE,
+  cpo.trafo,
+  cpo.retrafo,
+  cpo.invert
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>cpo.name</code></td>
+<td>
+<p>[<code>character(1)</code>]<br>
+The name of the resulting <code>CPOConstructor</code> / <code>CPO</code>. This is used for identification in output,
+and as the default <code>id</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>par.set</code></td>
+<td>
+<p>[<code>ParamSet</code>]<br>
+Optional parameter set, for configuration of CPOs during construction or by hyperparameters.
+Default is an empty <code>ParamSet</code>.
+It is recommended to use <code>pSS</code> to construct this, as it greatly reduces the verbosity of
+creating a <code>ParamSet</code> and makes it more readable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>par.vals</code></td>
+<td>
+<p>[<code>list</code> | <code>NULL</code>]<br>
+Named list of default parameter values for the CPO. These are used <em>instead of</em> the
+parameter default values in <code>par.set</code>, if not <code>NULL</code>. It is preferred to use
+<code>ParamSet</code> default values,
+and not <code>par.vals</code>. Default is <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dataformat</code></td>
+<td>
+<p>[<code>character(1)</code>]<br>
+Indicate what format the data should be as seen by the <code>cpo.train</code> and <code>cpo.retrafo</code> function.
+The following table shows what values of <code>dataformat</code> lead to what is given to <code>cpo.train</code> and <code>cpo.retrafo</code>
+as <code>data</code> and <code>target</code> parameter value. (Note that for Feature Operating CPOs, <code>cpo.retrafo</code> has no <code>target</code> argument.) Possibilities are:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+    <b>dataformat</b>    </td>
+<td style="text-align: left;"> <b>data</b>                            </td>
+<td style="text-align: left;"> <b>target</b>                </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+    “df.all”       </td>
+<td style="text-align: left;"> <code>data.frame</code> with target cols     </td>
+<td style="text-align: left;"> target colnames              </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+    “df.features”  </td>
+<td style="text-align: left;"> <code>data.frame</code> without target       </td>
+<td style="text-align: left;"> <code>data.frame</code> of target  </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+    “task”         </td>
+<td style="text-align: left;"> full <code>Task</code>           </td>
+<td style="text-align: left;"> target colnames              </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+    “split”        </td>
+<td style="text-align: left;"> list of <code>data.frames</code> by type     </td>
+<td style="text-align: left;"> <code>data.frame</code> of target  </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+    [type]                </td>
+<td style="text-align: left;"> <code>data.frame</code> of [type] feats only </td>
+<td style="text-align: left;"> <code>data.frame</code> of target
+  </td>
+</tr>
+</table>
+<p>[type] can be any one of “factor”, “numeric”, “ordered”; if these are given, only a subset of the total
+data present is seen by the <code>CPO</code>.
+</p>
+<p>Note that <code>makeCPORetrafoless</code> accepts only “task” and “df.all”.
+</p>
+<p>For <code>dataformat == "split"</code>, <code>cpo.train</code> and <code>cpo.retrafo</code> get a list with entries “factor”, “numeric”,
+“other”, and, if <code>dataformat.factor.with.ordered</code> is <code>FALSE</code>, “ordered”.
+</p>
+<p>If the CPO is a Feature Operation CPO, then the return value of the <code>cpo.retrafo</code> function must be in the same format as the one requested.
+E.g. if <code>dataformat</code> is “split”, the return value must be a named list with entries <code>$numeric</code>,
+<code>$factor</code>, and <code>$other</code>. The types of the returned data may be arbitrary: In the given example,
+the <code>$factor</code> slot of the returned list may contain numeric data. (Note however that if data is returned
+that has a type not already present in the data, <code>properties.needed</code> must specify this.)
+</p>
+<p>For Feature Operating CPOs, if <code>dataformat</code> is either “df.all” or “task”, the
+target column(s) in the returned value of the retrafo function must be identical with the target column(s) given as input.
+</p>
+<p>If <code>dataformat</code> is “split”, the <code>$numeric</code> slot of the value returned by the <code>cpo.retrafo</code> function
+may also be a <code>matrix</code>. If <code>dataformat</code> is “numeric”, the returned object may also be a
+matrix.
+</p>
+<p>Default is “df.features” for all functions except <code>makeCPORetrafoless</code>, for which it is “df.all”.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dataformat.factor.with.ordered</code></td>
+<td>
+<p>[<code>logical(1)</code>]<br>
+Whether to treat <code>ordered</code> typed features as <code>factor</code> typed features. This affects how <code>dataformat</code> is handled, for which it only
+has an effect if <code>dataformat</code> is “split” or “factor”. If <code>dataformat</code> is “ordered”, this must be <code>FALSE</code>.
+It also affects how strictly data fed to a <code>CPORetrafo</code> object
+is checked for adherence to the data format of data given to the generating <code>CPO</code>. Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>export.params</code></td>
+<td>
+<p>[<code>logical(1)</code> | <code>character</code>]<br>
+Indicates which CPO parameters are exported by default. Exported parameters can be changed after construction using <code>setHyperPars</code>,
+but exporting too many parameters may lead to messy parameter sets if many CPOs are combined using <code>composeCPO</code> or <code>%&gt;&gt;%</code>.
+The exported parameters can be set during construction, but <code>export.params</code> determines the <em>default</em> exported parameters.
+If this is a <code>logical(1)</code>, <code>TRUE</code> exports all parameters, <code>FALSE</code> to exports no parameters. It may also be a <code>character</code>,
+indicating the names of parameters to be exported. Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fix.factors</code></td>
+<td>
+<p>[<code>logical(1)</code>]<br>
+Whether to constrain factor levels of new data to the levels of training data, for each factorial or ordered column. If new data contains
+factors that were not present in training data, the values are set to <code>NA</code>. Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>properties.data</code></td>
+<td>
+<p>[<code>character</code>]<br>
+The kind if data that the CPO will be able to handle. This can be one or more of: “numerics”,
+“factors”, “ordered”, “missings”.
+There should be a bias towards including properties. If a property is absent, the preproc
+operator will reject the data. If an operation e.g. only works on numeric columns that have no
+missings (like PCA), it is recommended to give all properties, ignore the columns that
+are not numeric (using <code>dataformat = "numeric"</code>), and giving an error when
+there are missings in the numeric columns (since missings in factorial features are not a problem).
+Defaults to the maximal set.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>properties.adding</code></td>
+<td>
+<p>[<code>character</code>]<br>
+Can be one or many of the same values as <code>properties.data</code> for Feature Operation CPOs, and one or many of the same values as <code>properties.target</code>
+for Target Operation CPOs. These properties <em>get added</em> to a <code>Learner</code> (or <code>CPO</code>) coming after / behind this CPO.
+When a CPO imputes missing values, for example, this should be “missings”. This must be a subset of “properties.data” or
+“properties.target”.
+</p>
+<p>Note that this may <em>not</em> contain a <code>Task</code>-type property, even if the <code>CPO</code> is a Target Operation CPO that performs
+conversion.
+</p>
+<p>Property names may be postfixed with “.sometimes”, to indicate that adherence should not be checked internally. This distinction is made by
+not putting them in the <code>$adding.min</code> slot of the <code>getCPOProperties</code> return value when <code>get.internal = TRUE</code>.
+</p>
+<p>Default is <code>character(0)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>properties.needed</code></td>
+<td>
+<p>[<code>character</code>]<br>
+Can be one or many of the same values as <code>properties.data</code> for Feature Operation CPOs,
+and one or many of the same values as <code>properties.target</code>. These properties are <em>required</em>
+from a <code>Learner</code> (or <code>CPO</code>) coming after / behind this CPO. E.g., when a CPO converts factors to
+numerics, this should be “numerics” (and <code>properties.adding</code> should be “factors”).
+</p>
+<p>Note that this may <em>not</em> contain a <code>Task</code>-type property, even if the <code>CPO</code> is a Target Operation CPO that performs
+conversion.
+</p>
+<p>Property names may be postfixed with “.sometimes”, to indicate that adherence should not be checked internally. This distinction is made by
+not putting them in the <code>$needed</code> slot of properties. They can still be found in the <code>$needed.max</code> slot of the
+<code>getCPOProperties</code> return value when <code>get.internal = TRUE</code>.
+</p>
+<p>Default is <code>character(0)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>properties.target</code></td>
+<td>
+<p>[<code>character</code>]<br>
+For Feature Operation CPOs, this can be one or more of “cluster”, “classif”, “multilabel”, “regr”, “surv”,
+“oneclass”, “twoclass”, “multiclass”. Just as <code>properties.data</code>, it
+indicates what kind of data a CPO can work with. To handle data given as <code>data.frame</code>, the “cluster” property is needed. Default is the maximal set.
+</p>
+<p>For Target Operation CPOs, this <em>must</em> contain exactly one of “cluster”, “classif”, “multilabel”, “regr”, “surv”.
+This indicates the type of <code>Task</code> the
+<code>CPO</code> can work on. If the input is a <code>data.frame</code>, it is treated as a “cluster” type <code>Task</code>.
+If the <code>properties.target</code> contains “classif”, the value must then also contain one or more of “oneclass”,
+“twoclass”, or “multiclass”. Default is “cluster”.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>packages</code></td>
+<td>
+<p>[<code>character</code>]<br>
+Package(s) that should be loaded when the CPO is constructed. This gives the user an error if
+a package required for the CPO is not available on his system, or can not be loaded. Default is <code>character(0)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpo.train</code></td>
+<td>
+<p>[<code>function</code> | <code>NULL</code>]<br>
+This is a function which must have the parameters <code>data</code> and <code>target</code>,
+as well as the parameters specified in <code>par.set</code>. (Alternatively,
+the function may have only some of these arguments and a <code>dotdotdot</code> argument).
+It is called whenever a <code>CPO</code> is applied to
+a data set to prepare for transformation of the training <em>and</em> prediction data.
+Note that this function is only used in Feature Operating CPOs created with <code>makeCPO</code>, and in Target Operating CPOs
+created with <code>makeCPOExtendedTargetOp</code>.
+</p>
+<p>The behaviour of this function differs slightly in Feature Operation and Target Operation CPOs.
+</p>
+<p>For <b>Feature Operation CPOs</b>, if <code>cpo.retrafo</code> is <code>NULL</code>, this is a constructor function which must return a “retrafo” function which
+will then modify (possibly new unseen) data. This retrafo function must have exactly one argument–the (new) data–and return the modified data. The format
+of the argument, and of the return value of the retrafo function, depends on the value of the <code>dataformat</code> parameter, see documentation there.
+</p>
+<p>If <code>cpo.retrafo</code> is not <code>NULL</code>, this is a function which must return a control object.
+This control object returned by <code>cpo.train</code> will then be given as the <code>control</code> argument of the <code>cpo.retrafo</code> function, along with
+(possibly new unseen) data to manipulate.
+</p>
+<p>For <b>Target Operation CPOs</b>, if <code>cpo.retrafo</code> is <code>NULL</code>, <code>cpo.train.invert</code>
+(or <code>cpo.invert</code> if <code>constant.invert</code> is <code>TRUE</code>) must likewise be <code>NULL</code>.
+In that case <code>cpo.train</code>'s return value is ignored and it must define, within its namespace, two
+functions <code>cpo.retrafo</code> and <code>cpo.train.invert</code> (or <code>cpo.invert</code> if <code>constant.invert</code>
+is <code>TRUE</code>) which will take the place of the respective functions. <code>cpo.retrafo</code> must take the
+parameters <code>data</code> and <code>target</code>, and return the modified target <code>target</code> (or <code>data</code>,
+depending on <code>dataformat</code>) data. <code>cpo.train.invert</code> must take a <code>data</code> and <code>control</code>
+argument and return either a modified control object, or a <code>cpo.invert</code> function.
+<code>cpo.invert</code> must have a <code>target</code> and <code>predict.type</code> argument and return the modified
+target data.
+</p>
+<p>If <code>cpo.retrafo</code> is not <code>NULL</code>, <code>cpo.train.invert</code>
+(or <code>cpo.invert</code> if <code>constant.invert</code> is <code>TRUE</code>) must likewise be non-<code>NULL</code>.
+In that case, <code>cpo.train</code> must return a control object. This control object will then be
+given as the <code>control</code> argument of both <code>cpo.retrafo</code> and <code>cpo.train.invert</code>
+(or the <code>control.invert</code> argument of <code>cpo.invert</code> if <code>constant.invert</code> is <code>TRUE</code>).
+</p>
+<p>This parameter may be <code>NULL</code>, resulting in a so-called <em>stateless</em> CPO. For Target Operation CPOs created with <code>makeCPOTargetOp</code>,
+<code>constant.invert</code> must be <code>TRUE</code> in this case.
+A stateless CPO does the same transformation for initial CPO
+application and subsequent prediction data transformation (e.g. taking the logarithm of numerical columns). Note that <code>cpo.retrafo</code>
+and <code>cpo.invert</code> should not
+have a <code>control</code> argument in a stateless CPO.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpo.retrafo</code></td>
+<td>
+<p>[<code>function</code> | <code>NULL</code>]<br>
+This is a function which must have the parameters <code>data</code>, <code>target</code> (Target Operation CPOs only) and <code>control</code>,
+as well as the parameters specified in <code>par.set</code>. (Alternatively,
+the function may have only some of these arguments and a <code>dotdotdot</code> argument).
+In Feature Operation CPOs created with <code>makeCPO</code>, if <code>cpo.train</code> is <code>NULL</code>, the <code>control</code> argument must be absent.
+</p>
+<p>This function gets called during the “retransformation” step where prediction data is given to the <code>CPORetrafo</code> object before it
+is given to a fitted machine learning model for prediction. In <code>makeCPO</code> Featore Operation CPOs and <code>makeCPOTargetOp</code> Target Operation CPOs,
+this is <em>also</em> called during the
+first trafo step, where the <code>CPO</code> object is applied to training data.
+</p>
+<p>In Feature Operation CPOs, this function receives the data to be
+transformed and must return the transformed data in the same format as it received them.
+The format of <code>data</code> is the same as the format in <code>cpo.train</code> and <code>cpo.trafo</code>, with the exception that if <code>dataformat</code> is
+“task” or “df.all”, the behaviour here is as if “df.split” had been given.
+</p>
+<p>In Target Operation CPOs created with <code>makeCPOTargetOp</code>, this function receives the data and target to be transformed
+and must return the transformed target. The input format of these parameters depends on <code>dataformat</code>.
+If <code>dataformat</code> is “task” or “df.all”, the returned value must be the modified <code>Task</code> / <code>data.frame</code>
+with the feature columns not modified. Otherwise, the target values to be modified are in the <code>target</code> parameter, and the return
+value must be a <code>data.frame</code> of the modified target values only.
+</p>
+<p>In Target Operation CPOs created with <code>makeCPOExtendedTargetOp</code>, this function is called during the retrafo step, and it must
+create a <code>control.invert</code> object in its environment to be used in the inversion step, as well as return the modified target
+data.The format of the data given to <code>cpo.retrafo</code> in Target Operation CPOs created with <code>makeCPOExtendedTargetOp</code> is the same
+as in other functions, with the exception that, if <code>dataformat</code> is “df.all” or “task”, the full <code>data.frame</code>
+or <code>Task</code> will be given as the <code>target</code> parameter, while the <code>data</code> parameter will behave as if
+<code>dataformat</code> “df.split”. Depending on what object the <code>CPORetrafo</code> object was applied to,
+the <code>target</code> argument <em>may be <code>NULL</code></em>; in that case <code>NULL</code> must also be returned by the function.
+</p>
+<p>If <code>cpo.invert</code> is <code>NULL</code>, <code>cpo.retrafo</code> should create a <code>cpo.invert</code> function in its environment instead of
+creating the control object; this function should then take the <code>target</code> and <code>predict.type</code> arguments. If <code>constant.invert</code>
+is <code>TRUE</code>, this function does not need to define the <code>control.invert</code> or <code>cpo.invert</code> variables, they are instead
+taken from <code>cpo.trafo</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpo.trafo</code></td>
+<td>
+<p>[<code>function</code>]<br>
+This is a function which must have the parameters <code>data</code> and <code>target</code>,
+as well as the parameters specified in <code>par.set</code>. (Alternatively,
+the function may have only some of these arguments and a <code>dotdotdot</code> argument).
+It is called whenever a <code>CPO</code> is applied to
+a data set to transform the training data, and (except for Retrafoless CPOs) to collect a control object used by other transformation functions.
+Note that this function is not used in <code>makeCPO</code>.
+</p>
+<p>This functions primary task is to transform the given data when the <code>CPO</code> gets applied to training data. For Target Operating CPOs
+(created with <code>makeCPOExtendedTargetOp</code>(!)),
+it must return the complete transformed target column(s), unless <code>dataformat</code> is “df.all” (in which case the complete, modified,
+<code>data.frame</code> must be returned) or “task” (in which case the complete, modified, <code>Task</code> must be returned). It must furthermore
+create the control objects for <code>cpo.retrafo</code> and <code>cpo.invert</code>, or create these functins themselves, and save them in its function
+environment (see below). For Retrafoless CPOs
+(created with <code>makeCPORetrafoless</code>) and Feature Operation CPOs (created with <code>makeCPOExtendedTrafo</code>(!)), it must return the
+data in the same format as received it in its <code>data</code> argument (depending on <code>dataformat</code>). If <code>dataformat</code> is a
+<code>df.all</code> or <code>task</code>, this means the target column(s) contained in the <code>data.frame</code> or <code>Task</code> returned must not be modified.
+</p>
+<p>For CPOs that are not Retrafoless, a unit of information to be carried over to the retrafo step needs to be created inside the <code>cpo.trafo</code>
+function. This unit of information is a variable that must be defined inside the environment of the <code>cpo.trafo</code> function and will be
+retrieved by the CPO framework.
+</p>
+<p>If <code>cpo.retrafo</code> is not <code>NULL</code>
+the unit is an object named “<code>control</code>” that will be passed on as the <code>control</code> argument to the
+<code>cpo.retrafo</code> function. If <code>cpo.retrafo</code> is <code>NULL</code>, the unit is a <em>function</em>, called “<code>cpo.retrafo</code>”,
+that will be used
+<em>instead</em> of the <code>cpo.retrafo</code>
+function passed over to <code>makeCPOExtendedTargetOp</code> / <code>makeCPOExtendedTrafo</code>. It must behave
+the same as the function it replaces, but has only the <code>data</code> (and <code>target</code>, for Target Operation CPOs) argument.
+</p>
+<p>For Target Operation CPOs created with <code>makeCPOExtendedTargetOp</code>, another unit of information to be used by <code>cpo.invert</code>
+must be used. The options here are similar to <code>cpo.retrafo</code>: Either a control object, named <code>control.invert</code>, is created,
+or the <code>cpo.invert</code> function itself is given (and <code>cpo.invert</code> in the <code>makeCPOExtendedTargetOp</code> call is set to <code>NULL</code>),
+with the <code>target</code> and <code>predict.type</code> arguments.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>task.type.out</code></td>
+<td>
+<p>[<code>character(1)</code> | <code>NULL</code>]<br>
+If <code>Task</code> conversion is to take place, this is the output task that the data should be converted to. Note that the
+CPO framework takes care of the conversion if <code>dataformat</code> is not “task”, but the target column needs to have the
+proper format for that.
+</p>
+<p>If this is <code>NULL</code>, <code>Task</code>s will not be converted. Default is <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>predict.type.map</code></td>
+<td>
+<p>[<code>character</code> | <code>list</code>]<br>
+This becomes the <code>CPO</code>'s <code>predict.type</code>, explained in detail in PredictType.
+</p>
+<p>In short, the <code>predict.type.map</code> is a character vector, or a <code>list</code> of <code>character(1)</code>,
+with <em>names</em> according to the predict types <code>predict</code> can request
+in its <code>predict.type</code> argument when the created <code>CPO</code> was used as part of a <code>CPOLearner</code> to create the
+model under consideration. The <em>values</em> of <code>predict.type.map</code> are the <code>predict.type</code> that will be requested from the
+underlying <code>Learner</code> for prediction.
+</p>
+<p><code>predict.type.map</code> thus determines the format that the <code>target</code> parameter of <code>cpo.invert</code> can take: It is
+the format according to <code>predict.type.map[predict.type]</code>, where <code>predict.type</code> is the respective <code>cpo.invert</code> parameter.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>constant.invert</code></td>
+<td>
+<p>[<code>logical(1)</code>]<br>
+Whether the <code>cpo.invert</code> step should not have information from the previous <code>cpo.retrafo</code> or <code>cpo.train.invert</code> step in
+Target Operation CPOs (<code>makeCPOTargetOp</code> or <code>makeCPOExtendedTargetOp</code>).
+</p>
+<p>For <code>makeCPOTargetOp</code>, if this is <code>TRUE</code>, the
+<code>cpo.train.invert</code> argument must be <code>NULL</code>. If <code>cpo.retrafo</code> and <code>cpo.invert</code> are given, the same <code>control</code>
+object is given to both of them. Otherwise, if <code>cpo.retrafo</code> and <code>cpo.invert</code> are <code>NULL</code>, the <code>cpo.train</code> function
+must return <code>NULL</code> and define a <code>cpo.retrafo</code> and <code>cpo.invert</code> function in its namespace (see <code>cpo.train</code> documentation
+for more details). If <code>constant.invert</code> is <code>FALSE</code>, <code>cpo.train</code> may either return a <code>control</code> object that will then be
+given to <code>cpo.train.invert</code>, or define a <code>cpo.retrafo</code> and <code>cpo.train.invert</code> function in its namespace.
+</p>
+<p>For <code>makeCPOExtendedTargetOp</code>, if this is <code>TRUE</code>, <code>cpo.retrafo</code> does not need to generate a <code>control.invert</code> object.
+The <code>control.invert</code> object created in <code>cpo.trafo</code> will then always be given to <code>cpo.invert</code> for all data sets.
+</p>
+<p>Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpo.train.invert</code></td>
+<td>
+<p>This is a function which must have the parameters <code>data</code>, and <code>control</code>,
+as well as the parameters specified in <code>par.set</code>. (Alternatively,
+the function may have only some of these arguments and a <code>dotdotdot</code> argument).
+</p>
+<p>This function receives the feature columns given for prediction, and must return a
+control object that will be passed on to the <code>cpo.invert</code> function, <em>or</em> it must return a <em>function</em> that will be treated
+as the <code>cpo.invert</code> function if the <code>cpo.invert</code> argument is <code>NULL</code>. In the latter case, the returned function takes
+exactly two arguments (the prediction column to be inverted, and <code>predict.type</code>), and otherwise behaves identically to <code>cpo.invert</code>.
+</p>
+<p>If <code>constant.invert</code> is <code>TRUE</code>, this must be <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpo.invert</code></td>
+<td>
+<p>[<code>function</code> | <code>NULL</code>]<br>
+This is a function which must have the parameters <code>target</code> (a <code>data.frame</code> containing the columns of a prediction made), <code>control.invert</code>,
+and <code>predict.type</code>, as well as the parameters specified in <code>par.set</code>. (Alternatively,
+the function may have only some of these arguments and a <code>dotdotdot</code> argument).
+</p>
+<p>The <code>predict.type</code> <em>requested</em> by the <code>predict</code> or <code>invert</code> call is given as a <code>character(1)</code> in
+the <code>predict.type</code> argument. Note that this is not necessarily the <code>predict.type</code> of the prediction made and given as <code>target</code> argument,
+depending on the value of <code>predict.type.map</code> (see there).
+</p>
+<p>This function performs the inversion for a Target Operation CPO. It takes a control object, which summarizes information from the training and
+retrafo step, and the prediction as returned by a machine learning model, and undoes the operation done to the target column in the <code>cpo.trafo</code>
+function.
+</p>
+<p>For example, if the trafo step consisted of taking the logarithm of a regression target, the <code>cpo.invert</code> function could return the exponentiated
+prediction values by taking the <code>exp</code> of the only column in the <code>target</code> <code>data.frame</code> and returning the result of that. This kind of
+operation does not need the <code>cpo.retrafo</code> step and should have <code>skip.retrafo</code> set to <code>TRUE</code>.
+</p>
+<p>As a more elaborate example, a CPO could train a model on the training data and set the target values to the <em>residues</em> of that trained model.
+The <code>cpo.retrafo</code> function would then make predictions with that model on the new prediction data and save the result to the <code>control</code> object.
+The <code>cpo.invert</code> function would then add these predictions to the predictions given to it in the <code>target</code> argument to “invert” the
+antecedent subtraction of model predictions from target values when taking the residues.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>[<code>CPOConstructor</code>]. A Constructor for <code>CPO</code>s.
+</p>
+
+
+<h3>CPO Internals</h3>
+
+<p>The mlrCPO package offers a powerful framework for handling the tasks necessary for preprocessing, so that the user, when creating custom CPOs,
+can focus on the actual data transformations to perform. It is, however, useful to understand <em>what</em> it is that the framework does, and how
+the process can be influenced by the user during CPO definition or application. Aspects of preprocessing that the user needs to influence are:
+</p>
+
+<dl>
+<dt><strong>Operating Type</strong></dt>
+<dd>
+<p>The core of preprocessing is the actual transformation being performed. In the most general sense, there are three points in a machine
+learning pipeline that preprocessing can influence.
+</p>
+
+<ol>
+<li>
+<p> Transformation of training data <em>before model fitting</em>, done in mlr using <code>train</code>. In the CPO framework
+(<em>when not using a <code>CPOLearner</code> which makes all of these steps transparent to the user</em>), this is
+done by a <code>CPO</code>.
+</p>
+</li>
+<li>
+<p> transformation of new validation or prediction data that is given to the fitted model for <em>prediction</em>, done using
+<code>predict</code>. This is done by a <code>CPORetrafo</code> retrieved using <code>retrafo</code> from the result of step 1.
+</p>
+</li>
+<li>
+<p> transformation of the predictions made to invert the transformation of the target values done in step 1, which is done using
+the <code>CPOInverter</code> retrieved using <code>inverter</code> from the result of step 2.
+</p>
+</li>
+</ol>
+<p>The framework poses restrictions on primitive (i.e. not compound using <code>composeCPO</code>) <code>CPO</code>s to simplify internal
+operation: A <code>CPO</code> may be one of three OperatingTypes (see there). The <em>Feature Operation</em> <code>CPO</code> does not
+transform target columns and hence only needs to be involved in steps 1 and 2. The <em>Target Operation</em> <code>CPO</code> only transforms
+target columns, and therefore mostly concerns itself with steps 1 and 3. A <em>Retrafoless</em> <code>CPO</code> may change both feature and
+target columns, but may not perform a retrafo <em>or</em> inverter operation (and is therefore only concerned with step 1). Note that this
+is effectively a restriction on what kind of transformation a Retrafoless CPO may perform: it must not be a transformation of the data
+or target <em>space</em>, it may only act or subtract points within this space.
+</p>
+<p>The Operating Type of a <code>CPO</code> is ultimately dependent on the function that was used to create the <code>CPOConstructor</code>:
+<code>makeCPO</code> / <code>makeCPOExtendedTrafo</code>, <code>makeCPOTargetOp</code> / <code>makeCPOExtendedTargetOp</code>, or <code>makeCPORetrafoless</code>.</p>
+</dd>
+<dt><strong>Data Transformation</strong></dt>
+<dd>
+<p>At the core of a CPO is the modification of data it performs. For Feature Operation CPOs, the transformation of each row,
+during training <em>and</em> prediction, should
+happen in the same way, and it may only depend on the entirety of the <em>training</em> data–i.e. the value of a data row in a prediction
+data set may not influence the transformation of a different prediction data row. Furthermore, if a data row occurs in both training and prediction
+data, its transformation result should ideally be the same.
+</p>
+<p>This property is ensured by <code>makeCPO</code> by splitting the transformation
+into two functions: One function that collects all relevant information from the training data (called <code>cpo.train</code>), and one that transforms
+given data, using this collected information and (<em>potentially new, unseen</em>) data to be transformed (called <code>cpo.retrafo</code>). The <code>cpo.retrafo</code>
+function should handle all data as if it were prediction data and unrelated to the data given to <code>cpo.train</code>.
+</p>
+<p>Internally, when a <code>CPO</code> gets applied to a data set using <code>applyCPO</code>, the <code>cpo.train</code> function is called, and the
+resulting control object is used for a subsequent <code>cpo.retrafo</code> call which transforms the data. Before the result is given back from the
+<code>applyCPO</code> call, the control object is used to create a <code>CPORetrafo</code> object,
+which is attached to the result as attribute. Target Operating CPOs additionally create and add a <code>CPOInverter</code> object.
+</p>
+<p>When a <code>CPORetrafo</code> is then applied to new prediction data, the control object previously returned by <code>cpo.train</code> is given,
+combined with this <em>new</em> data, to another <code>cpo.retrafo</code> call that performs the new transformation.
+</p>
+<p><code>makeCPOExtendedTrafo</code> gives more flexibility by having calling only the <code>cpo.trafo</code> in the training step, which both creates a control
+object <em>and</em> modifies the data. This can increase performance if the underlying operation creates a control object and the transformed data in one step,
+as for example <em>PCA</em> does. Note that the requirement that the same row in training and prediction data should result in the same transformation
+result still stands. The <code>cpo.trafo</code> function returns the transformed data and creates a local variable with the control information, which the
+CPO framework will access.</p>
+</dd>
+<dt><strong>Inversion</strong></dt>
+<dd>
+<p>If a <code>CPO</code> performs transformations of the <em>target</em> column, the predictions made by a following machine learning process should
+ideally have this transformation undone, so that if the process makes a prediction that coincides with a target value <em>after</em> the
+transformation, the whole pipeline should return a prediction that equals to the target value <em>before</em> this transformation.
+</p>
+<p>This is done by the <code>cpo.invert</code> function given to <code>makeCPOTargetOp</code>. It has access to information from both the preceding training and prediction
+steps. During the training step, <code>cpo.train</code> createas a <code>control</code> object that is not only given to <code>cpo.retrafo</code>, but also
+to <code>cpo.train.invert</code>. This latter function is called before the prediction step, whenever new data is fed to the machine learning process.
+It takes the new data and the old <code>control</code> object and transforms it to a new <code>control.invert</code> object to include information about the prediction
+data. This object is then given to <code>cpo.invert</code>.
+</p>
+<p>It is possible to have Target Operation CPOs that do not require information from the retrafo step. This is specified by setting
+<code>constant.invert</code> to <code>TRUE</code>. It has the advantage that the same <code>CPOInverter</code>
+can be used for inversion of predictions made with any new data. Otherwise, a new <code>CPOInverter</code> object must be obtained for each
+new data set after the retrafo step (using the <code>inverter</code> function on the retrafo result). Having <code>constant.invert</code> set to <code>TRUE</code>
+results in <em>hybrid</em> retrafo / inverter objects: The <code>CPORetrafo</code> object can then also be used for <code>inversions</code>.
+When defining a <code>constant.invert</code> Target Operating CPO, no <code>cpo.train.invert</code> function is given, and the same <code>control</code>
+object is given to both <code>cpo.retrafo</code> and <code>cpo.invert</code>.
+</p>
+<p><code>makeCPOExtendedTargetOp</code> gives more flexibility and allows more efficient implementation of Target Operating CPOs at cost of more complexity.
+With this method, a <code>cpo.trafo</code> function is given that is executed during the first training step; It must return the transformed target column,
+as well as a <code>control</code> and <code>control.invert</code> object. The <code>cpo.retrafo</code> function not only transforms the target, but must also
+create a new <code>control.invert</code> object (unless <code>constant.invert</code> is <code>TRUE</code>). The semantics of <code>cpo.invert</code> is identical with the
+basic <code>makeCPOTargetOp</code>.</p>
+</dd>
+<dt><strong><code>cpo.train</code>-<code>cpo.retrafo</code> information transfer</strong></dt>
+<dd>
+<p>One possibility to transfer information from <code>cpo.train</code> to <code>cpo.retrafo</code> is to have <code>cpo.train</code> return a
+control object (a <code>list</code>)
+that is then given to <code>cpo.retrafo</code>. The CPO is then called an <em>object based</em> CPO.
+</p>
+<p>Another possibility is to not give the <code>cpo.retrafo</code>
+argument (set it to <code>NULL</code> in the <code>makeCPO</code> call) and have <code>cpo.train</code> instead return a <em>function</em> instead. This function is then
+used as the <code>cpo.retrafo</code> function, and should have access to all relevant information about the training data as a closure. This is called
+<em>functional</em> CPO. To save memory, the actual data (including target) given to <code>cpo.train</code> is removed from the environment of its
+return value in this case
+(i.e. the environment of the <code>cpo.retrafo</code> function). This means the <code>cpo.retrafo</code> function may not reference a “<code>data</code>” variable.
+</p>
+<p>There are similar possibilities of functional information transfer for other types of CPOs: <code>cpo.trafo</code> in <code>makeCPOExtendedTargetOp</code> may
+create a <code>cpo.retrafo</code> function instead of a <code>control</code> object. <code>cpo.train</code> in <code>makeCPOTargetOp</code> has the option of creating
+a <code>cpo.retrafo</code> and <code>cpo.train.invert</code> (<code>cpo.invert</code> if <code>constant.invert</code> is <code>TRUE</code>) function (and returning <code>NULL</code>)
+instead of returning a <code>control</code> object. Similarly, <code>cpo.train.invert</code> may return a <code>cpo.invert</code> function instead of a <code>control.invert</code>
+object. In <code>makeCPOExtendedTargetOp</code>, <code>cpo.trafo</code> may create a <code>cpo.retrafo</code> or a <code>cpo.invert</code> function, each optionally instead
+of a <code>control</code> or <code>control.invert</code> object (one <em>or</em> both may be functional). <code>cpo.retrafo</code> similarly may create a <code>cpo.invert</code>
+function instead of giving a <code>control.invert</code> object. Functional information transfer may be more parsimonious and elegant than control
+object information transfer.</p>
+</dd>
+<dt><strong>Hyperparameters</strong></dt>
+<dd>
+<p>The action performed by a CPO may be influenced using <em>hyperparameters</em>, during its construction as well as afterwards (then using
+<code>setHyperPars</code>). Hyperparameters must be specified as a <code>ParamSet</code> and given as argument <code>par.set</code>.
+Default values for each parameter may be specified in this <code>ParamSet</code> or optionally as another argument <code>par.vals</code>.
+</p>
+<p>Hyperparameters given are made part of the <code>CPOConstructor</code> function and can thus be given during construction.
+Parameter default values function as the default values for the <code>CPOConstructor</code> function parameters (which are thus made optional function
+parameters of the <code>CPOConstructor</code> function). The CPO framework handles storage and changing of hyperparameter values.
+When the <code>cpo.train</code> and <code>cpo.retrafo</code> functions are called to transform data, the hyperparameter values are given to them as arguments, so
+<code>cpo.train</code> and <code>cpo.retrafo</code> functions must be able to accept these parameters, either directly, or with a <code>...</code> argument.
+</p>
+<p>Note that with <em>functional</em> <code>CPO</code>s, the <code>cpo.retrafo</code> function does not take hyperparameter arguments (and instead can usually
+refer to them by its environment).
+</p>
+<p>Hyperparameters may be <em>exported</em> (or not), thus making them available for <code>setHyperPars</code>. Not exporting a parameter
+has advantage that it does not clutter the <code>ParamSet</code> of a big <code>CPO</code> or <code>CPOLearner</code> pipeline with
+many hyperparameters. Which hyperparameters are exported is chosen during the constructing call of a <code>CPOConstructor</code>, but the default
+exported hyperparameters can be chosen with the <code>export.params</code> parameter.</p>
+</dd>
+<dt><strong>Properties</strong></dt>
+<dd>
+<p>Similarly to <code>Learner</code>s, <code>CPO</code>s may specify what kind of data they are and are not able to handle. This is done by
+specifying <code>.properties.*</code> arguments. The names of possible properties are the same as possible <code>LearnerProperties</code>, but since
+<code>CPO</code>s mostly concern themselves with data, only the properties indicating column and task types are relevant.
+</p>
+<p>For each <code>CPO</code> one must specify
+</p>
+
+<ol>
+<li>
+<p> which kind of data does the <code>CPO</code> handle,
+</p>
+</li>
+<li>
+<p> which kind of data must the <code>CPO</code> or <code>Learner</code> be able to handle that comes <em>after</em>
+the given <code>CPO</code>, and
+</p>
+</li>
+<li>
+<p> which kind of data handling capability does the given <code>CPO</code> <em>add</em> to a following
+<code>CPO</code> or <code>Learner</code> if coming before it in a pipeline.
+</p>
+</li>
+</ol>
+<p>The specification of (1) is done with <code>properties.data</code> and <code>properties.target</code>, (2) is specified using <code>properties.needed</code>, and
+(3) is specified using <code>properties.adding</code>. Internally, <code>properties.data</code> and <code>properties.target</code> are concatenated and treated as
+one vector, they are specified separately in <code>makeCPO</code> etc. for convenience reasons. See <code>CPOProperties</code> for details.
+</p>
+<p>The CPO framework checks the <code>cpo.retrafo</code> etc. functions for adherence to these properties, so it e.g. throws an error if a <code>cpo.retrafo</code>
+function adds missing values to some data but didn't declare “missings” in <code>properties.needed</code>. It may be desirable to have this
+internal checking happen to a laxer standard than the property checking when composing CPOs (e.g. when a CPO adds missings only with certain
+hyperparameters, one may still want to compose this CPO to another one that can't handle missings). Therefore it is possible to postfix
+listed properties with “.sometimes”. The internal CPO checking will ignore these when listed in <code>properties.adding</code>
+(it uses the ‘minimal’ set of adding properties, <code>adding.min</code>), and it will not declare them externally when listed in
+<code>properties.needed</code> (but keeps them internally in the ‘maximal’ set of needed properties, <code>needed.max</code>). The <code>adding.min</code>
+and <code>needed.max</code> can be retrieved using <code>getCPOProperties</code> with <code>get.internal = TRUE</code>.</p>
+</dd>
+<dt><strong>Data Format</strong></dt>
+<dd>
+<p>Different CPOs may want to change different aspects of the data, e.g. they may only care about numeric columns, they may or may not care about
+the target column values, sometimes they might need the actual task used as input. The CPO framework offers to present the data in a specified
+formats to the <code>cpo.train</code>, <code>cpo.retrafo</code> and other functions, to reduce the need for boilerplate data subsetting on the user's part. The format is
+requested using the <code>dataformat</code> and <code>dataformat.factor.with.ordered</code> parameter. A <code>cpo.retrafo</code> function is expected to return
+data in the same format as it requested, so if it requested a <code>Task</code>, it must return one, while if it only
+requested the feature <code>data.frame</code>, a <code>data.frame</code> must be returned.</p>
+</dd>
+<dt><strong>Task Conversion</strong></dt>
+<dd>
+<p>Target Operation CPOs can be used for conversion between <code>Task</code>s. For this, the <code>type.out</code> value must be given. Task conversion
+works with all values of <code>dataformat</code> and is handled by the CPO framework. The <code>cpo.trafo</code> function must take care to return the target data
+in a proper format (see above). Note that for conversion, not only does the <code>Task</code> type need to be changed during <code>cpo.trafo</code>, but
+also the <em>prediction</em> format (see above) needs to change.</p>
+</dd>
+<dt><strong>Fix Factors</strong></dt>
+<dd>
+<p>Some preprocessing for factorial columns needs the factor levels to be the same during training and prediction. This is usually not guarranteed
+by mlr, so the framework offers to do this if the <code>fix.factors</code> flag is set.</p>
+</dd>
+<dt><strong>ID</strong></dt>
+<dd>
+<p>To prevent parameter name clashes when <code>CPO</code>s are concatenated, the parameters are prefixed with the <code>CPO</code>s
+<em>id</em>.
+The ID can be set during <code>CPO</code> construction, but will default to the <code>CPO</code>s <em>name</em> if not given. The name is set
+using the <code>cpo.name</code> parameter.</p>
+</dd>
+<dt><strong>Packages</strong></dt>
+<dd>
+<p>Whenever a <code>CPO</code> needs certain packages to be installed to work, it can specify these in the <code>packages</code> parameter. The framework
+will check for the availability of the packages and throw an error if not found <em>during construction</em>. This means that loading a <code>CPO</code>
+from a savefile will omit this check, but in most cases it is a sufficient measure to make the user aware of missing packages in time.</p>
+</dd>
+<dt><strong>Target Column Format</strong></dt>
+<dd>
+<p>Different <code>Task</code> types have the target in a different formats. They are listed here for reference. Target data is in this format
+when given to the <code>target</code> argument of some functions, and must be returned in this format by <code>cpo.trafo</code>
+in Target Operation CPOs. Target values are always in the format of a <code>data.frame</code>, even when only one column.
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+      <b>Task type</b>    </td>
+<td style="text-align: left;"> <b>target format</b>                          </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “classif”    </td>
+<td style="text-align: left;"> one column of <code>factor</code>      </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “cluster”    </td>
+<td style="text-align: left;"> <code>data.frame</code> with zero columns.          </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “multilabel” </td>
+<td style="text-align: left;"> several columns of <code>logical</code>
+</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “regr”       </td>
+<td style="text-align: left;"> one column of <code>numeric</code>     </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “surv”       </td>
+<td style="text-align: left;"> two columns of <code>numeric</code>
+    </td>
+</tr>
+</table>
+<p>When inverting, the format of the <code>target</code> argument, as well as the return value of, the <code>cpo.invert</code> function depends on the
+<code>Task</code> type as well as the <code>predict.type</code>. The requested return value <code>predict.type</code> is given to the <code>cpo.invert</code> function
+as a parameter, the <code>predict.type</code> of the <code>target</code> parameter depends on this and the <code>predict.type.map</code> (see PredictType).
+The format of the prediction, depending on the task type and <code>predict.type</code>, is:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+      <b>Task type</b>    </td>
+<td style="text-align: left;"> <b><code>predict.type</code></b> </td>
+<td style="text-align: left;"> <b>target format</b>                          </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “classif”    </td>
+<td style="text-align: left;"> “response”          </td>
+<td style="text-align: left;"> <code>factor</code>                    </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “classif”    </td>
+<td style="text-align: left;"> “prob”              </td>
+<td style="text-align: left;"> <code>matrix</code> with nclass cols   </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “cluster”    </td>
+<td style="text-align: left;"> “response”          </td>
+<td style="text-align: left;"> <code>integer</code> cluster index     </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “cluster”    </td>
+<td style="text-align: left;"> “prob”              </td>
+<td style="text-align: left;"> <code>matrix</code> with nclustr cols  </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “multilabel” </td>
+<td style="text-align: left;"> “response”          </td>
+<td style="text-align: left;"> <code>logical</code> <code>matrix</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “multilabel” </td>
+<td style="text-align: left;"> “prob”              </td>
+<td style="text-align: left;"> <code>matrix</code> with nclass cols   </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “regr”       </td>
+<td style="text-align: left;"> “response”          </td>
+<td style="text-align: left;"> <code>numeric</code>                   </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “regr”       </td>
+<td style="text-align: left;"> “se”                </td>
+<td style="text-align: left;"> 2-col <code>matrix</code>              </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “surv”       </td>
+<td style="text-align: left;"> “response”          </td>
+<td style="text-align: left;"> <code>numeric</code>                   </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+      “surv”       </td>
+<td style="text-align: left;"> “prob”              </td>
+<td style="text-align: left;"> [NOT YET SUPPORTED]
+    </td>
+</tr>
+</table>
+<p>All <code>matrix</code> formats are <code>numeric</code>, unless otherwise stated.</p>
+</dd>
+</dl>
+<h3>Headless function definitions</h3>
+
+<p>In the place of all <code>cpo.*</code> arguments, it is possible to make a <em>headless</em> function definition, consisting only of the function body.
+This function body must always begin with a ‘<code>{</code>’. For example, instead of
+<code>cpo.retrafo = function(data, control) data[-1]</code>, it is possible to use
+<code>cpo.retrafo = function(data, control) { data[-1] }</code>. The necessary function head is then added automatically by the CPO framework.
+This will always contain the necessary parameters (e.g. “<code>data</code>”, “<code>target</code>”, hyperparameters as defined in <code>par.set</code>)
+in the names as required. This can declutter the definition of a <code>CPOConstructor</code> and is recommended if the CPO consists of
+few lines.
+</p>
+<p>Note that if this is used when writing an R package, inside a function, this may lead to the automatic R correctness checker to print warnings.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other CPOConstructor related: 
+<code>CPOConstructor</code>,
+<code>getCPOClass()</code>,
+<code>getCPOConstructor()</code>,
+<code>getCPOName()</code>,
+<code>identicalCPO()</code>,
+<code>print.CPOConstructor()</code>
+</p>
+<p>Other CPO lifecycle related: 
+<code>CPOConstructor</code>,
+<code>CPOLearner</code>,
+<code>CPOTrained</code>,
+<code>CPO</code>,
+<code>NULLCPO</code>,
+<code>%&gt;&gt;%()</code>,
+<code>attachCPO()</code>,
+<code>composeCPO()</code>,
+<code>getCPOClass()</code>,
+<code>getCPOConstructor()</code>,
+<code>getCPOTrainedCPO()</code>,
+<code>identicalCPO()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># an example constant feature remover CPO
+constFeatRem = makeCPO("constFeatRem",
+ dataformat = "df.features",
+ cpo.train = function(data, target) {
+   names(Filter(function(x) {  # names of columns to keep
+       length(unique(x)) &gt; 1
+     }, data))
+   }, cpo.retrafo = function(data, control) {
+   data[control]
+ })
+# alternatively:
+constFeatRem = makeCPO("constFeatRem",
+  dataformat = "df.features",
+  cpo.train = function(data, target) {
+    cols.keep = names(Filter(function(x) {
+        length(unique(x)) &gt; 1
+      }, data))
+    # the following function will do both the trafo and retrafo
+    result = function(data) {
+      data[cols.keep]
+    }
+    result
+  }, cpo.retrafo = NULL)
+</code></pre>
+
+
+</div>

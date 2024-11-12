@@ -1,0 +1,211 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>compose.mar1s</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Compose and Decompose MAR(1)S Process </h2>
+
+<h3>Description</h3>
+
+<p><code>compose.mar1s</code> composes MAR(1)S process realization by given
+vector of log-innovations.
+</p>
+<p><code>decompose.mar1s</code> extracts MAR(1)S process components from time
+series.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">compose.mar1s(object, loginnov, start.time = head(time(loginnov), 1),
+              xreg.absdata = NULL, init.absdata = NULL)
+
+decompose.mar1s(object, absdata, start.time = head(time(absdata), 1),
+                init.absdata = rep(NA, NCOL(absdata)))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+
+<p>An object of class <code>"mar1s"</code> specifying the model parameters.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loginnov</code></td>
+<td>
+
+<p>A univariate time series containing the log-innovations.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>absdata</code></td>
+<td>
+
+<p>A univariate or multivariate time series containing the process
+realization.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start.time</code></td>
+<td>
+
+<p>The sampling time for the first simulation step.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xreg.absdata</code></td>
+<td>
+
+<p>A matrix-like object with row count = <code>n.ahead</code>, specifying the
+values for the external regressors. If <code>NULL</code>, default values
+are used.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init.absdata</code></td>
+<td>
+
+<p>A vector specifying the initial values of the process. If
+<code>NULL</code>, default values are used.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><dfn>Multiplicative AR(1) with Seasonal (MAR(1)S) process</dfn> is defined
+as
+</p>
+<p style="text-align: center;"><code class="reqn">x_t = exp(s_t + y_t)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">y_{t, 1} = b_1 y_{t, 2} + \dots + b_k y_{t, k + 1} + z_t</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">z_t = a z_{t-1} + e_t</code>
+</p>
+
+<p>where
+</p>
+<p><code class="reqn">s_t</code> is the log-seasonal component,
+</p>
+<p><code class="reqn">y_t</code> is the AR(1) (log-stochastic) component,
+</p>
+<p><code class="reqn">e_t</code> is the log-residuals (random component).
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>absdata</code></td>
+<td>
+
+<p>Realization of the process (a univariate or multivariate time series
+object).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logdata</code></td>
+<td>
+
+<p>Logarithm of <code>absdata</code> (a univariate or multivariate time
+series object).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logstoch</code></td>
+<td>
+
+<p>Log-stochastic component (a univariate or multivariate time series
+object).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logresid</code></td>
+<td>
+
+<p>Random component (a univariate time series object).
+</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p><code>decompose.mar1s</code> and <code>fit.mar1s</code> compute the random
+component in different ways: <code>decompose.mar1s</code> uses <code>filter</code>
+while <code>fit.mar1s</code> saves the residuals returned by <code>arima</code>.
+The results may be different in:
+</p>
+
+<dl>
+<dt>the first value:</dt>
+<dd>
+<p><code>decompose.mar1s</code> uses specified
+<code>init.absdata</code> while <code>arima</code> always assumes zero initial
+values for the fitted process;</p>
+</dd>
+<dt>non-finite values:</dt>
+<dd>
+<p><code>decompose.mar1s</code> handles non-finite
+values more accurately.</p>
+</dd>
+</dl>
+<h3>See Also</h3>
+
+<p><code>compose.ar1</code> for the AR(1) with external regressors
+processes, <code>fit.mar1s</code> for fitting MAR(1)S process to
+data, <code>sim.mar1s</code> for MAR(1)S process simulation and
+prediction.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(forest.fire, package = "mar1s")
+data(nesterov.index, package = "mar1s")
+
+## Simple
+mar1s &lt;- fit.mar1s(window(forest.fire, 1969, 1989))
+
+x &lt;- ts(rnorm(365, sd = mar1s$logresid.sd), start = c(1989, 1))
+plot(compose.mar1s(mar1s, x)$absdata)
+
+decomp &lt;- decompose.mar1s(mar1s, mar1s$decomposed$absdata)
+delta &lt;- abs(nan2na(mar1s$decomposed$logresid) -
+             nan2na(decomp$logresid))
+stopifnot(all(na.exclude(tail(delta, -1)) &lt; 1E-6))
+
+## External regressors
+mar1s &lt;- fit.mar1s(window(forest.fire, 1969, 1989),
+                   window(nesterov.index[, "mean"], 1969, 1989))
+
+x &lt;- rnorm(365, sd = mar1s$logresid.sd)
+xreg &lt;- window(nesterov.index[, "mean"], 1989.001, 1990)
+plot(compose.mar1s(mar1s, x, c(1989, 1), xreg)$absdata)
+
+decomp &lt;- decompose.mar1s(mar1s, mar1s$decomposed$absdata)
+delta &lt;- abs(mar1s$decomposed$logstoch - decomp$logstoch)
+stopifnot(all(na.exclude(delta) &lt; 1E-6))
+delta &lt;- abs(nan2na(mar1s$decomposed$logresid) -
+             nan2na(decomp$logresid))
+stopifnot(all(na.exclude(tail(delta, -1)) &lt; 1E-6))
+</code></pre>
+
+
+</div>

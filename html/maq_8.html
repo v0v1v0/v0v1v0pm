@@ -1,0 +1,110 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict.maq</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Predict treatment allocation.</h2>
+
+<h3>Description</h3>
+
+<p>Get an estimate of the policy <code class="reqn">\pi_B(X_i)</code> at a spend level B.
+<code class="reqn">\pi_B(X_i)</code> is a K-dimensional vector where the k-th element is 1 if assigning the k-th
+arm to unit i is optimal at a given spend B, and 0 otherwise (with all entries 0 if the
+control arm is assigned).
+Depending on the value of B, <code class="reqn">\pi_B(X_j)</code> might be fractional for at most one unit j.
+There are two such cases - the first one is when there is not sufficient budget left to assign j an
+initial arm. The second is if there is not sufficient budget to upgrade unit j from arm k to k'.
+In these cases <code class="reqn">\pi_B(X_j)</code> takes on one, or two fractional values, respectively,
+representing an assignment probability of a given arm.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'maq'
+predict(object, spend, type = c("matrix", "vector"), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A maq object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spend</code></td>
+<td>
+<p>The spend level B.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>If "matrix" (Default), then return a matrix where the i-th entry equals
+<code class="reqn">\pi_B(X_i)</code> as described above.
+If "vector", then <code class="reqn">\pi_B(X_i)</code> is instead encoded taking values in the set {0, 1, ..., K}.
+If the allocation is fractional at the given B, this option returns the policy corresponding
+to the previous/lower value of the spend path, at which point the policy is integer-valued, but
+incurs a cost less than B in expectation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments (currently ignored).</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A matrix with row i equal to <code class="reqn">\pi_B(X_i)</code>. If <code>type = "vector"</code> then an
+n-length vector with elements equal to the arm (from 0 to K) that is assigned at the given spend B
+(note: if the treatment allocation contains a fractional entry at the given B, then the returned
+vector is the policy at the nearest spend B' in the solution path where the allocation is
+integer-valued but incurs a cost B' &lt; B).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Generate some toy data and fit a solution path.
+n &lt;- 10
+K &lt;- 4
+reward &lt;- matrix(rnorm(n * K), n, K)
+cost &lt;- matrix(runif(n * K), n, K)
+DR.scores &lt;- reward + rnorm(n)
+path &lt;- maq(reward, cost, DR.scores)
+
+# Get the treatment allocation matrix
+pi.mat &lt;- predict(path, 0.1)
+pi.mat
+# pi.mat might have fractional entries for a single unit but satisfies
+# the budget in expectation exactly.
+sum(cost * pi.mat) / n
+
+# Get the treatment allocation instead encoded in the set {0, 1, ..., K}.
+pi.vec &lt;- predict(path, 0.1, type = "vector")
+pi.vec
+# If a unit has a fractional entry, then pi.vec will incur a cost slightly
+# lower than 0.1.
+sum(cost[cbind(1:n, pi.vec)]) / n
+
+# Retrieve the underlying solution path.
+data.path &lt;- summary(path)
+# If we predict at a spend level on this grid, say entry 5,
+# then the policy is integer-valued:
+spend &lt;- data.path$spend[5]
+predict(path, spend)
+predict(path, spend, type = "vector")
+
+
+</code></pre>
+
+
+</div>

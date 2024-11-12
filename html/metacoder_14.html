@@ -1,0 +1,188 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>calc_diff_abund_deseq2</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Differential abundance with DESeq2</h2>
+
+<h3>Description</h3>
+
+<p>EXPERIMENTAL: This function is still being tested and developed; use with caution. Uses the
+<code>DESeq2-package</code> package to conduct differential abundance analysis of count data. Counts can
+be of OTUs/ASVs or taxa. The plotting function <code>heat_tree_matrix</code> is useful for
+visualizing these results. See details section below for considerations on preparing data for
+this analysis.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">calc_diff_abund_deseq2(
+  obj,
+  data,
+  cols,
+  groups,
+  other_cols = FALSE,
+  lfc_shrinkage = c("none", "normal", "ashr"),
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obj</code></td>
+<td>
+<p>A <code>taxmap</code> object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>The name of a table in <code>obj</code> that contains data for each sample in columns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cols</code></td>
+<td>
+<p>The names/indexes of columns in <code>data</code> to use. By default, all numeric columns
+are used. Takes one of the following inputs: </p>
+ <dl>
+<dt>TRUE/FALSE:</dt>
+<dd>
+<p>All/No columns will
+used.</p>
+</dd> <dt>Character vector:</dt>
+<dd>
+<p>The names of columns to use</p>
+</dd> <dt>Numeric vector:</dt>
+<dd>
+<p>The indexes
+of columns to use</p>
+</dd> <dt>Vector of TRUE/FALSE of length equal to the number of columns:</dt>
+<dd>
+<p>Use
+the columns corresponding to <code>TRUE</code> values.</p>
+</dd> </dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>groups</code></td>
+<td>
+<p>A vector defining how samples are grouped into "treatments". Must be the same order
+and length as <code>cols</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>other_cols</code></td>
+<td>
+<p>If <code>TRUE</code>, preserve all columns not in <code>cols</code> in the output. If
+<code>FALSE</code>, dont keep other columns. If a column names or indexes are supplied, only preserve
+those columns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lfc_shrinkage</code></td>
+<td>
+<p>What technique to use to adjust the log fold change results for low counts.
+Useful for ranking and visualizing log fold changes. Must be one of the following:
+</p>
+
+<dl>
+<dt>'none'</dt>
+<dd>
+<p>No log fold change adjustments.</p>
+</dd>
+<dt>'normal'</dt>
+<dd>
+<p>The original DESeq2 shrinkage estimator</p>
+</dd>
+<dt>'ashr'</dt>
+<dd>
+<p>Adaptive shrinkage estimator from the <code>ashr</code> package, using a fitted mixture of normals prior.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Passed to <code>results</code> if the <code>lfc_shrinkage</code> option is "none"
+and to <code>lfcShrink</code> otherwise.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Data should be raw read counts, not rarefied, converted to proportions, or modified with any
+other technique designed to correct for sample size since <code>DESeq2-package</code> is designed to be
+used with count data and takes into account unequal sample size when determining differential
+abundance. Warnings will be given if the data is not integers or all sample sizes are equal.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A tibble with at least the taxon ID of the thing tested, the groups compared, and the
+DESeq2 results. The <code>log2FoldChange</code> values will be positive if <code>treatment_1</code> is more
+abundant and <code>treatment_2</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other calculations: 
+<code>calc_group_mean()</code>,
+<code>calc_group_median()</code>,
+<code>calc_group_rsd()</code>,
+<code>calc_group_stat()</code>,
+<code>calc_n_samples()</code>,
+<code>calc_obs_props()</code>,
+<code>calc_prop_samples()</code>,
+<code>calc_taxon_abund()</code>,
+<code>compare_groups()</code>,
+<code>counts_to_presence()</code>,
+<code>rarefy_obs()</code>,
+<code>zero_low_counts()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Parse data for plotting
+x = parse_tax_data(hmp_otus, class_cols = "lineage", class_sep = ";",
+                   class_key = c(tax_rank = "taxon_rank", tax_name = "taxon_name"),
+                   class_regex = "^(.+)__(.+)$")
+
+# Get per-taxon counts
+x$data$tax_table &lt;- calc_taxon_abund(x, data = "tax_data", cols = hmp_samples$sample_id)
+
+# Calculate difference between groups
+x$data$diff_table &lt;- calc_diff_abund_deseq2(x, data = "tax_table",
+                                    cols = hmp_samples$sample_id,
+                                    groups = hmp_samples$body_site)
+                                    
+# Plot results (might take a few minutes)
+heat_tree_matrix(x,
+                 data = "diff_table",
+                 node_size = n_obs,
+                 node_label = taxon_names,
+                 node_color = ifelse(is.na(padj) | padj &gt; 0.05, 0, log2FoldChange),
+                 node_color_range = diverging_palette(),
+                 node_color_trans = "linear",
+                 node_color_interval = c(-3, 3),
+                 edge_color_interval = c(-3, 3),
+                 node_size_axis_label = "Number of OTUs",
+                 node_color_axis_label = "Log2 fold change")
+
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

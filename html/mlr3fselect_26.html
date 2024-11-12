@@ -1,0 +1,264 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>FSelectorBatch</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Class for Batch Feature Selection Algorithms</h2>
+
+<h3>Description</h3>
+
+<p>The FSelectorBatch implements the optimization algorithm.
+</p>
+
+
+<h3>Details</h3>
+
+<p>FSelectorBatch is an abstract base class that implements the base functionality each fselector must provide.
+A subclass is implemented in the following way:
+</p>
+
+<ul>
+<li>
+<p> Inherit from FSelectorBatch.
+</p>
+</li>
+<li>
+<p> Specify the private abstract method <code style="white-space: pre;">⁠$.optimize()⁠</code> and use it to call into your optimizer.
+</p>
+</li>
+<li>
+<p> You need to call <code>instance$eval_batch()</code> to evaluate design points.
+</p>
+</li>
+<li>
+<p> The batch evaluation is requested at the FSelectInstanceBatchSingleCrit/FSelectInstanceBatchMultiCrit object <code>instance</code>, so each batch is possibly executed in parallel via <code>mlr3::benchmark()</code>, and all evaluations are stored inside of <code>instance$archive</code>.
+</p>
+</li>
+<li>
+<p> Before the batch evaluation, the bbotk::Terminator is checked, and if it is positive, an exception of class <code>"terminated_error"</code> is generated.
+In the latter case the current batch of evaluations is still stored in <code>instance</code>, but the numeric scores are not sent back to the handling optimizer as it has lost execution control.
+</p>
+</li>
+<li>
+<p> After such an exception was caught we select the best set from <code>instance$archive</code> and return it.
+</p>
+</li>
+<li>
+<p> Note that therefore more points than specified by the bbotk::Terminator may be evaluated, as the Terminator is only checked before a batch evaluation, and not in-between evaluation in a batch.
+How many more depends on the setting of the batch size.
+</p>
+</li>
+<li>
+<p> Overwrite the private super-method <code>.assign_result()</code> if you want to decide how to estimate the final set in the instance and its estimated performance.
+The default behavior is: We pick the best resample experiment, regarding the given measure, then assign its set and aggregated performance to the instance.
+</p>
+</li>
+</ul>
+<h3>Private Methods</h3>
+
+
+<ul>
+<li> <p><code>.optimize(instance)</code> -&gt; <code>NULL</code><br>
+Abstract base method. Implement to specify feature selection of your subclass.
+See technical details sections.
+</p>
+</li>
+<li> <p><code>.assign_result(instance)</code> -&gt; <code>NULL</code><br>
+Abstract base method. Implement to specify how the final feature subset is selected.
+See technical details sections.
+</p>
+</li>
+</ul>
+<h3>Resources</h3>
+
+<p>There are several sections about feature selection in the <a href="https://mlr3book.mlr-org.com">mlr3book</a>.
+</p>
+
+<ul><li>
+<p> Learn more about <a href="https://mlr3book.mlr-org.com/chapters/chapter6/feature_selection.html#the-fselector-class">fselectors</a>.
+</p>
+</li></ul>
+<p>The <a href="https://mlr-org.com/gallery.html">gallery</a> features a collection of case studies and demos about optimization.
+</p>
+
+<ul>
+<li>
+<p> Utilize the built-in feature importance of models with <a href="https://mlr-org.com/gallery/optimization/2023-02-07-recursive-feature-elimination/">Recursive Feature Elimination</a>.
+</p>
+</li>
+<li>
+<p> Run a feature selection with <a href="https://mlr-org.com/gallery/optimization/2023-02-01-shadow-variable-search/">Shadow Variable Search</a>.
+</p>
+</li>
+</ul>
+<h3>Super class</h3>
+
+<p><code>mlr3fselect::FSelector</code> -&gt; <code>FSelectorBatch</code>
+</p>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-FSelectorBatch-new"><code>FSelectorBatch$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-FSelectorBatch-optimize"><code>FSelectorBatch$optimize()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-FSelectorBatch-clone"><code>FSelectorBatch$clone()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="mlr3fselect" data-topic="FSelector" data-id="format"><a href="../../mlr3fselect/html/FSelector.html#method-FSelector-format"><code>mlr3fselect::FSelector$format()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3fselect" data-topic="FSelector" data-id="help"><a href="../../mlr3fselect/html/FSelector.html#method-FSelector-help"><code>mlr3fselect::FSelector$help()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlr3fselect" data-topic="FSelector" data-id="print"><a href="../../mlr3fselect/html/FSelector.html#method-FSelector-print"><code>mlr3fselect::FSelector$print()</code></a></span></li>
+</ul></details><hr>
+<a id="method-FSelectorBatch-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Creates a new instance of this R6 class.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>FSelectorBatch$new(
+  id = "fselector_batch",
+  param_set,
+  properties,
+  packages = character(),
+  label = NA_character_,
+  man = NA_character_
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>id</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Identifier for the new instance.</p>
+</dd>
+<dt><code>param_set</code></dt>
+<dd>
+<p>paradox::ParamSet<br>
+Set of control parameters.</p>
+</dd>
+<dt><code>properties</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Set of properties of the fselector.
+Must be a subset of <code>mlr_reflections$fselect_properties</code>.</p>
+</dd>
+<dt><code>packages</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Set of required packages.
+Note that these packages will be loaded via <code>requireNamespace()</code>, and are not attached.</p>
+</dd>
+<dt><code>label</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Label for this object.
+Can be used in tables, plot and text output instead of the ID.</p>
+</dd>
+<dt><code>man</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+String in the format <code style="white-space: pre;">⁠[pkg]::[topic]⁠</code> pointing to a manual page for this object.
+The referenced help package can be opened via method <code style="white-space: pre;">⁠$help()⁠</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-FSelectorBatch-optimize"></a>
+
+
+
+<h4>Method <code>optimize()</code>
+</h4>
+
+<p>Performs the feature selection on a FSelectInstanceBatchSingleCrit or FSelectInstanceBatchMultiCrit until termination.
+The single evaluations will be written into the ArchiveBatchFSelect that resides in the FSelectInstanceBatchSingleCrit / FSelectInstanceBatchMultiCrit.
+The result will be written into the instance object.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>FSelectorBatch$optimize(inst)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>inst</code></dt>
+<dd>
+<p>(FSelectInstanceBatchSingleCrit | FSelectInstanceBatchMultiCrit).</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>data.table::data.table()</code>.
+</p>
+
+
+<hr>
+<a id="method-FSelectorBatch-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>FSelectorBatch$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+</div>

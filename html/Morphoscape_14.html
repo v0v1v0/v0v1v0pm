@@ -1,0 +1,184 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>krige_surf</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Interpolate functional characteristics over a grid
+</h2>
+
+<h3>Description</h3>
+
+<p><code>krige_surf()</code> performs kriging (i.e., interpolation) of one or more functional characteristics that are spatially distributed over a morphospace to create a smoothly kriged surface. Interpolated values can also be produced for a new dataset given their coordinates in morphological space.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">krige_surf(fnc_df, grid = NULL, resample = 100, padding = 1.2, hull = NULL, 
+  alpha = 1, new_data = NULL)
+           
+krige_new_data(x, new_data)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>fnc_df</code></td>
+<td>
+
+<p>a <code>fnc_df</code> object; the output of a call to <code>as_fnc_df</code>, which contains coordinates in morphological space and values of functional characteristics for the warps used to create the kriged surface.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grid</code></td>
+<td>
+
+<p>a matrix or data frame containing the grid of points over which the surface is to be interpolated. Should be the output of a call to <code>resample_grid</code>. If <code>NULL</code>, the grid will be formed by calling <code>resample_grid()</code> on the inputs.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resample</code></td>
+<td>
+
+<p>the number of points (or pixels) in the x and y dimensions over which to create the grid. Default is 100 for a kriged surface of 100x100=10,000 pixels. Passed to <code>resample_grid</code>. Ignored when <code>grid</code> is not <code>NULL</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>padding</code></td>
+<td>
+
+<p>a number representing how much to expand the grid beyond the ranges of the x- and y-coordinates. For example, <code>padding = 1.2</code> (the default) expands the grid by 20% of the coordinates' ranges in each direction. Must be a number greater than or equal to 1. Large numbers imply greater extrapolation, and whatever padding is added will be negated if <code>hull = TRUE</code>. Passed to <code>resample_grid</code>. Ignored when <code>grid</code> is not <code>NULL</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hull</code></td>
+<td>
+
+<p>method to to restrict kriging to an alpha hull to prevent extrapolation beyond the coordinates present in <code>fnc_df</code>. Passed to <code>resample_grid</code>, which uses <code>alphahull</code> or <code>concaveman</code> packages. Default is <code>alphahull::ahull</code>. If no hull is desired set <code>hull = NULL</code>. If <code>NULL</code>, kriging will take place over a rectangular grid that spans the boundaries of the coordinates in <code>fnc_df</code>. Ignored when <code>grid</code> is not <code>NULL</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+
+<p>the alpha value used to create the alpha hull. Passed to <code>resample_grid</code> and eventually to <code>alphahull::ahull</code>. Ignored when <code>grid</code> is not <code>NULL</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>new_data</code></td>
+<td>
+
+<p>a dataset of coordinates for a new sample; the values of the functional characteristics for this sample will be interpolated using the kriged surface.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+
+<p>a <code>"kriged_surfaces"</code> object; the output of a call to <code>krige_surf()</code>.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>krige_surf()</code> implements the <code>automap::autoKrige</code> function on one or more spatially distributed traits to produce an interpolated (or extrapolated) surface of evenly spaced gridpoints. This is done by automatiically finding the best variogram fit for each of the non-corrdinate variables in <code>fnc_df</code>. For details on automatic variogram fitting, see <code>automap::autoKrige</code>.
+</p>
+<p>Input data in <code>fnc_df</code> can be unevenly distributed (direct from speciments), or gridded (determined from evenly distributed hypothetical shapes) in morphospace. Trait data inputted directly from specimen measurements will be subject to error based on the how unevenly points are distributed, with high resoultion gridded datapoints producing the least potential reconstruction error (see Smith et al 2021).
+</p>
+<p>By default <code>krige_surf</code> will create a <code>hull</code> to strictly prevent any extrapolation beyond the provided data. This will produce the most conservative landscapes. If <code>hull</code> is set to <code>FALSE</code>, then the function will reconstruct a rectangle determined by the XY coordinate ranges supplied in <code>fnc_df</code>. Padding will be applied by default (an extra 20%) as defined by <code>padding</code>, to expand the rectangle beyond the supplied points. Reconstructions without a <code>hull</code> would be most appropriate for trait data determined from evenely spaced hypothetical gridpoints. If <code>grid</code> is provided the function will strictly interpolate at these gridded points.  
+</p>
+<p><code>krige_new_data()</code> adds a new data set to the supplied <code>kriged_surfaces</code> object and interpolates the values of the functional characteristics on the suppllied sample. This should only be used to add a new dataset to a <code>kriged_surfaces</code> object produced without <code>new_data</code> supplied or to replace an existing <code>new_data</code> component.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>kriged_surfaces</code> containing the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>fnc_df</code></td>
+<td>
+<p>the original data frame of functional characteristics passed to <code>fnc_df</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>autoKrige</code></td>
+<td>
+<p>a named list of the kriged surfaces, one for each functional characteristic. Each surface is of class <code>autoKrige</code>, the output of the call to <code>automap::autoKrige</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dataframes</code></td>
+<td>
+<p>a list of two data frames, <code>grid</code> and <code>new_data</code>. <code>grid</code> contains the coordinates of the kriged surface grid (in the <code>x</code> and <code>y</code> columns) as well as the interpolated values of the functional characteristics. <code>new_data</code> contains the sample coordinates supplied to <code>new_data</code> as well as the interpolated values of the functional characteristics for each sample. This second component is absent if <code>new_data = NULL</code> in the call to <code>krige_surf()</code>.</p>
+</td>
+</tr>
+</table>
+<p>For <code>krige_new_data()</code>, the original <code>kriged_surfaces</code> object, with the <code>$dataframes$new_data</code> component containing the sample coordinates supplied to <code>new_data</code> as well as the interpolated values of the functional characteristics for each sample.
+</p>
+
+
+<h3>References</h3>
+
+<p>Smith, S. M., Stayton, C. T., &amp; Angielczyk, K. D. (2021). How many trees to see the forest? Assessing the effects of morphospace coverage and sample size in performance surface analysis. Methods in Ecology and Evolution, 12(8), 1411-1424.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>plot.kriged_surfaces</code> for plotting the kriged surfaces.
+</p>
+<p><code>as_fnc_df</code> for creating the input dataset.
+</p>
+<p><code>resample_grid</code> for creating the grid over which the kriging occurs prior to using <code>krige_surf</code>.
+</p>
+<p><code>automap::autoKrige</code> for the function that does the kriging.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data("warps")
+
+warps_fnc &lt;- as_fnc_df(warps)
+
+grid &lt;- resample_grid(warps, hull = "concaveman", plot = TRUE)
+
+kr_surf &lt;- krige_surf(warps_fnc, grid = grid)
+kr_surf
+
+# Add new data
+data("turtles")
+kr_surf &lt;- krige_new_data(kr_surf, new_data = turtles)
+kr_surf
+plot(kr_surf)
+
+# Doing it all in one step:
+## Not run: 
+kr_surf &lt;- krige_surf(warps_fnc, new_data = turtles, hull = "alphahull")
+kr_surf
+
+## End(Not run)
+
+# No hull and padding
+kr_surf &lt;- krige_surf(warps_fnc, new_data = turtles, hull = NULL, padding = 1.2)
+plot(kr_surf)
+
+
+</code></pre>
+
+
+</div>

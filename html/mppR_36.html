@@ -1,0 +1,230 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>QTL_effect_main_QxEC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimation of a model with main and QTL by environmental sensitivity terms</h2>
+
+<h3>Description</h3>
+
+<p>After estimating which parental allelic effects have a significant interaction
+with the environment (QEI), the function extends the model for the allelic
+effect with a significant QEI to characterize this interaction in terms of
+sensitivity to (a) specific environmental covariate(s).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">QTL_effect_main_QxEC(
+  mppData,
+  trait,
+  env_id = NULL,
+  ref_env = NULL,
+  ref_par = NULL,
+  VCOV = "UN",
+  QTL = NULL,
+  thre_QTL = 2,
+  EC,
+  Qmain_QEI = NULL,
+  maxIter = 100,
+  msMaxIter = 100
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>mppData</code></td>
+<td>
+<p>An object of class <code>mppData</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trait</code></td>
+<td>
+<p><code>Character vector</code> specifying which traits (environments) should be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>env_id</code></td>
+<td>
+<p><code>Character</code> vector specifying the environment names.
+By default, E1, ... En</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ref_env</code></td>
+<td>
+<p>Optional <code>Character</code> expression defining the environment
+that will be used as reference for the parental model. By default, the last
+environment is set as reference.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ref_par</code></td>
+<td>
+<p>Optional <code>Character</code> expression defining the parental
+allele that will be used as reference for the parental model. By default,
+the parent with the largest MAF is set as reference.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>VCOV</code></td>
+<td>
+<p>VCOV <code>Character</code> expression defining the type of variance
+covariance structure used. 'CS' for compound symmetry assuming a unique
+genetic covariance between environments. 'CSE' for cross-specific within
+environment error term. 'CS_CSE' for both compound symmetry plus
+cross-specific within environment error term. 'UN' for unstructured
+environmental variance covariance structure allowing a specific genotypic
+covariance for each pair of environments. Default = 'UN'</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>QTL</code></td>
+<td>
+<p>Object of class <code>QTLlist</code> representing a list of
+selected marker positions obtained with the function QTL_select() or
+a vector of <code>character</code> marker positions names. Default = NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thre_QTL</code></td>
+<td>
+<p><code>Numerical</code> value specifying the -log10(p-val) threshold
+for a parental QTL allele to be considered as significant. By default,
+thre_QTL = 2, which correspond to a p-value of 0.01.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>EC</code></td>
+<td>
+<p><code>Numeric</code> matrix with environments as row and environmental
+covariates (EC) as column. The cell i, j of EC specify the value of the
+jth EC in environment i.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Qmain_QEI</code></td>
+<td>
+<p>results from <code>QTL_effect_main_QEI</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxIter</code></td>
+<td>
+<p>maximum number of iterations for the lme optimization algorithm.
+Default = 100.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>msMaxIter</code></td>
+<td>
+<p>maximum number of iterations for the optimization step inside
+the lme optimization. Default = 100.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function first estimate the parental QTL allele main and QTLxE effect
+using the function <code>QTL_effect_main_QEI</code>. Optionally the output
+of <code>QTL_effect_main_QEI</code> can be passed through the 'Qmain_QEI'
+argument. The function consider that a parental QTL allele significantly
+interacts with the environment if its QTLxE term is significant at the
+'thre_QTL' level. Thre_QTL is expressed in terms of -log10(p-val).
+For example, for p-val = 0.01, thre_QTL = -log10(p-val) = 2. Given this
+information, the effect of the parental QTL allele with a significant QEI
+are extended like that <code class="reqn">\beta_{pj} = EC_j*S_p+l_{p\epsilon}</code> where
+<code class="reqn">EC_j</code> represents the EC value in environment j associated with the
+sensitivity term <code class="reqn">S_p</code>. The <code class="reqn">S_{p}</code> determines the rate of change of
+the parental QTL allelic additive effect given an extra unit of EC. Finally,
+<code class="reqn">l_{p\epsilon}</code> is a residual effect. The fitted model becomes:
+</p>
+<p><code class="reqn">\underline{y}_{icj} = E_{j} + C_{cj} + \sum_{q=1}^{n_{QTL}} x_{i_{q}p} (\alpha_p + \beta_{pj}) + x_{i_{q}pxE} (\alpha_p + EC_j*S_p+l_{p\epsilon}) + \underline{GE}_{icj} + \underline{e}_{icj}</code>
+</p>
+<p>The estimation is performed using an exact mixed model with function from R
+package <code>nlme</code>. The significance of <code class="reqn">S_{p}</code> is assessed using a 
+Wald test.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Return:
+</p>
+<p><code>List</code> with one <code>data.frame</code> per QTL that contains the following
+elements:
+</p>
+
+<ol>
+<li>
+<p>QTL parent allele main effect expressed as deviation with respect to
+the reference parent
+</p>
+</li>
+<li>
+<p>QTL parent allele effect in environment j expressed as deviation with
+respect to the reference parent
+</p>
+</li>
+<li>
+<p>Significance of the parent main effect expressed as the -log10(p-val)
+</p>
+</li>
+<li>
+<p>Significance of the parent QTLxE effect expressed as the -log10(p-val)
+</p>
+</li>
+</ol>
+<h3>Author(s)</h3>
+
+<p>Vincent Garin
+</p>
+
+
+<h3>References</h3>
+
+<p>Pinheiro J, Bates D, DebRoy S, Sarkar D, R Core Team (2021). nlme: Linear
+and Nonlinear Mixed Effects Models_. R package version 3.1-152,
+&lt;URL: https://CRAN.R-project.org/package=nlme&gt;.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>QTL_effect_main_QEI</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+
+data(mppData_GE)
+
+Qpos &lt;- c("PZE.105068880", "PZE.106098900")
+
+EC &lt;- matrix(c(180, 310, 240, 280), 4, 1)
+rownames(EC) &lt;- c('CIAM', 'TUM', 'INRA', 'KWS')
+colnames(EC) &lt;- 'cum_rain'
+
+Qeff &lt;- QTL_effect_main_QxEC(mppData = mppData_GE,
+                         trait = c('DMY_CIAM', 'DMY_TUM', 'DMY_INRA_P', 'DMY_KWS'),
+                         env_id = c('CIAM', 'TUM', 'INRA', 'KWS'),
+                         QTL = Qpos, EC = EC)
+
+Qeff
+
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

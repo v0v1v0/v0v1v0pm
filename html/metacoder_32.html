@@ -1,0 +1,204 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>compare_groups</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compare groups of samples</h2>
+
+<h3>Description</h3>
+
+<p>Apply a function to compare data, usually abundance, from pairs of 
+treatments/groups. By default, every pairwise combination of treatments are 
+compared. A custom function can be supplied to perform the comparison. The
+plotting function <code>heat_tree_matrix</code> is useful for visualizing
+these results.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">compare_groups(
+  obj,
+  data,
+  cols,
+  groups,
+  func = NULL,
+  combinations = NULL,
+  other_cols = FALSE,
+  dataset = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obj</code></td>
+<td>
+<p>A <code>taxmap</code> object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>The name of a table in <code>obj</code> that contains data for each 
+sample in columns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cols</code></td>
+<td>
+<p>The names/indexes of columns in <code>data</code> to use. By
+default, all numeric columns are used. Takes one of the following inputs:
+</p>
+
+<dl>
+<dt>TRUE/FALSE:</dt>
+<dd>
+<p>All/No columns will used.</p>
+</dd>
+<dt>Character vector:</dt>
+<dd>
+<p>The names of columns to use</p>
+</dd>
+<dt>Numeric vector:</dt>
+<dd>
+<p>The indexes of columns to use</p>
+</dd>
+<dt>Vector of TRUE/FALSE of length equal to the number of columns:</dt>
+<dd>
+<p>Use the columns
+corresponding to <code>TRUE</code> values.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>groups</code></td>
+<td>
+<p>A vector defining how samples are grouped into "treatments". Must be the same
+order and length as <code>cols</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>func</code></td>
+<td>
+<p>The function to apply for each comparison. For each row in 
+<code>data</code>, for each combination of groups, this function will 
+receive the data for each treatment, passed as two vectors.
+Therefore the function must take at least 2 arguments corresponding to the
+two groups compared. The function should return a vector or list of
+results of a fixed length. If named, the names will be used in the output.
+The names should be consistent as well. A simple example is
+<code>function(x, y) mean(x) - mean(y)</code>. By default, the following function
+is used:
+</p>
+<pre>
+function(abund_1, abund_2) {
+  log_ratio &lt;- log2(median(abund_1) / median(abund_2))
+  if (is.nan(log_ratio)) {
+    log_ratio &lt;- 0
+  }
+  list(log2_median_ratio = log_ratio,
+       median_diff = median(abund_1) - median(abund_2),
+       mean_diff = mean(abund_1) - mean(abund_2),
+       wilcox_p_value = wilcox.test(abund_1, abund_2)$p.value)
+}
+</pre>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>combinations</code></td>
+<td>
+<p>Which combinations of groups to use. Must be a list 
+of vectors, each containing the names of 2 groups to compare. By 
+default, all pairwise combinations of groups are compared.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>other_cols</code></td>
+<td>
+<p>If <code>TRUE</code>, preserve all columns not in 
+<code>cols</code> in the output. If <code>FALSE</code>, dont keep other columns. 
+If a column names or indexes are supplied, only preserve those columns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dataset</code></td>
+<td>
+<p>DEPRECIATED. use "data" instead.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A tibble
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other calculations: 
+<code>calc_diff_abund_deseq2()</code>,
+<code>calc_group_mean()</code>,
+<code>calc_group_median()</code>,
+<code>calc_group_rsd()</code>,
+<code>calc_group_stat()</code>,
+<code>calc_n_samples()</code>,
+<code>calc_obs_props()</code>,
+<code>calc_prop_samples()</code>,
+<code>calc_taxon_abund()</code>,
+<code>counts_to_presence()</code>,
+<code>rarefy_obs()</code>,
+<code>zero_low_counts()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Parse data for plotting
+x = parse_tax_data(hmp_otus, class_cols = "lineage", class_sep = ";",
+                   class_key = c(tax_rank = "taxon_rank", tax_name = "taxon_name"),
+                   class_regex = "^(.+)__(.+)$")
+
+# Convert counts to proportions
+x$data$otu_table &lt;- calc_obs_props(x, data = "tax_data", cols = hmp_samples$sample_id)
+
+# Get per-taxon counts
+x$data$tax_table &lt;- calc_taxon_abund(x, data = "otu_table", cols = hmp_samples$sample_id)
+
+# Calculate difference between groups
+x$data$diff_table &lt;- compare_groups(x, data = "tax_table",
+                                    cols = hmp_samples$sample_id,
+                                    groups = hmp_samples$body_site)
+
+# Plot results (might take a few minutes)
+heat_tree_matrix(x,
+                 data = "diff_table",
+                 node_size = n_obs,
+                 node_label = taxon_names,
+                 node_color = log2_median_ratio,
+                 node_color_range = diverging_palette(),
+                 node_color_trans = "linear",
+                 node_color_interval = c(-3, 3),
+                 edge_color_interval = c(-3, 3),
+                 node_size_axis_label = "Number of OTUs",
+                 node_color_axis_label = "Log2 ratio median proportions")
+                 
+# How to get results for only some pairs of groups
+compare_groups(x, data = "tax_table",
+               cols = hmp_samples$sample_id,
+               groups = hmp_samples$body_site,
+               combinations = list(c('Nose', 'Saliva'),
+                                   c('Skin', 'Throat')))
+
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

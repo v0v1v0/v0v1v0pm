@@ -1,0 +1,136 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>makeMBOLearner</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Generate default learner.</h2>
+
+<h3>Description</h3>
+
+<p>This is a helper function that generates a default surrogate, based on properties of the objective
+function and the selected infill criterion.
+</p>
+<p>For numeric-only (including integers) parameter spaces without any dependencies:
+</p>
+
+<ul>
+<li>
+<p>A Kriging model “regr.km” with kernel “matern3_2” is created.
+</p>
+</li>
+<li>
+<p>If the objective function is deterministic we add a small nugget effect (10^-8*Var(y),
+y is vector of observed outcomes in current design) to increase numerical stability to
+hopefully prevent crashes of DiceKriging.
+</p>
+</li>
+<li>
+<p>If the objective function is noisy the nugget effect will be estimated with
+<code>nugget.estim = TRUE</code> (but you can override this in <code>...</code>.
+Also <code>jitter</code> is set to <code>TRUE</code> to circumvent a problem with DiceKriging where already
+trained input values produce the exact trained output.
+For further information check the <code>$note</code> slot of the created learner.
+</p>
+</li>
+<li>
+<p>Instead of the default <code>"BFGS"</code> optimization method we use rgenoud (<code>"gen"</code>),
+which is a hybrid algorithm, to combine global search based on genetic algorithms and local search
+based on gradients.
+This may improve the model fit and will less frequently produce a constant surrogate model.
+You can also override this setting in <code>...</code>.
+</p>
+</li>
+</ul>
+<p>For mixed numeric-categorical parameter spaces, or spaces with conditional parameters:
+</p>
+
+<ul>
+<li>
+<p>A random regression forest “regr.randomForest” with 500 trees is created.
+</p>
+</li>
+<li>
+<p>The standard error of a prediction (if required by the infill criterion) is estimated
+by computing the jackknife-after-bootstrap.
+This is the <code>se.method = "jackknife"</code> option of the “regr.randomForest” Learner.
+
+</p>
+</li>
+</ul>
+<p>If additionally dependencies are in present in the parameter space, inactive conditional parameters
+are represented by missing <code>NA</code> values in the training design data.frame.
+We simply handle those with an imputation method, added to the random forest:
+</p>
+
+<ul>
+<li>
+<p>If a numeric value is inactive, i.e., missing, it will be imputed by 2 times the
+maximum of observed values
+</p>
+</li>
+<li>
+<p>If a categorical value is inactive, i.e., missing, it will be imputed by the
+special class label <code>"__miss__"</code>
+</p>
+</li>
+</ul>
+<p>Both of these techniques make sense for tree-based methods and are usually hard to beat, see
+Ding et.al. (2010).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">makeMBOLearner(control, fun, config = list(), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>[<code>MBOControl</code>]<br>
+Control object for mbo.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun</code></td>
+<td>
+<p>[<code>smoof_function</code>] <br>
+The same objective function which is also passed to <code>mbo</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>config</code></td>
+<td>
+<p>[<code>named list</code>] <br>
+Named list of config option to overwrite global settings set via <code>configureMlr</code> for this specific learner.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>[any]<br>
+Further parameters passed to the constructed learner.
+Will overwrite mlrMBO's defaults.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>[<code>Learner</code>]
+</p>
+
+
+<h3>References</h3>
+
+<p>Ding, Yufeng, and Jeffrey S. Simonoff. An investigation of missing data methods for
+classification trees applied to binary response data.
+Journal of Machine Learning Research 11.Jan (2010): 131-170.
+</p>
+
+
+</div>

@@ -1,0 +1,323 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>make_play</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Making diffusion models on networks</h2>
+
+<h3>Description</h3>
+
+<p>These functions simulate diffusion or compartment models upon a network.
+</p>
+
+<ul>
+<li> <p><code>play_diffusion()</code> runs a single simulation of a compartment model,
+allowing the results to be visualised and examined.
+</p>
+</li>
+<li> <p><code>play_diffusions()</code> runs multiple simulations of a compartment model
+for more robust inference.
+</p>
+</li>
+</ul>
+<p>These functions allow both a full range of compartment models,
+as well as simplex and complex diffusion to be simulated upon a network.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">play_diffusion(
+  .data,
+  seeds = 1,
+  contact = NULL,
+  prevalence = 0,
+  thresholds = 1,
+  transmissibility = 1,
+  latency = 0,
+  recovery = 0,
+  waning = 0,
+  immune = NULL,
+  steps
+)
+
+play_diffusions(
+  .data,
+  seeds = 1,
+  contact = NULL,
+  prevalence = 0,
+  thresholds = 1,
+  transmissibility = 1,
+  latency = 0,
+  recovery = 0,
+  waning = 0,
+  immune = NULL,
+  steps,
+  times = 5,
+  strategy = "sequential",
+  verbose = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>.data</code></td>
+<td>
+<p>An object of a manynet-consistent class:
+</p>
+
+<ul>
+<li>
+<p> matrix (adjacency or incidence) from <code>{base}</code> R
+</p>
+</li>
+<li>
+<p> edgelist, a data frame from <code>{base}</code> R or tibble from <code>{tibble}</code>
+</p>
+</li>
+<li>
+<p> igraph, from the <code>{igraph}</code> package
+</p>
+</li>
+<li>
+<p> network, from the <code>{network}</code> package
+</p>
+</li>
+<li>
+<p> tbl_graph, from the <code>{tidygraph}</code> package
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seeds</code></td>
+<td>
+<p>A valid mark vector the length of the
+number of nodes in the network.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>contact</code></td>
+<td>
+<p>A matrix or network that replaces ".data" with some
+other explicit contact network, e.g.
+<code>create_components(.data, membership = node_in_structural(.data))</code>.
+Can be of arbitrary complexity, but must of the same dimensions
+as .data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prevalence</code></td>
+<td>
+<p>The proportion that global prevalence contributes
+to diffusion.
+That is, if prevalence is 0.5, then the current number of infections
+is multiplied by 0.5 and added
+"prevalence" is 0 by default, i.e. there is no global mechanism.
+Note that this is endogenously defined and is updated
+at the outset of each step.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thresholds</code></td>
+<td>
+<p>A numeric vector indicating the thresholds
+each node has. By default 1.
+A single number means a generic threshold;
+for thresholds that vary among the population please use a vector
+the length of the number of nodes in the network.
+If 1 or larger, the threshold is interpreted as a simple count
+of the number of contacts/exposures sufficient for infection.
+If less than 1, the threshold is interpreted as complex,
+where the threshold concerns the proportion of contacts.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transmissibility</code></td>
+<td>
+<p>The transmission rate probability,
+<code class="reqn">\beta</code>.
+By default 1, which means any node for which the threshold is met
+or exceeded will become infected.
+Anything lower means a correspondingly lower probability of adoption,
+even when the threshold is met or exceeded.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>latency</code></td>
+<td>
+<p>The inverse probability those who have been exposed
+become infectious (infected), <code class="reqn">\sigma</code> or <code class="reqn">\kappa</code>.
+For example, if exposed individuals take, on average,
+four days to become infectious, then <code class="reqn">\sigma = 0.75</code> (1/1-0.75 = 1/0.25 = 4).
+By default 0, which means those exposed become immediately infectious (i.e. an SI model).
+Anything higher results in e.g. a SEI model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recovery</code></td>
+<td>
+<p>The probability those who are infected
+recover, <code class="reqn">\gamma</code>.
+For example, if infected individuals take, on average,
+four days to recover, then <code class="reqn">\gamma = 0.25</code>.
+By default 0, which means there is no recovery (i.e. an SI model).
+Anything higher results in an SIR model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>waning</code></td>
+<td>
+<p>The probability those who are recovered
+become susceptible again, <code class="reqn">\xi</code>.
+For example, if recovered individuals take, on average,
+four days to lose their immunity, then <code class="reqn">\xi = 0.25</code>.
+By default 0, which means any recovered individuals retain lifelong immunity (i.e. an SIR model).
+Anything higher results in e.g. a SIRS model.
+<code class="reqn">\xi = 1</code> would mean there is no period of immunity, e.g. an SIS model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>immune</code></td>
+<td>
+<p>A logical or numeric vector identifying nodes
+that begin the diffusion process as already recovered.
+This could be interpreted as those who are vaccinated or equivalent.
+Note however that a waning parameter will affect these nodes too.
+By default NULL, indicating that no nodes begin immune.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>steps</code></td>
+<td>
+<p>The number of steps forward in the diffusion to play.
+By default the number of nodes in the network.
+If <code>steps = Inf</code> then the diffusion process will continue until
+there are no new infections or all nodes are infected.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>times</code></td>
+<td>
+<p>Integer indicating number of simulations.
+By default <code>times=5</code>, but 1,000 - 10,000 simulations recommended for publication-ready results.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strategy</code></td>
+<td>
+<p>If <code>{furrr}</code> is installed, then multiple cores can be used to accelerate the simulations.
+By default "sequential", but if multiple cores available, then "multisession" or "multicore" may be useful.
+Generally this is useful only when times &gt; 1000. See <code>{furrr}</code> for more.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Whether the function should report on its progress.
+By default FALSE. See <code>{progressr}</code> for more.</p>
+</td>
+</tr>
+</table>
+<h3>Simple and complex diffusion</h3>
+
+<p>By default, the function will simulate a simple diffusion process in
+which some infectious disease or idea diffuses from seeds through
+contacts at some constant rate (<code>transmissibility</code>).
+</p>
+<p>These <code>seeds</code> can be specified by a vector index
+(the number of the position of each node in the network that should serve as a seed)
+or as a logical vector where TRUE is interpreted as already infected.
+</p>
+<p><code>thresholds</code> can be set such that adoption/infection requires more than one
+(the default) contact already being infected.
+This parameter also accepts a vector so that thresholds can vary.
+</p>
+<p>Complex diffusion is where the <code>thresholds</code> are defined less than one.
+In this case, the thresholds are interpreted as proportional.
+That is, the threshold to adoption/infection is defined by the
+proportion of the node's contacts infected.
+</p>
+<p>Nodes that cannot be infected can be indicated as <code>immune</code>
+with a logical vector or index, similar to how <code>seeds</code> are identified.
+Note that <code>immune</code> nodes are interpreted internally as Recovered (R)
+and are thus subject to <code>waning</code> (see below).
+</p>
+
+
+<h3>Compartment models</h3>
+
+<p>Compartment models are flexible models of diffusion or contagion,
+where nodes are compartmentalised into one of two or more categories.
+</p>
+<p>The most basic model is the SI model.
+The SI model is the default in <code>play_diffusion()</code>/<code>play_diffusions()</code>,
+where nodes can only move from the Susceptible (S) category to the
+Infected (I) category.
+Whether nodes move from S to I depends on whether they are exposed
+to the infection, for instance through a contact,
+the <code>transmissibility</code> of the disease,
+and their <code>thresholds</code> to the disease.
+</p>
+<p>Another common model is the SIR model.
+Here nodes move from S to I, as above, but additionally they can
+move from I to a Recovered (R) status.
+The probability that an infected node recovers at a timepoint
+is controlled by the <code>recovery</code> parameter.
+</p>
+<p>The next most common models are the SIS and SIRS models.
+Here nodes move from S to I or additionally to R, as above,
+but additionally they can move from I or R back to a Susceptible (S) state.
+This probability is governed by the <code>waning</code> parameter.
+Where <code>recover &gt; 0</code> and <code>waning = 1</code>, the Recovery (R) state will be skipped
+and the node will return immediately to the Susceptible (S) compartment.
+</p>
+<p>Lastly, these functions also offer the possibility of specifying
+a latency period in which nodes have been infected but are not yet infectious.
+Where <code>latency &gt; 0</code>, an additional Exposed (E) compartment is introduced
+that governs the probability that a node moves from this E compartment
+to infectiousness (I).
+This can be used in in SEI, SEIS, SEIR, and SEIRS models.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other makes: 
+<code>make_cran</code>,
+<code>make_create</code>,
+<code>make_ego</code>,
+<code>make_explicit</code>,
+<code>make_learning</code>,
+<code>make_motifs</code>,
+<code>make_random</code>,
+<code>make_read</code>,
+<code>make_stochastic</code>,
+<code>make_write</code>
+</p>
+<p>Other models: 
+<code>make_learning</code>
+</p>
+<p>Other diffusion: 
+<code>measure_diffusion_infection</code>,
+<code>measure_diffusion_net</code>,
+<code>measure_diffusion_node</code>,
+<code>member_diffusion</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">  smeg &lt;- generate_smallworld(15, 0.025)
+  plot(play_diffusion(smeg, recovery = 0.4))
+  #graphr(play_diffusion(ison_karateka))
+# plot(play_diffusions(smeg, times = 10))
+</code></pre>
+
+
+</div>

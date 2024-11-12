@@ -1,0 +1,155 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>huff.decay</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Distance decay function in the Huff model
+</h2>
+
+<h3>Description</h3>
+
+<p>This function estimates a distance decay function from observed data and compares different function types
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">huff.decay(dataset, x, y, plotFunc = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>dataset</code></td>
+<td>
+
+<p>A <code>data.frame</code> containing the observed interaction data and the transport costs 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+
+<p>A numeric vector containing the independent variable, the transport costs (e.g. traveling time or street distance)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+
+<p>A numeric vector containing the dependent variable, the interaction measure (e.g. local market shares, trip volume, visitors per capita) 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plotFunc</code></td>
+<td>
+
+<p>logical argument that indicates if the curves are plotted (default: <code>plotFunc = TRUE</code>)
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <em>distance decay function</em> is a classic concept in quantitative economic geography and describes the relationship between transport costs and trip volume between origins (<code class="reqn">i</code>) and a destination (<code class="reqn">j</code>). The dependent variable is an indicator of trip volume, such as local market shares or visitors per capita etc., which are explained by the transport costs between all <code class="reqn">i</code> and the destination <code class="reqn">j</code>, <code class="reqn">d_{ij}</code>. 
+</p>
+<p>The non-linear modeling of transport costs is a key concept of the <em>Huff model</em> (see the function <code>huff.shares</code>). This function estimates and compares different types of possible <em>distance decay functions</em> (linear, power, exponential, logistic) based on observed interaction data.  
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>data.frame</code> containing the function parameters (<code>Intercept</code>, <code>Slope</code>), their p values in the regression function (<code>p Intercept</code>, <code>p Slope</code>) and fitting measures (<code>R-Squared</code>, <code>Adj. R-Squared</code>). Optionally, a plot of the four estimated functions and the observed data.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Thomas Wieland
+</p>
+
+
+<h3>References</h3>
+
+<p>Huff, D. L. (1962): “Determination of Intra-Urban Retail Trade Areas”. Los Angeles : University of California.
+</p>
+<p>Huff, D. L. (1963): “A Probabilistic Analysis of Shopping Center Trade Areas”. In: <em>Land Economics</em>, <b>39</b>, 1, p. 81-90.
+</p>
+<p>Huff, D. L. (1964): “Defining and Estimating a Trading Area”. In: <em>Journal of Marketing</em>, <b>28</b>, 4, p. 34-38.
+</p>
+<p>Isard, W. (1960): “Methods of Regional Analysis: an Introduction to Regional Science”. Cambridge.
+</p>
+<p>Kanhaeusser, C. (2007): “Modellierung und Prognose von Marktgebieten am Beispiel des Moebeleinzelhandels”. In: Klein, R./Rauh, J. (eds.): <em>Analysemethodik und Modellierung in der geographischen Handelsforschung</em>. <em>Geographische Handelsforschung</em>, <b>13</b>. Passau. p. 75-110.
+</p>
+<p>Loeffler, G. (1998): “Market areas - a methodological reflection on their boundaries”. In: <em>GeoJournal</em>, <b>45</b>, 4, p. 265-272.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>huff.shares</code>, <code>huff.attrac</code>, <code>huff.fit</code>, <code>mci.fit</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Market area analysis based on the POS survey in shopping1 #
+
+data(shopping1)
+# The survey dataset
+data(shopping2)
+# Dataset with distances and travel times
+
+shopping1_adj &lt;- shopping1[(shopping1$weekday != 3) &amp; (shopping1$holiday != 1) 
+&amp; (shopping1$survey != "pretest"),]
+# Removing every case from tuesday, holidays and the ones belonging to the pretest
+
+ijmatrix_POS &lt;- ijmatrix.create(shopping1_adj, "resid_code", "POS", "POS_expen")
+# Creates an interaction matrix based on the observed frequencies (automatically)
+# and the POS expenditures (Variable "POS_expen" separately stated)
+
+ijmatrix_POS_data &lt;- merge(ijmatrix_POS, shopping2, by.x="interaction", by.y="route", 
+all.x = TRUE)
+# Adding the distances and travel times
+
+ijmatrix_POS_data$freq_ij_abs_cor &lt;- var.correct(ijmatrix_POS_data$freq_ij_abs, 
+corr.mode = "inc", incby = 0.1)
+# Correcting the absolute values (frequencies) by increasing by 0.1
+
+data(shopping3)
+ijmatrix_POS_data_residdata &lt;- merge(ijmatrix_POS_data, shopping3)
+# Adding the information about the origins (places of residence) stored in shopping3
+
+ijmatrix_POS_data_residdata$visitper1000 &lt;- (ijmatrix_POS_data_residdata$
+freq_ij_abs_cor/ijmatrix_POS_data_residdata$resid_pop2015)*1000
+# Calculating the dependent variable
+# visitper1000: surveyed customers per 1.000 inhabitants of the origin
+
+ijmatrix_POS_data_residdata &lt;- 
+ijmatrix_POS_data_residdata[(!is.na(ijmatrix_POS_data_residdata$
+visitper1000)) &amp; (!is.na(ijmatrix_POS_data_residdata$d_time)),]
+# Removing NAs (data for some outlier origins and routes not available)
+
+ijmatrix_POS_data_residdata_POS1 &lt;- 
+ijmatrix_POS_data_residdata[ijmatrix_POS_data_residdata$POS=="POS1",]
+# Dataset for POS1 (town centre)
+
+ijmatrix_POS_data_residdata_POS2 &lt;- 
+ijmatrix_POS_data_residdata[ijmatrix_POS_data_residdata$POS=="POS2",]
+# Dataset for POS2 (out-of-town shopping centre)
+
+huff.decay(ijmatrix_POS_data_residdata_POS1, "d_km", "visitper1000")
+huff.decay(ijmatrix_POS_data_residdata_POS1, "d_time", "visitper1000")
+huff.decay(ijmatrix_POS_data_residdata_POS2, "d_km", "visitper1000")
+huff.decay(ijmatrix_POS_data_residdata_POS2, "d_time", "visitper1000")
+</code></pre>
+
+
+</div>

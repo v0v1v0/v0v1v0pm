@@ -1,0 +1,154 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mmkin</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit one or more kinetic models with one or more state variables to one or
+more datasets</h2>
+
+<h3>Description</h3>
+
+<p>This function calls <code>mkinfit</code> on all combinations of models and
+datasets specified in its first two arguments.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mmkin(
+  models = c("SFO", "FOMC", "DFOP"),
+  datasets,
+  cores = if (Sys.info()["sysname"] == "Windows") 1 else parallel::detectCores(),
+  cluster = NULL,
+  ...
+)
+
+## S3 method for class 'mmkin'
+print(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>models</code></td>
+<td>
+<p>Either a character vector of shorthand names like
+<code>c("SFO", "FOMC", "DFOP", "HS", "SFORB")</code>, or an optionally named
+list of <code>mkinmod</code> objects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>datasets</code></td>
+<td>
+<p>An optionally named list of datasets suitable as observed
+data for <code>mkinfit</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cores</code></td>
+<td>
+<p>The number of cores to be used for multicore processing. This
+is only used when the <code>cluster</code> argument is <code>NULL</code>. On Windows
+machines, cores &gt; 1 is not supported, you need to use the <code>cluster</code>
+argument to use multiple logical processors. Per default, all cores
+detected by <code>parallel::detectCores()</code> are used, except on Windows where
+the default is 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cluster</code></td>
+<td>
+<p>A cluster as returned by <code>makeCluster</code> to be used
+for parallel execution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Not used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>An mmkin object.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A two-dimensional <code>array</code> of <code>mkinfit</code>
+objects and/or try-errors that can be indexed using the model names for the
+first index (row index) and the dataset names for the second index (column
+index).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Johannes Ranke
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>[.mmkin</code> for subsetting, <code>plot.mmkin</code> for
+plotting.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+m_synth_SFO_lin &lt;- mkinmod(parent = mkinsub("SFO", "M1"),
+                           M1 = mkinsub("SFO", "M2"),
+                           M2 = mkinsub("SFO"), use_of_ff = "max")
+
+m_synth_FOMC_lin &lt;- mkinmod(parent = mkinsub("FOMC", "M1"),
+                            M1 = mkinsub("SFO", "M2"),
+                            M2 = mkinsub("SFO"), use_of_ff = "max")
+
+models &lt;- list(SFO_lin = m_synth_SFO_lin, FOMC_lin = m_synth_FOMC_lin)
+datasets &lt;- lapply(synthetic_data_for_UBA_2014[1:3], function(x) x$data)
+names(datasets) &lt;- paste("Dataset", 1:3)
+
+time_default &lt;- system.time(fits.0 &lt;- mmkin(models, datasets, quiet = TRUE))
+time_1 &lt;- system.time(fits.4 &lt;- mmkin(models, datasets, cores = 1, quiet = TRUE))
+
+time_default
+time_1
+
+endpoints(fits.0[["SFO_lin", 2]])
+
+# plot.mkinfit handles rows or columns of mmkin result objects
+plot(fits.0[1, ])
+plot(fits.0[1, ], obs_var = c("M1", "M2"))
+plot(fits.0[, 1])
+# Use double brackets to extract a single mkinfit object, which will be plotted
+# by plot.mkinfit and can be plotted using plot_sep
+plot(fits.0[[1, 1]], sep_obs = TRUE, show_residuals = TRUE, show_errmin = TRUE)
+plot_sep(fits.0[[1, 1]])
+# Plotting with mmkin (single brackets, extracting an mmkin object) does not
+# allow to plot the observed variables separately
+plot(fits.0[1, 1])
+
+# On Windows, we can use multiple cores by making a cluster first
+cl &lt;- parallel::makePSOCKcluster(12)
+f &lt;- mmkin(c("SFO", "FOMC", "DFOP"),
+  list(A = FOCUS_2006_A, B = FOCUS_2006_B, C = FOCUS_2006_C, D = FOCUS_2006_D),
+  cluster = cl, quiet = TRUE)
+print(f)
+# We get false convergence for the FOMC fit to FOCUS_2006_A because this
+# dataset is really SFO, and the FOMC fit is overparameterised
+parallel::stopCluster(cl)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,253 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>aovBioCond</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Perform a Moderated Analysis of Variance on <code>bioCond</code> Objects</h2>
+
+<h3>Description</h3>
+
+<p>Given a set of <code>bioCond</code> objects with which a mean-variance
+curve is associated, <code>aovBioCond</code> performs a one-way ANOVA-like
+analysis on them. More specifically, it separately tests for each genomic
+interval the null hypothesis that mean signal intensity in the interval
+remains invariant across all the biological conditions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">aovBioCond(conds, min.var = 0, df.prior = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>conds</code></td>
+<td>
+<p>A list of <code>bioCond</code> objects on which the analysis
+of variance is to be performed. They must be associated with the same
+mean-variance curve (i.e., they must have the same <code>"mvcID"</code>; see
+also <code>fitMeanVarCurve</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min.var</code></td>
+<td>
+<p>Lower bound of variances read from the mean-variance
+curve. Any variance read from the curve less than <code>min.var</code> will be
+adjusted to this value. It's primarily used for safely getting the prior
+variances and taking into account the practical significance of a signal
+variation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df.prior</code></td>
+<td>
+<p>Number of prior degrees of freedom associated with the
+mean-variance curve. Must be non-negative.
+Can be set to <code>Inf</code> (see "Details").
+By default, <code>aovBioCond</code> checks if all the <code>bioCond</code>s in
+<code>conds</code> have the same <code>"df.prior"</code> component, and uses it as
+the number of prior degrees of freedom if yes (an error is raised
+otherwise).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>aovBioCond</code> adopts the modeling strategy implemented in <code>limma</code>
+(see "References"), except that each interval has its own prior variance,
+which is read from the mean-variance curve associated with the
+<code>bioCond</code> objects. Technically, this function calculates a
+moderated <em>F</em> statistic for each genomic interval to test the null
+hypothesis. The moderated <em>F</em> statistic is simply the <em>F</em>
+statistic from an ordinary one-way
+ANOVA with its denominator (i.e., sample variance) replaced
+by posterior variance, which is defined to be a weighted average of sample
+and prior variances, with the weights being proportional to their respective
+numbers of degrees of freedom.
+This method of incorporating the prior information
+increases the statistical power for the tests.
+</p>
+<p>Two extreme values can be specified for the argument <code>df.prior</code>
+(number of degrees of freedom associated with the prior variances),
+representing two distinct
+cases: when it's set to <code>0</code>, the prior information won't be used at
+all, and the tests reduce to ordinary F tests in one-way ANOVA; when it's
+set to <code>Inf</code>, the denominators of moderated F statistics are simply the
+prior variances, and these F statistics reduce to following a scaled
+chi-squared distribution. Other values of <code>df.prior</code> represent
+intermediate cases. To be noted, the number of prior degrees of freedom is
+automatically estimated for each
+mean-variance curve by a specifically designed statistical method
+(see also <code>fitMeanVarCurve</code> and
+<code>setMeanVarCurve</code>) and, by default, <code>aovBioCond</code> uses the
+estimation result to perform the tests. It's highly not recommended
+to specify <code>df.prior</code> explicitly when calling <code>aovBioCond</code>, unless
+you know what you are really doing. Besides, <code>aovBioCond</code> won't adjust
+variance ratio factors of the provided <code>bioCond</code>s based on the
+specified number of prior degrees of freedom (see
+<code>estimatePriorDf</code> for a description of variance ratio factor).
+</p>
+<p>Note also that, if <code>df.prior</code> is set to <code>0</code>, of the
+<code>bioCond</code> objects in <code>conds</code> there must be at least one that
+contains two or more ChIP-seq
+samples. Otherwise, there is no way to measure the variance associated with
+each interval, and an error is raised.
+</p>
+<p>Considering the practical significance of this analysis, which is to select
+genomic intervals with differential ChIP-seq signals between at least one
+pair of the biological conditions, those intervals not occupied by any of
+the <code>bioCond</code>
+objects in <code>conds</code> may be filtered out before making the selections.
+Thus, the statistical power of the tests could potentially be improved by
+re-adjusting <em>p</em>-values of the remaining intervals.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>aovBioCond</code> returns an object of <code>class</code>
+<code>c("aovBioCond", "data.frame")</code>, recording the test results for
+each genomic interval by each row. The data frame consists of the
+following variables:
+</p>
+
+<dl>
+<dt><code>conds.mean</code></dt>
+<dd>
+<p>Mean signal intensity at the interval
+across biological conditions.</p>
+</dd>
+<dt><code>between.ms</code></dt>
+<dd>
+<p>Between-condition mean of squares as from
+an ordinary one-way ANOVA.</p>
+</dd>
+<dt><code>within.ms</code></dt>
+<dd>
+<p>Within-condition mean of squares as from
+an ordinary one-way ANOVA.</p>
+</dd>
+<dt><code>prior.var</code></dt>
+<dd>
+<p>Prior variance deduced by reading from the
+mean-variance curve associated with the <code>bioCond</code>
+objects in <code>conds</code>.</p>
+</dd>
+<dt><code>posterior.var</code></dt>
+<dd>
+<p>A weighted average of <code>within.ms</code>
+and <code>prior.var</code>, with the weights being proportional to their
+respective numbers of degrees of freedom.</p>
+</dd>
+<dt><code>mod.f</code></dt>
+<dd>
+<p>Moderated <em>F</em> statistic, which is the ratio
+of <code>between.ms</code> to <code>posterior.var</code>.</p>
+</dd>
+<dt><code>pval</code></dt>
+<dd>
+<p><em>P</em>-value for the statistical significance
+of this moderated F statistic.</p>
+</dd>
+<dt><code>padj</code></dt>
+<dd>
+<p><em>P</em>-value adjusted for multiple testing with
+the <code>"BH"</code> method (see <code>p.adjust</code>), which
+controls false discovery rate.</p>
+</dd>
+</dl>
+<p>Row names of the returned data frame inherit from those of
+<code>conds[[1]]$norm.signal</code>. Besides, several attributes are added to
+the returned object:
+</p>
+
+<dl>
+<dt><code>bioCond.names</code></dt>
+<dd>
+<p>Names of the <code>bioCond</code> objects in
+<code>conds</code>.</p>
+</dd>
+<dt><code>mean.var.curve</code></dt>
+<dd>
+<p>A function representing the
+mean-variance curve. It accepts a vector of mean signal intensities
+and returns the corresponding prior variances. Note that this
+function has incorporated the <code>min.var</code> argument.</p>
+</dd>
+<dt><code>df</code></dt>
+<dd>
+<p>A length-4 vector giving the numbers of degrees of
+freedom of <code>between.ms</code>, <code>within.ms</code>, <code>prior.var</code> and
+<code>posterior.var</code>.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Smyth, G.K., <em>Linear models and empirical bayes methods for
+assessing differential expression in microarray experiments.</em> Stat Appl
+Genet Mol Biol, 2004. <strong>3</strong>: p. Article3.
+</p>
+<p>Tu, S., et al., <em>MAnorm2 for quantitatively comparing groups of
+ChIP-seq samples.</em> Genome Res, 2021. <strong>31</strong>(1): p. 131-145.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>bioCond</code> for creating a <code>bioCond</code> object;
+<code>fitMeanVarCurve</code> for fitting a mean-variance curve for
+a set of <code>bioCond</code> objects; <code>setMeanVarCurve</code> for
+setting the mean-variance curve of a set of <code>bioCond</code>s;
+<code>estimatePriorDf</code> for estimating number of prior degrees of
+freedom as well as adjusting variance ratio factors accordingly.
+</p>
+<p><code>plot.aovBioCond</code> for creating a plot to demonstrate an
+<code>aovBioCond</code> object; <code>diffTest</code> for
+calling differential intervals between two <code>bioCond</code> objects;
+<code>varTestBioCond</code> for calling hypervariable and invariant
+intervals across ChIP-seq samples contained in a <code>bioCond</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(H3K27Ac, package = "MAnorm2")
+attr(H3K27Ac, "metaInfo")
+
+## Call differential genomic intervals among GM12890, GM12891 and GM12892
+## cell lines.
+
+# Perform MA normalization and construct bioConds to represent the cell
+# lines.
+norm &lt;- normalize(H3K27Ac, 4, 9)
+norm &lt;- normalize(norm, 5:6, 10:11)
+norm &lt;- normalize(norm, 7:8, 12:13)
+conds &lt;- list(GM12890 = bioCond(norm[4], norm[9], name = "GM12890"),
+              GM12891 = bioCond(norm[5:6], norm[10:11], name = "GM12891"),
+              GM12892 = bioCond(norm[7:8], norm[12:13], name = "GM12892"))
+autosome &lt;- !(H3K27Ac$chrom %in% c("chrX", "chrY"))
+conds &lt;- normBioCond(conds, common.peak.regions = autosome)
+
+# Variations in ChIP-seq signals across biological replicates of a cell line
+# are generally of a low level, and their relationship with the mean signal
+# intensities is expected to be well modeled by the presumed parametric
+# form.
+conds &lt;- fitMeanVarCurve(conds, method = "parametric", occupy.only = TRUE)
+summary(conds[[1]])
+plotMeanVarCurve(conds, subset = "occupied")
+
+# Perform a moderated ANOVA on these cell lines.
+res &lt;- aovBioCond(conds)
+head(res)
+plot(res, padj = 1e-6)
+
+</code></pre>
+
+
+</div>

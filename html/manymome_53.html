@@ -1,0 +1,232 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>fit2boot_out</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Bootstrap Estimates for a
+<code>lavaan</code> Output</h2>
+
+<h3>Description</h3>
+
+<p>Generate bootstrap
+estimates from the output of
+<code>lavaan::sem()</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">fit2boot_out(fit)
+
+fit2boot_out_do_boot(
+  fit,
+  R = 100,
+  seed = NULL,
+  parallel = FALSE,
+  ncores = max(parallel::detectCores(logical = FALSE) - 1, 1),
+  make_cluster_args = list(),
+  progress = TRUE,
+  internal = list()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>fit</code></td>
+<td>
+<p>The fit object. This
+function only supports a
+lavaan::lavaan object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>R</code></td>
+<td>
+<p>The number of bootstrap
+samples. Default is 100.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>The seed for the random
+resampling. Default is <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>Logical. Whether
+parallel processing will be used.
+Default is <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+<p>Integer. The number of
+CPU cores to use when <code>parallel</code> is
+<code>TRUE</code>. Default is the number of
+non-logical cores minus one (one
+minimum). Will raise an error if
+greater than the number of cores
+detected by
+<code>parallel::detectCores()</code>. If
+<code>ncores</code> is set, it will override
+<code>make_cluster_args</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>make_cluster_args</code></td>
+<td>
+<p>A named list
+of additional arguments to be passed
+to <code>parallel::makeCluster()</code>. For
+advanced users. See
+<code>parallel::makeCluster()</code> for
+details. Default is <code>list()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>Logical. Display
+progress or not. Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>internal</code></td>
+<td>
+<p>A list of arguments
+to be used internally for debugging.
+Default is <code>list()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function is for
+advanced users. <code>do_boot()</code> is a
+function users should try first
+because <code>do_boot()</code> has a general
+interface for input-specific
+functions like this one.
+</p>
+<p>If bootstrapping confidence intervals
+was requested when calling
+<code>lavaan::sem()</code> by setting <code>se = "boot"</code>, <code>fit2boot_out()</code> can be used
+to extract the stored bootstrap
+estimates so that they can be reused
+by <code>indirect_effect()</code>,
+<code>cond_indirect_effects()</code> and related
+functions to form bootstrapping
+confidence intervals for effects such
+as indirect effects and conditional
+indirect effects.
+</p>
+<p>If bootstrapping confidence was not
+requested when fitting the model by
+<code>lavaan::sem()</code>,
+<code>fit2boot_out_do_boot()</code> can be used
+to generate nonparametric bootstrap
+estimates from the output of
+<code>lavaan::sem()</code> and store them for
+use by <code>indirect_effect()</code>,
+<code>cond_indirect_effects()</code>, and
+related functions.
+</p>
+<p>This approach removes the need to
+repeat bootstrapping in each call to
+<code>indirect_effect()</code>,
+<code>cond_indirect_effects()</code>, and
+related functions. It also ensures
+that the same set of bootstrap
+samples is used in all subsequent
+analyses.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>boot_out</code>-class object
+that can be used for the <code>boot_out</code>
+argument of <code>indirect_effect()</code>,
+<code>cond_indirect_effects()</code>, and
+related functions for forming
+bootstrapping confidence intervals.
+</p>
+<p>The object is a list with the number
+of elements equal to the number of
+bootstrap samples. Each element is a
+list of the parameter estimates and
+sample variances and covariances of
+the variables in each bootstrap
+sample.
+</p>
+
+
+<h3>Functions</h3>
+
+
+<ul>
+<li> <p><code>fit2boot_out()</code>: Process
+stored bootstrap estimates for
+functions such as
+<code>cond_indirect_effects()</code>.
+</p>
+</li>
+<li> <p><code>fit2boot_out_do_boot()</code>: Do
+bootstrapping and store information
+to be used by
+<code>cond_indirect_effects()</code> and related
+functions. Support parallel
+processing.
+</p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+<p><code>do_boot()</code>, the general
+purpose function that users should
+try first before using this function.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(lavaan)
+data(data_med_mod_ab1)
+dat &lt;- data_med_mod_ab1
+dat$"x:w" &lt;- dat$x * dat$w
+dat$"m:w" &lt;- dat$m * dat$w
+mod &lt;-
+"
+m ~ x + w + x:w + c1 + c2
+y ~ m + w + m:w + x + c1 + c2
+"
+
+# Bootstrapping not requested in calling lavaan::sem()
+fit &lt;- sem(model = mod, data = dat, fixed.x = FALSE,
+           se = "none", baseline = FALSE)
+fit_boot_out &lt;- fit2boot_out_do_boot(fit = fit,
+                                     R = 40,
+                                     seed = 1234,
+                                     progress = FALSE)
+out &lt;- cond_indirect_effects(wlevels = "w",
+                             x = "x",
+                             y = "y",
+                             m = "m",
+                             fit = fit,
+                             boot_ci = TRUE,
+                             boot_out = fit_boot_out)
+out
+
+</code></pre>
+
+
+</div>

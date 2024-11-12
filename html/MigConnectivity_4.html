@@ -1,0 +1,187 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>calcTransition</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate psi (transition probabilities between sites in two phases of the
+annual cycle)</h2>
+
+<h3>Description</h3>
+
+<p>Provides simple maximum-likelihood point estimate of transition probabilities
+that does not include measures of uncertainty. Incorporates detection
+heterogeneity where appropriate (band/ring return data), but not location
+uncertainty. Shared primarily for testing; use of <code>estTransition</code>
+is recommended instead.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">calcTransition(
+  banded = NULL,
+  reencountered = NULL,
+  counts = NULL,
+  originAssignment = NULL,
+  targetAssignment = NULL,
+  originNames = NULL,
+  targetNames = NULL,
+  method = "SANN"
+)
+
+calcPsi(
+  banded = NULL,
+  reencountered = NULL,
+  counts = NULL,
+  originAssignment = NULL,
+  targetAssignment = NULL,
+  originNames = NULL,
+  targetNames = NULL,
+  method = "SANN"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>banded</code></td>
+<td>
+<p>For band return data, a vector of the number of released
+animals from each origin site (including those never reencountered
+in a target region)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reencountered</code></td>
+<td>
+<p>For band return data, a matrix with B rows and W
+columns. Number of animals reencountered
+on each target site by origin site they came from</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>counts</code></td>
+<td>
+<p>Migration data without target-region detection heterogeneity
+(i.e., anything but band return data) can be entered one of two ways: either
+here or with <code>originAssignment</code> and <code>targetAssignment</code>. If here, a
+matrix with B rows and W columns with counts of animals observed in each
+combination of origin and target site</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originAssignment</code></td>
+<td>
+<p>Assignment of animals (not including band return
+data) to origin season sites. A vector of integers (1-B) with length number
+of animals tracked. Note that these data can either be entered using this
+argument and <code>targetAssignment</code> or using <code>counts</code>, but not both</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetAssignment</code></td>
+<td>
+<p>Assignment of animals (not including band return
+data) to target season sites. A vector of integers (1-W) with length number
+of animals tracked. Note that these data can either be entered using this
+argument and <code>originAssignment</code> or using <code>counts</code>, but not both</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originNames</code></td>
+<td>
+<p>Optional, but recommended to keep track. Vector of names
+for the origin sites. If not provided, the function will either try to get
+these from another input or provide default names (capital letters)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetNames</code></td>
+<td>
+<p>Optional, but recommended to keep track. Vector of names
+for the target sites. If not provided, the function will either try to get
+these from another input or provide default names (numbers)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>See <code>optim</code>. "SANN" is slow but reasonably accurate.
+"Nelder-Mead" is fast but not accurate here. "BFGS" is also fast but not
+very stable here</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>calcTransition</code> returns a list with the element(s):
+</p>
+
+<dl>
+<dt><code>psi</code></dt>
+<dd>
+<p>Matrix with point estimate of transition probabilities</p>
+</dd>
+<dt><code>r</code></dt>
+<dd>
+<p>Vector containing point estimate of reencounter
+probabilities at each target site. Not included unless data includes
+band reencounters</p>
+</dd>
+</dl>
+<h3>See Also</h3>
+
+<p><code>estTransition</code>, <code>optim</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">nOriginSites &lt;- 4
+nTargetSites &lt;- 4
+originNames &lt;- LETTERS[1:nOriginSites]
+targetNames &lt;- 1:nTargetSites
+psiTrue &lt;- array(c(0.1, 0.2, 0.3, 0.4,
+                   0.2, 0.3, 0.4, 0.1,
+                   0.3, 0.4, 0.1, 0.2,
+                   0.4, 0.1, 0.2, 0.3),
+                 c(nOriginSites, nTargetSites),
+                 dimnames = list(originNames, targetNames))
+rowSums(psiTrue)
+rTrue &lt;- c(0.5, 0.05, 0.3, 0.6)
+banded1 &lt;- c(500, 1000, 2000, 3000)
+reencountered1 &lt;- simCMRData(psiTrue, banded1, rTrue)$reencountered
+psi_r_calc_sloppy &lt;- calcTransition(banded = banded1,
+                             reencountered = reencountered1,
+                             originNames = originNames,
+                             targetNames = targetNames,
+                             method = "BFGS")
+psi_r_calc_sloppy
+
+psi_r_calc &lt;- calcTransition(banded = banded1,
+                             reencountered = reencountered1,
+                             originNames = originNames,
+                             targetNames = targetNames,
+                             method = "SANN")
+psi_r_calc
+psi_r_mcmc &lt;- estTransition(banded = banded1, reencountered = reencountered1,
+                            originNames = originNames,
+                            targetNames = targetNames,
+                            method = "MCMC",
+                            nSamples = 45000, nBurnin = 5000, #reduced for example speed
+                            nThin = 1, verbose = 0)
+print(psi_r_mcmc)
+psi_r_boot &lt;- estTransition(banded = banded1, reencountered = reencountered1,
+                            originNames = originNames,
+                            targetNames = targetNames,
+                            method = "bootstrap",
+                            nSamples = 200) #reduced for example speed
+print(psi_r_boot)
+
+</code></pre>
+
+
+</div>

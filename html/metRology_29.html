@@ -1,0 +1,270 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>cov.dellipse</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Constructs a covariance and location object for use in plotting data ellipses. 
+</h2>
+
+<h3>Description</h3>
+
+<p>Constructs a covariance matrix and associated location using a variety 
+of (possibly robust) estimators. The returned object is suitable for use 
+by <code>plot.d.ellipse</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">cov.dellipse(x, y = NULL, cov.method = c("spearman", "kendall", "pearson", 
+                           "MCD", "OGK", "GK", "gk", "rgk", "mcd", "mve"), 
+                           scalefn = NULL, locfn = NULL, cov.control = list())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+
+<p>An R <code>numeric</code> object. Can be a vector (in which case <code>y</code> must be specified 
+and of the same length) or a two-column numeric matrix.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+
+<p>A numeric vector of the same length as <code>x</code>. It is an error to provide <code>y</code> 
+in addition to a two-column matrix for <code>x</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cov.method</code></td>
+<td>
+
+<p>A character value specifying the covariance method used.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scalefn</code></td>
+<td>
+
+<p>A function that computes univariate scale and (optionally) location estimates from a 
+numeric vector. 
+If provided, <code>scalefn()</code> should return a single numeric value containing a scale 
+(standard deviation) estimate. For many covariance methods this can be a simple
+scale estimator. For cov.method "GK", scalefn must accept 
+an additional argument <code>mu.too</code>. When mu.too is true, <code>scalefn()</code> should 
+return a numeric vector of length 2 containing location and scale estimates. See 
+<code>scaleTau2</code>, <code>s_Qn</code>,<code>s_mad</code>, or <code>s_IQR</code> 
+for examples to be used as <code>scalefn</code> argument.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>locfn</code></td>
+<td>
+
+<p>A function that computes univariate location estimates from a numeric vector. 
+If used, <code>locfn()</code> should return a single numeric value containing a location 
+(mean) estimate. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cov.control</code></td>
+<td>
+
+<p>A named list of arguments passed to the covariance calculation used. Note that this can 
+override <code>scalefn</code> and <code>locfn</code>; see below for details.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>cov.dellipse</code> is a wrapper for a range of covariance estimation methods found in 
+various packages. Its operation and defaults depend on the particular covariance 
+estimator specified by <code>cov.method</code>.  Details for each are as follows.
+</p>
+
+<dl>
+<dt>
+<code>spearman</code>, <code>kendall</code>
+</dt>
+<dd>
+<p>By default, the median and mad are used as location and scale respectively, 
+and the covariance is calculated from the product of scale estimates and the 
+Spearman rank correlation or Kendall's tau respectively. 
+If either <code>scalefn</code> or <code>locfn</code>is supplied, <code>scalefn</code> is used for scale estimation and 
+<code>locfn</code> for location. For both <code>spearman</code> and <code>kendall</code>, <code>scalefn</code> is 
+only used as a scale estimator and need not take a <code>mu.too</code> argument.</p>
+</dd>
+<dt><code>pearson</code></dt>
+<dd>
+<p>By default, the mean and sd are used as location and scale respectively, 
+and the covariance is calculated from the product of scale estimates and the 
+Pearson correlation. 
+If either <code>scalefn</code> or <code>locfn</code>is supplied, <code>scalefn</code> is used for scale 
+estimation and <code>locfn</code> for location, making it possible (if not very sensible) to 
+use a combination of robust scale or location functions with the Pearson correlation coefficient.
+For this case,  <code>scalefn</code> is only used as a scale estimator and need 
+not take a <code>mu.too</code> argument.</p>
+</dd>
+<dt>
+<code>MCD</code>, <code>mcd</code>
+</dt>
+<dd>
+<p>Both compute the Minimum Covariance Determinant (MCD) estimator, a robust multivariate 
+location and scale estimate with a high breakdown point, via the 'Fast MCD' or 'Deterministic MCD' 
+("DetMcd") algorithm. <code>"MCD"</code> uses the implementation <code>covMcd</code> in the robustbase package; 
+<code>"mcd"</code> uses <code>cov.mcd</code> in the MASS package.
+Neither require or use <code>scalefn</code> or <code>locfn</code>. 
+Note that these MCD implementations differ appreciably for small samples (at least to n=60). <code>MCD</code> 
+includes consistency and finite sample correction whereas <code>mcd</code> apparently does not apply a finite 
+sample correction. As a result, the <code>mcd</code> scales can be considerably smaller for modest 
+data set sizes.</p>
+</dd>
+<dt><code>OGK</code></dt>
+<dd>
+<p>Computes the orthogonalized pairwise covariance matrix estimate described by Maronna and Zamar (2002),
+as implemented by the <code>covOGK</code> in the robustbase package. 
+By default, scale and location use <code>scaleTau2</code> from robustbase. Alternatives 
+can be specified either by providing <strong>both</strong> <code>scalefn</code> and <code>locfn</code> or by including
+an argument <code>sigmamu</code> in <code>cov.control</code>, which is passed to <code>covOGK</code>. See 
+<code>covOGK</code> for a description of <code>sigmamu</code>.
+If <code>sigmamu</code> is not present in <code>cov.control</code> and both <code>scalefn</code> and <code>locfn</code> 
+are provided, scale and location are constructed from <code>scalefn</code> and <code>locfn</code>. If only one
+of these is provided, a warning is issued and <code>]{scaleTau2}</code> is used.
+</p>
+</dd>
+<dt><code>GK</code></dt>
+<dd>
+<p>Computes a simple pairwise covariance estimate suggested by Gnanadesikan and Kettenring (1972),
+as implemented by the <code>covGK</code> in the robustbase package. 
+By default, scale and location use <code>scaleTau2</code> from robustbase. Alternatives 
+can be specified either by providing <code>scalefn</code> and <code>locfn</code> or by including
+an argument <code>scalefn</code> in <code>cov.control</code>, which is passed to <code>covGK</code>. See 
+<code>covGK</code> for a description of <code>scalefn</code>.
+If <code>scalefn</code> is not present in <code>cov.control</code>, scale and location are constructed from <code>scalefn</code> 
+and <code>locfn</code>. If <code>locfn</code> is omitted, <code>scalefn</code> is used if it takes an argument <code>mu.too</code> 
+and the median is used otherwise.</p>
+</dd> 
+<dt><code>gk</code></dt>
+<dd>
+<p>As <code>GK</code>, except that the variables are scaled to unit (robust) sd (using <code>scalefn</code>) before 
+calculating the covariance (which is then rescaled). This can prevent large scale differences from 
+masking outliers in a variable with small scale.</p>
+</dd> 
+<dt><code>rgk</code></dt>
+<dd>
+<p>Implements  Gnanadesikan and Kettenring's second covariance estimate 
+based on scaled variables <code class="reqn">(Z_1, Z_2)</code> and a robust correlation <code class="reqn">\rho^*</code>
+calculated as 
+</p>
+<p style="text-align: center;"><code class="reqn">\rho^*=(\hat{\sigma}_{+}^{*2} - \hat{\sigma}_{-}^{*2})/(\hat{\sigma}_{+}^{*2} - \hat{\sigma}_{-}^{*2})</code>
+</p>
+
+<p>where <code class="reqn">\hat{\sigma}_{+}^{*2}</code> and <code class="reqn">\hat{\sigma}_{-}^{*2}</code> are robust variances of 
+<code class="reqn">(Z_1+Z_2)</code> and <code class="reqn">(Z_1-Z_2)</code> respectively, calculated using <code>scalefn</code>. 
+The advantage over <code>"gk"</code> and <code>"GK"</code> is that the correlation
+coefficient is guaranteed to be in <code class="reqn">[-1,1]</code>, making for a positive definite covariance matrix. Scaling also
+helps prevent large scale differences from masking outliers in a variable with small scale.</p>
+</dd> 
+<dt><code>mve</code></dt>
+<dd>
+<p>Uses uses <code>cov.mve</code> in the MASS package, which is based on the location and covariance matrix for 
+a minimum volume ellipsoid. The method neither requires nor uses <code>scalefn</code> or <code>locfn</code>.</p>
+</dd>
+</dl>
+<h3>Value</h3>
+
+<p>An object of class <code>cov.dellipse</code>, which is a list with (at least) components
+</p>
+	
+<dl>
+<dt>method</dt>
+<dd>
+<p>Character string describing method; identical to <code>cov.method</code></p>
+</dd>
+<dt>cov</dt>
+<dd>
+<p>2x2 covariance matrix</p>
+</dd>
+<dt>cor</dt>
+<dd>
+<p>2x2 correlation matrix</p>
+</dd>
+<dt>center</dt>
+<dd>
+<p>vector (length 2) specifying centre of ellipse</p>
+</dd>
+<dt>scale</dt>
+<dd>
+<p>vector, length 2, specifying scale estimates for each variable</p>
+</dd>
+<dt>n.obs</dt>
+<dd>
+<p>number of points (rows) used in the covariance estimate</p>
+</dd>
+</dl>
+<p>This list is intended to be consistent with that returned by <code>cov.wt</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Stephen L R Ellison
+</p>
+
+
+<h3>References</h3>
+
+<p>Maronna, R.A. and Zamar, R.H. (2002) Robust estimates of location and dispersion of 
+high-dimensional datasets; Technometrics <b>44(4)</b>, 307-317.
+</p>
+<p>Gnanadesikan, R. and John R. Kettenring (1972) Robust estimates, residuals, 
+and outlier detection with multiresponse data. Biometrics <b>28</b>, 81-124
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>cov.rob</code> in MASS, <code>covMcd</code>, <code>covOGK</code> and 
+<code>covGK</code> in robustbase.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(potassium)
+cov.dellipse(potassium) #Defaults to Spearman rank correlation
+
+#With different method
+cov.dellipse(potassium, cov.method="OGK") 
+
+#Same as above but specifying control parameters
+library(robustbase) #For scaleTau2
+cov.dellipse(potassium, cov.method="OGK", cov.control=list(sigmamu=scaleTau2)) 
+	
+#With individually specified (mad) scale
+cov.dellipse(potassium, cov.method="GK", scalefn=mad) 
+	#Defaults to median for location because mad()
+	#does not accept a mu.too argument
+
+cov.dellipse(potassium, cov.method="GK", scalefn=scaleTau2) 
+	#Defaults to specified scalefn for location because scaleTau2 
+	#accepts mu.too=TRUE
+
+</code></pre>
+
+
+</div>

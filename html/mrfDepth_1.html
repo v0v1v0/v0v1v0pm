@@ -1,0 +1,251 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>adjOutl</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Adjusted outlyingness of points relative to a dataset</h2>
+
+<h3>Description</h3>
+
+<p>Computes the skew-adjusted outlyingness of <code class="reqn">p</code>-dimensional points <code>z</code> relative to a <code class="reqn">p</code>-dimensional dataset <code>x</code>. For each multivariate point <code class="reqn">z_i</code>, its adjusted outlyingness relative to <code>x</code> is defined as its maximal univariate adjusted outlyingness measured over all directions. To obtain the univariate adjusted outlyingness in the direction <code class="reqn">v</code>, the dataset <code>x</code> is projected on <code class="reqn">v</code>, and the robustly skew-adjusted standardized distance of <code class="reqn">v'z_i</code> to the median of the projected data points <code>x</code><code class="reqn">v</code> is computed.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">adjOutl(x, z = NULL, options = list())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>An <code class="reqn">n</code> by <code class="reqn">p</code> data matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>z</code></td>
+<td>
+<p>An optional <code class="reqn">m</code> by <code class="reqn">p</code> matrix containing
+rowwise the points <code class="reqn">z_i</code> for which to compute
+the adjusted outlyingness. If <code>z</code> is not specified,
+it is set equal to <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>options</code></td>
+<td>
+<p> A list of available options:
+</p>
+
+<ul>
+<li> <p><code>type</code> <br>
+Determines the desired type of invariance and should be
+one of <code>"Affine"</code>, <code>"Rotation"</code> or <code>"Shift"</code>.
+When the option <code>"Affine"</code> is used,  the directions
+<code class="reqn">v</code> are orthogonal to hyperplanes spanned by <code class="reqn">p</code>
+observations from <code>x</code>. When the option <code>"Rotation"</code>
+is used, the directions pass by two randomly selected
+observations from <code>x</code>. With the option <code>"Shift"</code>,
+directions are randomly generated.<br>
+Defaults to <code>"Affine"</code>.
+</p>
+</li>
+<li> <p><code>ndir</code> <br>
+Determines the number of directions <code class="reqn">v</code> by setting
+<code>ndir</code> to a specific number or to <code>"all"</code>.
+In the latter case, an exhaustive search over all possible
+directions (according to <code>type</code>) is performed.
+If <code>ndir</code> is larger than the number of possible directions,
+the algorithm will automatically use this setting. <br>
+Defaults to
+<code class="reqn">250p</code> when <code>type="Affine"</code>, to 5000 when
+<code>type="Rotation"</code> and to 12500 when <code>type="Shift"</code>.
+</p>
+</li>
+<li> <p><code>seed</code>  <br>
+A strictly positive integer specifying the seed to be used
+by the <code>C++</code> code.<br>
+Defaults to <code class="reqn">10</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The adjusted outlyingness (AO) of multivariate data was introduced in Brys et al. (2005) and studied in more detail in Hubert and Van der Veeken (2008). It extends the Stahel-Donoho outlyingness towards skewed distributions.
+</p>
+<p>Depending on the dimension <code class="reqn">p</code>, different approximate algorithms are implemented. The affine invariant algorithm can only be used when <code class="reqn">n &gt; p</code>. It draws <code>ndir</code> times at random <code class="reqn">p</code> observations from <code>x</code> and considers the direction orthogonal to the hyperplane spanned by these <code class="reqn">p</code> observations. At most <code class="reqn">p</code> out of <code class="reqn">n</code> directions can be considered. The orthogonal invariant version can be applied to high-dimensional data. It draws <code>ndir</code> times at random <code class="reqn">2</code> observations from <code>x</code> and considers the direction through these two observations. Here, at most 2 out of <code class="reqn">n</code> directions can be considered. Finally, the shift invariant version randomly draws <code>ndir</code> vectors from the unit sphere.
+</p>
+<p>The resulting AO values are invariant to affine transformations, rotations and shifts respectively provided that the <code>seed</code> is kept fixed at different runs of the algorithm. Note that the AO values are guaranteed to increase when more directions are considered provided the seed is kept fixed, as this ensures that the random directions are generated in a fixed order.
+</p>
+<p>An observation from <code>x</code> and <code>z</code> is flagged as an outlier if its AO exceeds a cutoff value. This cutoff value is determined using the procedure in Rousseeuw et al. (2018). First, the logarithm of the AO values is taken to render their distribution more symmetric, after which a normal approximation yields a cutoff on these values. The cutoff is then transformed back by applying the exponential function.
+</p>
+<p>It is first checked whether the data lie in a subspace of dimension smaller than <code class="reqn">p</code>. If so, a warning is given, as well as the dimension of the subspace and a direction which is orthogonal to it. Furthermore, the univariate adjusted outlyingness of the projected points <code>x</code><code class="reqn">v</code> is ill-defined when the scale in its denominator becomes zero. This can happen when many observations collapse. In these cases the algorithm will stop and give a warning. The returned values then include the direction <code class="reqn">v</code> as well as an indicator specifying which of the observations of <code>x</code> belong to the hyperplane orthogonal to <code class="reqn">v</code>.
+</p>
+<p>This function extends the <code>adjOutlyingness</code> function in the package <code>robustbase</code>. It has more options for choosing the directions, it allows to compute the adjusted outlyingness of points not belonging to the data matrix <code>x</code> and it is faster as it is fully implemented in C++. On the other hand, the constants (3 and -4) used in the definition of the adjusted outlyingness can not be modified in this implementation.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with components: <br></p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>outlyingnessX</code></td>
+<td>
+<p>Vector of length <code class="reqn">n</code> giving the adjusted
+outlyingness of the observations in <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outlyingnessZ</code></td>
+<td>
+<p>Vector of length <code class="reqn">m</code> giving the adjusted
+outlyingness of the points in <code>z</code> relative to <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cutoff</code></td>
+<td>
+<p>Points whose adjusted outlyingness exceeds this cutoff can be considered as outliers with respect to <code>x</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>flagX</code></td>
+<td>
+<p>Observations of <code>x</code> whose adjusted outlyingness exceeds the cutoff receive a flag <code>FALSE</code>, regular observations receive a flag <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>flagZ</code></td>
+<td>
+<p>Points of <code>z</code> whose adjusted outlyingness exceeds the cutoff receive a flag equal to <code>FALSE</code>, otherwise they receive a flag <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>singularSubsets</code></td>
+<td>
+<p>When the input parameter type is equal to <code>"Affine"</code>,
+the number of <code class="reqn">p</code>-subsets that span a subspace of
+dimension smaller than <code class="reqn">p-1</code>. In such a case the orthogonal
+direction can not be uniquely determined. This is an indication
+that the data are not in general position.
+When the input parameter type is equal to <code>"Rotation"</code> it
+is possible that two randomly selected points of the data coincide
+due to ties in the data. In such a case this value signals how many
+times this happens.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dimension</code></td>
+<td>
+<p>When the data <code>x</code> are lying in a lower dimensional subspace, the dimension of this subspace.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hyperplane</code></td>
+<td>
+<p>When the data <code>x</code> are lying in a lower dimensional subspace, a direction orthogonal to this subspace. When a direction <code class="reqn">v</code> is found such that the robust skew-adjusted scale of <code>x</code><code class="reqn">v</code> is equal to zero, this equals <code class="reqn">v</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inSubspace</code></td>
+<td>
+<p>When a direction <code class="reqn">v</code> is found such that AO(<code>x</code><code class="reqn">v</code>) is ill-defined, the observations from <code>x</code> which belong to the hyperplane orthogonal to <code class="reqn">v</code> receive a value TRUE. The other observations receive a value FALSE.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>P. Segaert using <code>C++</code> code by K. Vakili, P. Segaert, G. Brys and M. Maechler.</p>
+
+
+<h3>References</h3>
+
+<p>Brys G., Hubert M., Rousseeuw P.J. (2005). A robustification of Independent Component Analysis. <em>Journal of Chemometrics</em>, <b>19</b>, 364–375.
+</p>
+<p>Hubert M., Van der Veeken S. (2008). Outlier detection for skewed data. <em>Journal of Chemometrics</em>, <b>22</b>, 235–246.
+</p>
+<p>Hubert M., Vandervieren E. (2008). An adjusted boxplot for skewed distributions. <em>Computational Statistics &amp; Data Analysis</em>, <b>52</b>, 5186–5201.
+</p>
+<p>Rousseeuw P.J., Raymaekers J., Hubert M., (2018). A measure of directional outlyingness with applications to image data and video. <em>Journal of Computational and Graphical Statistics</em>, <b>27</b>, 345–359.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>sprojdepth</code>, <code>sprojmedian</code>, <code>dirOutl</code>, <code>outlyingness</code>
+</p>
+<p><code>adjbox</code>, <code>adjOutlyingness</code> from package robustbase.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Compute the adjusted outlyingness of a simple
+# two-dimensional dataset. Outliers are plotted
+# in red.
+data(geological)
+BivData &lt;- geological[c("MnO","MgO")]
+Result &lt;- adjOutl(x = BivData)
+IndOutliers &lt;- which(!Result$flagX)
+plot(BivData)
+points(BivData[IndOutliers,], col = "red")
+
+# The number of directions may be specified through
+# the option list. The resulting adjusted outlyingness
+# is monotone increasing in the number of directions.
+Result1 &lt;- adjOutl(x = BivData,
+                   options = list(ndir = 50)
+                   )
+Result2 &lt;- adjOutl(x = BivData,
+                   options = list(ndir = 100)
+                   )
+which(Result2$outlyingnessX - Result1$outlyingnessX &lt; 0)
+# This is however not the case when the seed is changed
+Result1 &lt;- adjOutl(x = BivData,
+                   options = list(ndir = 50)
+                   )
+Result2 &lt;- adjOutl(x = BivData,
+                   options = list(ndir = 100,
+                                  seed = 950)
+                   )
+plot(Result2$outlyingnessX - Result1$outlyingnessX,
+     xlab = "Index", ylab = "Difference in AO")
+
+# We can also consider directions through two data
+# points. If the sample is small enough one may opt
+# to search over all choose(n,2) directions.
+# Note that the computational load increases dramatically
+# as n becomes larger.
+data(bloodfat)
+BivData &lt;- bloodfat[1:100,] # Consider a small toy example.
+Result &lt;- adjOutl(x = BivData,
+                  options = list(type = "Rotation",
+                                 ndir = "all")
+                  )
+IndOutliers &lt;- which(!Result$flagX)
+plot(BivData)
+points(BivData[IndOutliers,], col = "red")
+
+# Alternatively one may consider randomly generated directions.
+data(bloodfat)
+Result &lt;- adjOutl(x = bloodfat,
+                  options = list(type = "Shift",
+                                 ndir = 1000)
+                  )
+IndOutliers &lt;- which(!Result$flagX)
+plot(bloodfat)
+points(bloodfat[IndOutliers,], col = "red")
+</code></pre>
+
+
+</div>

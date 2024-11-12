@@ -1,0 +1,273 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>find_best_fp_step</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Function to estimate the best FP functions for a single variable</h2>
+
+<h3>Description</h3>
+
+<p>See <code>mfp2()</code> for a brief summary on the notation used here and
+<code>fit_mfp()</code> for an overview of the fitting procedure.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">find_best_fp_step(
+  x,
+  y,
+  xi,
+  weights,
+  offset,
+  df,
+  powers_current,
+  family,
+  criterion,
+  select,
+  alpha,
+  keep,
+  powers,
+  method,
+  strata,
+  nocenter,
+  acdx,
+  ftest,
+  control,
+  rownames,
+  verbose
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>an input matrix of dimensions nobs x nvars. Does not contain
+intercept, but columns are already expanded into dummy variables as
+necessary. Data are assumed to be shifted and scaled.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>a vector for the response variable or a <code>Surv</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xi</code></td>
+<td>
+<p>a character string indicating the name of the current variable
+of interest, for which the best fractional polynomial transformation is
+to be estimated in the current step.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>a vector of observation weights of length nobs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offset</code></td>
+<td>
+<p>a vector of length nobs of offsets.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>a numeric vector indicating the maximum degrees of freedom for the
+variable of interest <code>xi</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>powers_current</code></td>
+<td>
+<p>a list of length equal to the number of variables,
+indicating the fp powers to be used in the current step for all variables
+(except <code>xi</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>a character string representing a family object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>criterion</code></td>
+<td>
+<p>a character string defining the criterion used to select
+variables and FP models of different degrees.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>select</code></td>
+<td>
+<p>a numeric value indicating the significance level
+for backward elimination of <code>xi</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>a numeric value indicating the significance level
+for tests between FP models of different degrees for <code>xi</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep</code></td>
+<td>
+<p>a character vector with names of variables to be kept
+in the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>powers</code></td>
+<td>
+<p>a named list of numeric values that sets the permitted FP
+powers for each covariate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>a character string specifying the method for tie handling in
+Cox regression.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strata</code></td>
+<td>
+<p>a factor of all possible combinations of stratification
+variables. Returned from <code>survival::strata()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nocenter</code></td>
+<td>
+<p>a numeric vector with a list of values for fitting Cox
+models. See <code>survival::coxph()</code> for details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>acdx</code></td>
+<td>
+<p>a logical vector of length nvars indicating continuous variables
+to undergo the approximate cumulative distribution (ACD) transformation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ftest</code></td>
+<td>
+<p>a logical indicating the use of the F-test for Gaussian models.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>a list with parameters for model fit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rownames</code></td>
+<td>
+<p>a parameter for Cox models.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>a logical; run in verbose mode.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function selection procedure (FSP) is used if the p-value criterion is
+chosen, whereas the criteria AIC and BIC select the model with the smallest
+AIC and BIC, respectively.
+</p>
+<p>It uses transformations for all other variables to assess the FP form of
+the current variable of interest. This function covers three main use cases:
+</p>
+
+<ul>
+<li>
+<p> the linear case (<code>df = 1</code>) to test between null and linear models (see
+<code>select_linear()</code>). This step differs from the mfp case because
+linear models only use 1 df, while estimation of (every) fp power adds
+another df. This is also the case applied for categorical variables for
+which <code>df</code> are set to 1.
+</p>
+</li>
+<li>
+<p> the case that an acd transformation is requested (<code>acdx</code> is <code>TRUE</code>
+for <code>xi</code>) for the variable of interest (see <code>find_best_fpm_step()</code>).
+</p>
+</li>
+<li>
+<p> the (usual) case of the normal mfp algorithm to assess non-linear
+functional forms (see <code>find_best_fpm_step()</code>).
+</p>
+</li>
+</ul>
+<p>Note that these cases do not encompass the setting that a variable is not
+selected, because the evaluation is done for each variable in each cycle.
+A variable which was de-selected in earlier cycles may be added to the
+working model again. Also see <code>find_best_fp_cycle()</code>.
+</p>
+<p>The adjustment in each step uses the current fp powers given in
+<code>powers_current</code> for all other variables to determine the adjustment set
+and transformations in the  working model.
+</p>
+<p>Note that the algorithm starts by setting all <code>df = 1</code>, and higher fps
+are evaluated in turn starting from the first step in the first cycle.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A numeric vector indicating the best powers for <code>xi</code>. Entries can be
+<code>NA</code> if variable is to be removed from the working model. Note that this
+vector may include up to two <code>NA</code> entries when ACD transformation is
+requested, but otherwise is either a vector with all numeric entries, or a
+single <code>NA</code>.
+</p>
+
+
+<h3>Functional form selection</h3>
+
+<p>There are 3 criteria to decide for the current best functional form of a
+continuous variable.
+</p>
+<p>The first option for <code>criterion = "pvalue"</code> is the function selection
+procedure as outlined in e.g. Chapters 4 and 6 of Royston and
+Sauerbrei (2008), also abbreviated as "RA2".
+It is a closed testing procedure and is implemented in <code>select_ra2()</code> and
+extended for ACD transformation in <code>select_ra2_acd()</code> according to
+Royston and Sauerbrei (2016).
+</p>
+<p>For the other criteria <code>aic</code> and <code>bic</code> all FP models up to the desired degree
+are fitted and the model with the lowest value for the information criteria
+is chosen as the final one. This is implemented in <code>select_ic()</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Royston, P. and Sauerbrei, W., 2008. <em>Multivariable Model - Building:
+A Pragmatic Approach to Regression Anaylsis based on Fractional Polynomials
+for Modelling Continuous Variables. John Wiley &amp; Sons.</em><br></p>
+<p>Royston, P. and Sauerbrei, W., 2016. <em>mfpa: Extension of mfp using the
+ACD covariate transformation for enhanced parametric multivariable modeling.
+The Stata Journal, 16(1), pp.72-87.</em>
+</p>
+
+
+</div>

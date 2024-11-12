@@ -1,0 +1,199 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mixdir</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Cluster high dimensional categorical datasets</h2>
+
+<h3>Description</h3>
+
+<p>Cluster high dimensional categorical datasets
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mixdir(X, n_latent = 3, alpha = NULL, beta = NULL,
+  select_latent = FALSE, max_iter = 100, epsilon = 0.001,
+  na_handle = c("ignore", "category"), repetitions = 1, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>A matrix or data.frame of size (N_ind x N_quest) that contains the categorical responses.
+The values can be characters, integers or factors. The most flexibility is provided if factors are used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_latent</code></td>
+<td>
+<p>The number of latent factors that are used to approximate the model. Default: 3.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>A single number or a vector of two numbers in case select_latent=TRUE. If it is NULL alpha
+is initialized to 1. It serves as prior for the Dirichlet distributions over the latent groups. They
+serve as pseudo counts of individuals per group.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta</code></td>
+<td>
+<p>A single number. If it is NULL beta is initialized to 0.1.
+It serves as a prior for the Dirichlet distributions over the categorical responses. Large numbers
+favor an equal distribution of responses for a question of the individuals in the same latent group,
+small numbers indicate that individuals of the same latent group usually answer a question the same way.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>select_latent</code></td>
+<td>
+<p>A boolean that indicates if the exact number n_latent should be used or if a Dirichlet
+Process prior is used that shrinks the number of used latent variables appropriately (can be controlled
+with alpha=c(a1, a2) and beta). Default: FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_iter</code></td>
+<td>
+<p>The maximum number of iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>epsilon</code></td>
+<td>
+<p>A number that indicates the numerical precision necessary to consider the algorithm converged.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na_handle</code></td>
+<td>
+<p>Either "ignore" or "category". If it is "category" all <code>NA</code>'s in the dataset are converted to
+the string "(Missing)" and treated as their own category. If it is "ignore" the <code>NA</code>'s are treated as missing completely
+at random and are ignored during the parameter updates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>repetitions</code></td>
+<td>
+<p>A number specifying how often to repeat the calculation with different initializations. Automatically
+selects the best run (i.e. max(ELBO)). Default: 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional parameters passed on to the underlying functions. The parameters are verbose, phi_init,
+zeta_init and if select_latent=FALSE omega_init or if select_latent=TRUE kappa1_init and kappa2_init.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function uses a mixture of multinomials to fit the model.
+The full model specification is
+</p>
+<p style="text-align: center;"><code class="reqn"> \lambda | \alpha \sim DirichletProcess(\alpha)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn"> z_i | \lambda \sim Multinomial(\lambda)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn"> U_{j,k} | \beta \sim Dirichlet(\beta)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn"> X_{i,j} | U_j, z_i=k \sim Multinomial(U_{j,k})</code>
+</p>
+
+<p>In case that <code>select_latent=FALSE</code> the first line is replaced with
+</p>
+<p style="text-align: center;"><code class="reqn"> \lambda | \alpha \sim Dirichlet(\alpha)</code>
+</p>
+
+<p>The initial inspiration came from  Dunson and Xing (2009) who proposed a Gibbs
+sampling algorithm to solve this model. To speed up inference
+a variational inference approach was derived and implemented in this package.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list that is tagged with the class "mixdir" containing 8 elements:
+</p>
+
+<dl>
+<dt>converged</dt>
+<dd>
+<p>a boolean indicator if the model has converged</p>
+</dd>
+<dt>convergence</dt>
+<dd>
+<p>a numerical vector with the ELBO of each iteration</p>
+</dd>
+<dt>ELBO</dt>
+<dd>
+<p>the final ELBO of the converged model</p>
+</dd>
+<dt>lambda</dt>
+<dd>
+<p>a numerical vector with the <code>n_latent</code> class probabilities</p>
+</dd>
+<dt>pred_class</dt>
+<dd>
+<p>an integer vector with the the most likely class assignment
+for each individual.</p>
+</dd>
+<dt>class_prob</dt>
+<dd>
+<p>a matrix of size <code>n_ind x n_latent</code> which has for each
+individual the probability to belong to class k.</p>
+</dd>
+<dt>category_prob</dt>
+<dd>
+<p>a list with one entry for each feature (i.e. column of X).
+Each entry is again a list with one entry for each class, that contains the
+probability of individuals of that class to answer with a specific response.</p>
+</dd>
+<dt>specific_params</dt>
+<dd>
+<p>A list whose content depends on the parameter <code>select_latent</code>.
+If <code>select_latent=FALSE</code> it contains the two entries omega and phi which
+are the Dirichlet hyperparameters that the model has fitted. If <code>select_latent=TRUE</code>
+it contains kappa1, kappa2 and phi, which are the hyperparameters for the
+Dirichlet Process and the Dirichlet of the answer.</p>
+</dd>
+<dt>na_handle</dt>
+<dd>
+<p>a string indicating the method used to handle missing values. This
+is important for subsequent calls to <code>predict.mixdir</code>.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>1. C. Ahlmann-Eltze and C. Yau, "MixDir: Scalable Bayesian Clustering for High-Dimensional Categorical Data", 2018 IEEE 5th International Conference on Data Science and Advanced Analytics (DSAA), Turin, Italy, 2018, pp. 526-539.
+</p>
+<p>2. Dunson, D. B. and Xing, C. Nonparametric Bayes Modeling of Multivariate Categorical Data. J. Am. Stat. Assoc. 104, 1042–1051 (2009).
+</p>
+<p>3. Blei, D. M., Ng, A. Y. and Jordan, M. I. Latent Dirichlet Allocation. J. Macine Learn. Res. 3, 993–1022 (2003).
+</p>
+<p>4. Blei, D. M. and Jordan, M. I. Variational inference for Dirichlet process mixtures. Bayesian Anal. 1, 121–144 (2006).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">  data("mushroom")
+  res &lt;- mixdir(mushroom[1:30, ])
+
+</code></pre>
+
+
+</div>

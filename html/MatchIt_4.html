@@ -1,0 +1,260 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mahalanobis_dist</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compute a Distance Matrix</h2>
+
+<h3>Description</h3>
+
+<p>The functions compute a distance matrix, either for a single dataset (i.e.,
+the distances between all pairs of units) or for two groups defined by a
+splitting variable (i.e., the distances between all units in one group and
+all units in the other). These distance matrices include the Mahalanobis
+distance, Euclidean distance, scaled Euclidean distance, and robust
+(rank-based) Mahalanobis distance. These functions can be used as inputs to
+the <code>distance</code> argument to <code>matchit()</code> and are used to compute the
+corresponding distance matrices within <code>matchit()</code> when named.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mahalanobis_dist(
+  formula = NULL,
+  data = NULL,
+  s.weights = NULL,
+  var = NULL,
+  discarded = NULL,
+  ...
+)
+
+scaled_euclidean_dist(
+  formula = NULL,
+  data = NULL,
+  s.weights = NULL,
+  var = NULL,
+  discarded = NULL,
+  ...
+)
+
+robust_mahalanobis_dist(
+  formula = NULL,
+  data = NULL,
+  s.weights = NULL,
+  discarded = NULL,
+  ...
+)
+
+euclidean_dist(formula = NULL, data = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a formula with the treatment (i.e., splitting variable) on
+the left side and the covariates used to compute the distance matrix on the
+right side. If there is no left-hand-side variable, the distances will be
+computed between all pairs of units. If <code>NULL</code>, all the variables in
+<code>data</code> will be used as covariates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a data frame containing the variables named in <code>formula</code>.
+If <code>formula</code> is <code>NULL</code>, all variables in <code>data</code> will be used
+as covariates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>s.weights</code></td>
+<td>
+<p>when <code>var = NULL</code>, an optional vector of sampling
+weights used to compute the variances used in the Mahalanobis, scaled
+Euclidean, and robust Mahalanobis distances.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var</code></td>
+<td>
+<p>for <code>mahalanobis_dist()</code>, a covariance matrix used to scale
+the covariates. For <code>scaled_euclidean_dist()</code>, either a covariance
+matrix (from which only the diagonal elements will be used) or a vector of
+variances used to scale the covariates. If <code>NULL</code>, these values will be
+calculated using formulas described in Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>discarded</code></td>
+<td>
+<p>a <code>logical</code> vector denoting which units are to be
+discarded or not. This is used only when <code>var = NULL</code>. The scaling
+factors will be computed only using the non-discarded units, but the
+distance matrix will be computed for all units (discarded and
+non-discarded).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>ignored. Included to make cycling through these functions
+easier without having to change the arguments supplied.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <strong>Euclidean distance</strong> (computed using <code>euclidean_dist()</code>) is
+the raw distance between units, computed as </p>
+<p style="text-align: center;"><code class="reqn">d_{ij} = \sqrt{(x_i -
+x_j)(x_i - x_j)'}</code>
+</p>
+<p> where <code class="reqn">x_i</code> and <code class="reqn">x_j</code> are vectors of covariates
+for units <code class="reqn">i</code> and <code class="reqn">j</code>, respectively. The Euclidean distance is
+sensitive to the scales of the variables and their redundancy (i.e.,
+correlation). It should probably not be used for matching unless all of the
+variables have been previously scaled appropriately or are already on the
+same scale. It forms the basis of the other distance measures.
+</p>
+<p>The <strong>scaled Euclidean distance</strong> (computed using
+<code>scaled_euclidean_dist()</code>) is the Euclidean distance computed on the
+scaled covariates. Typically the covariates are scaled by dividing by their
+standard deviations, but any scaling factor can be supplied using the
+<code>var</code> argument. This leads to a distance measure computed as
+</p>
+<p style="text-align: center;"><code class="reqn">d_{ij} = \sqrt{(x_i - x_j)S_d^{-1}(x_i - x_j)'}</code>
+</p>
+<p> where <code class="reqn">S_d</code> is a
+diagonal matrix with the squared scaling factors on the diagonal. Although
+this measure is not sensitive to the scales of the variables (because they
+are all placed on the same scale), it is still sensitive to redundancy among
+the variables. For example, if 5 variables measure approximately the same
+construct (i.e., are highly correlated) and 1 variable measures another
+construct, the first construct will have 5 times as much influence on the
+distance between units as the second construct. The Mahalanobis distance
+attempts to address this issue.
+</p>
+<p>The <strong>Mahalanobis distance</strong> (computed using <code>mahalanobis_dist()</code>)
+is computed as </p>
+<p style="text-align: center;"><code class="reqn">d_{ij} = \sqrt{(x_i - x_j)S^{-1}(x_i - x_j)'}</code>
+</p>
+<p> where
+<code class="reqn">S</code> is a scaling matrix, typically the covariance matrix of the
+covariates. It is essentially equivalent to the Euclidean distance computed
+on the scaled principal components of the covariates. This is the most
+popular distance matrix for matching because it is not sensitive to the
+scale of the covariates and accounts for redundancy between them. The
+scaling matrix can also be supplied using the <code>var</code> argument.
+</p>
+<p>The Mahalanobis distance can be sensitive to outliers and long-tailed or
+otherwise non-normally distributed covariates and may not perform well with
+categorical variables due to prioritizing rare categories over common ones.
+One solution is the rank-based <strong>robust Mahalanobis distance</strong>
+(computed using <code>robust_mahalanobis_dist()</code>), which is computed by
+first replacing the covariates with their ranks (using average ranks for
+ties) and rescaling each ranked covariate by a constant scaling factor
+before computing the usual Mahalanobis distance on the rescaled ranks.
+</p>
+<p>The Mahalanobis distance and its robust variant are computed internally by
+transforming the covariates in such a way that the Euclidean distance
+computed on the scaled covariates is equal to the requested distance. For
+the Mahalanobis distance, this involves replacing the covariates vector
+<code class="reqn">x_i</code> with <code class="reqn">x_iS^{-.5}</code>, where <code class="reqn">S^{-.5}</code> is the Cholesky
+decomposition of the (generalized) inverse of the covariance matrix <code class="reqn">S</code>.
+</p>
+<p>When a left-hand-side splitting variable is present in <code>formula</code> and
+<code>var = NULL</code> (i.e., so that the scaling matrix is computed internally),
+the covariance matrix used is the "pooled" covariance matrix, which
+essentially is a weighted average of the covariance matrices computed
+separately within each level of the splitting variable to capture
+within-group variation and reduce sensitivity to covariate imbalance. This
+is also true of the scaling factors used in the scaled Euclidean distance.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A numeric distance matrix. When <code>formula</code> has a left-hand-side
+(treatment) variable, the matrix will have one row for each treated unit and
+one column for each control unit. Otherwise, the matrix will have one row
+and one column for each unit.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Noah Greifer
+</p>
+
+
+<h3>References</h3>
+
+<p>Rosenbaum, P. R. (2010). <em>Design of observational studies</em>.
+Springer.
+</p>
+<p>Rosenbaum, P. R., &amp; Rubin, D. B. (1985). Constructing a Control Group Using
+Multivariate Matched Sampling Methods That Incorporate the Propensity Score.
+<em>The American Statistician</em>, 39(1), 33–38. <a href="https://doi.org/10.2307/2683903">doi:10.2307/2683903</a>
+</p>
+<p>Rubin, D. B. (1980). Bias Reduction Using Mahalanobis-Metric Matching.
+<em>Biometrics</em>, 36(2), 293–298. <a href="https://doi.org/10.2307/2529981">doi:10.2307/2529981</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>distance</code>, <code>matchit()</code>, <code>dist()</code> (which is used
+internally to compute Euclidean distances)
+</p>
+<p><code>optmatch::match_on()</code>, which provides similar functionality but with fewer
+options and a focus on efficient storage of the output.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data("lalonde")
+
+# Computing the scaled Euclidean distance between all units:
+d &lt;- scaled_euclidean_dist(~ age + educ + race + married,
+                           data = lalonde)
+
+# Another interface using the data argument:
+dat &lt;- subset(lalonde, select = c(age, educ, race, married))
+d &lt;- scaled_euclidean_dist(data = dat)
+
+# Computing the Mahalanobis distance between treated and
+# control units:
+d &lt;- mahalanobis_dist(treat ~ age + educ + race + married,
+                      data = lalonde)
+
+# Supplying a covariance matrix or vector of variances (note:
+# a bit more complicated with factor variables)
+dat &lt;- subset(lalonde, select = c(age, educ, married, re74))
+vars &lt;- sapply(dat, var)
+
+d &lt;- scaled_euclidean_dist(data = dat, var = vars)
+
+# Same result:
+d &lt;- scaled_euclidean_dist(data = dat, var = diag(vars))
+
+# Discard units:
+discard &lt;- sample(c(TRUE, FALSE), nrow(lalonde),
+                  replace = TRUE, prob = c(.2, .8))
+
+d &lt;- mahalanobis_dist(treat ~ age + educ + race + married,
+                      data = lalonde, discarded = discard)
+dim(d) #all units present in distance matrix
+table(lalonde$treat)
+
+</code></pre>
+
+
+</div>

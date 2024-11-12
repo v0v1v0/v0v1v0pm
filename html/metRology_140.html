@@ -1,0 +1,253 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>uncertMC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Monte Carlo evaluation of measurement uncertainty.
+</h2>
+
+<h3>Description</h3>
+
+<p><code>uncertMC</code> estimates measurement uncertainty from a function,
+expression or formula by Monte Carlo simulation.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">uncertMC(expr, x, u, method = "MC", df, cor, cov, distrib, distrib.pars, 
+   B = 200, keep.x = TRUE, vectorized=TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>expr</code></td>
+<td>
+<p>An expression, function, or formula with no left-hand side (e.g. 
+<code>~a*x+b*x^2</code>) which can be evaluated in the environment <code>x</code> to
+provide a numeric value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A named list or vector of parameters supplied to <code>expr</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>u</code></td>
+<td>
+<p>A named list or named vector of length <code>length(x)</code> of standard uncertainties.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>Method of uncertainty evaluation. The only method currently supported
+by <code>uncertMC</code> is <code>"MC"</code>. If any other method is specified, control is 
+passed to <code>uncert</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>A named list or named vector of degrees of freedom. <code>df</code> can be
+a partial named list if not all distributions (see below) use degrees of 
+freedom.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cor, cov</code></td>
+<td>
+<p>Optional (square, symmetric) correlation or covariance matrices, respectively.
+If neither is specified, <code>uncertMC</code> assumes independent variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distrib</code></td>
+<td>
+<p>A character vector of length <code>length(x)</code> or a named list 
+of names of distribution functions associated with <code>u</code>. See Details
+for defaults. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distrib.pars</code></td>
+<td>
+<p>A named list of lists of parameters describing the distributions 
+associated with <code>u</code> to be passed to the relevant distribution function.
+If <code>distrib</code> is present but <code>distrib.pars</code> is not, an attempt is made 
+to set defaults based on other parameters; see Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>B</code></td>
+<td>
+<p>Number of Monte Carlo replicates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep.x</code></td>
+<td>
+<p>If <code>TRUE</code>, the simulated replicates of <code>x</code> are included in 
+the return object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vectorized</code></td>
+<td>
+<p>If <code>TRUE</code>, <code>expr</code> is assumed to take vector arguments. If <code>FALSE</code>, 
+<code>expr</code> is treated as if it takes scalar arguments. See Details for the difference.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional parameters to be passed to a function (for the function method)
+or used in an expression (for expression or formula method).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Although most likely to be called by <code>uncert</code>, <code>uncertMC</code> may be called directly.
+</p>
+<p>If any of <code>x</code>, <code>u</code>, <code>df</code>, <code>distrib</code> or <code>distrib.pars</code> are not lists,
+they are coerced to lists. If <code>x</code> is not named, arbitrary names of the form 'Xn' 
+are applied. If <code>u</code>, <code>df</code>, <code>distrib</code> or <code>distrib.pars</code> do not have
+names, the names will be set to <code>names(x)</code> if they are of length exactly 
+<code>length(x)</code>; if not, an error is returned.
+</p>
+<p>For Monte Carlo evaluation, distributions and distribution parameters are needed but 
+defaults are used if some or all are absent. If <code>distrib</code> is missing, or 
+if it is a list with some members missing, the distribution is assumed Normal
+and any missing member of <code>distrib</code> is set to "norm". 
+</p>
+<p>Distributions are usually identified by the root of the distribution function name; for example 
+to specify the Normal, <code>distrib$name="norm"</code>. At present, only the random value 
+generator (e.g. <code>rnorm</code>) is used. Names of user-specified distributions functions can also be 
+used, provided they have a random value generator named <code>r&lt;dist&gt;</code> where <code>&lt;dist&gt;</code>
+is the abbreviated distribution. Parameters are passed to distribution functions using 
+<code>do.call</code>, so the function must accept the parameters supplied in <code>distrib.pars</code>.
+
+
+</p>
+<p>If <code>distrib.pars</code> or members of it are missing, an attempt is made to deduce 
+appropriate distribution parameters from <code>x</code>, <code>u</code>, <code>df</code> and <code>distrib</code>. 
+In doing so, the following assumptions and values apply for the respective distributions:
+</p>
+
+<dl>
+<dt>norm</dt>
+<dd>
+<p><code>mean=x$name, sd=u$name</code>.</p>
+</dd>
+<dt>unif</dt>
+<dd>
+<p><code>min=x-sqrt(3)*u, max=x+sqrt(3)*u</code>.</p>
+</dd>
+<dt>tri</dt>
+<dd>
+<p><code>min=x-sqrt(6)*u, max=x+sqrt(6)*u, mode=x</code>.</p>
+</dd>
+<dt>t, t.scaled</dt>
+<dd>
+<p><code>df=df, mean=x, sd=u</code>.</p>
+</dd>
+</dl>
+<p>If either <code>cor</code> or <code>cov</code> are present, a test is made to see if off-diagonal
+elements are significant. If not, <code>uncertMC</code> treats the values as independent.
+The test simply checks whether the sum of off-diagonal elements of <code>cor</code> (calculated 
+from <code>cov</code> if <code>cov</code> is present) is bigger than 
+<code>.Machine.double.eps*nrow^2</code>.
+</p>
+<p>Correlation is supported as long as all correlated variables are normally distributed.
+If correlation is present, <code>uncertMC</code> follows a two-stage simulation procedure. 
+First, variables showing correlation are identified. Following a check that 
+their associated <code>distrib</code> values are all <code>"norm"</code>, <code>mvrnorm</code> from 
+the MASS library is called to generate the simulated <code>x</code> values for those variables.
+Second, any remaining (i.e. independent) variables are simulated from their respective 
+<code>distrib</code> and <code>distrib.pars</code>. 
+</p>
+<p>Vectorisation makes a difference to execution speed. If <code>vectorize=TRUE</code>, MC evaluation 
+uses <code>eval</code> using the simulated data as the evaluation environment; if not, <code>apply</code>
+is used row-wise on the simulated input matrix. This makes an appreciable difference to 
+execution speed (typically <code>eval</code> is faster by a factor of 5 or more) so the default 
+assumes vectorised expressions. However, not all functions and expressions take vector arguments, 
+especially user functions involving complicated arithmetic or numerical solutions. Use <code>vectorize=FALSE</code>
+for functions or expressions that do not take vector arguments. 
+Note: One common symptom of an expression that does not take vector arguments is
+an R warning indicating that only the first element (typically of a parameter in <code>x</code>) is used. 
+uncertMC may also return NA for <code>u</code> on attempting to take the sd of a single simulated point.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>uncertMC</code>. See <code>uncertMC-class</code> for details.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>S. L. R. Ellison <a href="mailto:s.ellison@lgc.co.uk">s.ellison@lgc.co.uk</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>JCGM 100 (2008) <em>Evaluation of measurement data - Guide to the expression
+of uncertainty in measurement</em>. <a href="http://www.bipm.org/utils/common/documents/jcgm/JCGM_100_2008_E.pdf">http://www.bipm.org/utils/common/documents/jcgm/JCGM_100_2008_E.pdf</a>. 
+(JCGM 100:2008 is a public domain copy of ISO/IEC <em>Guide to the expression
+of uncertainty in measurement</em> (1995) ). 
+</p>
+<p>Kragten, J. (1994) Calculating standard deviations and confidence intervals with 
+a universally applicable spreadsheet technique, Analyst, <b>119</b>, 2161-2166.
+</p>
+<p>Ellison, S. L. R. (2005) Including correlation effects in an improved spreadsheet 
+calculation of combined standard uncertainties, Accred. Qual. Assur. <b>10</b>, 338-343.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>uncert</code>,  <code>uncert-class</code>,   <code>uncertMC-class</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+  expr &lt;- expression(a+b*2+c*3+d/2)
+  x &lt;- list(a=1, b=3, c=2, d=11)
+  u &lt;- lapply(x, function(x) x/10)
+  u.MC&lt;-uncertMC(expr, x, u, distrib=rep("norm", 4), method="MC")
+  print(u.MC, simplify=FALSE)
+
+  #An example with correlation
+  u.cor&lt;-diag(1,4)
+  u.cor[3,4]&lt;-u.cor[4,3]&lt;-0.5
+  u.formc.MC&lt;-uncertMC(~a+b*2+c*3+d/2, x, u, cor=u.cor, keep.x=TRUE)
+  u.formc.MC
+
+  #A non-linear example
+  expr &lt;- expression(a/(b-c))
+  x &lt;- list(a=1, b=3, c=2)
+  u &lt;- lapply(x, function(x) x/20)
+  set.seed(403)
+  u.invexpr&lt;-uncertMC(expr, x, u, distrib=rep("norm", 3), B=999, keep.x=TRUE )
+  u.invexpr
+
+  #Look at effect of vectorize
+  system.time(uncertMC(expr, x, u, distrib=rep("norm", 3), B=9999, keep.x=TRUE ))
+  system.time(uncertMC(expr, x, u, distrib=rep("norm", 3), B=9999, keep.x=TRUE, vectorize=FALSE))
+  
+</code></pre>
+
+
+</div>

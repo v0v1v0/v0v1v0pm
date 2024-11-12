@@ -1,0 +1,370 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>update.mexhaz</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Update of a mexhaz model</h2>
+
+<h3>Description</h3>
+
+<p>Function allowing the user to update an existing mexhaz model. All the
+arguments of the model can be updated. If the argument 'init' is not
+provided, the function uses the estimated values of the existing model
+as starting values for the corresponding parameters of the new model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'mexhaz'
+update(object, formula, data, expected = NULL, base = NULL, 
+degree = 3, knots = NULL, bound = NULL, n.gleg = 20, init = NULL,
+random = NULL, n.aghq = 10, fnoptim = c("nlm", "optim"), 
+verbose = 0, method = "Nelder-Mead", iterlim = 10000, numHess = FALSE,
+print.level = 1, exactGradHess = TRUE, gradtol = 
+ifelse(exactGradHess, 1e-8, 1e-6), envir = parent.frame(), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>an object of class <code>mexhaz</code>, corresponding to a survival model fitted with the <code>mexhaz</code> function.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+
+<p>a formula object, with the response on the left of the <code>~</code>
+operator, and the linear predictor on the right. The response must be of
+the form <code>Surv(time, event)</code> for right censored data or
+<code>Surv(time, time2, event)</code> for counting process style data. The linear predictor accepts a
+special instruction <code>nph()</code> for specifying variables for which a
+time-dependent effect should be modelled (if several variables are
+modelled with time-dependent effects, separate these variables inside the
+<code>nph()</code> instruction with a <code>+</code> sign).
+</p>
+<p>In case <code>time</code> takes the value 0 for some observations when data
+are entered in the right censored style, it is
+assumed that these observations refer to events (or censoring) that occurred
+on the first day of follow-up. Consequently, a value of 1/730.5 (half a
+day) is substituted in order to make computations possible. However, it
+should be stressed that this is just a convention and that it does not
+make much sense if the time scale is not expressed in years. We therefore
+advise the analyst to deal with 0 time values during the dataset preparation stage.
+</p>
+<p>See <code>update.formula</code> for more details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>a <code>data.frame</code> containing the variables referred to in the <code>formula</code>,
+as well as in the <code>expected</code> and <code>random</code> arguments if these arguments are used.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expected</code></td>
+<td>
+
+<p>name of the variable (must be given in quotes) representing the
+population (i.e., expected) hazard. By default, <code>expected=NULL</code>, which
+means that the function estimates the overall hazard (and not the excess
+hazard).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>base</code></td>
+<td>
+<p> functional form that should be used to model the baseline
+hazard. Selection can be made between the following options:
+<code>"weibull"</code> for a Weibull hazard, <code>"exp.bs"</code> for a hazard
+described by the exponential of a B-spline (only B-splines of degree 1,
+2 or 3 are accepted), <code>"exp.ns"</code> for a hazard described by the
+exponential of a restricted cubic B-spline (also called 'natural
+spline'), <code>"pw.cst"</code> for a piecewise constant hazard. By default,
+<code>base=NULL</code>.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>degree</code></td>
+<td>
+
+<p>if <code>base="exp.bs"</code>, <code>degree</code> represents the
+degree of the B-spline used. Only integer values between 1 and 3 are
+accepted, and 3 is the default.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>knots</code></td>
+<td>
+
+<p>if <code>base="exp.bs"</code> or <code>"exp.ns"</code>, <code>knots</code> is the vector of interior knots of
+the spline. If <code>base="pw.cst"</code>, <code>knots</code> is the vector
+defining the endpoints of the time intervals on which the hazard is
+assumed to be constant. By default, <code>knots=NULL</code> (that is, it
+produces a B-spline with no interior knots if <code>base="exp.bs"</code>, a
+linear B-spline with no interior knots if <code>base="exp.ns"</code>, or a
+constant hazard over the whole follow-up period if
+<code>base="pw.cst"</code>).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bound</code></td>
+<td>
+
+<p>If <code>base="exp.bs"</code> or <code>base="exp.ns"</code>, computation of the
+B-spline basis requires that boundary knots be given. The <code>bound</code>
+argument allows the user to specify these boundary knots. If
+<code>base="exp.bs"</code>, the interval defined by the boundary knots must
+at least include the interval c(0,max(time)) (otherwise, there
+could be problems with ill-conditioned bases). If
+<code>base="exp.ns"</code>, the boundary knots correspond to the knots
+beyond which the spline is contrained to be linear (in that case, the
+boundary knots can be values contained in c(0,max(time))). By
+default, the boundary knots are set to
+c(0,max(time)).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.gleg</code></td>
+<td>
+
+<p>if <code>base="exp.bs"</code> and degree is equal to 2 or 3, or if
+<code>base="exp.ns"</code>, the cumulative
+hazard is computed via Gauss-Legendre quadrature and <code>n.gleg</code> is the number
+of quadrature nodes to be used to compute the cumulative hazard. By
+default, <code>n.gleg=20</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+<p>vector of initial values. By default <code>init=NULL</code>
+and the initial values are internally set to the following values:
+</p>
+<p>for the baseline hazard:
+</p>
+<p>if <code>exactGradHess=TRUE</code> (except for the excess hazard random
+effect model for which this argument is ignored), the intercept is
+set to 0.5*log(Number of events/Person-years of observation) and all
+other parameters set to 0. In case of failed convergence, several
+trials are run with an adaptation of the value of the intercept.
+</p>
+<p>if <code>exactGradHess=FALSE</code>, the following values are used:
+</p>
+<p>- if <code>base="weibull"</code>, the scale and shape parameters are set
+to 0.1;
+</p>
+<p>- if <code>base="exp.bs"</code>, the parameters of the B-spline are all
+set to -1;
+</p>
+<p>- if <code>base="exp.ns"</code>, the parameters of the restricted cubic B-spline are all
+set to -1;
+</p>
+<p>- if <code>base="pw.cst"</code>, the logarithm of the piecewise-constant
+hazards are set to -1;
+</p>
+<p>the parameters describing the effects of the covariates are all set
+to 0;
+</p>
+<p>the parameter representing the standard deviation of the random
+effect is set to 0.1. (if <code>exactGradHess=TRUE</code>, several trials are run with an adaptation of the value in case of failed convergence).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random</code></td>
+<td>
+
+<p>name of the variable to be entered as a random effect (must be given
+between quotes), representing the cluster membership. By default,
+<code>random=NULL</code> which means that the function fits a fixed effects model.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.aghq</code></td>
+<td>
+
+<p>number of quadrature points used for estimating the
+cluster-specific marginal likelihoods by adaptive Gauss-Hermite
+quadrature. By default, <code>n.aghq=10</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fnoptim</code></td>
+<td>
+
+<p>name of the R optimisation procedure used to maximise the
+likelihood. Selection can be made between <code>"nlm"</code> (by default) and <code>"optim"</code>. Note: if <code>exactGradHess=TRUE</code>, this
+argument will be ignored (<code>fnoptim</code> will be set automatically to <code>"nlm"</code>).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+
+<p>integer parameter representing the frequency at which the current state
+of the optimisation process is displayed. Internally, an 'evaluation' is
+defined as an estimation of the log-likelihood for a given vector of
+parameters. This means that the number of evaluations is increased each
+time the optimisation procedure updates the value of any of the
+parameters to be estimated. If <code>verbose=n</code> (with <code>n</code> an integer),
+the function will display the current values of the parameters, the
+log-likelihood and the time elapsed every <code>n</code> evaluations. If
+<code>verbose=0</code>, nothing is displayed.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>if <code>fnoptim="optim"</code>, <code>method</code> represents the optimisation
+method to be used by <code>optim</code>. By
+default, <code>method="Nelder-Mead"</code>. This parameter is not used if <code>fnoptim="nlm"</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iterlim</code></td>
+<td>
+
+<p>if <code>fnoptim="nlm"</code>, <code>iterlim</code> represents the maximum number of
+iterations before the <code>nlm</code> optimisation
+procedure is terminated. By default, <code>iterlim</code> is set to
+10000. This parameter is not used if <code>fnoptim="optim"</code> (in this
+case, the maximum number of iterations must be given as part of a
+list of control parameters via the <code>control</code> argument: see the
+help page of <code>optim</code> for further details).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>numHess</code></td>
+<td>
+
+<p>logical value allowing the user to choose between the Hessian returned
+by the optimization algorithm (default) or the Hessian estimated by
+the <code>hessian</code> function from the <code>numDeriv</code> package. The
+latter might be more accurate but its estimation is more
+time-consuming. We suggest to use the default Hessian estimation
+procedure during model building and estimate the <code>numDeriv</code>-based
+Hessian only on the final model. Note: if <code>exactGradHess=TRUE</code>, this argument is ignored.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>print.level</code></td>
+<td>
+
+<p>this argument is only used if <code>fnoptim="nlm"</code>. It determines the
+level of printing during the optimisation process. The default value
+(for the <code>mexhaz</code> function) is set to '1' which means that
+details on the initial and final step of the optimisation procedure
+are printed (see the help page of <code>nlm</code> for further details).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exactGradHess</code></td>
+<td>
+<p> logical value allowing the user to decide
+whether maximisation of the likelihood should be based on the
+analytic gradient and Hessian computed internally (default,
+corresponding to <code>exactGradHess=TRUE</code>).  In that case,
+optimisation is performed with the <code>nlm</code> function. Note: even
+if set to <code>TRUE</code>, this argument is ignored when the user wants
+to fit an excess hazard model including a random effect because in
+that case, there is no simple way to obtain the analytic gradient
+and Hessian.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gradtol</code></td>
+<td>
+
+<p>this argument is only used if <code>fnoptim="nlm"</code>. It corresponds
+to the tolerance at which the scaled gradient is considered close
+enough to zero to terminate the algorithm. The default value depends
+on the value of the argument <code>exactGradHess</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>envir</code></td>
+<td>
+<p>environment in which the objects' names given as arguments to the updated
+model are to be found.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>represents additional parameters directly passed to <code>nlm</code> or
+<code>optim</code> to control the optimisation process.
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object of class <code>mexhaz</code>. See <code>mexhaz</code> for more details.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Hadrien Charvat, Aurelien Belot
+</p>
+
+
+<h3>References</h3>
+
+<p>Charvat H, Remontet L, Bossard N, Roche L, Dejardin O,
+Rachet B, Launoy G, Belot A; CENSUR Working Survival Group. A
+multilevel excess hazard model to estimate net survival on
+hierarchical data allowing for non-linear and non-proportional effects
+of covariates. Stat Med 2016;35:3066-3084 (doi: 10.1002/sim.6881)</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mexhaz</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data(simdatn1)
+
+## Fit of a mixed-effect excess hazard model, with the baseline hazard
+## described by a Weibull distribution (without covariables)
+
+Mod_weib &lt;- mexhaz(formula=Surv(time=timesurv,
+event=vstat)~1, data=simdatn1, base="weibull", verbose=0)
+
+## Add an effect of gender
+Mod_weib_2 &lt;- update(Mod_weib, formula=~.+IsexH)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,153 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>eval_joint_prior</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Evaluate the joint variance prior</h2>
+
+<h3>Description</h3>
+
+<p>Function for evaluating the joint variance prior stored in <code>prior_obj</code>. To compute the joint prior, the functions needs
+to know the transformation from the total variance/variance proportion scale to log-variance scale.
+This is computed before inference, but is not stored in the <code>mmp_prior</code>-object.
+To avoid having to recompute this for every evaluation and thus improve the speed, we make a condensed data object with
+the function make_eval_prior_data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">eval_joint_prior(theta, prior_data)
+
+make_eval_prior_data(prior_obj)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>theta</code></td>
+<td>
+<p>Vector of log variances. The order of the log variances is
+the same as specified in the formula, with the residual variance at the end for a Gaussian likelihood. To be sure,
+you can use get_parameter_order to check the order.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior_data</code></td>
+<td>
+<p>An object from make_eval_prior_data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior_obj</code></td>
+<td>
+<p>Object of class <code>mmp_prior</code>, see make_prior.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Note that a Jeffreys' prior is improper and sampling with the prior only will not work when it
+is used. For sampling from the prior (for example for debugging), use a proper prior for all parameters instead.
+</p>
+<p>The
+<code>make_eval_prior_data</code> function is used to create a condensed version of the prior object from
+<code>make_prior</code>, that only contains what is needed to compute the joint prior. Since the HD prior is chosen on
+total variances and variance proportions, some additional information is needed
+to compute the Jacobian for the joint prior. To improve the speed, we do this once before evaluating the prior.
+</p>
+<p>Expert option: <code>make_eval_prior_data</code> can also be used to extract the prior to be used with 'regular' INLA. See
+examples for how this can be done.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Logarithm of the prior density.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+ex_model &lt;- makemyprior_example_model()
+get_parameter_order(ex_model) # a, b, eps
+prior_data &lt;- make_eval_prior_data(ex_model)
+eval_joint_prior(c(0, 0, 0), prior_data)
+eval_joint_prior(c(-1, 0, 1), prior_data)
+
+# a model with only 2 variance parameters
+if (interactive()){
+
+  data &lt;- list(
+    a = rep(1:10, each = 10)
+  )
+  set.seed(1); data$y &lt;- rnorm(10, 0, 0.4)[data$a] + rnorm(100, 0, 1)
+
+  # random intercept model
+  ex_model2 &lt;- make_prior(y ~ mc(a), data, family = "gaussian",
+                          prior = list(tree = "s2 = (a, eps)",
+                                       w = list(s2 = list(prior = "pc0", param = 0.25)),
+                                       V = list(s2 = list(prior = "pc", param = c(3, 0.05)))),
+                          intercept_prior = c(0, 1000))
+
+  prior_data2 &lt;- make_eval_prior_data(ex_model2)
+  # evaluating the prior in a grid
+  theta_a &lt;- seq(-8, 4, 0.1)
+  theta_eps &lt;- seq(-8, 4, 0.1)
+  res &lt;- matrix(nrow = 0, ncol = 3)
+  for (ind in 1:length(theta_a)){
+    for (jnd in 1:length(theta_eps)){
+      res &lt;- rbind(res, c(theta_a[ind], theta_eps[jnd],
+                          eval_joint_prior(c(theta_a[ind], theta_eps[jnd]), prior_data2)))
+    }
+  }
+
+  # graph showing the prior
+  if (requireNamespace("ggplot2")){
+    res2 &lt;- as.data.frame(res)
+    names(res2) &lt;- c("x", "y", "z")
+    # Note from the "exp(z)" that we use the posterior, and not log posterior, in this plot
+    ggplot(res2, aes(x = x, y = y, z = exp(z), fill = exp(z))) +
+      geom_raster() +
+      geom_contour(color = "black") +
+      scale_fill_viridis_c(option = "E") +
+      xlab("Log variance of 'a'") +
+      ylab("Log residual variance") +
+      labs(fill = "Density") +
+      theme_bw()
+  }
+
+}
+
+## Not run: 
+
+# How an HD prior can be computed with \code{makemyprior}, and then sent to regular INLA 
+# (expert option).
+# Note the use of the hidden \code{make_jpr}-function.
+# Also note that the order of the parameters must be the same as in the call to \code{make_prior}.
+# The residual variance is put in the correct place by \code{make_jpr}.
+data &lt;- list(
+  a = rep(1:10, each = 100),
+  b = rep(1:100, times = 10)
+)
+set.seed(1); data$y &lt;- rnorm(100, 0, 0.4)[data$a] + rnorm(100, 0, 0.6)[data$b] + rnorm(1000, 0, 1)
+prior &lt;- make_prior(y ~ mc(a) + mc(b), data, family = "gaussian",
+                    prior = list(tree = "s1 = (a, b); s2 = (s1, eps)",
+                                 w = list(s2 = list(prior = "pc0", param = 0.25)),
+                                 V = list(s2 = list(prior = "pc", param = c(3, 0.05)))),
+                    intercept_prior = c(0, 1000))
+jpr_dat &lt;- make_eval_prior_data(prior)
+res &lt;- inla(y ~ f(a) + f(b),
+            data = data,
+            control.fixed = list(prec.intercept = 1/1000^2),
+            control.expert = list(jp = makemyprior:::make_jpr(jpr_dat)))
+
+## End(Not run)
+</code></pre>
+
+
+</div>

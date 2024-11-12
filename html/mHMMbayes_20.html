@@ -1,0 +1,169 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>var_to_logvar</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Transform the between-subject variance in the positive scale to the
+logvariance in the logarithmic scale</h2>
+
+<h3>Description</h3>
+
+<p><code>var_to_logvar</code> returns the desired between-subject logvariance in the
+logarithmic scale corresponding to the between-subject variance in the
+(real) positive scale specified as input. The logvariance is used as the
+dispersion parameter in the lognormal distribution adopted as prior for
+the subject-specific Poisson means in the implementation of <code>mHMM</code>
+and <code>sim_mHMM</code> of <code>mHMMbayes</code> for count
+distributed data. It takes as inputs the group-level Poisson means
+<code>emiss_mu</code> and the desired between-subject variance <code>var_emiss</code>,
+both in the (real) positive scale.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">var_to_logvar(gen, emiss_mu, var_emiss, byrow = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>gen</code></td>
+<td>
+<p>List containing the following elements denoting the general model
+properties:
+</p>
+
+<ul>
+<li>
+<p><code>m</code>: numeric vector with length 1 denoting the number
+of hidden states
+</p>
+</li>
+<li>
+<p><code>n_dep</code>: numeric vector with length 1 denoting the
+number of dependent variables</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>emiss_mu</code></td>
+<td>
+<p>A list containing <code>n_dep</code> matrices, i.e., one list for
+each dependent variable <code>k</code>. Each matrix contains the group-level
+means of the lognormal emission distributions in each of the
+states in the natural (positive real numbers) scale. Hence, each
+matrix consists of either 1 row (when not including covariates in the
+model) and <code>m</code> columns (see <code>emiss_mu0</code> in
+<code>prior_emiss_count</code>), or <code>m</code> rows and 1 column
+(when not including covariates in the model; see <code>emiss_distr</code> in
+<code>sim_mHMM</code>), denoting the mean of state
+<em>i</em> (column or row <em>i</em>) of the lognormal distribution used as
+prior for the Poisson emissions. By default it is assumed that the
+matrices contain 1 row and <code>m</code> columns, as specified for
+<code>emiss_mu0</code> in <code>prior_emiss_count</code> (see argument
+<code>byrow</code>). If <code>emiss_mu</code> were to be specified using <code>m</code> rows
+and 1 column as for <code>emiss_distr</code> in <code>sim_mHMM</code>, then set
+the argument <code>byrow = FALSE</code>.
+</p>
+<p>Note: in every case the means should be specified in the natural
+(real positive) scale.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var_emiss</code></td>
+<td>
+<p>A list containing <code>n_dep</code> elements corresponding to
+each of the dependent variables <code>k</code>, where each element <code>k</code> is a
+vector with length <code>m</code> denoting the amount of variance between the
+subject (emission distribution) means in the natural (positive real
+numbers) scale. It follows a similar specification as <code>emiss_V</code> in
+<code>prior_emiss_count</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>byrow</code></td>
+<td>
+<p>A logical scalar indicating whether the emission means are
+specified in the first row (<code>byrow = TRUE</code>) or the first column
+(<code>byrow = FALSE</code>) of the <code>n_dep</code> matrices listed in
+<code>emiss_mu</code>. Use <code>byrow = TRUE</code> if <code>emiss_mu</code> is entered
+as <code>emiss_mu0</code> in <code>prior_emiss_count</code>, and
+<code>byrow = FALSE</code> if <code>emiss_mu</code> is entered as <code>emiss_distr</code>
+in <code>sim_mHMM</code>. By default, <code>byrow = TRUE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>var_to_logvar</code> Returns a list of <code>n_dep</code> numeric vectors
+of <code>m</code> elements denoting the state <code>i</code>-specific logvariance
+(between-subject variance in the logarithmic scale) for the
+<code>k</code>-dependent variable used as dispersion parameter in the lognormal
+prior for the Poisson emission distribution.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mHMM</code> for fitting the multilevel hidden Markov model,
+and <code>sim_mHMM</code> for simulating data from a multilevel hidden
+Markov model.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">###### Example on package data
+
+
+## Example: specifying count priors manually using both positive and log scale:
+
+# Define general parameters:
+m       &lt;- 3        # Number of hidden states
+n_dep   &lt;- 2        # Number of dependent variables
+
+# Specify priors manually on the positive scale for emuss_mu0 and emiss_V:
+manual_prior_emiss_1 &lt;- prior_emiss_count(
+  gen = list(m = m, n_dep = n_dep),
+  emiss_mu0 = list(matrix(c(30, 70, 170), nrow = 1),
+                   matrix(c(7, 8, 18), nrow = 1)),
+  emiss_K0 = list(1, 1),
+  emiss_V =  list(c(16,25,32),
+                  rep(4, m)),
+  emiss_nu = list(0.1, 0.1),
+  log_scale = FALSE)
+
+# Define logmu and logvar:
+logmu &lt;-  list(matrix(log(c(30, 70, 170)), nrow = 1),
+               matrix(log(c(7, 8, 18)), nrow = 1))
+
+logvar &lt;- var_to_logvar(gen = list(m = m, n_dep = n_dep),
+                        emiss_mu = list(matrix(c(30, 70, 170), nrow = 1),
+                                        matrix(c(7, 8, 18), nrow = 1)),
+                        var_emiss = list(c(16,25,32),
+                                         rep(4, m)),
+                        byrow = TRUE)
+
+# Specify priors manually on the log scale for emiss_mu0 and emiss_V:
+manual_prior_emiss_2 &lt;- prior_emiss_count(
+  gen = list(m = m, n_dep = n_dep),
+  emiss_mu0 = logmu,
+  emiss_K0 = list(1, 1),
+  emiss_V =  logvar,
+  emiss_nu = list(0.1, 0.1),
+  log_scale = TRUE)
+
+# Check whether they are identical:
+identical(manual_prior_emiss_1, manual_prior_emiss_2)
+
+
+
+</code></pre>
+
+
+</div>

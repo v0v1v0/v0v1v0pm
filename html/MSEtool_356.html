@@ -1,0 +1,118 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>tune_MP</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Tune MP</h2>
+
+<h3>Description</h3>
+
+<p>A generic function that uses optimize to tune a single MP parameter to minimize a
+user-specified function (e.g. squared distance from a mean yield, PGK = 60%, etc.)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">tune_MP(Hist_list, MP, MP_parname, interval, minfunc, tol = 0.01, parallel = F)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Hist_list</code></td>
+<td>
+<p>A list of objects of class Hist - created by runMSE(..., Hist=T)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MP</code></td>
+<td>
+<p>A character string that is the name of the MP to be tuned</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MP_parname</code></td>
+<td>
+<p>A character string that is the argument (parameter) of the MP to be tuned</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>interval</code></td>
+<td>
+<p>A numeric vector two positions long that is the c(lower.bound, upper.bound)
+for the parameter to be tuned (MP_parname)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>minfunc</code></td>
+<td>
+<p>A function to be minimized (e.g. the squared difference between mean yield
+obtained by the MP and a desired yield) that takes a list of MSE objects as its first argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>A positive numerical value that is the tolerance for the optimize procedure (default is 1E-2)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>Logical: should the MSE projections (over the Hist objects in Hist_list) be calculated in parallel?</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A function of class MP with argument MP_parname tuned by optim to minimize minfunc
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>T. Carruthers
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+testOM@cpars$Data = new('Data')
+testOM@cpars$Data@MPrec=2000
+Hist_1 = runMSE(testOM,Hist=T)
+testOM2 = testOM
+testOM2@D = testOM@D / 2
+Hist_2 = runMSE(testOM2,Hist=T)
+
+myMP = function(x, Data, reps=1, rate = 1){
+  CpI = mean(Data@Cat[x,46:50]) / mean(Data@Ind[x,46:50],na.rm=T)
+  I = Data@Ind[x,]
+  recI = mean(I[length(I)-((5-1):0)])
+  Rec=new('Rec')
+  Rec@TAC = recI * CpI * rate
+  Rec
+}
+class(myMP) = "MP"
+
+C1000 = function(MSE_list){
+  mucat = mean(sapply(MSE_list,function(X){mean(X@Catch)}))
+  cat(paste0("mean catch = ",round(mucat,3),"\n"))
+  (mucat - 1000)^2 # try to match 1,250t mean yield
+}
+
+myMP_t = tune_MP(list(Hist_1,Hist_2), MP = "myMP", MP_parname = "rate", 
+                 interval = c(1,1.5), minfunc = C1000, tol=1E-3, parallel =F)
+
+formals(myMP_t)$rate
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

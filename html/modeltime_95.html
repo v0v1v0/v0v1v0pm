@@ -1,0 +1,162 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modeltime_residuals_test</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Apply Statistical Tests to Residuals</h2>
+
+<h3>Description</h3>
+
+<p>This is a convenience function to calculate some statistical tests on the residuals models. Currently, the
+following statistics are calculated: the shapiro.test to check the normality of the residuals, the box-pierce
+and ljung-box tests and the durbin watson test to check the autocorrelation of the residuals. In all cases
+the p-values are returned.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modeltime_residuals_test(object, new_data = NULL, lag = 1, fitdf = 0, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A <code>tibble</code> extracted from modeltime::modeltime_residuals().</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>new_data</code></td>
+<td>
+<p>A <code>tibble</code> to predict and calculate residuals on.
+If provided, overrides any calibration data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lag</code></td>
+<td>
+<p>The statistic will be based on lag autocorrelation coefficients. Default: 1
+(Applies to Box-Pierce, Ljung-Box, and Durbin-Watson Tests)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fitdf</code></td>
+<td>
+<p>Number of degrees of freedom to be subtracted. Default: 0
+(Applies Box-Pierce and Ljung-Box Tests)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Not currently used</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><strong>Shapiro-Wilk Test</strong>
+</p>
+<p>The Shapiro-Wilk tests the Normality of the residuals.
+The Null Hypothesis is that the residuals are normally distributed.
+A low P-Value below a given significance level indicates the values are NOT Normally Distributed.
+</p>
+<p>If the <strong>p-value &gt; 0.05 (good)</strong>, this implies that the distribution
+of the data are not significantly different from normal distribution.
+In other words, we can assume the normality.
+</p>
+<p><strong>Box-Pierce and Ljung-Box Tests Tests</strong>
+</p>
+<p>The Ljung-Box and Box-Pierce tests are methods that test for the absense
+of autocorrelation in residuals. A low p-value below a given significance level
+indicates the values are autocorrelated.
+</p>
+<p>If the <strong>p-value &gt; 0.05 (good)</strong>, this implies that the residuals
+of the data are are independent.
+In other words, we can assume the residuals are not autocorrelated.
+</p>
+<p>For more information about the parameters associated with the Box Pierce and Ljung Box tests check
+?Box.Test
+</p>
+<p><strong>Durbin-Watson Test</strong>
+</p>
+<p>The Durbin-Watson test is a method that tests for the absense of autocorrelation in residuals.
+The Durbin Watson test reports a test statistic, with a value from 0 to 4, where:
+</p>
+
+<ul>
+<li> <p><strong>2 is no autocorrelation (good)</strong>
+</p>
+</li>
+<li>
+<p> From 0 to &lt;2 is positive autocorrelation (common in time series data)
+</p>
+</li>
+<li>
+<p> From &gt;2 to 4 is negative autocorrelation (less common in time series data)
+</p>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>A tibble with with the p-values of the calculated statistical tests.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>stats::shapiro.test()</code>, <code>stats::Box.test()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(dplyr)
+library(timetk)
+library(parsnip)
+library(rsample)
+
+# Data
+m750 &lt;- m4_monthly %&gt;% filter(id == "M750")
+
+# Split Data 80/20
+splits &lt;- initial_time_split(m750, prop = 0.9)
+
+# --- MODELS ---
+
+# Model 1: prophet ----
+model_fit_prophet &lt;- prophet_reg() %&gt;%
+    set_engine(engine = "prophet") %&gt;%
+    fit(value ~ date, data = training(splits))
+
+
+# ---- MODELTIME TABLE ----
+
+models_tbl &lt;- modeltime_table(
+    model_fit_prophet
+)
+
+# ---- RESIDUALS ----
+
+# In-Sample
+models_tbl %&gt;%
+    modeltime_calibrate(new_data = training(splits)) %&gt;%
+    modeltime_residuals() %&gt;%
+    modeltime_residuals_test()
+
+# Out-of-Sample
+models_tbl %&gt;%
+    modeltime_calibrate(new_data = testing(splits)) %&gt;%
+    modeltime_residuals() %&gt;%
+    modeltime_residuals_test()
+
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,660 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>matchit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Matching for Causal Inference</h2>
+
+<h3>Description</h3>
+
+<p><code>matchit()</code> is the main function of <em>MatchIt</em> and performs
+pairing, subset selection, and subclassification with the aim of creating
+treatment and control groups balanced on included covariates. <em>MatchIt</em>
+implements the suggestions of Ho, Imai, King, and Stuart (2007) for
+improving parametric statistical models by preprocessing data with
+nonparametric matching methods.
+</p>
+<p>This page documents the overall use of <code>matchit()</code>, but for specifics
+of how <code>matchit()</code> works with individual matching methods, see the
+individual pages linked in the Details section below.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">matchit(
+  formula,
+  data = NULL,
+  method = "nearest",
+  distance = "glm",
+  link = "logit",
+  distance.options = list(),
+  estimand = "ATT",
+  exact = NULL,
+  mahvars = NULL,
+  antiexact = NULL,
+  discard = "none",
+  reestimate = FALSE,
+  s.weights = NULL,
+  replace = FALSE,
+  m.order = NULL,
+  caliper = NULL,
+  std.caliper = TRUE,
+  ratio = 1,
+  verbose = FALSE,
+  include.obj = FALSE,
+  ...
+)
+
+## S3 method for class 'matchit'
+print(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a two-sided <code>formula</code> object containing the treatment and
+covariates to be used in creating the distance measure used in the matching.
+This formula will be supplied to the functions that estimate the distance
+measure. The formula should be specified as <code>A ~ X1 + X2 + ...</code> where
+<code>A</code> represents the treatment variable and <code>X1</code> and <code>X2</code> are
+covariates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a data frame containing the variables named in <code>formula</code>
+and possible other arguments. If not found in <code>data</code>, the variables
+will be sought in the environment.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>the matching method to be used. The allowed methods are
+<code>"nearest"</code> for nearest neighbor matching (on
+the propensity score by default), <code>"optimal"</code>
+for optimal pair matching, <code>"full"</code> for optimal
+full matching, <code>"genetic"</code> for genetic
+matching, <code>"cem"</code> for coarsened exact matching,
+<code>"exact"</code> for exact matching,
+<code>"cardinality"</code> for cardinality and
+template matching, and <code>"subclass"</code> for
+subclassification. When set to <code>NULL</code>, no matching will occur, but
+propensity score estimation and common support restrictions will still occur
+if requested. See the linked pages for each method for more details on what
+these methods do, how the arguments below are used by each on, and what
+additional arguments are allowed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distance</code></td>
+<td>
+<p>the distance measure to be used. Can be either the name of a
+method of estimating propensity scores (e.g., <code>"glm"</code>), the name of a
+method of computing a distance matrix from the covariates (e.g.,
+<code>"mahalanobis"</code>), a vector of already-computed distance measures, or a
+matrix of pairwise distances. See <code>distance</code> for allowable
+options. The default is <code>"glm"</code> for propensity scores estimated with
+logistic regression using <code>glm()</code>. Ignored for some methods; see individual
+methods pages for information on whether and how the distance measure is
+used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>link</code></td>
+<td>
+<p>when <code>distance</code> is specified as a string, an additional
+argument controlling the link function used in estimating the distance
+measure. Allowable options depend on the specific <code>distance</code> value
+specified. See <code>distance</code> for allowable options with each
+option. The default is <code>"logit"</code>, which, along with <code>distance = "glm"</code>, identifies the default measure as logistic regression propensity
+scores.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distance.options</code></td>
+<td>
+<p>a named list containing additional arguments
+supplied to the function that estimates the distance measure as determined
+by the argument to <code>distance</code>. See distance for an
+example of its use.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimand</code></td>
+<td>
+<p>a string containing the name of the target estimand desired.
+Can be one of <code>"ATT"</code> or <code>"ATC"</code>. Some methods accept <code>"ATE"</code>
+as well. Default is <code>"ATT"</code>. See Details and the individual methods
+pages for information on how this argument is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exact</code></td>
+<td>
+<p>for methods that allow it, for which variables exact matching
+should take place. Can be specified as a string containing the names of
+variables in <code>data</code> to be used or a one-sided formula with the desired
+variables on the right-hand side (e.g., <code>~ X3 + X4</code>). See the
+individual methods pages for information on whether and how this argument is
+used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mahvars</code></td>
+<td>
+<p>for methods that allow it, on which variables Mahalanobis
+distance matching should take place when <code>distance</code> corresponds to
+propensity scores. Usually used to perform Mahalanobis distance matching
+within propensity score calipers, where the propensity scores are computed
+using <code>formula</code> and <code>distance</code>. Can be specified as a string
+containing the names of variables in <code>data</code> to be used or a one-sided
+formula with the desired variables on the right-hand side (e.g., <code>~ X3 + X4</code>). See the individual methods pages for information on whether and how
+this argument is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>antiexact</code></td>
+<td>
+<p>for methods that allow it, for which variables anti-exact
+matching should take place. Anti-exact matching ensures paired individuals
+do not have the same value of the anti-exact matching variable(s). Can be
+specified as a string containing the names of variables in <code>data</code> to be
+used or a one-sided formula with the desired variables on the right-hand
+side (e.g., <code>~ X3 + X4</code>). See the individual methods pages for
+information on whether and how this argument is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>discard</code></td>
+<td>
+<p>a string containing a method for discarding units outside a
+region of common support. When a propensity score is estimated or supplied
+to <code>distance</code> as a vector, the options are <code>"none"</code>,
+<code>"treated"</code>, <code>"control"</code>, or <code>"both"</code>. For <code>"none"</code>, no
+units are discarded for common support. Otherwise, units whose propensity
+scores fall outside the corresponding region are discarded. Can also be a
+<code>logical</code> vector where <code>TRUE</code> indicates the unit is to be
+discarded. Default is <code>"none"</code> for no common support restriction. See
+Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reestimate</code></td>
+<td>
+<p>if <code>discard</code> is not <code>"none"</code> and propensity
+scores are estimated, whether to re-estimate the propensity scores in the
+remaining sample. Default is <code>FALSE</code> to use the propensity scores
+estimated in the original sample.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>s.weights</code></td>
+<td>
+<p>an optional numeric vector of sampling weights to be
+incorporated into propensity score models and balance statistics. Can also
+be specified as a string containing the name of variable in <code>data</code> to
+be used or a one-sided formula with the variable on the right-hand side
+(e.g., <code>~ SW</code>). Not all propensity score models accept sampling
+weights; see distance for information on which do and do not,
+and see <code>vignette("sampling-weights")</code> for details on how to use
+sampling weights in a matching analysis.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>replace</code></td>
+<td>
+<p>for methods that allow it, whether matching should be done
+with replacement (<code>TRUE</code>), where control units are allowed to be
+matched to several treated units, or without replacement (<code>FALSE</code>),
+where control units can only be matched to one treated unit each. See the
+individual methods pages for information on whether and how this argument is
+used. Default is <code>FALSE</code> for matching without replacement.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>m.order</code></td>
+<td>
+<p>for methods that allow it, the order that the matching takes
+place. Allowable options depend on the matching method. The default of
+<code>NULL</code> corresponds to <code>"largest"</code> when a propensity score is
+estimated or supplied as a vector and <code>"data"</code> otherwise.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>caliper</code></td>
+<td>
+<p>for methods that allow it, the width(s) of the caliper(s) to
+use in matching. Should be a numeric vector with each value named according
+to the variable to which the caliper applies. To apply to the distance
+measure, the value should be unnamed. See the individual methods pages for
+information on whether and how this argument is used. The default is
+<code>NULL</code> for no caliper.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>std.caliper</code></td>
+<td>
+<p><code>logical</code>; when a caliper is specified, whether the
+the caliper is in standard deviation units (<code>TRUE</code>) or raw units
+(<code>FALSE</code>). Can either be of length 1, applying to all calipers, or of
+length equal to the length of <code>caliper</code>. Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ratio</code></td>
+<td>
+<p>for methods that allow it, how many control units should be
+matched to each treated unit in k:1 matching. Should be a single integer
+value. See the individual methods pages for information on whether and how
+this argument is used. The default is 1 for 1:1 matching.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p><code>logical</code>; whether information about the matching
+process should be printed to the console. What is printed depends on the
+matching method. Default is <code>FALSE</code> for no printing other than
+warnings.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>include.obj</code></td>
+<td>
+<p><code>logical</code>; whether to include any objects created in
+the matching process in the output, i.e., by the functions from other
+packages <code>matchit()</code> calls. What is included depends on the matching
+method. Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments passed to the functions used in the
+matching process. See the individual methods pages for information on what
+additional arguments are allowed for each method. Ignored for <code>print()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a <code>matchit</code> object.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Details for the various matching methods can be found at the following help
+pages:
+</p>
+
+<ul>
+<li> <p><code>method_nearest</code> for nearest neighbor matching
+</p>
+</li>
+<li> <p><code>method_optimal</code> for optimal pair matching
+</p>
+</li>
+<li> <p><code>method_full</code> for optimal full matching
+</p>
+</li>
+<li> <p><code>method_genetic</code> for genetic matching
+</p>
+</li>
+<li> <p><code>method_cem</code> for coarsened exact matching
+</p>
+</li>
+<li> <p><code>method_exact</code> for exact matching
+</p>
+</li>
+<li> <p><code>method_cardinality</code> for cardinality and template matching
+</p>
+</li>
+<li> <p><code>method_subclass</code> for subclassification
+</p>
+</li>
+</ul>
+<p>The pages contain information on what the method does, which of the arguments above are
+allowed with them and how they are interpreted, and what additional
+arguments can be supplied to further tune the method. Note that the default
+method with no arguments supplied other than <code>formula</code> and <code>data</code>
+is 1:1 nearest neighbor matching without replacement on a propensity score
+estimated using a logistic regression of the treatment on the covariates.
+This is not the same default offered by other matching programs, such as
+those in <em>Matching</em>, <code>teffects</code> in Stata, or <code style="white-space: pre;">⁠PROC PSMATCH⁠</code>
+in SAS, so care should be taken if trying to replicate the results of those
+programs.
+</p>
+<p>When <code>method = NULL</code>, no matching will occur, but any propensity score
+estimation and common support restriction will. This can be a simple way to
+estimate the propensity score for use in future matching specifications
+without having to re-estimate it each time. The <code>matchit()</code> output with
+no matching can be supplied to <code>summary()</code> to examine balance prior to
+matching on any of the included covariates and on the propensity score if
+specified. All arguments other than <code>distance</code>, <code>discard</code>, and
+<code>reestimate</code> will be ignored.
+</p>
+<p>See distance for details on the several ways to
+specify the <code>distance</code>, <code>link</code>, and <code>distance.options</code>
+arguments to estimate propensity scores and create distance measures.
+</p>
+<p>When the treatment variable is not a <code>0/1</code> variable, it will be coerced
+to one and returned as such in the <code>matchit()</code> output (see section
+Value, below). The following rules are used: 1) if <code>0</code> is one of the
+values, it will be considered the control and the other value the treated;
+2) otherwise, if the variable is a factor, <code>levels(treat)[1]</code> will be
+considered control and the other variable the treated; 3) otherwise,
+<code>sort(unique(treat))[1]</code> will be considered control and the other value
+the treated. It is safest to ensure the treatment variable is a <code>0/1</code>
+variable.
+</p>
+<p>The <code>discard</code> option implements a common support restriction. It can
+only be used when a distance measure is an estimated propensity score or supplied as a vector and is ignored for some matching
+methods. When specified as <code>"treated"</code>, treated units whose distance
+measure is outside the range of distance measures of the control units will
+be discarded. When specified as <code>"control"</code>, control units whose
+distance measure is outside the range of distance measures of the treated
+units will be discarded. When specified as <code>"both"</code>, treated and
+control units whose distance measure is outside the intersection of the
+range of distance measures of the treated units and the range of distance
+measures of the control units will be discarded. When <code>reestimate = TRUE</code> and <code>distance</code> corresponds to a propensity score-estimating
+function, the propensity scores are re-estimated in the remaining units
+prior to being used for matching or calipers.
+</p>
+<p>Caution should be used when interpreting effects estimated with various
+values of <code>estimand</code>. Setting <code>estimand = "ATT"</code> doesn't
+necessarily mean the average treatment effect in the treated is being
+estimated; it just means that for matching methods, treated units will be
+untouched and given weights of 1 and control units will be matched to them
+(and the opposite for <code>estimand = "ATC"</code>). If a caliper is supplied or
+treated units are removed for common support or some other reason (e.g.,
+lacking matches when using exact matching), the actual estimand targeted is
+not the ATT but the treatment effect in the matched sample. The argument to
+<code>estimand</code> simply triggers which units are matched to which, and for
+stratification-based methods (exact matching, CEM, full matching, and
+subclassification), determines the formula used to compute the
+stratification weights.
+</p>
+
+
+<h4>How Matching Weights Are Computed</h4>
+
+<p>Matching weights are computed in one of two ways depending on whether matching was done with replacement
+or not.
+</p>
+<p>For matching <em>without</em> replacement (except for cardinality matching), each
+unit is assigned to a subclass, which represents the pair they are a part of
+(in the case of k:1 matching) or the stratum they belong to (in the case of
+exact matching, coarsened exact matching, full matching, or
+subclassification). The formula for computing the weights depends on the
+argument supplied to <code>estimand</code>. A new "stratum propensity score"
+(<code>sp</code>) is computed as the proportion of units in each stratum that are
+in the treated group, and all units in that stratum are assigned that
+stratum propensity score. This is distinct from the propensity score used for matching, if any. Weights are then computed using the standard formulas for
+inverse probability weights with the stratum propensity score inserted: for the ATT, weights are 1 for the treated
+units and <code>sp/(1-sp)</code> for the control units; for the ATC, weights are
+<code>(1-sp)/sp</code> for the treated units and 1 for the control units; for the
+ATE, weights are <code>1/sp</code> for the treated units and <code>1/(1-sp)</code> for the
+control units. For cardinality matching, all matched units receive a weight
+of 1.
+</p>
+<p>For matching <em>with</em> replacement, units are not assigned to unique strata. For
+the ATT, each treated unit gets a weight of 1. Each control unit is weighted
+as the sum of the inverse of the number of control units matched to the same
+treated unit across its matches. For example, if a control unit was matched
+to a treated unit that had two other control units matched to it, and that
+same control was matched to a treated unit that had one other control unit
+matched to it, the control unit in question would get a weight of 1/3 + 1/2
+= 5/6. For the ATC, the same is true with the treated and control labels
+switched. The weights are computed using the <code>match.matrix</code> component
+of the <code>matchit()</code> output object.
+</p>
+<p>In each treatment group, weights are divided by the mean of the nonzero
+weights in that treatment group to make the weights sum to the number of
+units in that treatment group. If sampling weights are included through the
+<code>s.weights</code> argument, they will be included in the <code>matchit()</code>
+output object but not incorporated into the matching weights.
+<code>match.data()</code>, which extracts the matched set from a <code>matchit</code> object,
+combines the matching weights and sampling weights.
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>When <code>method</code> is something other than <code>"subclass"</code>, a
+<code>matchit</code> object with the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>match.matrix</code></td>
+<td>
+<p>a matrix containing the matches. The rownames correspond
+to the treated units and the values in each row are the names (or indices)
+of the control units matched to each treated unit. When treated units are
+matched to different numbers of control units (e.g., with exact matching or
+matching with a caliper), empty spaces will be filled with <code>NA</code>. Not
+included when <code>method</code> is <code>"full"</code>, <code>"cem"</code> (unless <code>k2k = TRUE</code>), <code>"exact"</code>, or <code>"cardinality"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subclass</code></td>
+<td>
+<p>a factor
+containing matching pair/stratum membership for each unit. Unmatched units
+will have a value of <code>NA</code>. Not included when <code>replace = TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>a numeric vector of estimated matching weights. Unmatched and
+discarded units will have a weight of zero.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>the fit object of
+the model used to estimate propensity scores when <code>distance</code> is
+specified and not <code>"mahalanobis"</code> or a numeric vector. When
+<code>reestimate = TRUE</code>, this is the model estimated after discarding
+units.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>a data frame of covariates mentioned in <code>formula</code>,
+<code>exact</code>, <code>mahvars</code>, and <code>antiexact</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>the <code>matchit()</code> call.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>info</code></td>
+<td>
+<p>information on the matching method and
+distance measures used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimand</code></td>
+<td>
+<p>the argument supplied to
+<code>estimand</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>the <code>formula</code> supplied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>treat</code></td>
+<td>
+<p>a vector of treatment status converted to zeros (0) and ones
+(1) if not already in that format.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distance</code></td>
+<td>
+<p>a vector of distance
+values (i.e., propensity scores) when <code>distance</code> is supplied as a
+method of estimating propensity scores or a numeric vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>discarded</code></td>
+<td>
+<p>a logical vector denoting whether each observation was
+discarded (<code>TRUE</code>) or not (<code>FALSE</code>) by the argument to
+<code>discard</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>s.weights</code></td>
+<td>
+<p>the vector of sampling weights supplied to
+the <code>s.weights</code> argument, if any.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exact</code></td>
+<td>
+<p>a one-sided formula
+containing the variables, if any, supplied to <code>exact</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mahvars</code></td>
+<td>
+<p>a one-sided formula containing the variables, if any,
+supplied to <code>mahvars</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>obj</code></td>
+<td>
+<p>when <code>include.obj = TRUE</code>, an
+object containing the intermediate results of the matching procedure. See
+the individual methods pages for what this component will contain.</p>
+</td>
+</tr>
+</table>
+<p>When <code>method = "subclass"</code>, a <code>matchit.subclass</code> object with the same
+components as above except that <code>match.matrix</code> is excluded and one
+additional component, <code>q.cut</code>, is included, containing a vector of the
+distance measure cutpoints used to define the subclasses. See
+<code>method_subclass</code> for details.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Daniel Ho (<a href="mailto:dho@law.stanford.edu">dho@law.stanford.edu</a>); Kosuke Imai
+(<a href="mailto:imai@harvard.edu">imai@harvard.edu</a>); Gary King (<a href="mailto:king@harvard.edu">king@harvard.edu</a>);
+Elizabeth Stuart (<a href="mailto:estuart@jhsph.edu">estuart@jhsph.edu</a>)
+</p>
+<p>Version 4.0.0 update by Noah Greifer (<a href="mailto:noah.greifer@gmail.com">noah.greifer@gmail.com</a>)
+</p>
+
+
+<h3>References</h3>
+
+<p>Ho, D. E., Imai, K., King, G., &amp; Stuart, E. A. (2007). Matching
+as Nonparametric Preprocessing for Reducing Model Dependence in Parametric
+Causal Inference. <em>Political Analysis</em>, 15(3), 199–236. <a href="https://doi.org/10.1093/pan/mpl013">doi:10.1093/pan/mpl013</a>
+</p>
+<p>Ho, D. E., Imai, K., King, G., &amp; Stuart, E. A. (2011). MatchIt:
+Nonparametric Preprocessing for Parametric Causal Inference. <em>Journal of
+Statistical Software</em>, 42(8). <a href="https://doi.org/10.18637/jss.v042.i08">doi:10.18637/jss.v042.i08</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>summary.matchit()</code> for balance assessment after matching, <code>plot.matchit()</code> for plots of covariate balance and propensity score overlap after matching.
+</p>
+<p><code>vignette("MatchIt")</code> for an introduction to matching with
+<em>MatchIt</em>; <code>vignette("matching-methods")</code> for descriptions of the
+variety of matching methods and options available;
+<code>vignette("assessing-balance")</code> for information on assessing the
+quality of a matching specification; <code>vignette("estimating-effects")</code>
+for instructions on how to estimate treatment effects after matching; and
+<code>vignette("sampling-weights")</code> for a guide to using <em>MatchIt</em> with
+sampling weights.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data("lalonde")
+
+# Default: 1:1 NN PS matching w/o replacement
+
+m.out1 &lt;- matchit(treat ~ age + educ + race + nodegree +
+                   married + re74 + re75, data = lalonde)
+m.out1
+summary(m.out1)
+
+# 1:1 NN Mahalanobis distance matching w/ replacement and
+# exact matching on married and race
+
+m.out2 &lt;- matchit(treat ~ age + educ + race + nodegree +
+                   married + re74 + re75, data = lalonde,
+                   distance = "mahalanobis", replace = TRUE,
+                   exact = ~ married + race)
+m.out2
+summary(m.out2, un = TRUE)
+
+# 2:1 NN Mahalanobis distance matching within caliper defined
+# by a probit pregression PS
+
+m.out3 &lt;- matchit(treat ~ age + educ + race + nodegree +
+                   married + re74 + re75, data = lalonde,
+                   distance = "glm", link = "probit",
+                   mahvars = ~ age + educ + re74 + re75,
+                   caliper = .1, ratio = 2)
+m.out3
+summary(m.out3, un = TRUE)
+
+# Optimal full PS matching for the ATE within calipers on
+# PS, age, and educ
+
+m.out4 &lt;- matchit(treat ~ age + educ + race + nodegree +
+                   married + re74 + re75, data = lalonde,
+                   method = "full", estimand = "ATE",
+                   caliper = c(.1, age = 2, educ = 1),
+                   std.caliper = c(TRUE, FALSE, FALSE))
+m.out4
+summary(m.out4, un = TRUE)
+
+# Subclassification on a logistic PS with 10 subclasses after
+# discarding controls outside common support of PS
+
+s.out1 &lt;- matchit(treat ~ age + educ + race + nodegree +
+                   married + re74 + re75, data = lalonde,
+                   method = "subclass", distance = "glm",
+                   discard = "control", subclass = 10)
+s.out1
+summary(s.out1, un = TRUE)
+
+</code></pre>
+
+
+</div>

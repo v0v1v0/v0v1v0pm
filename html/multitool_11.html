@@ -1,0 +1,117 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>condense</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Summarize multiverse parameters</h2>
+
+<h3>Description</h3>
+
+<p>Summarize multiverse parameters
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">condense(.unpacked, .what, .how, .group = NULL, list_cols = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>.unpacked</code></td>
+<td>
+<p>an unpacked (with <code>reveal</code> or
+<code>unnest</code>) multiverse dataset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.what</code></td>
+<td>
+<p>a specific column to summarize. This could be a model estimate,
+a summary statistic, correlation, or any other estimate computed over the
+multiverse.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.how</code></td>
+<td>
+<p>a named list. The list should contain summary functions (e.g.,
+mean or median) the user would like to compute over the individual
+estimates from the multiverse</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.group</code></td>
+<td>
+<p>an optional variable to group the results. This argument is
+passed directly to the <code>.by</code> argument used in <code>dplyr::across</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>list_cols</code></td>
+<td>
+<p>logical, whether to create list columns for the raw values
+of any summarized columns. Useful for creating visualizations and tables.
+Default is TRUE.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a summarized <code>tibble</code> containing a column for each summary
+method from <code>.how</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(tidyverse)
+library(multitool)
+
+# Simulate some data
+the_data &lt;-
+  data.frame(
+    id   = 1:500,
+    iv1  = rnorm(500),
+    iv2  = rnorm(500),
+    iv3  = rnorm(500),
+    mod1 = rnorm(500),
+    mod2 = rnorm(500),
+    mod3 = rnorm(500),
+    cov1 = rnorm(500),
+    cov2 = rnorm(500),
+    dv1  = rnorm(500),
+    dv2  = rnorm(500),
+    include1 = rbinom(500, size = 1, prob = .1),
+    include2 = sample(1:3, size = 500, replace = TRUE),
+    include3 = rnorm(500)
+  )
+
+# Decision pipeline
+full_pipeline &lt;-
+  the_data |&gt;
+  add_filters(include1 == 0,include2 != 3,include2 != 2,scale(include3) &gt; -2.5) |&gt;
+  add_variables("ivs", iv1, iv2, iv3) |&gt;
+  add_variables("dvs", dv1, dv2) |&gt;
+  add_variables("mods", starts_with("mod")) |&gt;
+  add_model("linear_model", lm({dvs} ~ {ivs} * {mods} + cov1))
+
+pipeline_grid &lt;- expand_decisions(full_pipeline)
+
+# Run the whole multiverse
+the_multiverse &lt;- run_multiverse(pipeline_grid[1:10,])
+
+# Reveal and condense
+the_multiverse |&gt;
+  reveal_model_parameters() |&gt;
+  filter(str_detect(parameter, "iv")) |&gt;
+  condense(coefficient, list(mean = mean, median = median))
+</code></pre>
+
+
+</div>

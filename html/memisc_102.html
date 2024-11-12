@@ -1,0 +1,246 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>cases</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Distinguish between Cases Specified by Logical Conditions</h2>
+
+<h3>Description</h3>
+
+<p><code>cases</code> allows to distinguish several cases defined logical
+conditions. It can be used to code these cases into a vector. The
+function can be considered as a multi-condition generalization of
+<code>ifelse</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">cases(...,check.xor=c("warn","stop","ignore"),
+      .default=NA,.complete=FALSE,
+      check.na=c("warn","stop","ignore"),
+      na.rm=TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>A sequence of logical expressions or assignment expressions containing
+logical expressions as "right hand side".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>check.xor</code></td>
+<td>
+<p>character (either <code>"warn"</code>, <code>"stop"</code>, or  <code>"ignore"</code>)
+or logical; if <code>TRUE</code> or equal to <code>"stop"</code> or 
+<code>"warn"</code>, 
+<code>cases</code> checks whether the case
+conditions are mutually exclusive. If this is not
+satisfied and <code>check.xor</code> equals <code>"warn"</code> (the default), a warning is shown,
+otherwise an error exception is raised.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.default</code></td>
+<td>
+<p>a value to be used for unsatisfied conditions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.complete</code></td>
+<td>
+<p>logical, if <code>TRUE</code> an additional factor level is
+created for the unsatisfied conditions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>check.na</code></td>
+<td>
+<p>character (either <code>"warn"</code>, <code>"stop"</code>, or  <code>"ignore"</code>)
+or logical; if <code>TRUE</code> or equal to <code>"stop"</code> or 
+<code>"warn"</code>, <code>cases</code> checks, whether any of the case
+conditions evaluates to <code>NA</code>.
+If that case, if <code>check.na</code> is <code>TRUE</code> or equals
+<code>"stop"</code> an error exception is raised, while if <code>check.na</code>
+equals <code>"warn"</code> (the default) a warning is shown.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na.rm</code></td>
+<td>
+<p>a logical value; how to handle <code>NA</code>s (if they do not
+already lead to an error exception). If <code>FALSE</code> if <em>any</em> of the
+conditions evaluates to <code>NA</code>, the corresponding value of the
+result vector is <code>NA</code>. If <code>TRUE</code> (the default), the
+resulting vector or factor is <code>NA</code> only for instances where all
+conditions result in <code>NA</code>. 
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>There are two distinct ways to use this function. Either the
+function can be used to construct a factor that represents
+several logical cases or it can be used to conditionally
+evaluate an expression in a manner similar to <code>ifelse</code>.
+</p>
+<p>For the first use, the <code>...</code> arguments have to be a series of
+logical expressions. <code>cases</code> then returns a factor
+with as many levels as logical expressions given as
+<code>...</code> arguments. The resulting factor will attain its
+first level if the first condition is TRUE, otherwise it will attain its
+second level if the second condition is TRUE, etc.
+The levels will be named after the conditions or, if name tags are
+attached to the logical expressions, after the tags of the expressions.
+Not that the logical expressions all need to evaluate to logical vectors
+of the same length, otherwise an error condition is raised.
+If <code>.complete</code> is <code>TRUE</code> then an additional factor level is
+created for the conditions not satisfied for any of the cases.
+</p>
+<p>For the second use, the <code>...</code> arguments have to be a series
+of assignment expression of the type <code>&lt;expression&gt; &lt;- &lt;logical expression&gt;</code>
+or <code>&lt;logical expression&gt; -&gt; &lt;expression&gt;</code>. For cases
+in which the first logical expression is TRUE, the result of first expression that
+appears on the other side of the assignment operator become elements of the
+vector returned by <code>cases</code>, for cases in which the second logical expression is TRUE,
+the result of the second expression that appears on the other side
+of the assignment operator become elements of the
+vector returned by <code>cases</code>, etc.
+For cases that do not satisfy any of the given conditions the value of
+the <code>.default</code> argument is used. 
+Note that the logical expressions also here all need to evaluate to logical
+vectors of the same length. The expressions on the other side of the
+assignment operator should also be either vectors of the same length
+and mode or should scalars of the same mode, otherwise unpredictable
+results may occur.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If it is called with logical expressions as ... arguments,
+<code>cases</code> returns a factor, if it is called with
+assignment expressions the function returns a vector with the
+same mode as the results of the "assigned" expressions
+and with the same length as the logical conditions.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Examples of the first kind of usage of the function
+#
+df &lt;- data.frame(x = rnorm(n=20), y = rnorm(n=20))
+df &lt;- df[do.call(order,df),]
+(df &lt;- within(df,{
+  x1=cases(x&gt;0,x&lt;=0)
+  y1=cases(y&gt;0,y&lt;=0)
+  z1=cases(
+    "Condition 1"=x&lt;0,
+    "Condition 2"=y&lt;0,# only applies if x &gt;= 0
+    "Condition 3"=TRUE
+    )
+  z2=cases(x&lt;0,(x&gt;=0 &amp; y &lt;0), (x&gt;=0 &amp; y &gt;=0))
+  }))
+xtabs(~x1+y1,data=df)
+dd &lt;- with(df,
+  try(cases(x&lt;0,
+            x&gt;=0,
+            x&gt;1,
+            check.xor=TRUE)# let's be fussy
+            )
+  )
+dd &lt;- with(df,
+  try(cases(x&lt;0,x&gt;=0,x&gt;1))
+  )
+genTable(range(x)~dd,data=df)
+
+# An example of the second kind of usage of the function:
+# A construction of a non-smooth function
+#
+fun &lt;- function(x)
+  cases(
+    x==0      -&gt; 1,
+    abs(x)&gt; 1 -&gt; abs(x),
+    abs(x)&lt;=1 -&gt; x^2
+  )
+x &lt;- seq(from=-2,to=2,length=101)
+plot(fun(x)~x)
+
+# Demo of the new .default and .complete arguments
+x &lt;- seq(from=-2,to=2)
+cases(a = x &lt; -1,
+      b = x &gt; 1,
+      .complete = TRUE)
+cases(x &lt; -1,
+      x &gt; 1,
+      .complete = TRUE)
+cases(1 &lt;- x &lt; -1,
+      3 &lt;- x &gt; 1,
+      .default = 2)
+
+threshhold &lt;- 5
+d &lt;- c(1:10, NaN)
+
+d1 &lt;- cases(
+  d &gt; threshhold -&gt; 1,
+  d &lt;= threshhold -&gt; 2
+)
+
+d2 &lt;- cases(
+  is.na(d) -&gt; 0,
+  d &gt; threshhold -&gt; 1,
+  d &lt;= threshhold -&gt; 2
+)
+
+# Leads to missing values because some of the conditions result in missing
+# even though they could be 'captured'
+d3 &lt;- cases(
+  is.na(d) -&gt; 0,
+  d &gt; threshhold -&gt; 1,
+  d &lt;= threshhold -&gt; 2,
+  na.rm=FALSE
+)
+
+d4 &lt;- cases(
+  is.na(d) -&gt; 0,
+  d &gt; threshhold +2 -&gt; 1,
+  d &lt;= threshhold -&gt; 2,
+  na.rm=FALSE
+)
+
+cbind(d,d1,d2,d3,d4)
+
+cases(
+  d &gt; threshhold,
+  d &lt;= threshhold
+)
+
+cases(
+  is.na(d),
+  d &gt; threshhold,
+  d &lt;= threshhold
+)
+
+cases(
+  d &gt; threshhold,
+  d &lt;= threshhold,
+  .complete=TRUE
+)
+
+cases(
+  d &gt; threshhold + 2,
+  d &lt;= threshhold,
+  .complete=TRUE
+)
+</code></pre>
+
+
+</div>

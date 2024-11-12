@@ -1,0 +1,144 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>anova.traitglm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Testing for a environment-by-trait (fourth corner) interaction by analysis of deviance</h2>
+
+<h3>Description</h3>
+
+<p>Returns an analysis of deviance from a fourth corner model, as computed using <code>traitglm</code>, typically to test for an environment-by-trait interaction. Slowly! This function works via <code>anova.manyglm</code>, which uses row-resampling for inference, and it only applies to <code>traitglm</code> objects that have been fitted using the (default) <code>manyglm</code> function.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R"> 
+## S3 method for class 'traitglm'
+anova(object, ..., nBoot=99, resamp="pit.trap", test="LR",
+                             block = NULL, show.time="all", bootID=NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+
+<p>A fitted object of class <code>traitglm</code> and class <code>manyglm</code>. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Additional <code>traitglm</code> objects, fitted using the <code>formula</code> argument.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nBoot</code></td>
+<td>
+
+<p>The number of bootstrap iterations. Default is 99 (NOTE: you should increase this for later runs!)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resamp,test,bootID</code></td>
+<td>
+
+<p>Arguments as in <code>anova.manyglm</code>, to control resampling method (<code>resamp</code>), test statistic (<code>test</code>) and whether or not a matrix of bootstrap resamples is manually entered (<code>bootID</code>).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>block</code></td>
+<td>
+
+<p>A factor specifying the sampling level to be resampled. Default is resampling sites (which still involves passing a blocking variable to <code>anova.manyglm</code>, to keep all rows of the original abundance data together in resamples).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>show.time</code></td>
+<td>
+<p>Whether to display timing information for the resampling procedure: this is advisable, as resampling fourth corner models many times can take a while. The default value <code>"all"</code> shows all timing information, <code>"total"</code> shows only the overall time taken for the tests, and <code>"none"</code> shows none. </p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>There are two possible uses of this function, depending whether one <code>traitglm</code> object is specified or multiple objects.
+</p>
+<p>If one <code>traitglm</code> object is specified, the <code>anova.traitglm</code> function returns a table summarising the statistical significance of the fourth corner terms in a model, that is, the interaction between environment and traits in predicting abundance across taxa and sites. All environment-by-trait interaction terms from the model are simultaneously tested.
+</p>
+<p>If two or more nested <code>traitglm</code> objects are specified, and each has been fitted using a <code>formula</code> argument to the same set of datasets, then sequential test statistics (and P values) are returned for each additional model fit.
+</p>
+<p>All <code>traitglm</code> models must be fitted using the <code>manyglm</code> function, which is its default behaviour, in order to access the <code>anova.manyglm</code>, which does most of the work. See <code>anova.manyglm</code> for details on how resampling is done, and options for arguments controlling the test statistic (via <code>test</code>) and the resampling method (via <code>resamp</code>). Because <code>traitglm</code> models are fitted by first vectorising the data into a univariate model, arguments such as <code>p.uni</code> and <code>cor.type</code> are redundant.
+</p>
+<p><code>traitglm</code> fits a single model to abundances across all sites and taxa at the same time, meaning the vector of abundances is typically pretty long, and the design matrix explaining how abundance varies across taxa and sites is typically pretty large. So resampling can take yonks. Hence the default number of resamples has been set at <code>nBoot=99</code>, but please consider increasing this once you have a sense for how long it will take to run (scales roughly linearly with <code>nBoot</code>).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of values as returned by <code>anova.manyglm</code>, of which the most relevant element is <code>table</code> (the analysis of deviance table).
+</p>
+
+
+<h3>Warning</h3>
+
+<p>The comparison between two or more models by <code>anova.traitglm</code> will only be valid if they are fitted to the same dataset. This may be a problem if there are missing values and R's default of <code>na.action = na.omit</code> is used. 
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>David I. Warton &lt;David.Warton@unsw.edu.au&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Warton DI, Shipley B &amp; Hastie T (2015) CATS regression - a model-based approach to studying trait-based community assembly, Methods in Ecology and Evolution 6, 389-398.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>anova.manyglm</code>,<code>traitglm</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(antTraits)
+
+# we'll fit a small fourth corner model, to a subset of the antTraits data.
+# first select only species present in at least 25% of plots:
+abSum = apply(antTraits$abund&gt;0,2,mean)
+ab = antTraits$abund[,abSum&gt;0.25]
+tr = antTraits$traits[abSum&gt;0.25,]
+
+# now fit the fourth corner model, only as a function of a couple of traits and env variables:
+ft=traitglm(ab,antTraits$env[,1:3],data.frame(tr$Weber,tr$Femur))
+anova(ft,nBoot=39)
+# Note you should refit with more bootstrap samples (e.g. 999), should take &lt;2 minutes to run
+
+# for an example using anova.traitglm for multiple fits, uncomment the following lines:
+# ft2=traitglm(antTraits$abund,antTraits$env[,3:4],antTraits$traits[,c(1,3)],
+#   formula=~1,composition=TRUE) #no fourth corner terms
+# ft3=traitglm(antTraits$abund,antTraits$env[,3:4],antTraits$traits[,c(1,3)],
+#   formula=~Shrub.cover:Femur.length+Shrub.cover:Pilosity,composition=TRUE) #shrub interactions
+# ft4=traitglm(antTraits$abund,antTraits$env[,3:4],antTraits$traits[,c(1,3)],
+#   formula=~Shrub.cover:Femur.length+Shrub.cover:Pilosity+Volume.lying.CWD:Femur.length+
+#   Volume.lying.CWD:Pilosity, composition=TRUE) #all interactions only
+# anova(ft2,ft3,ft4) # Shrub interactions not significant but CWD interactions are.
+</code></pre>
+
+
+</div>

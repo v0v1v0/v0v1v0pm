@@ -1,0 +1,161 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>expandPar</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Expand vector of free working parameters to vector of all working parameters including any fixed parameters (used in fitHMM.R and nLogLike.R)</h2>
+
+<h3>Description</h3>
+
+<p>Expand vector of free working parameters to vector of all working parameters including any fixed parameters (used in fitHMM.R and nLogLike.R)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">expandPar(
+  optPar,
+  optInd,
+  fixPar,
+  wparIndex,
+  betaCons,
+  deltaCons,
+  nbStates,
+  nbCovsDelta,
+  stationary,
+  nbCovs,
+  nbRecovs = 0,
+  mixtures = 1,
+  nbCovsPi = 0
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>optPar</code></td>
+<td>
+<p>vector of free working parameters</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optInd</code></td>
+<td>
+<p>indices of constrained parameters</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixPar</code></td>
+<td>
+<p>Vector of working parameters which are assumed known prior to fitting the model (NA indicates parameters is to be estimated)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wparIndex</code></td>
+<td>
+<p>Vector of indices for the elements of <code>fixPar</code> that are not NA</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>betaCons</code></td>
+<td>
+<p>Matrix of the same dimension as <code>beta0</code> composed of integers identifying any equality constraints among the t.p.m. parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>deltaCons</code></td>
+<td>
+<p>Matrix of the same dimension as <code>delta0</code> composed of integers identifying any equality constraints among the initial distribution working scale parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nbStates</code></td>
+<td>
+<p>Number of states of the HMM</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nbCovsDelta</code></td>
+<td>
+<p>Number of initial distribution covariates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stationary</code></td>
+<td>
+<p><code>FALSE</code> if there are time-varying covariates in <code>formula</code> or any covariates in <code>formulaDelta</code>. If <code>TRUE</code>, the initial distribution is considered
+equal to the stationary distribution. Default: <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nbCovs</code></td>
+<td>
+<p>Number of t.p.m. covariates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nbRecovs</code></td>
+<td>
+<p>Number of recharge covariates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mixtures</code></td>
+<td>
+<p>Number of mixtures for the state transition probabilities</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nbCovsPi</code></td>
+<td>
+<p>Number of mixture probability covariates</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A vector of all working parameters including any fixed parameters
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+nbStates &lt;- 2
+stepDist &lt;- "gamma" # step distribution
+angleDist &lt;- "vm" # turning angle distribution
+
+# extract data from momentuHMM example
+data &lt;- example$m$data
+
+### 1. fit the model to the simulated data
+# define initial values for the parameters
+mu0 &lt;- c(20,70)
+sigma0 &lt;- c(10,30)
+kappa0 &lt;- c(1,1)
+stepPar &lt;- c(mu0,sigma0) # no zero-inflation, so no zero-mass included
+anglePar &lt;- kappa0 # not estimating angle mean, so not included
+formula &lt;- ~cov1+cos(cov2)
+
+# constrain cov1 effect to state 1 -&gt; 2 and cov2 effect to state 2 -&gt; 1
+fixPar &lt;- list(beta=c(NA,NA,0,NA,0,NA))
+
+m &lt;- fitHMM(data=data,nbStates=nbStates,dist=list(step=stepDist,angle=angleDist),
+            Par0=list(step=stepPar,angle=anglePar),formula=formula,fixPar=fixPar)
+
+# convert free parameter vector (m$mod$wpar) to full set of working parameters (m$mod$estimate)
+est &lt;- momentuHMM:::expandPar(m$mod$wpar,m$conditions$optInd,unlist(m$conditions$fixPar),
+                              m$conditions$wparIndex,m$conditions$betaCons,m$conditions$deltaCons,
+                              nbStates,
+                              ncol(m$covsDelta)-1,m$conditions$stationary,nrow(m$mle$beta)-1)
+
+all(est==m$mod$estimate)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

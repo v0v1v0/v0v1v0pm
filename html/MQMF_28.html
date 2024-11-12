@@ -1,0 +1,176 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>do_MCMC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>do_MCMC conducts an MCMC using Gibbs within Metropolis</h2>
+
+<h3>Description</h3>
+
+<p>do_MCMC conducts a Gibbs within Metropolis algorithm. One
+can define the number of chains, the burnin before candidate
+parameter vectors and associated probabilities are stored, the total
+number of candidate vectors to keep and the step or thinning rate
+between accepting a result into the Markov Chain. One needs to 
+input three functions: 1) 'infunk' to calculate the likelihoods, 
+2) 'calcpred' used within 'infunk' to calculate the predicted values
+used to compare with the observed (found in 'obsdat'), and 
+3) 'priorcalc' used to calculate the prior probabilities of the 
+various parameters in each trial. (N + burnin) * thinstep iterations 
+are made in total although only N are stored. The jumping
+function uses random normal deviates (mean=0, sd=1) to combine with
+each parameter value (after multiplication by the specific scaling
+factor held in the scales argument). Determination of suitable scaling 
+values is generally done empirically, perhaps by trialing a small number 
+of iterations to begin with. Multiple chains would be usual and 
+the thinstep would be larger eg. 128, 256, or 512, but it would 
+take 8, 16, or 32 times longer, depending on the number of parameters, 
+these numbers are for four parameters only. The scales are usually 
+empirically set to obtain an acceptance rate between 20 - 40
+It is also usual to run numerous diagnostic plots on the outputs 
+to ensure convergence onto the final stationary distribution. There 
+are three main loops: 1) total number of iterations (N + burnin)* 
+thinstep, used by priorcalc, 2) thinstep/(number of parameters) 
+so that at least all parameters are stepped through at least once 
+(thinstep = np) before any combinations are considered for 
+acceptance, this means that the true thinning rate is thinstep/np, 
+and 3) the number of parameters loop, that steps through the np 
+parameters varying each one, one at a time.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">do_MCMC(
+  chains,
+  burnin,
+  N,
+  thinstep,
+  inpar,
+  infunk,
+  calcpred,
+  calcdat,
+  obsdat,
+  priorcalc,
+  scales,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>chains</code></td>
+<td>
+<p>the number of independent MCMC chains produced</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p>the number of steps made before candidate parameter
+vectors begin to be kept.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N</code></td>
+<td>
+<p>the total number of posterior parameter vectors retained</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thinstep</code></td>
+<td>
+<p>the number of interations before a vector is kept; must 
+be divisible by the number of parameters</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inpar</code></td>
+<td>
+<p>the initial parameter values (usually log-transformed)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>infunk</code></td>
+<td>
+<p>the function used to calculate the negative log-likelihood</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>calcpred</code></td>
+<td>
+<p>the function used by infunk to calculate the predicted
+values for comparison with obsdat; defaults to simpspm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>calcdat</code></td>
+<td>
+<p>the data used by calcpred to calculate the predicted
+values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>obsdat</code></td>
+<td>
+<p>the observed data (on the same scale as the predicted, ie
+usually log-transformed), against with the predicted values are compared.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priorcalc</code></td>
+<td>
+<p>a function used to calculate the prior probability for
+each of the parameters in each trial parameter vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scales</code></td>
+<td>
+<p>The re-scaling factors for each parameter to convert the
+normal random deviates into +/- values on a scale that leads to
+acceptance rates of between 20 and 40percent.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>needed by the simpspm function = calcpred</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a list of the result chains, the acceptance and rejection rates
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(abdat); fish &lt;- as.matrix(abdat) # to increase speed
+param &lt;- log(c(0.4,9400,3400,0.05))
+N &lt;- 500  # usually very, very  many more  10s of 1000s
+result &lt;- do_MCMC(chains=1,burnin=20,N=N,thinstep=8,inpar=param,
+                  infunk=negLL,calcpred=simpspm,calcdat=fish,
+                  obsdat=log(fish[,"cpue"]),priorcalc=calcprior,
+                  scales=c(0.06,0.05,0.06,0.42))
+# a thinstep of 8 is whofully inadequate, see the runs in the plots
+cat("Acceptance Rate = ",result[[2]],"\n")
+cat("Failure Rate    = ",result[[3]],"\n")
+oldpar &lt;- par(no.readonly=TRUE)
+#plotprep(width=6,height=5,newdev=FALSE)
+out &lt;- result[[1]][[1]] # get the list containing the matrix
+pairs(out[,1:4],col=rgb(1,0,0,1/5)) # adjust the 1/5 to suit N
+
+parset(plots=c(1,2)) # Note the serial correlation in each trace
+plot1(1:N,out[,1],ylab="r",xlab="Replicate",defpar=FALSE)
+plot1(1:N,out[,2],ylab="K",xlab="Replicate",defpar=FALSE)
+par(oldpar)
+</code></pre>
+
+
+</div>

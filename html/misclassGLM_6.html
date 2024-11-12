@@ -1,0 +1,156 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>misclassGLM</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>GLM estimation under misclassified covariate</h2>
+
+<h3>Description</h3>
+
+<p><code>misclassGLM</code> computes estimator for a GLM with a misclassified covariate
+using additional side information on the misclassification process
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">misclassGLM(
+  Y,
+  X,
+  setM,
+  P,
+  na.action = na.omit,
+  family = gaussian(link = "identity"),
+  control = list(),
+  par = NULL,
+  x = FALSE,
+  robust = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+<p>a vector of integers or numerics. This is the dependent variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>a matrix containing the independent variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>setM</code></td>
+<td>
+<p>(optional) matrix, rows containing potential patterns for a misclassified (latent) covariate M
+in any coding for a categorical independent variable, e.g. dummy coding (default: Identity).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>P</code></td>
+<td>
+<p>probabilities corresponding to each of the potential pattern conditional on the other
+covariates denoted in x.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na.action</code></td>
+<td>
+<p>how to treat NAs</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>a description of the error distribution and link function to be used in the model.
+This can be a character string naming a family function, a family function or the result
+of a call to a family function. (See <code>family</code> for details of family functions.)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>options for the optimization procedure (see <code>optim</code>,
+<code>ucminf</code> for options and details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>par</code></td>
+<td>
+<p>(optional) starting parameter vector</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>logical, add covariates matrix to result?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>robust</code></td>
+<td>
+<p>logical, if true the computed asymptotic standard errors are replaced by their
+robust counterparts.</p>
+</td>
+</tr>
+</table>
+<h3>Examples</h3>
+
+<pre><code class="language-R">## simulate data
+
+data &lt;- simulate_GLM_dataset()
+
+
+## estimate model without misclassification error
+
+summary(lm(Y ~ X + M2, data))
+
+
+## estimate model with misclassification error
+
+summary(lm(Y ~ X + M, data))
+
+
+## estimate misclassification probabilities
+
+Pmodel &lt;- glm(M2 ~ M + X, data = data, family = binomial("logit"))
+summary(Pmodel)
+
+
+## construct a-posteriori probabilities from Pmodel
+
+P &lt;- predict(Pmodel, newdata = data, type = "response")
+P &lt;- cbind(1 - P, P)
+dimnames(P)[[2]] &lt;- c("M0", "M1") ## speaking names
+
+
+## estimate misclassGLM
+
+est &lt;- misclassGLM(Y = data$Y,
+                   X = as.matrix(data[, 2, drop = FALSE]),
+                   setM = matrix(c(0, 1), nrow = 2),
+                   P = P)
+summary(est)
+
+
+## and bootstrapping the results from dataset
+## Not run: 
+  summary(boot.misclassGLM(est,
+                           Y = data$Y,
+                           X = data.matrix(data[, 2, drop = FALSE]),
+                           Pmodel = Pmodel,
+                           PX = data,
+                           repetitions = 100))
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

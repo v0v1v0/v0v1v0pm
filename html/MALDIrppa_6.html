@@ -1,0 +1,93 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>detectOutliers</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Detection of outlying mass peak profiles
+</h2>
+
+<h3>Description</h3>
+
+<p>This function identifies outlying cases in a collection of processed mass peak profiles. It can be applied either on peak intensities or binary data (peak presence/absence patterns). It allows to specify a grouping factor in order to execute the procedure at the desired level of aggregation.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">detectOutliers(x, by = NULL, binary = FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A list of <code>MassSpectrum</code> objects containing processed peaks.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>If given, a grouping variable (<code>factor</code> or <code>numeric</code>) subsetting the data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>binary</code></td>
+<td>
+<p>Logical value. It indicates whether the procedure must be applied on either peak intensities (<code>FALSE</code>, default) or on binary peak presence/absence patterns (<code>TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Optional arguments for the robust outlier detection method.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function marks samples with mass peak profiles that largely deviates from other samples at the given aggregation level. It uses robust methods for the detection of multivariate outliers applied on metric multidimensional scaling (MDS) coordinates (Euclidean distance is used for peak intensities and binary distance for binary profiles; see <code>dist</code>). The number of MDS coordinates used is generally set to p = <code>floor</code>(n/2), where n is the number of samples in the target subset. This is an upper cap recommended for the computation of the robust MCD estimator by <code>covMcd</code>. However, that rule of thumb can still generate matrix singularity problems with <code>covMcd</code> in some cases. When this occurs <code>detectOutliers</code> further reduces p to use the maximum number of MDS coordinates giving rise to a non-singular covariance matrix (min(p) = 2 in any case). The adaptive multivariate outlier detection algorithm was adapted from the <code>mvoutlier</code> package.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>by = NULL</code>, a logical vector of length equal to the number of elements of <code>x</code> indicating outlying samples by <code>TRUE</code>. Otherwise, a 2-column <code>data.frame</code> is generated which includes such a logical vector along with the grouping variable given in <code>by</code>.
+
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Load example data
+
+data(spectra) # list of MassSpectra class objects
+data(type) # metadata
+
+# Some pre-processing
+
+sc.results &lt;- screenSpectra(spectra,meta=type)
+spectra &lt;- sc.results$fspectra # filtered mass spectra
+type &lt;- sc.results$fmeta    # filtered metadata  
+spectra &lt;- transformIntensity(spectra, method = "sqrt")
+spectra &lt;- wavSmoothing(spectra)
+spectra &lt;- removeBaseline(spectra)
+peaks &lt;- detectPeaks(spectra)
+peaks &lt;- alignPeaks(peaks, minFreq = 0.8)
+
+# Find outlying samples at isolate level
+
+out &lt;- detectOutliers(peaks, by = type$isolate)
+
+# From peak presence/absence patterns
+
+out.binary &lt;- detectOutliers(peaks, by = type$isolate, binary = TRUE)
+
+  </code></pre>
+
+
+</div>

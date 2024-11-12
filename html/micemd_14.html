@@ -1,0 +1,335 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mice.par</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Parallel calculations for Multivariate Imputation by Chained Equations
+</h2>
+
+<h3>Description</h3>
+
+<p>Parallel calculations for Multivariate Imputation by Chained Equations using the R package <code>parallel</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mice.par(don.na, m = 5, method = NULL, predictorMatrix, where = NULL,
+visitSequence = NULL, blots = NULL, post = NULL, blocks, formulas,
+defaultMethod = c("pmm", "logreg", "polyreg", "polr"), maxit = 5,
+seed = NA, data.init = NULL, nnodes = 5, path.outfile = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>don.na</code></td>
+<td>
+
+<p>A data frame or a matrix containing the incomplete data.  Missing
+values are coded as <code>NA</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>m</code></td>
+<td>
+
+<p>Number of multiple imputations. The default is <code>m=5</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>Can be either a single string, or a vector of strings with
+length <code>ncol(data)</code>, specifying the elementary imputation method to be
+used for each column in data. If specified as a single string, the same
+method will be used for all columns.  The default imputation method (when no
+argument is specified) depends on the measurement level of the target column
+and are specified by the <code>defaultMethod</code> argument.  Columns that need
+not be imputed have the empty method <code>''</code>.  See details for more
+information.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>predictorMatrix</code></td>
+<td>
+
+<p>A square matrix of size <code>ncol(data)</code> containing
+0/1 data specifying the set of predictors to be used for each target column.
+Rows correspond to target variables (i.e. variables to be imputed), in the
+sequence as they appear in data. A value of '1' means that the column
+variable is used as a predictor for the target variable (in the rows). The
+diagonal of <code>predictorMatrix</code> must be zero. The default for
+<code>predictorMatrix</code> is that all other columns are used as predictors
+(sometimes called massive imputation). Note: For two-level imputation codes
+'2' and '-2' are also allowed.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>where</code></td>
+<td>
+<p>A data frame or matrix with logicals of the same dimensions 
+as <code>data</code> indicating where in the data the imputations should be 
+created. The default, <code>where = is.na(data)</code>, specifies that the
+missing data should be imputed. The <code>where</code> argument may be used to 
+overimpute observed data, or to skip imputations for selected missing values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>visitSequence</code></td>
+<td>
+
+<p>A vector of integers of arbitrary length, specifying the
+column indices of the visiting sequence. The visiting sequence is the column
+order that is used to impute the data during one pass through the data. A
+column may be visited more than once. All incomplete columns that are used as
+predictors should be visited, or else the function will stop with an error.
+The default sequence <code>1:ncol(data)</code> implies that columns are imputed
+from left to right. It is possible to specify one of the keywords
+<code>'roman'</code> (left to right), <code>'arabic'</code> (right to left),
+<code>'monotone'</code> (sorted in increasing amount of missingness) and
+<code>'revmonotone'</code> (reverse of monotone). The keyword should be supplied as
+a string and may be abbreviated.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>blots</code></td>
+<td>
+<p>A named <code>list</code> of <code>alist</code>'s that can be used 
+to pass down arguments to lower level imputation function. The entries
+of element <code>blots[[blockname]]</code> are passed down to the function
+called for block <code>blockname</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>post</code></td>
+<td>
+
+<p>A vector of strings with length <code>ncol(data)</code>, specifying
+expressions. Each string is parsed and executed within the <code>sampler()</code>
+function to postprocess imputed values.  The default is to do nothing,
+indicated by a vector of empty strings <code>''</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>blocks</code></td>
+<td>
+<p>List of vectors with variable names per block. List elements 
+may be named to identify blocks. Variables within a block are 
+imputed by a multivariate imputation method
+(see <code>method</code> argument). By default each variable is placed 
+into its own block, which is effectively
+fully conditional specification (FCS) by univariate models 
+(variable-by-variable imputation). Only variables whose names appear in 
+<code>blocks</code> are imputed. The relevant columns in the <code>where</code> 
+matrix are set to <code>FALSE</code> of variables that are not block members. 
+A variable may appear in multiple blocks. In that case, it is 
+effectively re-imputed each time that it is visited.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formulas</code></td>
+<td>
+<p>A named list of formula's, or expressions that
+can be converted into formula's by <code>as.formula</code>. List elements
+correspond to blocks. The block to which the list element applies is 
+identified by its name, so list names must correspond to block names.
+The <code>formulas</code> argument is an alternative to the 
+<code>predictorMatrix</code> argument that allows for more flexibility in 
+specifying imputation models, e.g., for specifying interaction terms.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>defaultMethod</code></td>
+<td>
+
+<p>A vector of three strings containing the default
+imputation methods for numerical columns, factor columns with 2 levels, and
+columns with (unordered or ordered) factors with more than two levels,
+respectively. If nothing is specified, the following defaults will be used:
+<code>pmm</code>, predictive mean matching (numeric data) <code>logreg</code>, logistic
+regression imputation (binary data, factor with 2 levels) <code>polyreg</code>,
+polytomous regression imputation for unordered categorical data (factor &gt;= 2
+levels) <code>polr</code>, proportional odds model for (ordered, &gt;= 2 levels)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit</code></td>
+<td>
+
+<p>A scalar giving the number of iterations. The default is 5.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>An integer that is used as argument by the <code>set.seed()</code> for
+offsetting the random number generator. Default is to leave the random number
+generator alone.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data.init</code></td>
+<td>
+<p>A data frame of the same size and type as <code>data</code>,
+without missing data, used to initialize imputations before the start of the
+iterative process.  The default <code>NULL</code> implies that starting imputation
+are created by a simple random draw from the data. Note that specification of
+<code>data.init</code> will start the <code>m</code> Gibbs sampling streams from the same
+imputations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nnodes</code></td>
+<td>
+<p>A scalar indicating the number of nodes for parallel calculation. Default value is 5.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>path.outfile</code></td>
+<td>
+<p>A vector of strings indicating the path for redirection of print messages. Default value is NULL, meaning that silent imputation is performed. Otherwise, print messages are saved in the files path.outfile/output.txt. One file per node is generated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Named arguments that are passed down to the elementary imputation functions.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Performs multiple imputation of <code>m</code> tables in parallel by generating <code>m</code> seeds, and then by performing multiple imputation by chained equations in parallel from each one. The output is the same as the <code>mice</code> function of the mice package.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns an S3 object of class <code>mids</code> (multiply imputed data set)
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Vincent Audigier <a href="mailto:vincent.audigier@cnam.fr">vincent.audigier@cnam.fr</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Van Buuren, S., Groothuis-Oudshoorn, K. (2011). <code>mice</code>:
+Multivariate Imputation by Chained Equations in <code>R</code>. <em>Journal of
+Statistical Software</em>, <b>45</b>(3), 1-67.
+<a href="https://www.jstatsoft.org/article/view/v045i03">https://www.jstatsoft.org/article/view/v045i03</a> &lt;doi:10.18637/jss.v045.i03&gt;
+</p>
+<p>van Buuren, S. (2012). <em>Flexible Imputation of Missing Data.</em> Boca
+Raton, FL: Chapman &amp; Hall/CRC Press.
+</p>
+<p>Van Buuren, S., Brand, J.P.L., Groothuis-Oudshoorn C.G.M., Rubin, D.B. (2006)
+Fully conditional specification in multivariate imputation.  <em>Journal of
+Statistical Computation and Simulation</em>, <b>76</b>, 12, 1049–1064. &lt;doi:10.1080/10629360600810434&gt;
+</p>
+<p>Van Buuren, S. (2007) Multiple imputation of discrete and continuous data by
+fully conditional specification.  <em>Statistical Methods in Medical
+Research</em>, <b>16</b>, 3, 219–242. &lt;doi:10.1177/0962280206074463&gt;
+</p>
+<p>Van Buuren, S., Boshuizen, H.C., Knook, D.L. (1999) Multiple imputation of
+missing blood pressure covariates in survival analysis.  <em>Statistics in
+Medicine</em>, <b>18</b>, 681–694. &lt;doi:10.1002/(SICI)1097-0258(19990330)18:6&lt;681::AID-SIM71&gt;3.0.CO;2-R&gt;
+</p>
+<p>Brand, J.P.L. (1999) <em>Development, implementation and evaluation of
+multiple imputation strategies for the statistical analysis of incomplete
+data sets.</em> Dissertation. Rotterdam: Erasmus University.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mice,parallel</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+  ##############
+  # nhanes (one level data)
+  ##############
+  data(nhanes, package = "mice")
+  #imp &lt;- mice.par(nhanes)
+  #fit &lt;- with(data = imp, exp = lm(bmi ~ hyp + chl))
+  #summary(pool(fit))
+  
+  ##############
+  #CHEM97Na (Two levels data with 1681 observations and 5 variables)
+  ##############
+  
+  data(CHEM97Na)
+  
+  ind.clust&lt;-1#index for the cluster variable
+  
+  #initialisation of the argument predictorMatrix
+  predictor.matrix&lt;-mice(CHEM97Na,m=1,maxit=0)$pred
+  predictor.matrix[ind.clust,ind.clust]&lt;-0
+  predictor.matrix[-ind.clust,ind.clust]&lt;- -2
+  predictor.matrix[predictor.matrix==1]&lt;-2
+  
+  #initialisation of the argument method
+  method&lt;-find.defaultMethod(CHEM97Na,ind.clust)
+  
+  #multiple imputation by chained equations (parallel calculation) [1 minute]
+  #(the imputation process can be followed by opening output.txt files in the working directory)
+  #res.mice&lt;-mice.par(CHEM97Na,
+  #                  predictorMatrix = predictor.matrix,
+  #                  method=method,
+  #                  path.outfile=getwd())
+
+  
+  #multiple imputation by chained equations (without parallel calculation) [4.8 minutes]
+  #res.mice&lt;-mice(CHEM97Na,
+  #                  predictorMatrix = predictor.matrix,
+  #                  method=method)
+
+  
+  
+  ############
+  #IPDNa (Two levels data with 11685 observations and 10 variables)
+  ############
+  
+  data(IPDNa)
+  
+  ind.clust&lt;-1#index for the cluster variable
+
+  #initialisation of the argument predictorMatrix
+  predictor.matrix&lt;-mice(IPDNa,m=1,maxit=0)$pred
+  predictor.matrix[ind.clust,ind.clust]&lt;-0
+  predictor.matrix[-ind.clust,ind.clust]&lt;- -2
+  predictor.matrix[predictor.matrix==1]&lt;-2
+
+  #initialisation of the argument method
+  method&lt;-find.defaultMethod(IPDNa,ind.clust)
+
+  #multiple imputation by chained equations (parallel calculation)
+
+  #res.mice&lt;-mice.par(IPDNa,
+  #                 predictorMatrix = predictor.matrix,
+  #                 method=method,
+  #                 path.outfile=getwd())
+</code></pre>
+
+
+</div>

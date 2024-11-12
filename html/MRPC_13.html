@@ -1,0 +1,161 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>IdentifyAssociatedPCs</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Identifyprincipal components (PCs) that are significantly associated with eQTLs and genes
+</h2>
+
+<h3>Description</h3>
+
+<p>This function identifies PCs that are significantly associated the eQTLs or genes, and merge the associated PCs with the data on the eQTL and genes.  PCs may be derived from Principal Component Analysis (PCA) of the entire gene expression matrix, and may be viewed as potential confounders in the sequent causal network analysis on the eQTLs and genes.  See details in Badsha and Fu (2019) and Badsha et al. (2021).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">IdentifyAssociatedPCs(PCs.matrix,no.PCs,data,fdr.level,corr.threshold,corr.value)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>PCs.matrix</code></td>
+<td>
+<p>A matrix of PCs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>no.PCs</code></td>
+<td>
+<p>Number of top PCs to test for association. The default is 10.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Data of the eQTLs and genes, containing the genotypes of the eQTLs and the expression of the genes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fdr.level</code></td>
+<td>
+<p>(optional) The false discover rate (FDR) for association tests. Must be in (0,1]. The default is "0.05".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>corr.threshold</code></td>
+<td>
+<p>(optional). The default is "FALSE". If "TRUE" then a constraint on the correlation between a PC and an eQTL or a gene is applied in addition to the FDR control.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>corr.value</code></td>
+<td>
+<p>The threshold for the Pearson correlation between a PC and an eQTL or a gene when <code>corr.threshold</code> is "TRUE". The default is 0.3.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list of object that containing the following:
+</p>
+
+<ul>
+<li> <p><code>AssociatedPCs</code>: All the PCs that are significantly associated with the eQTLs and genes.
+</p>
+</li>
+<li> <p><code>data.withPC</code>: The data matrix that contains eQTLs, gene expression, and associated PCs.
+</p>
+</li>
+<li> <p><code>corr.PCs</code>: The matrix of correlations between PCs and eQTLs/genes.
+</p>
+</li>
+<li> <p><code>PCs.asso.list</code>: List of all associated PCs for each of the eQTLs and genes.
+</p>
+</li>
+<li> <p><code>qobj</code>: The output from applying the qvalue function.
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Md Bahadur Badsha (mbbadshar@gmail.com)
+</p>
+
+
+<h3>References</h3>
+
+<p>1. Badsha MB and Fu AQ (2019). Learning causal biological networks with the principle of Mendelian randomization. Frontiers in Genetics, 10:460.
+</p>
+<p>2. Badsha MB, Martin EA and Fu AQ (2021). MRPC: An R package for inference of causal graphs. Frontiers in Genetics, 10:651812.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>data_GEUVADIS_combined
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+
+# Load genomewide gene expression data in GEUVADIS 
+# 373 individuals
+# 23722 genes
+data_githubURL &lt;- "https://github.com/audreyqyfu/mrpc_data/raw/master/data_GEUVADIS_allgenes.RData"
+load(url(data_githubURL))
+PCs &lt;- prcomp(data_GEUVADIS_allgenes,scale=TRUE)
+# Extract the PCs matrix 
+PCs.matrix &lt;- PCs$x
+
+# The eQTL-gene set contains eQTL rs7124238 and genes SBF1-AS1 and SWAP70
+
+data_GEU_Q50 &lt;- data_GEUVADIS$Data_Q50$Data_EUR
+colnames(data_GEU_Q50) &lt;- c("rs7124238","SBF2-AS1","SWAP70")
+data &lt;- data_GEU_Q50
+
+# Identify associated PCs for this eQTL-gene set
+
+Output &lt;- IdentifyAssociatedPCs(PCs.matrix,no.PCs=10,data,fdr.level=0.05,corr.threshold=TRUE
+,corr.value = 0.3)
+
+# Gene SBF2-AS1 is significantly associated with PC2 
+# Data with PC2 as a potential confounder
+
+data_withPC &lt;- Output$data.withPC
+
+n &lt;- nrow(data_withPC)         # Number of rows
+V &lt;- colnames(data_withPC)     # Column names
+
+# Calculate Pearson correlation for MRPC analysis
+
+suffStat &lt;- list(C = cor(data_withPC,use = "complete.obs"),
+                 n = n)
+
+# Infer the graph by MRPC 
+
+MRPC.fit_FDR&lt;- MRPC(data_withPC,
+                    suffStat,
+                    GV = 1,
+                    FDR = 0.05,
+                    indepTest = 'gaussCItest',
+                    labels = V,
+                    FDRcontrol = 'LOND',
+                    verbose = TRUE)
+                    
+plot(MRPC.fit_FDR, main="MRPC with PCs (potential confounders)")
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

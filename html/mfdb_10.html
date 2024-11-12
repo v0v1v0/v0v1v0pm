@@ -1,0 +1,203 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>gadget_fleetfile</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Gadget fleet files</h2>
+
+<h3>Description</h3>
+
+<p>Structures representing fleet file components
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">gadget_fleet_component(type,
+        name = type,
+        livesonareas = unique(data$area),
+        multiplicative = 1,
+        suitability = NULL,
+        fleetfile = 'fleet',
+        data = stop("data not provided"),
+        ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+
+<p>Required. Type of fleet component to create, e.g. 'totalfleet'
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>name</code></td>
+<td>
+
+<p>Optional. A descriptive name for the fleet component, defaults to the type.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>livesonareas</code></td>
+<td>
+
+<p>Optional. Vector of area names, defaults to all unique areas in data.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>multiplicative</code></td>
+<td>
+
+<p>Optional. Defaults to 1
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>suitability</code></td>
+<td>
+
+<p>Optional. Defaults to empty string
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fleetfile</code></td>
+<td>
+
+<p>Optional. The fleet file to put the component in. Defaults to 'fleet'.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>Required. The data.frame to use for 'amountfile'. Areas are translated
+into integers before adding to amountfile.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Extra parameters for the component, see details
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>effortfleet</code> requires the following extra parameters:
+</p>
+
+<dl>
+<dt>catchability</dt>
+<dd>
+<p>A list of stock names to catchability constants</p>
+</dd>
+</dl>
+<p><code>quotafleet</code> requires the following extra parameters:
+</p>
+
+<dl>
+<dt>quotafunction</dt>
+<dd>
+<p>Function name, e.g. 'simple'</p>
+</dd>
+<dt>biomasslevel</dt>
+<dd>
+<p>Vector of biomass levels</p>
+</dd>
+<dt>quotalevel</dt>
+<dd>
+<p>Vector of fishing levels</p>
+</dd>
+</dl>
+<h3>Value</h3>
+
+<p>A gadget_fleet_component object that can them be added to a fleetfile with
+<code>gadget_dir_write</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">    mdb &lt;- mfdb(tempfile(fileext = '.duckdb'))
+    gd &lt;- gadget_directory(tempfile())
+
+    # Define 2 areacells of equal size
+    mfdb_import_area(mdb, data.frame(name=c("divA", "divB"), size=1))
+
+    # Define 2 vessels
+    mfdb_import_vessel_taxonomy(mdb, data.frame(
+        name = c('1.RSH', '2.COM'),
+        full_name = c('Research', 'Commercial'),
+        stringsAsFactors = FALSE))
+
+    # Make up some samples
+    samples &lt;- expand.grid(
+        year = 1998,
+        month = 5,
+        areacell = c("divA", "divB"),
+        species = 'COD',
+        vessel = c('1.RSH', '2.COM'),
+        length = c(0,40,80))
+    samples$count &lt;- runif(nrow(samples), 20, 90)
+    mfdb_import_survey(mdb, data_source = "x", samples)
+
+    # Make a 'totalfleet' component
+    fc &lt;- gadget_fleet_component(
+        'totalfleet',
+        name = 'research',
+        data = mfdb_sample_count(mdb, c(), list(
+            vessel = '1.RSH',
+            area = mfdb_group(x = 'divA', y = 'divB'),
+            year = 1998,
+            step = mfdb_timestep_yearly))[[1]])
+    fc
+
+    # Write out to a directory
+    gadget_dir_write(gd, fc)
+
+    gadget_fleet_component(
+        'effortfleet',
+        name = 'commercial',
+        suitability = "function constant 4;",
+        catchability = list(stockA=4, stockB=5),
+        quotafunction = 'simple',
+        biomasslevel = c(1000, 2000),
+        quotalevel = c(0.1, 0.4, 0.9),
+        data = mfdb_sample_count(mdb, c(), list(
+            vessel = '2.COM',
+            area = mfdb_group(x = 'divA', y = 'divB'),
+            year = 1998,
+            step = mfdb_timestep_yearly))[[1]])
+
+    gadget_fleet_component(
+        'quotafleet',
+        name = 'commercial',
+        suitability = "function constant 4;",
+        catchability = list(stockA=4, stockB=5),
+        quotafunction = 'simple',
+        biomasslevel = c(1000, 2000),
+        quotalevel = c(0.1, 0.4, 0.9),
+        data = mfdb_sample_count(mdb, c(), list(
+            vessel = '2.COM',
+            area = mfdb_group(x = 'divA', y = 'divB'),
+            year = 1998,
+            step = mfdb_timestep_yearly))[[1]])
+
+    mfdb_disconnect(mdb)
+</code></pre>
+
+
+</div>

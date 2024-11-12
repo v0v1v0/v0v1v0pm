@@ -1,0 +1,272 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>summary_control</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Control for Learner summaries</h2>
+
+<h3>Description</h3>
+
+<p>Various parameters that control aspects of <code>summary.Learner</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">summary_control(
+  measures = NULL,
+  complexity_measures = c("sparsity", "interaction_strength"),
+  importance_measures = NULL,
+  n_important = 15L,
+  effect_measures = c("pdp", "ale"),
+  fairness_measures = NULL,
+  protected_attribute = NULL,
+  hide = NULL,
+  digits = max(3L, getOption("digits") - 3L)
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>measures</code></td>
+<td>
+<p>(mlr3::Measure | list of mlr3::Measure | NULL)<br>
+measure(s) to calculate performance on. If NULL (default), a set of
+selected measures are calculated (choice depends on Learner type (classif vs. regr)).
+See details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>complexity_measures</code></td>
+<td>
+<p>(character)<br>
+vector of complexity measures. Possible choices are "sparsity" (the number
+of used features) and "interaction_strength" (see Molnar et al. (2020)).
+Both are the default. See details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>importance_measures</code></td>
+<td>
+<p>(character()|NULL)<br>
+vector of importance measure names. Possible choices are "pfi.<code>&lt;</code>loss<code>&gt;</code>"
+(iml::FeatureImp), "pdp" (iml::FeatureEffects, see ) and
+"shap" (fastshap::explain). Default of NULL results in "pfi.<code>&lt;</code>loss<code>&gt;</code>" and
+"pdp", where the <code>&lt;</code>loss<code>&gt;</code> depends on the Learner type (classif vs. regr).
+See details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_important</code></td>
+<td>
+<p>(numeric(1))<br>
+number of important variables to be displayed. Default is 15L.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>effect_measures</code></td>
+<td>
+<p>(character | NULL)<br>
+vector of effect method names. Possible choices are "pfi" and "ale"
+(see iml::FeatureEffects). Both are the default. See details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fairness_measures</code></td>
+<td>
+<p>(mlr3fairness::MeasureFairness |
+list of mlr3fairness::MeasureFairness | NULL)<br>
+measure(s) to assess fairness. If NULL (default), a set of
+selected measures are calculated (choice depends on Learner type (classif vs. regr)).
+See details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>protected_attribute</code></td>
+<td>
+<p>(character(1))<br>
+name of the binary feature that is used as a protected attribute.
+If no <code>protected_attribute</code> is specified (and also no <code>pta</code> feature is
+available in the <code>mlr3::Task</code> for training the <code>mlr3::Learner</code>),
+no fairness metrics are computed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hide</code></td>
+<td>
+<p>(character)<br>
+names of paragraphs which should not be part of the summary.
+Possible values are "general", "residuals", "performance", "complexity", "fairness",
+"importance", "effect". If NULL, no paragraph is hided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>(numeric(1))<br>
+number of digits to use when printing.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The following provides some details on the different choices of measures.
+</p>
+<p><strong>Performance</strong>
+The default <code>measures</code> depend on the type of task. Therefore, NULL is displayed as default and
+the measures will be initialized in <code>summary.Learner</code> with the help of <code>mlr3::msr</code>.
+The following provides an overview of these defaults:
+</p>
+
+<ul>
+<li>
+<p>Regression: regr.rmse,
+regr.rsq,
+regr.mae,
+regr.medae
+</p>
+</li>
+<li>
+<p>Binary classification with probabilities:
+classif.auc,
+classif.fbeta,
+classif.bbrier,
+classif.mcc
+</p>
+</li>
+<li>
+<p>Binary classification with hard labels:
+classif.acc,
+classif.bacc,
+classif.fbeta,
+classif.mcc
+</p>
+</li>
+<li>
+<p>Multi-class classification with probabilities:
+classif.mauc_aunp,
+classif.mbrier
+</p>
+</li>
+</ul>
+<p><strong>Complexity</strong>
+Currently only two <code>complexity_measures</code> are available, which are
+based on Molnar et al. (2020):
+</p>
+
+<ul>
+<li>
+<p><code>sparsity</code>: The number of used features, that have a non-zero effect
+on the prediction (evaluated by accumulated local effects (ale, Apley and Zhu
+(2020)). The measure can have values between 0 and the number of features.
+</p>
+</li>
+<li>
+<p><code>interaction_strength</code>: The scaled approximation error between a
+main effect model (based on ale) and the prediction function. It can have
+values between 0 and 1, where 0 means no interaction and 1 only interaction,
+and no main effects. Interaction strength can only be measured for binary
+classification and regression models.
+</p>
+</li>
+</ul>
+<p><strong>Importance</strong> The <code>importance_measures</code> are based on the <code>iml</code> and
+<code>fastshap</code> packages. Multiple measures are available:
+</p>
+
+<ul>
+<li>
+<p>pdp: This corrensponds to importances based on the standard deviations
+in partial dependence plots (Friedmann (2001)), as proposed by Greenwell et al. (2018).
+</p>
+</li>
+<li>
+<p>pfi.<code>&lt;</code>loss<code>&gt;</code>: This corresponds to the permutation feature importance as
+implemented in iml::FeatureImp. Different loss functions are possible and
+rely on the task at hand.
+</p>
+</li>
+<li>
+<p>shap: This importance corresponds to the
+mean absolute Shapley values computed with fastshap::explain.
+Higher values display higher importance.
+</p>
+</li>
+</ul>
+<p>NULL is the default, corresponding to importance calculations based on pdp and pfi.
+Because the loss function for pfi relies on the task at hand, the importance measures
+are initialized in <code>summary</code>."pdp" and "pfi.ce" are the defaults for
+classification, "pdp" and "pfi.mse" for regression.
+</p>
+<p><strong>Effects</strong> The <code>effect_measures</code> are based on iml::FeatureEffects.
+Currently partial dependence plots (pdp) and accumulated local effects are
+available (ale). Ale has the advantage over pdp that it takes feature
+correlations into account but has a less natural interpretation than pdp.
+Therefore, both "pdp" and "ale" are the defaults.
+</p>
+<p><strong>Fairness</strong>
+The default <code>fairness_measures</code> depend on the type of task.
+Therefore, NULL is displayed as default and
+the measures will be initialized in <code>summary.Learner</code> based on
+mlr3fairness::mlr_measures_fairness.
+There is currently a mismatch between the naming convention of
+measures in <code>mlr3fairness</code> and the underlying measurements displayed.
+To avoid confusion, the id of the fairness measures were adapted.
+The following provides an overview of these defaults and adapted names:
+</p>
+
+<ul>
+<li>
+<p>Binary classification: "fairness.dp" (demographic parity) based on "fairness.cv",
+"fairness.cuae" (conditional use accuracy equality) based on "fairness.pp",
+"fairness.eod" (equalized odds) based on "fairness.eod". Smaller values are better.
+</p>
+</li>
+<li>
+<p>Multi-class classification: "fairness.acc", the smallest absolute
+difference in accuracy between groups of the <code>protected_attribute</code>.
+Smaller values are better.
+</p>
+</li>
+<li>
+<p>Regression: "fairness.rmse" and "fairness.mae",
+the smallest absolute difference (see mlr3fairness::groupdiff_absdiff)
+in the either the root mean-squared error (rmse) or
+the mean absolute error (mae) between groups of the <code>protected_attribute</code>.
+Smaller values are better.
+</p>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>list of class <code>summary_control</code>
+</p>
+
+
+<h3>References</h3>
+
+<p>Molnar, Christoph, Casalicchio, Giuseppe, Bischl, Bernd (2020).
+“Quantifying Model Complexity via Functional Decomposition for Better Post-hoc Interpretability.”
+In <em>Communications in Computer and Information Science</em>, chapter 1, 193–204.
+Springer International Publishing.
+</p>
+<p>Greenwell, M. B, Boehmke, C. B, McCarthy, J. A (2018).
+“A Simple and Effective Model-Based Variable Importance Measure.”
+arXiv preprint.
+arXiv:1805.04755, <a href="http://arxiv.org/abs/1805.04755">http://arxiv.org/abs/1805.04755</a>.
+</p>
+<p>Apley, W. D, Zhu, Jingyu (2020).
+“Visualizing the Effects of Predictor Variables in Black Box Supervised Learning Models.”
+<em>Journal of the Royal Statistical Society Series B: Statistical Methodology</em>, <b>82</b>(4), 1059-1086.
+</p>
+<p>Friedman, H. J (2001).
+“Greedy Function Approximation: A Gradient Boosting Machine.”
+<em>The Annals of Statistics</em>, <b>29</b>(5).
+</p>
+
+
+</div>

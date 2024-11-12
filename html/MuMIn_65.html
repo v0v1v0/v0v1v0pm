@@ -1,0 +1,211 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict.averaging</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Predict method for averaged models</h2>
+
+<h3>Description</h3>
+
+<p>Model-averaged predictions, optionally with standard errors.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'averaging'
+predict(object, newdata = NULL, se.fit = FALSE,
+  interval = NULL, type = NA, backtransform = FALSE, full = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>an object returned by <code>model.avg</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p> optional <code>data.frame</code> in which to look for variables 
+with which to predict. If omitted, the fitted values are used. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>se.fit</code></td>
+<td>
+<p>logical, indicates if standard errors should be returned.
+This has any effect only if the <code>predict</code> methods for each of the
+component models support it. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>interval</code></td>
+<td>
+<p>currently not used. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>the type of predictions to return (see documentation for
+<code>predict</code> appropriate for the class of used component models). If
+omitted, the default type is used. See ‘Details’. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>backtransform</code></td>
+<td>
+<p>if <code>TRUE</code>, the averaged predictions are
+back-transformed from link scale to response scale. This makes sense
+provided that all component models use the same <code>family</code>, and the
+prediction from each of the component models is calculated on the link 
+scale (as specified by <code>type</code>. For <code>glm</code>, use <code>type = 
+		"link"</code>).
+See ‘Details’.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>full</code></td>
+<td>
+<p> if <code>TRUE</code>, the full model-averaged coefficients are used
+(only if <code>se.fit = FALSE</code> and the component objects are a result of
+<code>lm</code>). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>arguments to be passed to respective <code>predict</code>
+method (e.g. <code>level</code> for <code>lme</code> model). </p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>predict</code>ing is possible only with <code>averaging</code> objects with
+<code>"modelList"</code> attribute, i.e. those created <em>via</em> <code>model.avg</code>
+from a model list, or from <code>model.selection</code> object with argument <code>fit
+= TRUE</code> (which will recreate the model objects, see <code>model.avg</code>).
+</p>
+<p>If all the component models are ordinary linear models, the prediction can be
+made either with the full averaged coefficients (the argument <code>full =
+TRUE</code> this is the default) or subset-averaged coefficients. Otherwise the
+prediction is obtained by calling <code>predict</code> on each component model and
+weighted averaging the results, which corresponds to the assumption that all
+predictors are present in all models, but those not estimated are equal zero 
+(see ‘Note’ in <code>model.avg</code>). Predictions from component models
+with standard errors are passed to <code>par.avg</code> and averaged in the same way
+as the coefficients are.
+</p>
+<p>Predictions on the response scale from generalized models can be calculated by
+averaging predictions of each model on the link scale, followed by inverse
+transformation (this is achieved with <code>type = "link"</code> and
+<code>backtransform = TRUE</code>). This is only possible if all component models use
+the same family and link function. Alternatively, predictions from each model on
+response scale may be averaged (with <code>type = "response"</code> and
+<code>backtransform = FALSE</code>). Note that this leads to results differing from
+those calculated with the former method. See also
+<code>predict.glm</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>se.fit = FALSE</code>, a vector of predictions, otherwise a list
+with components: <code>fit</code> containing the predictions, and <code>se.fit</code> with
+the estimated standard errors.
+</p>
+
+
+<h3>Note</h3>
+
+<p>This method relies on availability of the <code>predict</code> methods for the
+component model classes (except when all component models are of class
+<code>lm</code>).
+</p>
+<p>The package <span class="pkg">MuMIn</span> includes <code>predict</code> methods for <code>lme</code>,
+and <code>gls</code> that calculate standard errors of the predictions
+(with <code>se.fit = TRUE</code>). They enhance the original predict methods from
+package <span class="pkg">nlme</span>, and with <code>se.fit = FALSE</code> they return identical result.
+<span class="pkg">MuMIn</span>'s versions are always used in averaged model predictions (so it is
+possible to predict with standard errors), but from within global environment
+they will be found only if <span class="pkg">MuMIn</span> is before <span class="pkg">nlme</span> on the
+search list (or directly extracted from namespace as
+<code>MuMIn:::predict.lme</code>).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kamil Bartoń</p>
+
+
+<h3>See Also</h3>
+
+<p><code>model.avg</code>, and <code>par.avg</code> for details of model-averaged
+parameter calculation.
+</p>
+<p><code>predict.lme</code>, <code>predict.gls</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+
+# Example from Burnham and Anderson (2002), page 100:
+fm1 &lt;- lm(y ~ X1 + X2 + X3 + X4, data = Cement)
+
+ms1 &lt;- dredge(fm1)
+confset.95p &lt;- get.models(ms1, subset = cumsum(weight) &lt;= .95)
+avgm &lt;- model.avg(confset.95p)
+
+nseq &lt;- function(x, len = length(x)) seq(min(x, na.rm = TRUE),
+    max(x, na.rm=TRUE), length = len)
+
+# New predictors: X1 along the range of original data, other
+# variables held constant at their means
+newdata &lt;- as.data.frame(lapply(lapply(Cement[, -1], mean), rep, 25))
+newdata$X1 &lt;- nseq(Cement$X1, nrow(newdata))
+
+n &lt;- length(confset.95p)
+
+# Predictions from each of the models in a set, and with averaged coefficients
+pred &lt;- data.frame(
+	model = sapply(confset.95p, predict, newdata = newdata),
+	averaged.subset = predict(avgm, newdata, full = FALSE),
+    averaged.full = predict(avgm, newdata, full = TRUE)
+	)
+
+opal &lt;- palette(c(topo.colors(n), "black", "red", "orange"))
+matplot(newdata$X1, pred, type = "l",
+	lwd = c(rep(2,n),3,3), lty = 1,
+    xlab = "X1", ylab = "y", col=1:7)
+
+# For comparison, prediction obtained by averaging predictions of the component
+# models
+pred.se &lt;- predict(avgm, newdata, se.fit = TRUE)
+y &lt;- pred.se$fit
+ci &lt;- pred.se$se.fit  * 2
+matplot(newdata$X1, cbind(y, y - ci, y + ci), add = TRUE, type="l",
+	lty = 2, col = n + 3, lwd = 3)
+
+legend("topleft",
+    legend=c(lapply(confset.95p, formula),
+        paste(c("subset", "full"), "averaged"), "averaged predictions + CI"),
+    lty = 1, lwd = c(rep(2,n),3,3,3),  cex = .75, col=1:8)
+
+palette(opal)
+
+</code></pre>
+
+
+</div>

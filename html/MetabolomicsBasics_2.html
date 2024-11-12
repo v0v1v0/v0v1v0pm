@@ -1,0 +1,127 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>CheckForOutliers</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>CheckForOutliers.</h2>
+
+<h3>Description</h3>
+
+<p><code>CheckForOutliers</code> will evaluate a numeric vector and check
+if outliers within groups based on group <code class="reqn">mean \pm n \times sd</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">CheckForOutliers(
+  x = NULL,
+  group = NULL,
+  n_sd = 3,
+  method = c("idx", "logical", "dist")
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Numeric vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>group</code></td>
+<td>
+<p>Factor vector of length(x).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_sd</code></td>
+<td>
+<p>Cutoff for outliers in E being mean(group)+-n_sd*sd(group) where
+group values are calculated without the outlier candidate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>Different variants of the result value. See details.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The numeric will be split by groups and each value will be evaluated
+with respect to its distance to the group mean (calculated out of the other
+values in the group). Distance here means the number of standard deviations
+the value is off the group mean. With different choices of <code>method</code>
+the output can be switched from the calculated fold-distances to a boolean
+of length(x) or and Index vector giving the outliers directly (see examples).
+</p>
+
+
+<h3>Value</h3>
+
+<p>Depending on the selected method. See details.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(0)
+x &lt;- runif(10)
+x[1] &lt;- 2
+group &lt;- gl(2, 5)
+CheckForOutliers(x, group, method = "dist")
+CheckForOutliers(x, group, method = "logical")
+CheckForOutliers(x, group, method = "idx")
+graphics::par(mfrow = c(1, 2))
+bg &lt;- c(3, 2)[1 + CheckForOutliers(x, group, method = "logical")]
+graphics::plot(x = as.numeric(group), y = x, pch = 21, cex = 3,
+  bg = bg, main = "n_sd=3", las = 1, xlim = c(0.5, 2.5))
+bg &lt;- c(3, 2)[1 + CheckForOutliers(x, group, n_sd = 4, method = "logical")]
+graphics::plot(x = as.numeric(group), y = x, pch = 21, cex = 3,
+  bg = bg, main = "n_sd=4", las = 1, xlim = c(0.5, 2.5))
+graphics::par(mfrow = c(1, 1))
+
+# load raw data and sample description
+raw &lt;- MetabolomicsBasics::raw
+sam &lt;- MetabolomicsBasics::sam
+
+# no missing data in this matrix
+all(is.finite(raw))
+
+# check for outliers (computing n-fold sd distance from group mean)
+tmp &lt;- apply(raw, 2, CheckForOutliers, group = sam$GT, method = "dist")
+# plot a histogram of the observed distances
+graphics::hist(tmp, breaks = seq(0, ceiling(max(tmp))), main = "n*SD from mean", xlab = "n")
+
+# Calculate the amount of values exceeding five-sigma and compare with a standard gaussian
+table(tmp &gt; 5)
+round(100 * sum(tmp &gt; 5) / length(tmp), 2)
+
+gauss &lt;- CheckForOutliers(x = rnorm(prod(dim(raw))), method = "dist")
+sapply(1:5, function(i) {
+  data.frame("obs" = sum(tmp &gt; i), "gauss" = sum(gauss &gt; i))
+})
+
+# compare a PCA w/wo outliers
+RestrictedPCA(
+  dat = raw, sam = sam, use.sam = sam$GT %in% c("Mo17", "B73"), group.col = "GT",
+  fmod = "GT+Batch+Order", P = 1, sign.col = "GT", legend.x = NULL, text.col = "Batch", medsd = TRUE
+)
+raw_filt &lt;- raw
+raw_filt[tmp &gt; 3] &lt;- NA
+RestrictedPCA(
+  dat = raw_filt, sam = sam, use.sam = sam$GT %in% c("Mo17", "B73"), group.col = "GT",
+  fmod = "GT+Batch+Order", P = 1, sign.col = "GT", legend.x = NULL, text.col = "Batch", medsd = TRUE
+)
+
+</code></pre>
+
+
+</div>

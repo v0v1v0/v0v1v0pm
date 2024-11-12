@@ -1,0 +1,125 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>timeAlign</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Condense Detections or Peaks from Multiple Templates
+</h2>
+
+<h3>Description</h3>
+
+<p>Condense detections or peaks from a number of templates (of the same detection type); events that occur within an adjustable time buffer of one another are assumed to be duplicate detections.  In such cases the event with the highest score is saved.  Functions with detections for a single species or multiple species.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">timeAlign(x, what = "detections", tol = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>An object of class <code>detectionList</code>, a single data frame of detections, or list of either file paths to a csv file or of data frames.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>what</code></td>
+<td>
+<p>Character, in <code>c("detections", "peaks")</code>.  Detections are peaks above a score cutoff.  Peaks are all peaks.  Required only if <code>x</code> is of class <code>detectionList</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>Numeric value for tolerance, with units seconds.  If a detected event is within this value (actually +/- 0.5<code>tol</code>), the events are assumed to co-occur and be of the same origin.  A somewhat arbitrary value (like epsilon), but should be less than 2/3 the template duration.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>If input is an object of class <code>detectionList</code>, a single data frame, or list of either file paths or data frames.  Must be called for each survey.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns a single data frame of detections (the input <code>x</code>) with duplicated events removed, leaving only the event that had the highest score.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Events are assumed to be duplicated if they co-occur within a time duration of <code>tol</code>, but they are only compared to the event above and below when ordered by time.  Events with similar times can be spuriously discarded if <code>tol</code> is set larger than the separation of unrelated peaks.  Excessive deletion of events may also occur if the value for <code>tol</code> is set larger than the duration of the template.   Note that in this function <code>tol</code> specifies seconds, whereas in <code>findPeaks</code> <code>tol</code> specifies a ratio.   
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jon Katz
+</p>
+
+
+<h3>See Also</h3>
+
+<p>The function <code>eventEval</code> operates similarly, but rather than merge detection results from multiple templates it compares them to known events and reports the True +, True -, False +, and False - rates.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Not run because it will create files in user's working directory
+data(survey)
+data(btnw)
+
+writeWave(btnw, "btnw.wav")
+
+btnw2 &lt;- cutw(survey, from = 0.75, to = 3)
+
+writeWave(btnw2, "btnw2.wav")
+
+# Template construction
+btnw1 &lt;- makeBinTemplate(
+        "btnw.wav", 
+        frq.lim = c(2, 8), 
+        select = "auto", 
+        name = "btnw1", 
+        buffer = 4, 
+        amp.cutoff = -31, 
+        binary = TRUE)
+
+btnw2 &lt;- makeBinTemplate(
+        "btnw2.wav", 
+        frq.lim = c(2, 8), 
+        select = "auto", 
+        name = "btnw2", 
+        buffer = 4, 
+        amp.cutoff = -24, 
+        binary = TRUE)
+
+# Join templates
+btnw &lt;- combineBinTemplates(btnw1, btnw2)
+
+# Binary point matching
+scores &lt;- binMatch(survey = survey, templates = btnw, time.source = 'fileinfo')
+
+# Isolate peaks
+pks &lt;- findPeaks(scores)
+
+# View detections
+getDetections(pks)
+
+# Compare to output of timeAlign
+timeAlign(pks)
+## End(Not run)
+</code></pre>
+
+
+</div>

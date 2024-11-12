@@ -1,0 +1,289 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>calc_comm_div</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate biodiversity statistics from sites by species table.</h2>
+
+<h3>Description</h3>
+
+<p>Calculate biodiversity statistics from sites by species table.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">calc_comm_div(
+  abund_mat,
+  index,
+  effort = NA,
+  extrapolate = TRUE,
+  return_NA = FALSE,
+  rare_thres = 0.05,
+  scales = c("alpha", "gamma", "beta"),
+  replace = FALSE,
+  C_target_gamma = NA,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>abund_mat</code></td>
+<td>
+<p>Abundance based site-by-species table. Species as
+columns</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>index</code></td>
+<td>
+<p>The calculated biodiversity indices. The options are
+</p>
+
+<ul>
+<li> <p><code>N</code> ... Number of individuals (total abundance)
+</p>
+</li>
+<li> <p><code>S</code> ... Number of species
+</p>
+</li>
+<li> <p><code>S_n</code> ... Rarefied or extrapolated number of species for n individuals
+</p>
+</li>
+<li> <p><code>S_C</code> ... Estimate species richness of a given level of coverage by <code>C_target_gamma</code>
+</p>
+</li>
+<li> <p><code>S_asymp</code> ... Estimated asymptotic species richness
+</p>
+</li>
+<li> <p><code>f_0</code> ... Estimated number of undetected species 
+</p>
+</li>
+<li> <p><code>pct_rare</code> ... The percent of rare species as defined by <code>rare_thres</code>
+</p>
+</li>
+<li> <p><code>PIE</code> ... Hurlbert's PIE (Probability of Interspecific Encounter)
+</p>
+</li>
+<li> <p><code>S_PIE</code> ... Effective number of species based on PIE
+</p>
+</li>
+</ul>
+<p>See <em>Details</em> for additional information on the
+biodiversity statistics.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>effort</code></td>
+<td>
+<p>The standardized number of individuals used for the 
+calculation of rarefied species richness. This can a be
+single integer or a vector of integers.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>extrapolate</code></td>
+<td>
+<p>Boolean which specifies if richness should be extrapolated
+when effort is larger than the number of individuals using the chao1
+method.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>return_NA</code></td>
+<td>
+<p>Boolean in which the rarefaction function
+returns the observed S when <code>effort</code> is larger than the number of
+individuals. If set to TRUE then NA is returned. Note that this argument
+is only relevant when <code>extrapolate = FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rare_thres</code></td>
+<td>
+<p>The threshold that determines how pct_rare is computed.
+It can range from (0, 1] and defaults to 0.05 which specifies that any 
+species with less than or equal to 5
+considered rare. It can also be specified as "N/S" which results in using
+average abundance as the threshold which McGill (2011) found to have the 
+best small sample behavior.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scales</code></td>
+<td>
+<p>The scales to compute the diversity indices for: 
+</p>
+
+<ul>
+<li> <p><code>alpha</code> ... for each row of the site x species community matrix
+</p>
+</li>
+<li> <p><code>gamma</code> ... for the entire site x species community matrix
+</p>
+</li>
+<li> <p><code>beta</code> ... the ratio of diversity at the <code>gamma</code> and 
+<code>alpha</code> scales.  
+</p>
+</li>
+</ul>
+<p> Defaults to all three scales: <code>c('alpha', 'gamma', 'beta')</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>replace</code></td>
+<td>
+<p>Used for <code>PIE</code> and <code>SPIE</code>.  If TRUE, sampling with
+replacement is used. Otherwise, sampling without replacement (default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C_target_gamma</code></td>
+<td>
+<p>When computing coverage based richness (<code>S_C</code>) then 
+this argument can be used to specify the coverage to be used for the gamma scale
+richness estimate. This defaults to <code>NA</code> in which case the target cover
+is computed by <code>calc_C_target</code> (i.e., the largest allowable sample
+size).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments that can be passed to <code>calc_div</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><strong>BIODIVERSITY INDICES</strong>
+</p>
+<p><strong>N: total community abundance</strong> is the total number of individuals 
+observed across all species in the sample
+</p>
+<p><strong>S: species richness</strong> is the observed number of species that occurs at
+least once in a sample
+</p>
+<p><strong>S_n: Rarefied species richness</strong> is the expected number of species, given a
+defined number of sampled individuals (n) (Gotelli &amp; Colwell 2001). Rarefied
+richness at the alpha-scale is calculated for the values provided in 
+<code>effort_samples</code> as long as these values are not smaller than the 
+user-defined minimum value <code>effort_min</code>. In this case the minimum value 
+is used and samples with less individuals are discarded. When no values for
+<code>effort_samples</code> are provided the observed minimum number of individuals
+of the samples is used, which is the standard in rarefaction analysis
+(Gotelli &amp; Colwell 2001). Because the number of individuals is expected to
+scale linearly with sample area or effort, at the gamma-scale the number of
+individuals for rarefaction is calculated as the minimum number of samples
+within groups multiplied by <code>effort_samples</code>. For example, when there are 10
+samples within each group, <code>effort_groups</code> equals <code>10 *
+effort_samples</code>. If n is larger than the number of individuals in sample and
+<code>extrapolate = TRUE</code> then the Chao1 (Chao 1984, Chao 1987) method is
+used to extrapolate the rarefaction curve.
+</p>
+<p><strong>pct_rare: Percent of rare species</strong> Is the ratio of the number of rare
+species to the number of observed species x 100 (McGill 2011). Species are 
+considered rare in a particular sample if they have fewer individuals than 
+<code>rare_thres * N</code> where <code>rare_thres</code> can be set by the user and 
+<code>N</code> is the total number of individuals in the sample. The default value 
+of <code>rare_thres</code> of 0.05 is arbitrary and was chosen because McGill 
+(2011) found this metric of rarity performed well and was generally less 
+correlated with other common metrics of biodiversity. Essentially this metric
+attempt to estimate what proportion of the species in the same occur in the
+tail of the species abundance distribution and is therefore sensitive to
+presence of rare species.
+</p>
+<p><strong>S_asymp: Asymptotic species richness</strong> is the expected number of 
+species given complete sampling and here it is calculated using the Chao1
+estimator (Chao 1984, Chao 1987) see <code>calc_chao1</code>. Note: this metric
+is typically highly correlated with S (McGill 2011).
+</p>
+<p><strong>f_0: Undetected species richness</strong> is the number of undetected species
+or the number of species observed 0 times which is an indicator of the degree
+of rarity in the community. If there is a greater rarity then f_0 is expected
+to increase. This metric is calculated as <code>S_asymp - S</code>. This metric is less 
+correlated with S than the raw <code>S_asymp</code> metric. 
+</p>
+<p><strong>PIE: Probability of intraspecific encounter</strong> represents the
+probability that two randomly drawn individuals belong to the same species.
+Here we use the definition of Hurlbert (1971), which considers sampling
+without replacement. PIE is closely related to the well-known Simpson
+diversity index, but the latter assumes sampling with replacement.
+</p>
+<p><strong>S_PIE: Effective number of species for PIE</strong> represents the effective
+number of species derived from the PIE. It is calculated using the asymptotic
+estimator for Hill numbers of diversity order 2 (Chao et al, 2014). S_PIE
+represents the species richness of a hypothetical community with
+equally-abundant species and infinitely many individuals corresponding to the
+same value of PIE as the real community. An intuitive interpretation of S_PIE
+is that it corresponds to the number of dominant (highly abundant) species in
+the species pool.
+</p>
+<p>For species richness <code>S</code>, rarefied richness <code>S_n</code>, undetected
+richness <code>f_0</code>, and the Effective Number of Species <code>S_PIE</code> we also
+calculate beta-diversity using multiplicative partitioning (Whittaker 1972,
+Jost 2007). That means for these indices we estimate beta-diversity as the
+ratio of gamma-diversity (total diversity across all plots) divided by
+alpha-diversity (i.e., average plot diversity).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>data.frame</code> with four columns:
+</p>
+
+<ul>
+<li> <p><code>scale</code> ... Group label for sites
+</p>
+</li>
+<li> <p><code>index</code> ... Name of the biodiversity index
+</p>
+</li>
+<li> <p><code>sample_size</code> ... The number of samples used to compute the
+statistic, helpful for interpreting beta and gamma metrics. 
+</p>
+</li>
+<li> <p><code>effort</code> ... Sampling effort for rarefied richness 
+(NA for the other indices)
+</p>
+</li>
+<li> <p><code>gamma_coverage</code> ... The coverage value for that particular 
+effort value on the gamma scale rarefaction curve. Will be <code>NA</code> unless
+coverage based richness (<code>S_C</code>) and/or beta diversity is computed.  
+</p>
+</li>
+<li> <p><code>value</code> ... Value of the biodiversity index
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Felix May and Dan McGlinn
+</p>
+
+
+<h3>References</h3>
+
+<p>McGill, B. J. 2011. Species abundance distributions. Pages 105-122 Biological
+Diversity: Frontiers in Measurement and Assessment, eds. A.E. Magurran and
+B.J. McGill.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(tank_comm)
+div_metrics &lt;- calc_comm_div(tank_comm, 'S_n', effort = c(5, 10))
+div_metrics
+div_metrics &lt;- calc_comm_div(tank_comm, 'S_C', C_target_gamma = 0.75)
+div_metrics
+</code></pre>
+
+
+</div>

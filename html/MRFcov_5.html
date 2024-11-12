@@ -1,0 +1,287 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>cv_MRF_diag</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MRF cross validation and assessment of predictive performance</h2>
+
+<h3>Description</h3>
+
+<p><code>cv_MRF_diag</code> runs cross validation of <code>MRFcov</code> models and tests predictive
+performance.
+</p>
+<p><code>cv_MRF_diag_rep</code> fits a single node-optimised model
+and test's this model's predictive performance across multiple test subsets of the <code>data</code>.
+</p>
+<p><code>cv_MRF_diag_rep_spatial</code> fits a single node-optimised spatial model
+and test's this model's predictive performance across multiple test subsets of the <code>data</code>.
+<br><br>
+All <code>cv_MRF</code> functions assess model predictive performance and produce
+either diagnostic plots or matrices of predictive metrics.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">cv_MRF_diag(
+  data,
+  symmetrise,
+  n_nodes,
+  n_cores,
+  sample_seed,
+  n_folds,
+  n_fold_runs,
+  n_covariates,
+  compare_null,
+  family,
+  plot = TRUE,
+  cached_model,
+  cached_predictions,
+  mod_labels = NULL
+)
+
+cv_MRF_diag_rep(
+  data,
+  symmetrise,
+  n_nodes,
+  n_cores,
+  sample_seed,
+  n_folds,
+  n_fold_runs,
+  n_covariates,
+  compare_null,
+  family,
+  plot = TRUE
+)
+
+cv_MRF_diag_rep_spatial(
+  data,
+  coords,
+  symmetrise,
+  n_nodes,
+  n_cores,
+  sample_seed,
+  n_folds,
+  n_fold_runs,
+  n_covariates,
+  compare_null,
+  family,
+  plot = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Dataframe. The input data where the <code>n_nodes</code>
+left-most variables are variables that are to be represented by nodes in the graph.
+Note that <code>NA</code>'s are allowed for covariates. If present, these missing values
+will be imputed from the distribution <code>rnorm(mean = 0, sd = 1)</code>, which assumes that
+all covariates are scaled and centred (i.e. by using the function
+<code>scale</code> or similar)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>symmetrise</code></td>
+<td>
+<p>The method to use for symmetrising corresponding parameter estimates
+(which are taken from separate regressions). Options are <code>min</code> (take the coefficient with the
+smallest absolute value), <code>max</code> (take the coefficient with the largest absolute value)
+or <code>mean</code> (take the mean of the two coefficients). Default is <code>mean</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_nodes</code></td>
+<td>
+<p>Positive integer. The index of the last column in <code>data</code>
+which is represented by a node in the final graph. Columns with index
+greater than n_nodes are taken as covariates. Default is the number of
+columns in <code>data</code>, corresponding to no additional covariates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_cores</code></td>
+<td>
+<p>Positive integer. The number of cores to spread the job across using
+<code>makePSOCKcluster</code>. Default is 1 (no parallelisation)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sample_seed</code></td>
+<td>
+<p>Numeric. This seed will be used as the basis
+for dividing data into folds. Default is a random seed
+between 1 and 100000</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_folds</code></td>
+<td>
+<p>Integer. The number of folds for cross-validation. Default is 10</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_fold_runs</code></td>
+<td>
+<p>Integer. The number of total training runs to perform. During
+each run, the data will be split into <code>n_folds</code> folds and the
+observed data in each fold will be compared to their respective predictions.
+Defaults to <code>n_folds</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_covariates</code></td>
+<td>
+<p>Positive integer. The number of covariates in <code>data</code>, before cross-multiplication</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>compare_null</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, null models will also be run and plotted to
+assess the influence of including covariates on model predictive performance.
+Default is <code>FALSE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>The response type. Responses can be quantitative continuous (<code>family = "gaussian"</code>),
+non-negative counts (<code>family = "poisson"</code>) or binomial 1s and 0s (<code>family = "binomial"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, <code>ggplot2</code> objects are returned. If <code>FALSE</code>,
+the prediction metrics are returned as a matrix. Default is <code>TRUE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cached_model</code></td>
+<td>
+<p>Used by function <code>cv_MRF_diag_rep</code> to store an optimised model and prevent
+unneccessary replication of node-optimised model fitting</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cached_predictions</code></td>
+<td>
+<p>Used by function <code>cv_MRF_diag_rep</code> to store predictions from
+optimised models and prevent unneccessary replication</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mod_labels</code></td>
+<td>
+<p>Optional character string of labels for the two models being compared
+(if <code>compare_null == TRUE</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coords</code></td>
+<td>
+<p>A two-column <code>dataframe</code> (with <code>nrow(coords) == nrow(data)</code>)
+representing the spatial coordinates of each observation in <code>data</code>. Ideally, these
+coordinates will represent Latitude and Longitude GPS points for each observation.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Node-optimised models are fitted using <code>cv.glmnet</code>,
+and these models is used to predict <code>data</code> test subsets.
+Test and training <code>data</code> subsets are created using <code>createFolds</code>.
+<br><br>
+To account for uncertainty in parameter estimates and in random fold generation, it is recommended
+to perform cross-validation multiple times (by controlling the <code>n_fold_runs</code> argument) using
+<code>cv_MRF_diag_rep</code> to supply a single cached model and that model's predictions.
+This is useful for optimising a single model (using <code>cv.glmnet</code>) and testing
+this model's predictive performance across many test subsets. Alternatively, one can run
+<code>cv_MRF_diag</code> many times to fit different models in each iteration. This will be slower but
+technically more sound
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>plot = TRUE</code>, a <code>ggplot2</code> object is returned. This will be
+a plot containing boxplots of predictive metrics across test sets using the
+optimised model (see <code>cv.glmnet</code> for further details of <code>lambda1</code>
+optimisation). If <code>plot = FALSE</code>, a matrix of prediction metrics is returned.
+</p>
+
+
+<h3>References</h3>
+
+<p>Clark, NJ, Wells, K and Lindberg, O.
+Unravelling changing interspecific interactions across environmental gradients
+using Markov random fields. (2018). Ecology doi: 10.1002/ecy.2221
+<a href="https://www.researchgate.net/publication/325184442_Unravelling_changing_interspecific_interactions_across_environmental_gradients_using_Markov_random_fields">Full text here</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MRFcov</code>,
+<code>predict_MRF</code>,
+<code>cv.glmnet</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data("Bird.parasites")
+# Generate boxplots of model predictive metrics
+cv_MRF_diag(data = Bird.parasites, n_nodes = 4,
+           n_cores = 1, family = 'binomial')
+
+# Generate boxplots comparing the CRF to an MRF model (no covariates)
+cv_MRF_diag(data = Bird.parasites, n_nodes = 4,
+           n_cores = 1, family = 'binomial',
+           compare_null = TRUE)
+
+# Replicate 10-fold cross-validation 10 times
+cv.preds &lt;- cv_MRF_diag_rep(data = Bird.parasites, n_nodes = 4,
+                           n_cores = 1, family = 'binomial',
+                           compare_null = TRUE,
+                           plot = FALSE, n_fold_runs = 10)
+
+# Plot model sensitivity and % true predictions
+library(ggplot2)
+gridExtra::grid.arrange(
+ ggplot(data = cv.preds, aes(y = mean_sensitivity, x = model)) +
+       geom_boxplot() + theme(axis.text.x = ggplot2::element_blank()) +
+       labs(x = ''),
+ ggplot(data = cv.preds, aes(y = mean_tot_pred, x = model)) +
+       geom_boxplot(),
+       ncol = 1,
+ heights = c(1, 1))
+
+# Create some sample Poisson data with strong correlations
+cov &lt;- rnorm(500, 0.2)
+cov2 &lt;- rnorm(500, 1)
+sp.2 &lt;- rpois(500, lambda = exp(1.5 + (cov * 0.9)))
+poiss.dat &lt;- data.frame(sp.1 = rpois(500, lambda = exp(0.5 + (cov * 0.3))),
+                       sp.2 = sp.2,
+                       sp.3 = rpois(500, lambda = exp(log(sp.2 + 1) + (cov * -0.5))),
+                       cov = cov,
+                       cov2 = cov2)
+
+# A CRF should produce a better fit (lower deviance, lower MSE)
+cvMRF.poiss &lt;- cv_MRF_diag(data = poiss.dat, n_nodes = 3,
+                          n_folds = 10,
+                          family = 'poisson',
+                          compare_null = TRUE, plot = TRUE)
+
+
+</code></pre>
+
+
+</div>

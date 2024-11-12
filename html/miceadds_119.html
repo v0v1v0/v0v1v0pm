@@ -1,0 +1,160 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mice.impute.rlm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Imputation of a Linear Model by Bayesian Bootstrap
+</h2>
+
+<h3>Description</h3>
+
+<p>These functions impute from linear models using the functions
+<code>stats::lm</code>, <code>MASS::rlm</code>
+or <code>MASS::lqs</code>. The method <code>mice.impute.lm_fun</code>
+allows the definition of a general linear regression fitting function for
+which the methods <code>predict</code> and <code>residuals</code> are defined.
+</p>
+<p>Parameters of the model are estimated
+by Bayesian bootstrap. Predicted values are computed and residuals are randomly
+drawn from the empirical distribution of residuals of observed data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mice.impute.lm(y, ry, x, wy=NULL, lm_args=NULL, trafo=NULL, antitrafo=NULL, ...)
+
+mice.impute.rlm(y, ry, x, wy=NULL, lm_args=NULL, trafo=NULL, antitrafo=NULL, ...)
+
+mice.impute.lqs(y, ry, x, wy=NULL, lm_args=NULL, trafo=NULL, antitrafo=NULL, ...)
+
+mice.impute.lm_fun(y, ry, x, wy=NULL, lm_args=NULL, lm_fun="lm", trafo=NULL,
+               antitrafo=NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+
+<p>Incomplete data vector of length <code>n</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ry</code></td>
+<td>
+
+<p>Vector of missing data pattern (<code>FALSE</code> – missing,
+<code>TRUE</code> – observed)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+
+<p>Matrix (<code>n</code> x <code>p</code>) of complete covariates.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wy</code></td>
+<td>
+<p>Vector of logicals indicating which entries should be imputed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lm_args</code></td>
+<td>
+<p>List of arguments for <code>stats::lm</code>,
+<code>MASS::rlm</code>, <code>MASS::lqs</code> or
+a user-defined function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lm_fun</code></td>
+<td>
+<p>Linear regression fitting function, e.g. <code>stats::lm</code> for which
+S3 methods <code>predict</code> and <code>residuals</code> are defined.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trafo</code></td>
+<td>
+<p>Optional function for transforming the outcome values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>antitrafo</code></td>
+<td>
+<p>Optional function which is the inverse function of <code>trafo</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Further arguments to be passed
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A vector of length <code>nmis=sum(!ry)</code> with imputed values.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+#############################################################################
+# EXAMPLE 1: Some toy example illustrating the methods
+#############################################################################
+
+library(MASS)
+library(mice)
+
+#-- simulate data
+set.seed(98)
+N &lt;- 1000
+x &lt;- stats::rnorm(N)
+z &lt;- 0.5*x + stats::rnorm(N, sd=.7)
+y &lt;- stats::rnorm(N, mean=.3*x - .2*z, sd=1 )
+dat &lt;- data.frame(x,z,y)
+dat[ seq(1,N,3), c("x","y") ] &lt;- NA
+dat[ seq(1,N,4), "z" ] &lt;- NA
+
+#-- define imputation methods
+imp &lt;- mice::mice(dat, maxit=0)
+method &lt;- imp$method
+method["x"] &lt;- "rlm"
+method["z"] &lt;- "lm"
+method["y"] &lt;- "lqs"
+
+#-- impute data
+imp &lt;- mice::mice(dat, method=method)
+summary(imp)
+
+#--- example using transformations
+dat1$x &lt;- exp(dat1$x)
+dat1$z &lt;- stats::plogis(dat1$z)
+
+trafo &lt;- list(x=log, z=stats::qlogis)
+antitrafo &lt;- list(x=exp, z=stats::plogis)
+
+#- impute with transformations
+imp2 &lt;- mice::mice(dat1, method=method, m=1, maxit=3, trafo=trafo, antitrafo=antitrafo)
+print(imp2)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

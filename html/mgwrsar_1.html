@@ -1,0 +1,182 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bandwidths_mgwrsar</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>bandwidths_mgwrsar</h2>
+
+<h3>Description</h3>
+
+<p>Select optimal kernel and bandwidth from a list of models, kernels and bandwidth candidates.
+a bandwidth value for each of the chosen models and kernel types using a leave-one-out cross validation criteria.
+A cross validated criteria is also used for selecting the best kernel type for a given model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bandwidths_mgwrsar(formula, data,coords,
+fixed_vars='Intercept',Models='GWR',candidates_Kernels='bisq',
+control=list(),control_search=list())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a formula.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a dataframe or a spatial dataframe (sp package).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coords</code></td>
+<td>
+<p>a dataframe or a matrix with coordinates, not required if data is a spatial dataframe, default NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixed_vars</code></td>
+<td>
+<p>a vector with the names of spatially constant coefficient. For mixed model, if NULL, the default
+#' is set to 'Intercept'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Models</code></td>
+<td>
+<p>character containing the type of model: Possible values are "OLS",
+"SAR", "GWR" (default), "MGWR" , "MGWRSAR_0_0_kv","MGWRSAR_1_0_kv",
+"MGWRSAR_0_kc_kv", "MGWRSAR_1_kc_kv", "MGWRSAR_1_kc_0".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>candidates_Kernels</code></td>
+<td>
+<p>a vector with the names of kernel type.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>list of extra control arguments for MGWRSAR wrapper - see MGWRSAR help.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control_search</code></td>
+<td>
+<p>list of extra control arguments for bandwidth/kernel search - see details below.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+
+<dl>
+<dt>search_W</dt>
+<dd>
+<p>if TRUE select an optimal spatial weight matrix using a moment estimator, default FALSE.</p>
+</dd>
+<dt>kernels_w</dt>
+<dd>
+<p>if search_W is TRUE, kernels_w is a vector of candidated kernels types, default NULL.</p>
+</dd>
+<dt>lower_c</dt>
+<dd>
+<p>lower bound for bandwidth search (default, the approximate first decile of distances).</p>
+</dd>
+<dt>upper_c</dt>
+<dd>
+<p>upper bound for bandwidth search  (default, the approximate last decile of distances).</p>
+</dd>
+<dt>lower_d</dt>
+<dd>
+<p>lower bound for discrete kernels, default 2*k+1.</p>
+</dd>
+<dt>lower_dW</dt>
+<dd>
+<p>ower bound for discrete kernels for finding optimal spatial weight matrix, default 2.</p>
+</dd>
+<dt>lower_cW</dt>
+<dd>
+<p>lower bound for  bandwidth search for finding optimal spatial
+weight matrix  (default approximate 0.005 quantile of distances).</p>
+</dd>
+</dl>
+<h3>Value</h3>
+
+<p>bandwiths_MGWRSAR returns a list with:
+</p>
+
+<dl>
+<dt>config_model</dt>
+<dd>
+<p>a vector with information about model, optimal kernel and
+bandwidth for local regression, and optimal kernel and bandwith for spatial weight matrix W.</p>
+</dd>
+<dt>SSR</dt>
+<dd>
+<p>The sum of square residuals.</p>
+</dd>
+<dt>CV</dt>
+<dd>
+<p>The CV criteria.</p>
+</dd>
+<dt>model</dt>
+<dd>
+<p>objects of class mgwrsar estimated using config_model</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Geniaux, G. and Martinetti, D. (2017). A new method for dealing simultaneously with spatial autocorrelation and spatial heterogeneity in regression models. Regional Science and Urban Economics. (https://doi.org/10.1016/j.regsciurbeco.2017.04.001)
+</p>
+<p>McMillen, D. and Soppelsa, M. E. (2015). A conditionally parametric probit model of
+microdata land use in chicago. Journal of Regional Science, 55(3):391-415.
+</p>
+<p>Loader, C. (1999). Local regression and likelihood, volume 47. Springer New York.
+</p>
+<p>Franke, R. and Nielson, G. (1980). Smooth interpolation of large sets of scattered data.
+International journal for numerical methods in engineering, 15(11):1691-1704.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>MGWRSAR, summary_mgwrsar, plot_mgwrsar, predict_mgwrsar
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(mgwrsar)
+## loading data example
+data(mydata)
+coords=as.matrix(mydata[,c("x","y")])
+mytab&lt;-bandwidths_mgwrsar(formula = 'Y_gwr~X1+X2+X3', data = mydata,coords=coords,
+fixed_vars=c('Intercept','X1'),Models=c('GWR','MGWR'),candidates_Kernels=c('bisq','gauss'),
+control=list(NN=300,adaptive=TRUE),control_search=list())
+
+names(mytab)
+names(mytab[['GWR_bisq_adaptive']])
+
+mytab[['GWR_bisq_adaptive']]$config_model
+mytab[['GWR_bisq_adaptive']]$CV
+summary(mytab[['GWR_bisq_adaptive']]$model$Betav)
+
+mybestmodel=mytab[['GWR_gauss_adaptive']]$model
+plot_mgwrsar(mybestmodel,type='B_coef',var='X2')
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,175 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>benchmark_grid</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Generate a Benchmark Grid Design</h2>
+
+<h3>Description</h3>
+
+<p>Takes a lists of Task, a list of Learner and a list of Resampling to
+generate a design in an <code>expand.grid()</code> fashion (a.k.a. cross join or Cartesian product).
+</p>
+<p>There are two modes of operation, depending on the flag <code>paired</code>.
+</p>
+
+<ul>
+<li>
+<p> With <code>paired</code> set to <code>FALSE</code> (default), resampling strategies are not allowed to be instantiated, and instead will be instantiated per task internally.
+The only exception to this rule applies if all tasks have exactly the same number of rows, and the resamplings are all instantiated for such tasks.
+The grid will be generated based on the Cartesian product of tasks, learners, and resamplings.
+Because the resamplings are instantiated on the tasks, reproducibility requires a seed to be set <strong>before</strong>
+calling this function, as this process is stochastic.
+</p>
+</li>
+<li>
+<p> With <code>paired</code> set to <code>TRUE</code>, tasks and resamplings are treated as pairs.
+I.e., you must provide as many tasks as corresponding instantiated resamplings.
+The grid will be generated based on the Cartesian product of learners and pairs.
+</p>
+</li>
+</ul>
+<h3>Usage</h3>
+
+<pre><code class="language-R">benchmark_grid(
+  tasks,
+  learners,
+  resamplings,
+  param_values = NULL,
+  paired = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>tasks</code></td>
+<td>
+<p>(list of Task).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>learners</code></td>
+<td>
+<p>(list of Learner).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resamplings</code></td>
+<td>
+<p>(list of Resampling).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>param_values</code></td>
+<td>
+<p>(<code>list()</code>)<br>
+If you want to try many parameter settings for learners, you can pass them through the design
+which is optimized to be faster than creating learners for each setting.
+</p>
+<p>A list of lists of named lists, from outer to inner:
+</p>
+
+<ol>
+<li>
+<p> One list element for each Learner.
+</p>
+</li>
+<li>
+<p> One list element for each hyperparameter configuration to try.
+</p>
+</li>
+<li>
+<p> Named list of hyperparameter settings to set in the Learner, possibly overwriting
+already set set hyperparameters in the Learner.
+</p>
+</li>
+</ol>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>paired</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Set this to <code>TRUE</code> if the resamplings are instantiated on the tasks, i.e., the tasks and resamplings are paired.
+You need to provide the same number of tasks and instantiated resamplings.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>(<code>data.table::data.table()</code>) with the cross product of the input vectors.
+</p>
+
+
+<h3>See Also</h3>
+
+
+<ul>
+<li>
+<p> Chapter in the <a href="https://mlr3book.mlr-org.com/">mlr3book</a>:
+<a href="https://mlr3book.mlr-org.com/chapters/chapter3/evaluation_and_benchmarking.html#sec-benchmarking">https://mlr3book.mlr-org.com/chapters/chapter3/evaluation_and_benchmarking.html#sec-benchmarking</a>
+</p>
+</li>
+<li>
+<p> Package <a href="https://CRAN.R-project.org/package=mlr3viz"><span class="pkg">mlr3viz</span></a> for some generic visualizations.
+</p>
+</li>
+<li> <p><a href="https://CRAN.R-project.org/package=mlr3benchmark"><span class="pkg">mlr3benchmark</span></a> for post-hoc analysis of benchmark results.
+</p>
+</li>
+</ul>
+<p>Other benchmark: 
+<code>BenchmarkResult</code>,
+<code>benchmark()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">tasks = list(tsk("penguins"), tsk("sonar"))
+learners = list(lrn("classif.featureless"), lrn("classif.rpart"))
+resamplings = list(rsmp("cv"), rsmp("subsampling"))
+
+# Set a seed to ensure reproducibility of the resampling instantiation
+set.seed(123)
+grid = benchmark_grid(tasks, learners, resamplings)
+# the resamplings are now instantiated
+head(grid$resampling[[1]]$instance)
+print(grid)
+## Not run: 
+benchmark(grid)
+
+## End(Not run)
+
+# paired
+learner = lrn("classif.rpart")
+task1 = tsk("penguins")
+task2 = tsk("german_credit")
+res1 = rsmp("holdout")
+res2 = rsmp("holdout")
+res1$instantiate(task1)
+res2$instantiate(task2)
+design = benchmark_grid(list(task1, task2), learner, list(res1, res2), paired = TRUE)
+print(design)
+
+# manual construction of the grid with data.table::CJ()
+grid = data.table::CJ(task = tasks, learner = learners,
+  resampling = resamplings, sorted = FALSE)
+
+# manual instantiation (not suited for a fair comparison of learners!)
+Map(function(task, resampling) {
+  resampling$instantiate(task)
+}, task = grid$task, resampling = grid$resampling)
+## Not run: 
+benchmark(grid)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,242 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>delete_MAR_one_group</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create MAR values by deleting values in one of two groups</h2>
+
+<h3>Description</h3>
+
+<p>Create missing at random (MAR) values by deleting values in one of two
+groups in a data frame or a matrix
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">delete_MAR_one_group(
+  ds,
+  p,
+  cols_mis,
+  cols_ctrl,
+  cutoff_fun = median,
+  prop = 0.5,
+  use_lpSolve = TRUE,
+  ordered_as_unordered = FALSE,
+  n_mis_stochastic = FALSE,
+  ...,
+  miss_cols,
+  ctrl_cols,
+  stochastic
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>ds</code></td>
+<td>
+<p>A data frame or matrix in which missing values will be created.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>A numeric vector with length one or equal to length <code>cols_mis</code>;
+the probability that a value is missing.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cols_mis</code></td>
+<td>
+<p>A vector of column names or indices of columns in which
+missing values will be created.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cols_ctrl</code></td>
+<td>
+<p>A vector of column names or indices of columns, which
+controls the creation of missing values in <code>cols_mis</code>. Must be of the
+same length as <code>cols_mis</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cutoff_fun</code></td>
+<td>
+<p>Function that calculates the cutoff values in the
+<code>cols_ctrl</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prop</code></td>
+<td>
+<p>Numeric of length one; (minimum) proportion of rows in group 1
+(only used for unordered factors).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_lpSolve</code></td>
+<td>
+<p>Logical; should lpSolve be used for the determination of
+groups, if <code>cols_ctrl[i]</code> is an unordered factor.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ordered_as_unordered</code></td>
+<td>
+<p>Logical; should ordered factors be treated as
+unordered factors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_mis_stochastic</code></td>
+<td>
+<p>Logical, should the number of missing values be
+stochastic? If <code>n_mis_stochastic = TRUE</code>, the number of missing values
+for a column with missing values <code>cols_mis[i]</code> is a random variable
+with expected value <code>nrow(ds) * p[i]</code>. If <code>n_mis_stochastic =
+FALSE</code>, the number of missing values will be deterministic. Normally, the
+number of missing values for a column with missing values
+<code>cols_mis[i]</code> is <code>round(nrow(ds) * p[i])</code>. Possible deviations
+from this value, if any exists, are documented in Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments passed to <code>cutoff_fun</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>miss_cols</code></td>
+<td>
+<p>Deprecated, use <code>cols_mis</code> instead.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ctrl_cols</code></td>
+<td>
+<p>Deprecated, use <code>cols_ctrl</code> instead.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stochastic</code></td>
+<td>
+<p>Deprecated, use <code>n_mis_stochastic</code> instead.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function creates missing at random (MAR) values in the columns
+specified by the argument <code>cols_mis</code>.
+The probability for missing values is controlled by <code>p</code>.
+If <code>p</code> is a single number, then the overall probability for a value to
+be missing will be <code>p</code> in all columns of <code>cols_mis</code>.
+(Internally <code>p</code> will be replicated to a vector of the same length as
+<code>cols_mis</code>.
+So, all <code>p[i]</code> in the following sections will be equal to the given
+single number <code>p</code>.)
+Otherwise, <code>p</code> must be of the same length as <code>cols_mis</code>.
+In this case, the overall probability for a value to be missing will be
+<code>p[i]</code> in the column <code>cols_mis[i]</code>.
+The position of the missing values in <code>cols_mis[i]</code> is controlled by
+<code>cols_ctrl[i]</code>.
+The following procedure is applied for each pair of <code>cols_ctrl[i]</code> and
+<code>cols_mis[i]</code> to determine the positions of missing values:
+</p>
+<p>At first, the rows of <code>ds</code> are divided into two groups.
+Therefore, the <code>cutoff_fun</code> calculates a cutoff value for
+<code>cols_ctrl[i]</code> (via <code>cutoff_fun(ds[, cols_ctrl[i]], ...)</code>.
+The group 1 consists of the rows, whose values in
+<code>cols_ctrl[i]</code> are below the calculated cutoff value.
+If the so defined group 1 is empty, the rows that are equal to the
+cutoff value will be added to this group (otherwise, these rows will
+belong to group 2).
+The group 2 consists of the remaining rows, which are not part of group 1.
+Now one of these two groups is chosen randomly.
+In the chosen group, values are deleted in <code>cols_mis[i]</code>.
+In the other group, no missing values will be created in <code>cols_mis[i]</code>.
+</p>
+<p>If <code>p</code> is too high, it is possible that a group contains not enough
+objects to reach <code>nrow(ds) * p</code> missing values. In this case, <code>p</code>
+is reduced to the maximum possible value (given the (random) group with
+missing data) and a warning is given. Obviously this case will occur
+regularly, if <code>p &gt; 0.5</code>. Therefore, this function should normally not be
+called with <code>p &gt; 0.5</code>. However, this can occur for smaller values
+of <code>p</code>, too (depending on the grouping). The warning can be silenced by
+setting the option <code>missMethods.warn.too.high.p</code> to false.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of the same class as <code>ds</code> with missing values.
+</p>
+
+
+<h3>Treatment of factors</h3>
+
+<p>If <code>ds[, cols_ctrl[i]]</code> is an unordered factor, then the concept of a
+cutoff value is not meaningful and cannot be applied.
+Instead, a combinations of the levels of the unordered factor is searched that
+</p>
+
+<ul>
+<li>
+<p>guarantees at least a proportion of <code>prop</code> rows are in group 1
+</p>
+</li>
+<li>
+<p>minimize the difference between <code>prop</code> and the proportion of
+rows in group 1.
+</p>
+</li>
+</ul>
+<p>This can be seen as a binary search problem, which is solved by the solver
+from the package <code>lpSolve</code>, if <code>use_lpSolve = TRUE</code>.
+If <code>use_lpSolve = FALSE</code>, a very simple heuristic is applied.
+The heuristic only guarantees that at least a proportion of <code>prop</code> rows
+are in group 1.
+The choice <code>use_lpSolve = FALSE</code> is not recommend and should only be
+considered, if the solver of lpSolve fails.
+</p>
+<p>If <code>ordered_as_unordered = TRUE</code>, then ordered factors will be treated
+like unordered factors and the same binary search problem will be solved for
+both types of factors.
+If <code>ordered_as_unordered = FALSE</code> (the default), then ordered factors
+will be grouped via <code>cutoff_fun</code> as described in Details.
+</p>
+
+
+<h3>References</h3>
+
+<p>Santos, M. S., Pereira, R. C., Costa, A. F., Soares, J. P.,
+Santos, J., &amp; Abreu, P. H. (2019). Generating Synthetic Missing Data: A
+Review by Missing Mechanism. <em>IEEE Access</em>, 7, 11651-11667
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>delete_MNAR_one_group</code>
+</p>
+<p>Other functions to create MAR: 
+<code>delete_MAR_1_to_x()</code>,
+<code>delete_MAR_censoring()</code>,
+<code>delete_MAR_rank()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">ds &lt;- data.frame(X = 1:20, Y = 101:120)
+delete_MAR_one_group(ds, 0.2, "X", "Y")
+</code></pre>
+
+
+</div>

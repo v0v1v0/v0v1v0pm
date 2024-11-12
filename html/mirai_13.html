@@ -1,0 +1,132 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>everywhere</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Evaluate Everywhere</h2>
+
+<h3>Description</h3>
+
+<p>Evaluate an expression ‘everywhere’ on all connected daemons for the
+specified compute profile. Designed for performing setup operations
+across daemons by loading packages, exporting common data, or registering
+custom serialization functions. Resultant changes to the global
+environment, loaded packages and options are persisted regardless of a
+daemon's ‘cleanup’ setting.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">everywhere(.expr, ..., .args = list(), .serial = NULL, .compute = "default")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>.expr</code></td>
+<td>
+<p>an expression to evaluate asynchronously (of arbitrary length,
+wrapped in { } where necessary), <strong>or else</strong> a pre-constructed
+language object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>(optional) <strong>either</strong> named arguments (name = value pairs)
+specifying objects referenced, but not defined, in ‘.expr’,
+<strong>or</strong> an environment containing such objects. See
+‘evaluation’ section below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.args</code></td>
+<td>
+<p>(optional) <strong>either</strong> a named list specifying objects
+referenced, but not defined, in ‘.expr’, <strong>or</strong> an
+environment containing such objects. These objects will remain local to
+the evaluation environment as opposed to those supplied in ‘...’
+above - see ‘evaluation’ section below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.serial</code></td>
+<td>
+<p>[default NULL] (optional) a configuration created by
+<code>serial_config</code> to register serialization and unserialization
+functions for normally non-exportable reference objects, such as Arrow
+Tables or torch tensors. Updating with a new configuration replaces any
+existing registered functions. To remove the configuration, provide an
+empty list.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.compute</code></td>
+<td>
+<p>[default 'default'] character value for the compute profile
+to use (each compute profile has its own independent set of daemons).</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Invisible NULL. Will error if the specified compute profile is not
+found, i.e. not yet set up.
+</p>
+
+
+<h3>Evaluation</h3>
+
+<p>The expression ‘.expr’ will be evaluated in a separate R process
+in a clean environment (not the global environment), consisting only of
+the objects in the list or environment supplied to ‘.args’, with
+the named objects passed as ‘...’ (from the environment if one was
+supplied) assigned to the global environment of that process.
+</p>
+<p>For evaluation to occur <em>as if</em> in your global environment, supply
+objects to ‘...’ rather than ‘.args’. For stricter scoping,
+use ‘.args’, which limits, for example, where variables not
+explicitly passed as arguments to functions are found.
+</p>
+<p>As evaluation occurs in a clean environment, all undefined objects must
+be supplied though ‘...’ and/or ‘.args’, including
+self-defined functions. Functions from a package should use namespaced
+calls such as <code>mirai::mirai()</code>, or else the package should be loaded
+beforehand as part of ‘.expr’.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">if (interactive()) {
+# Only run examples in interactive R sessions
+
+daemons(1)
+# export common data by a super-assignment expression:
+everywhere(y &lt;&lt;- 3)
+# '...' variables are assigned to the global environment
+# '.expr' may be specified as an empty {} in such cases:
+everywhere({}, a = 1, b = 2)
+m &lt;- mirai(a + b - y == 0L)
+call_mirai(m)$data
+daemons(0)
+
+# loading a package on all daemons and also
+# registering custom serialization functions:
+cfg &lt;- serial_config("cls_name", function(x) serialize(x, NULL), unserialize)
+daemons(1, dispatcher = "none")
+everywhere(library(parallel), .serial = cfg)
+m &lt;- mirai("package:parallel" %in% search())
+call_mirai(m)$data
+daemons(0)
+
+}
+
+</code></pre>
+
+
+</div>

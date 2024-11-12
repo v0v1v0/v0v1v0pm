@@ -1,0 +1,156 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mrp_get</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Get a data product</h2>
+
+<h3>Description</h3>
+
+<p>Get a data product
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mrp_get(
+  layer,
+  path = getOption("mregions2.download_path", tempdir()),
+  cql_filter = NULL,
+  filter = NULL,
+  count = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>layer</code></td>
+<td>
+<p>(character) Identifier of the data product. See mrp_list</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>path</code></td>
+<td>
+<p>(character) Path to save the requests. Default is <code>base::tempdir()</code>. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cql_filter</code></td>
+<td>
+<p>(character) Contextual Query Language (CQL) filter. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>filter</code></td>
+<td>
+<p>(character) Standard OGC filter specification. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>count</code></td>
+<td>
+<p>(numeric) Maximum number of features to be retrieved.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function uses <a href="https://en.wikipedia.org/wiki/Web_Map_Service">WFS services</a> to download the
+Marine Regions layers as ESRI Shapefiles.
+</p>
+
+
+<h4>Caching</h4>
+
+<p>By default, the layers are downloaded to a temporal directory (<code>base::tempdir()</code>). You can provide
+a path in the <code>path</code> argument. But you can also set a path with <code style="white-space: pre;">⁠# options("mregions2.download_path" = "my/path/")⁠</code>.
+</p>
+<p>Because it is possible to add filters, each request is identified with a crc32 hash, provided with
+<code>digest::digest()</code> and attached to the file downloaded.
+</p>
+<p>Once a layer is downloaded, it will be read from the cache during the next two weeks. To avoid this, simply
+delete the layers in the cache path.
+</p>
+
+
+
+<h4>Filters</h4>
+
+<p>Both the <a href="https://portal.ogc.org/files/96288">Contextual Query Language (CQL) filter</a> and the <a href="https://www.ogc.org/standard/filter/">standard OGC filter specification</a> allow to
+query the server before performing a request. This will boost performance as you will only retrieve the area of your interest. It is possible to query on attributes, but also perform
+geospatial queries. For instance, you can query a bounding box of interest.
+</p>
+<p>CQL filters are possible only in geoserver. Marine Regions uses a geoserver instance to serve its data products.
+A tutorial on CQL filters is available in the <a href="https://docs.geoserver.org/stable/en/user/tutorials/cql/cql_tutorial.html">geoserver web site</a>.
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>An sf object with the Marine Regions data product
+</p>
+
+
+<h3>See Also</h3>
+
+<p>mrp_list to describe the list of products, <code>mrp_view()</code> to visualize the data product in advance, <code>mrp_colnames()</code> and <code>mrp_col_unique()</code> to get the name, data type and unique values of a the columns of a data product, useful to query
+with the arguments <code>cql_filter</code> or <code>filter</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Set cache path. Default is a temporal directory
+options(mregions2.download_path = tempdir())
+
+getOption("mregions2.download_path")
+#&gt; [1] "/tmp/RtmpARLgoE"
+
+# See the list of all data products
+mrp_list
+
+# We want the Exclusive Economic Zones of Portugal. Let's first visualize the product:
+mrp_view("eez")
+
+# See all the columns on this data product
+mrp_colnames("eez")
+
+# We should query on sovereign
+# See all the possible values of sovereign1, sovereign2 and sovereign3
+sov1 = mrp_col_unique("eez", "sovereign1")
+sov2 = mrp_col_unique("eez", "sovereign2")
+sov3 = mrp_col_unique("eez", "sovereign3")
+
+# Is Portugal a value in the sovereign1, 2 and 3?
+"Portugal" %in% sov1
+#&gt; [1] TRUE
+
+"Portugal" %in% sov2
+#&gt; [1] FALSE
+
+"Portugal" %in% sov3
+#&gt; [1] FALSE
+
+# Portugal is only in sovereign1. Let's write a CQL filter to get only
+# the EEZs of Portugal, or those where Portugal is a party of a dispute or a joint regime
+portugal_eez &lt;- mrp_get("eez", cql_filter = "sovereign1 = 'Portugal'")
+
+# If you perform this request again, it will be read from the cache instead
+portugal_eez &lt;- mrp_get("eez", cql_filter = "sovereign1 = 'Portugal'")
+#&gt; Cache is fresh. Reading: /tmp/RtmpARLgoE/eez-1951c8b7/eez.shp
+#&gt; (Last Modified: 2023-04-24 17:45:16)
+
+# You can also limit the number of features to be requested
+mrp_get("eez", count = 5)
+
+</code></pre>
+
+
+</div>

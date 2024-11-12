@@ -1,0 +1,181 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>geekin</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit a generalized estimating equation (GEE) model with fixed additive
+correlation structure</h2>
+
+<h3>Description</h3>
+
+<p>The geekin function fits generalized estimating equations but where the
+correlation structure is given as linear function of (scaled) fixed
+correlation structures.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">geekin(
+  formula,
+  family = gaussian,
+  data,
+  weights,
+  subset,
+  id,
+  na.action,
+  control = geepack::geese.control(...),
+  varlist,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>See corresponding documentation to <code>glm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>See corresponding documentation to <code>glm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>See corresponding documentation to <code>glm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>See corresponding documentation to <code>glm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>See corresponding documentation to <code>glm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>a vector which identifies the clusters. The length of <code>id</code>
+should be the same as the number of observations. Data must be sorted so
+that observations on a cluster are contiguous rows for all entities in the
+formula. If not the function will give an error</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na.action</code></td>
+<td>
+<p>See corresponding documentation to <code>glm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>See corresponding documentation to <code>glm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>varlist</code></td>
+<td>
+<p>a list containing one or more matrix or bdsmatrix objects
+that represent the correlation structures</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments passed to or from other methods.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The geekin function is essentially a wrapper function to <code>geeglm</code>.
+Through the varlist argument, it allows for correlation structures of the
+form
+</p>
+<p>R = sum_i=1^k alpha_i R_i
+</p>
+<p>where alpha_i are(nuisance) scale parameters that are used to scale the
+off-diagonal elements of the individual correlation matrices, R_i.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns an object of type <code>geeglm</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Claus Ekstrom <a href="mailto:claus@rprimer.dk">claus@rprimer.dk</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>lmekin</code>, <code>geeglm</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+ # Get dataset
+ library(kinship2)
+ library(mvtnorm)
+ data(minnbreast)
+
+ breastpeda &lt;- with(minnbreast[order(minnbreast$famid), ], pedigree(id,
+                   fatherid, motherid, sex,
+                   status=(cancer&amp; !is.na(cancer)), affected=proband,
+                   famid=famid))
+
+set.seed(10)
+
+nfam &lt;- 6
+breastped &lt;- breastpeda[1:nfam]
+
+ # Simulate a response
+
+# Make dataset for lme4
+df &lt;- lapply(1:nfam, function(xx) {
+            as.data.frame(breastped[xx])
+            })
+
+mydata &lt;- do.call(rbind, df)
+mydata$famid &lt;- rep(1:nfam, times=unlist(lapply(df, nrow)))
+
+y &lt;- lapply(1:nfam, function(xx) {
+            x &lt;- breastped[xx]
+            rmvtnorm.pedigree(1, x, h2=0.3, c2=0)
+            })
+yy &lt;- unlist(y)
+
+library(geepack)
+
+geekin(yy ~ 1, id=mydata$famid, varlist=list(2*kinship(breastped)))
+
+# lmekin(yy ~ 1 + (1|id), data=mydata, varlist=list(2*kinship(breastped)),method="REML")
+
+
+
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,135 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>madr</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate model averaged double robust estimate</h2>
+
+<h3>Description</h3>
+
+<p>This function estimates a model averaged double robust estimate.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">madr(Y, X, U, W = NULL, M = 1000, cut = 0.95, enumerate = F,
+  tau = NULL, two.stage = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+<p>vector of the outcome</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>vector of the treatment (0/1)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>U</code></td>
+<td>
+<p>matrix of covariates to be considered for inclusion/exclusion</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>W</code></td>
+<td>
+<p>matrix of covariates that will be included in all models (optional)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M</code></td>
+<td>
+<p>the number of MCMC iteration</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cut</code></td>
+<td>
+<p>cumulative probability of models to be retained for improved computational efficiency (1 retains all visited models)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>enumerate</code></td>
+<td>
+<p>indicator if all possible models should be enumerated (default: FALSE)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tau</code></td>
+<td>
+<p>scalar value for the prior model dependence (1 is an independent prior; defaults to 0)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>two.stage</code></td>
+<td>
+<p>indicator if the two-stage procedure for calculating the model weights should be used (defaults to TRUE)</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list. The list contains the following named components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>madr</code></td>
+<td>
+<p>the model averaged double robust estimate</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weight.ps</code></td>
+<td>
+<p>a vector that contains the inclusion probability of each covariate in the propensity score model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weight.om</code></td>
+<td>
+<p>a vector that contains the inclusion probability of each covariate in the outcome model</p>
+</td>
+</tr>
+</table>
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(122)
+## generate data
+n = 100 # number of observations
+k = 4   # number of covariates
+U = matrix(rnorm(n*k),n,k)
+colnames(U) = paste0("U",1:k)
+A = rbinom(n,1,expit(-1+.5*rowSums(U)))
+Y = rnorm(n,1+A+.25*rowSums(U))
+
+## A is confounded -- true effect is 1
+lm(Y~A)
+
+## fit ma-dr -- can enumerate models if k isnt too big
+res = madr(Y=Y,X=A,U=U,enumerate=TRUE,tau=1,two.stage=FALSE) # independent prior
+res
+
+res = madr(Y=Y,X=A,U=U,enumerate=TRUE,tau=0,two.stage=TRUE) # tau=0 and using two-stage weights
+res
+
+## no need to refit madr each time when enumerating -- use summarize and specify different taus
+summary(res,tau=1,two.stage=FALSE) # independent prior
+summary(res,tau=0,two.stage=FALSE)
+summary(res,tau=0,two.stage=TRUE) # two-stage procedure for calculating weights
+
+## use mcmc instead of enumerating (the default)
+madr(Y=Y,X=A,U=U,M=1000,cut=1) #should approximate tau=0 and two.stage=TRUE
+</code></pre>
+
+
+</div>

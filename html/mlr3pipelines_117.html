@@ -1,0 +1,118 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_graphs_bagging</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create a bagging learner</h2>
+
+<h3>Description</h3>
+
+<p>Creates a <code>Graph</code> that performs bagging for a supplied graph.
+This is done as follows:
+</p>
+
+<ul>
+<li> <p><code>Subsample</code> the data in each step using <code>PipeOpSubsample</code>, afterwards apply <code>graph</code>
+</p>
+</li>
+<li>
+<p> Replicate this step <code>iterations</code> times (in parallel via multiplicities)
+</p>
+</li>
+<li>
+<p> Average outputs of replicated <code>graph</code>s predictions using the <code>averager</code>
+(note that setting <code>collect_multipliciy = TRUE</code> is required)
+</p>
+</li>
+</ul>
+<p>All input arguments are cloned and have no references in common with the returned <code>Graph</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pipeline_bagging(
+  graph,
+  iterations = 10,
+  frac = 0.7,
+  averager = NULL,
+  replace = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>graph</code></td>
+<td>
+<p><code>PipeOp</code> | <code>Graph</code> <br>
+A <code>PipeOpLearner</code> or <code>Graph</code> to create a robustifying pipeline for.
+Outputs from the replicated <code>graph</code>s are connected with the <code>averager</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iterations</code></td>
+<td>
+<p><code>integer(1)</code> <br>
+Number of bagging iterations. Defaults to 10.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>frac</code></td>
+<td>
+<p><code>numeric(1)</code> <br>
+Percentage of rows to keep during subsampling. See <code>PipeOpSubsample</code> for
+more information. Defaults to 0.7.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>averager</code></td>
+<td>
+<p><code>PipeOp</code> | <code>Graph</code> <br>
+A <code>PipeOp</code> or <code>Graph</code> that averages the predictions from the
+replicated and subsampled graph's.
+In the simplest case, <code>po("classifavg")</code> and <code>po("regravg")</code> can be used
+in order to perform simple averaging of classification and regression
+predictions respectively.
+If <code>NULL</code> (default), no averager is added to the end of the graph.
+Note that setting <code>collect_multipliciy = TRUE</code> during construction of the averager is required.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>replace</code></td>
+<td>
+<p><code>logical(1)</code> <br>
+Whether to sample with replacement.
+Default <code>FALSE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>Graph</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+library(mlr3)
+lrn_po = po("learner", lrn("regr.rpart"))
+task = mlr_tasks$get("boston_housing")
+gr = pipeline_bagging(lrn_po, 3, averager = po("regravg", collect_multiplicity = TRUE))
+resample(task, GraphLearner$new(gr), rsmp("holdout"))$aggregate()
+
+# The original bagging method uses boosting by sampling with replacement.
+gr = ppl("bagging", lrn_po, frac = 1, replace = TRUE,
+  averager = po("regravg", collect_multiplicity = TRUE))
+resample(task, GraphLearner$new(gr), rsmp("holdout"))$aggregate()
+
+
+</code></pre>
+
+
+</div>

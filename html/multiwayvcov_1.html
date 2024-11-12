@@ -1,0 +1,239 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>cluster.boot</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Bootstrapped multi-way standard error clustering</h2>
+
+<h3>Description</h3>
+
+<p>Return a bootstrapped multi-way cluster-robust variance-covariance matrix
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">cluster.boot(model, cluster, parallel = FALSE, use_white = NULL,
+  force_posdef = FALSE, R = 300, boot_type = "xy",
+  wild_type = "rademacher", debug = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>The estimated model, usually an <code>lm</code> or <code>glm</code> class object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cluster</code></td>
+<td>
+<p>A vector, <code>matrix</code>, or <code>data.frame</code> of cluster variables,
+where each column is a separate variable.  If the vector <code>1:nrow(data)</code>
+is used, the function effectively produces a regular 
+heteroskedasticity-robust matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>Scalar or list.  If a list, use the list as a list
+of connected processing cores/clusters.  Scalar values of <code>TRUE</code>
+and <code>"snow"</code> (which are equivalent) ask <code>boot</code> to handle parallelization, as does
+<code>"multicore"</code>.  See the <code>parallel</code> and <code>boot</code> package.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_white</code></td>
+<td>
+<p>Logical or <code>NULL</code>.  See description below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>force_posdef</code></td>
+<td>
+<p>Logical.  Force the eigenvalues of the variance-covariance
+matrix to be positive.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>R</code></td>
+<td>
+<p><code>Integer</code>. The number of bootstrap replicates; passed directly to <code>boot</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot_type</code></td>
+<td>
+<p><code>"xy"</code>, <code>"residual"</code>, or <code>"wild"</code>.  See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wild_type</code></td>
+<td>
+<p><code>"rademacher"</code>, <code>"mammen"</code>, or <code>"norm"</code>.  See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>debug</code></td>
+<td>
+<p>Logical.  Print internal values useful for debugging to 
+the console.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function implements cluster bootstrapping (also known as the block bootstrap)
+for variance-covariance matrices, following Cameron, Gelbach, &amp; Miller (CGM) (2008).
+Usage is generally similar to the <code>cluster.vcov</code> function in this package, but this
+function does not support degrees of freedome corrections or leverage adjustments.
+</p>
+<p>In the terminology that CGM (2008) use, this function implements
+<em>pairs, residual, or wild cluster bootstrap-se</em>.
+</p>
+<p>A pairs (or xy) cluster bootstrap can be obtained by setting <code>boot_type = "xy"</code>, 
+which resamples the entire regression data set (both X and y).
+Setting <code>boot_type = "residual"</code> will obtain a residual cluster
+bootstrap, which resamples only the residuals (in this case, we resample the blocks/clusters
+rather than the individual observations' residuals).  To get a wild cluster bootstrap set
+<code>boot_type = "wild"</code>, which does not resample anything, but instead reforms the
+dependent variable by multiplying the residual by a randomly drawn value and adding the
+result to the fitted value.  The default method is the pairs/xy bootstrap.
+</p>
+<p>There are three built-in distributions to draw multipliers from for wild bootstraps:
+the Rademacher (<code>wild_type = "rademacher"</code>, the default), which draws from [-1, 1],
+each with P = 0.5, Mammen's suggested distribution (<code>wild_type = "mammen"</code>, see 
+Mammen, 1993), and the standard normal/Gaussian distribution (<code>wild_type = "norm"</code>).
+The default is the Rademacher distribution, following CGM (2008).  Alternatively, you can
+set the function to draw multipliers from by assigning
+<code>wild_type</code> to a function that takes no arguments and returns a single real value.
+</p>
+<p>Multi-way clustering is handled as described by Petersen (2009) and generalized
+according to Cameron, Gelbach, &amp; Miller (2011).  This means that cluster.boot
+estimates a set of variance-covariance matrices <em>for the variables</em> separately 
+and then sums them (subtracting some matrices and adding others).
+The method described by CGM (2011) estimates a set of variance-covariance matrices
+<em>for the residuals</em> (sometimes referred to as the meat of the sandwich estimator)
+and sums them appropriately.  Whether you sum the meat matrices and then compute
+the model's variance-covariance matrix or you compute a series of model matrices
+and sum those is mathematically irrelevant, but may lead to (very) minor numerical
+differences.
+</p>
+<p>Instead of passing in a vector, matrix, data.frame, etc, to specify the cluster variables,
+you can use a formula to specify which variables from the
+original data frame to use as cluster variables, e.g., <code>~ firmid + year</code>.
+</p>
+<p>Ma (2014) suggests using the White (1980) 
+variance-covariance matrix as the final, subtracted matrix when the union 
+of the clustering dimensions U results in a single observation per group in U;
+e.g., if clustering by firm and year, there is only one observation
+per firm-year, we subtract the White (1980) HC0 variance-covariance
+from the sum of the firm and year vcov matrices.  This is detected
+automatically (if <code>use_white = NULL</code>), but you can force this one way 
+or the other by setting <code>use_white = TRUE</code> or <code>FALSE</code>.
+</p>
+<p>Unlike the <code>cluster.vcov</code> function, this function does not depend upon the 
+<code>estfun</code>
+function from the <a href="https://CRAN.R-project.org/package=sandwich"><span class="pkg">sandwich</span></a> package, although it does make use of the <code>vcovHC</code>
+function for computing White (1980) variance-covariance matrices. 
+</p>
+<p>Parallelization (if used) is handled by the <b>boot</b> package.  Be sure to set
+<code>options(boot.ncpus = N)</code> where <code>N</code> is the number of CPU cores you want
+the <code>boot</code> function to use.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a <code class="reqn">K x K</code> variance-covariance matrix of type <code>matrix</code>
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nathaniel Graham <a href="mailto:npgraham1@gmail.com">npgraham1@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Cameron, A. C., Gelbach, J. B., &amp; Miller, D. L. (2008). Bootstrap-based improvements 
+for inference with clustered errors. The Review of Economics and Statistics, 90(3), 414-427.
+<a href="http://doi.org/10.1162/rest.90.3.414">doi: 10.1162/rest.90.3.414</a>
+</p>
+<p>Cameron, A. C., Gelbach, J. B., &amp; Miller, D. L. (2011). Robust inference with multiway 
+clustering. Journal of Business &amp; Economic Statistics, 29(2).
+<a href="http://doi.org/10.1198/jbes.2010.07136">doi: 10.1198/jbes.2010.07136</a>
+</p>
+<p>Mammen, E. (1993). Bootstrap and wild bootstrap for high dimensional linear models. The 
+Annals of Statistics, 255-285.
+<a href="http://doi.org/10.1214/aos/1176349025">doi: 10.1214/aos/1176349025</a>
+</p>
+<p>Petersen, M. A. (2009). Estimating standard errors in finance panel data sets: Comparing 
+approaches. Review of Financial Studies, 22(1), 435-480.
+<a href="http://doi.org/10.1093/rfs/hhn053">doi: 10.1093/rfs/hhn053</a>
+</p>
+<p>White, H. (1980). A heteroskedasticity-consistent covariance matrix estimator and a direct 
+test for heteroskedasticity. Econometrica: Journal of the Econometric Society, 817–838.
+<a href="http://doi.org/10.2307/1912934">doi: 10.2307/1912934</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>cluster.vcov</code> for clustering using asymptotics
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+library(lmtest)
+data(petersen)
+m1 &lt;- lm(y ~ x, data = petersen)
+
+# Cluster by firm
+boot_firm &lt;- cluster.boot(m1, petersen$firmid)
+coeftest(m1, boot_firm)
+
+# Cluster by firm using a formula
+boot_firm &lt;- cluster.boot(m1, ~ firmid)
+coeftest(m1, boot_firm)
+
+# Cluster by year
+boot_year &lt;- cluster.boot(m1, petersen$year)
+coeftest(m1, boot_year)
+
+# Double cluster by firm and year
+boot_both &lt;- cluster.boot(m1, cbind(petersen$firmid, petersen$year))
+coeftest(m1, boot_both)
+
+# Cluster by firm with wild bootstrap and custom wild distribution
+boot_firm2 &lt;- cluster.boot(m1, petersen$firmid, boot_type = "wild",
+                           wild_type = function() sample(c(-1, 1), 1))
+coeftest(m1, boot_firm)
+
+# Go multicore using the parallel package
+require(parallel)
+cl &lt;- makeCluster(4)
+options(boot.ncpus = 4)
+boot_both &lt;- cluster.boot(m1, cbind(petersen$firmid, petersen$year), parallel = cl)
+stopCluster(cl)
+coeftest(m1, boot_both)
+
+# Go multicore using the parallel package, let boot handle the parallelization
+require(parallel)
+options(boot.ncpus = 8)
+boot_both &lt;- cluster.boot(m1, cbind(petersen$firmid, petersen$year), parallel = TRUE)
+coeftest(m1, boot_both)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

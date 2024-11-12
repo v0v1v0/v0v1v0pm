@@ -1,0 +1,166 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict.moult</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Predict method for moult models</h2>
+
+<h3>Description</h3>
+
+<p>Predict either the proportion of birds in a certain moult 
+stage (as defined in intervals) on a specified day, the average 
+moult score on a specified day, or start and/or duration of moult 
+for given covariate patterns</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">  ## S3 method for class 'moult'
+predict(object, newdata, predict.type = "prob", intervals = 0.1, ...)</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>moult model objects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>optional dataframe with explanatory variables for which to 
+make predictions.  The first column must contain the days 
+(as used when fitting) for which to make predictions. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>predict.type</code></td>
+<td>
+<p>specifies form of predictions, see details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intervals</code></td>
+<td>
+<p>length of moult categories for
+which probabilities/proportions should be calculated.  The default (= 0.1) 
+will calculate the probability that a bird will fall in this moult category
+on the specified day for each of the following categories: 0, (0, 0.1), 
+[0.1, 0.2), [0.2, 0.3), ..., [0.9, 1.0), 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other arguments passed to the predict method</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>predict.type</code> has the following options: 
+</p>
+
+<dl>
+<dt>"response"</dt>
+<dd>
+<p>the average moult index (proportion of
+feather mass grown) for each of the days specified.</p>
+</dd>
+<dt>"prob"</dt>
+<dd>
+<p>default, the proportion of birds in
+each of the moult categories as defined by intervals
+is predicted. </p>
+</dd>
+<dt>"duration"</dt>
+<dd>
+<p>predicts the duration of moult
+for the covariate combinations defined in <code>newdata</code>,
+with standard errors. If <code>newdata</code> is not supplied, returns duration of baseline covariate set.</p>
+</dd>
+<dt>"start"</dt>
+<dd>
+<p>predicts the mean start date of moult
+for the covariate combinations defined in <code>newdata</code>,
+with standard errors. If <code>newdata</code> is not supplied, returns mean start date of baseline covariate set. </p>
+</dd>
+<dt>"both"</dt>
+<dd>
+<p>predicts both mean start date of moult and 
+duration of moult for the covariate combinations defined in 
+<code>newdata</code>, with standard errors. Also, covariance of duration and start date estimates is given.</p>
+</dd>
+</dl>
+<h3>Value</h3>
+
+<p>If <code>newdata</code> is missing, the expected moult scores at the observed days are returned. 
+</p>
+<p>If <code>predict.type = "response"</code>, the expected moult scores at the specified days are returned.
+</p>
+<p>If <code>predict.type = "prob"</code> a matrix of predicted probabilities for being in each of the moult categories defined by intervals.
+</p>
+<p>If <code>predict.type</code> equals "start" or "duration" or "both", the corresponding estimates (with standard errors) for each of the covariate patterns are returned.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><a href="mailto:birgit.erni@uct.ac.za">birgit.erni@uct.ac.za</a></p>
+
+
+<h3>References</h3>
+
+<p>Erni, B., Bonnevie, B. T., Oschadleus, H.-D., Altwegg,
+R. and Underhill, L. G. (2013) moult: An R package to analyze
+moult in birds. Journal of Statistical Software, <b>52</b>(8), 1–23.
+<a href="https://www.jstatsoft.org/v52/i08/">https://www.jstatsoft.org/v52/i08/</a>
+</p>
+<p>Underhill, L. G. and Zucchini, W. (1988) A model for avian primary 
+moult. <em>Ibis</em> <b>130</b>, 358–372.
+</p>
+<p>Underhill, L. G. and Zucchini, W. and Summers, R. W. (1990) A
+model for avian primary moult-data types based on migration
+strategies and an example using the Redshank <em>Tringa
+totanus</em>. <em>Ibis</em> <b>132</b>, 118–123. </p>
+
+
+<h3>See Also</h3>
+
+<p><code>moult</code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data(weavers)
+
+## convert moult scores to PFMG (proportion feather mass grown)
+mscores &lt;- substr(weavers$Moult, 1, 9)
+feather.mass &lt;- c(10.4, 10.8, 11.5, 12.8, 14.4, 15.6, 16.3, 15.7, 15.7)
+weavers$pfmg &lt;- ms2pfmg(mscores, feather.mass)
+
+## day of year starting 1 August
+weavers$day &lt;- date2days(weavers$RDate, dateformat = "yyyy-mm-dd", startmonth = 8)
+weavers$ssex &lt;- ifelse(weavers$Sex == 1 | weavers$Sex == 3, "male",
+  ifelse(weavers$Sex == 2 | weavers$Sex == 4, "female", NA))
+  
+mmf &lt;- moult(pfmg ~ day | ssex | ssex, data = weavers, type = 3)
+summary(mmf)
+
+## predict duration and start of moult (then both) for males and females
+ssex &lt;- c("male", "female")
+day &lt;- 150
+
+(p1 &lt;- predict.moult(mmf, newdata = data.frame(day, ssex), predict.type = "duration"))
+(p2 &lt;- predict.moult(mmf, newdata = data.frame(day, ssex), predict.type = "start"))
+(p3 &lt;- predict.moult(mmf, newdata = data.frame(day, ssex), predict.type = "both"))
+
+</code></pre>
+
+
+</div>

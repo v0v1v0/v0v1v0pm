@@ -1,0 +1,305 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvmeta</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Fitting Multivariate and Univariate Meta-Analysis and Meta-Regression Models </h2>
+
+<h3>Description</h3>
+
+<p>The function <code>mvmeta</code> performs fixed and random-effects multivariate and univariate meta-analysis and meta-regression, with various estimation methods. The function <code>mvmeta.fit</code> is a wrapper for actual fitting functions based on different estimation methods, usually called internally. See <code>mvmeta-package</code> for an overview.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mvmeta(formula, S, data, subset, method="reml", bscov="unstr", model=TRUE,
+  contrasts=NULL, offset, na.action, control=list())
+    
+mvmeta.fit(X, y, S, offset=NULL, method="reml", bscov="unstr", control=list())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<p>Assuming a meta-analysis or meta-regression based on <code class="reqn">m</code> studies, <code class="reqn">k</code> outcomes and <code class="reqn">p</code> predictors:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula </code></td>
+<td>
+<p> an object of class <code>"formula"</code> (or one that can be coerced to that class) offering a symbolic description of the linear predictor of the model to be fitted to each outcome. Alternatively, for meta-analysis with no predictor, a single  vector (for univariate models) or matrix-type object (for multivariate models). Terms in <code>formula</code> must be vector or matrix-type objects, optionally provided in the <code>data</code> argument below. See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X </code></td>
+<td>
+<p> a <code class="reqn">m \times p</code> design matrix containing the study-specific predictors. Usually produced internally by <code>mvmeta</code> from <code>formula</code> above.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y </code></td>
+<td>
+<p> a <code class="reqn">m</code>-dimensional vector (for univariate models) or <code class="reqn">m \times k</code> matrix (for multivariate models) of outcomes. Usually produced internally by <code>mvmeta</code> from <code>formula</code> above.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>S </code></td>
+<td>
+<p> series of within-study (co)variance matrices of the estimated outcomes for each one of the <code class="reqn">m</code> studies. Accepted formats by <code>mvmeta</code> are: a <code class="reqn">m</code>-dimensional list of <code class="reqn">k \times k</code> matrices; a tri-dimensional <code class="reqn">k \times k \times m</code> array; a matrix or data frame with <code class="reqn">m</code> rows and <code class="reqn">k(k+1)/2</code> or <code class="reqn">k</code> columns, depending on the availability of the within-study correlations. Optionally, terms may be provided in the <code>data</code> argument below. <code>mvmeta.fit</code> accepts only the last option. See Details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data </code></td>
+<td>
+<p> an optional data frame, list or environment (or object coercible by <code>as.data.frame</code> to a data frame) containing the variables in <code>formula</code>. If not found in data, the variables are taken from <code>environment(formula)</code>, typically the environment from which <code>mvmeta</code> is called.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset </code></td>
+<td>
+<p> an optional vector specifying a subset of observations to be used in the fitting process.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method </code></td>
+<td>
+<p> estimation method: <code>"fixed"</code> for fixed-effects models, <code>"ml"</code> or <code>"reml"</code> for random-effects models fitted through (restricted) maximum likelihood, <code>"mm"</code> for random-effects models fitted through method of moments, and <code>"vc"</code> for random-effects models fitted through variance components. See Details below. If <code>"model.frame"</code>, the model frame is returned, as in <code>lm</code> or <code>glm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bscov </code></td>
+<td>
+<p> a string defining the between-study (co)variance structure in likelihood based models. Default to <code>"unstr"</code> (unstructured). Among other options, the user can select <code>"diag"</code> (diagonal), <code>"cs"</code> (compound symmetry), <code>"hcs"</code> (heterogeneous compound symmetry), <code>"ar1"</code> (autoregressive of first order), <code>"fixed"</code> (fixed). See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model </code></td>
+<td>
+<p> a logical value indicating whether the model frame should be included as a component of the returned value. See the <code>model.frame</code> method function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>contrasts </code></td>
+<td>
+<p> an optional list. See the <code>contrasts.arg</code> of <code>model.matrix</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offset </code></td>
+<td>
+<p> optionally, a <code class="reqn">m</code>-dimensional numeric vector used to specify an a priori known component in the linear predictor. One or more <code>offset</code> terms can be included in the formula instead or as well. See <code>model.offset</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na.action </code></td>
+<td>
+<p> a function which indicates what should happen when the data contain <code>NA</code>s. Default to <code>na.action</code> setting of <code>options</code>, usually <code>na.omit</code>. <code>na.exclude</code> can be useful. See details on <code>missing values</code> in <code>mvmeta</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control </code></td>
+<td>
+<p> list of parameters for controlling the fitting process. These are passed to  <code>mvmeta.control</code> by <code>mvmeta.fit</code> to replace otherwise selected default values.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function <code>mvmeta</code> resembles standard regression functions in <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span> (see <code>lm</code> or <code>glm</code>). This function defines the design matrix and the vector (for univariate models) or matrix (for multivariate models) of outcome responses, and calls the wrapper <code>mvmeta.fit</code> to perform the actual fitting. The latter prepares the data and calls specific fitting functions, depending on the chosen <code>method</code>. Functions other than <code>mvmeta</code> are not expected to be called directly for model fitting.
+</p>
+<p>The model is specified through a regression formula. Simple meta-analysis is specified with the formula <code>y ~ 1</code>, where the left-hand side is a vector (in univariate models) or a matrix (in multivariate models), optionally of form <code>cbind(y1,...,yk)</code>, with terms stored in <code>data</code>. Alternatively, matrix or vector objects are allowed, and the formula is retrieved internally adding <code>~ 1</code>. In meta-regression, other terms are added in the right-hand side of the formula, defining the linear predictor common to all outcomes. Factors, variable transformations and interactions are allowed, following the standard formula specification. Labels are automatically retrieved from the objects in <code>formula</code>. See <code>formula</code> for further details. See <code>lm</code> or <code>glm</code> for info on the other arguments.
+</p>
+<p>The within-study (co)variances are provided through the argument <code>S</code>, usually as a matrix. If the correlations are available, each of the <code class="reqn">m</code> row represents the <code class="reqn">k(k+1)/2</code> vectorized entries of the lower triangle of the related (co)variance matrix, taken by column (see <code>xpndMat</code>). If correlations are not available, each row represents the <code class="reqn">k</code> variances, and the correlations are inputted internally through the argument <code>Scor</code> of the <code>control</code> list. See <code>inputcov</code>.
+</p>
+<p>Different estimator are available in the package <code>mvmeta</code> and chosen through the argument <code>method</code>. In the current version, the options are:
+</p>
+
+<ul>
+<li> <p><code>method="fixed"</code>: <code>Fixed-effects estimator</code>
+</p>
+</li>
+<li> <p><code>method="ml"</code>: <code>Maximum likelihood (ML) estimator</code>
+</p>
+</li>
+<li> <p><code>method="reml"</code>: <code>Restricted maximum likelihood (REML) estimator</code>
+</p>
+</li>
+<li> <p><code>method="mm"</code>: <code>Method of moments estimator</code>
+</p>
+</li>
+<li> <p><code>method="vc"</code>: <code>Variance components estimator</code>
+</p>
+</li>
+</ul>
+<p>Specific fitting functions are called internally. Likelihood-based methods allow alternative <code>(co)variance structures</code> for the between-study random effects through the argument <code>bscov</code>. See their help pages for further details on the estimation methods, following the links above.
+</p>
+<p>Missing values are allowed in both sides of <code>formula</code>. In the case of missing predictors (right-hand side of <code>formula</code>), the related study is entirely excluded from estimation. In contrast, a study still contributes to estimation if at least outcome is non-missing. This behaviour is different than in standard regression functions such as <code>lm</code> or <code>glm</code>. Before the call to <code>mvmeta.fit</code>, studies matching such missing definition are removed from the the model frame. The missing pattern in <code>S</code> must be consistent with that in <code>y</code>. See further details on handling <code>missing values</code> in <code>mvmeta</code>.
+</p>
+<p>The fitting procedure can be controlled through the additional terms specified in <code>control</code>, which are passed to the function <code>mvmeta.control</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The <code>mvmeta</code> function typically returns a list object of class <code>"mvmeta"</code> representing the meta-analytical model fit, as described in <code>mvmetaObject</code>. When <code>method="data.frame"</code>, the model is not fitted and the model frame is returned, namely a data frame with special attributes (see the default method <code>model.frame</code>) and, in this case, the additional class <code>"data.frame.mvmeta"</code>.
+</p>
+<p>The wrapper function <code>mvmeta.fit</code> is usually called internally in <code>mvmeta</code>, and returns an intermediate list object with some of the components expected in the <code>"mvmeta"</code> class.
+</p>
+<p>Several method functions for regression objects are available, either default or specifically-written for the <code>"mvmeta"</code> class. See <code>mvmetaObject</code> for a complete list.
+</p>
+
+
+<h3>Note</h3>
+
+<p>In the current version, the same linear predictor specified in <code>formula</code> is set for all the outcomes.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Antonio Gasparrini, <a href="mailto:antonio.gasparrini@lshtm.ac.uk">antonio.gasparrini@lshtm.ac.uk</a></p>
+
+
+<h3>References</h3>
+
+<p>Sera F, Armstrong B, Blangiardo M, Gasparrini A (2019). An extended mixed-effects framework for meta-analysis.<em>Statistics in Medicine</em>. 2019;38(29):5429-5444. [Freely available <a href="http://www.ag-myresearch.com/2019_sera_statmed.html"><b>here</b></a>].
+</p>
+<p>Gasparrini A, Armstrong B, Kenward MG (2012). Multivariate meta-analysis for non-linear and other multi-parameter associations. <em>Statistics in Medicine</em>. <b>31</b>(29):3821–3839. [Freely available <a href="http://www.ag-myresearch.com/2012_gasparrini_statmed.html"><b>here</b></a>].
+</p>
+<p>Jackson D, Riley R, White IR (2011). Multivariate meta-analysis: Potential and promise. <em>Statistics in Medicine</em>. <b>30</b>(20);2481–2498.
+</p>
+<p>White IR (2009). Multivariate random-effects meta-analysis. <em>Stata Journal</em>. <b>9</b>(1):40–56.
+</p>
+<p>White IR (2011). Multivariate random-effects meta-regression: updates to mvmeta. <em>Stata Journal</em>. <b>11</b>(2):255-270.
+</p>
+<p>Berkey, CS, Hoaglin DC, et al. (1998). Meta-analysis of multiple outcomes by regression with random effects. <em>Statistics in Medicine</em>. <b>17</b>(22):2537–2550.
+</p>
+
+
+<h3>See Also</h3>
+
+ 
+<p>See additional info on the estimation procedures at the related page of the fitting functions. See alternative <code>(co)variance structures</code> for likelihood-based estimation methods. See handling of <code>missing values</code> in <code>mvmeta</code>. See <code>lm</code> or <code>glm</code> for standard regression functions. See <code>mvmeta-package</code> for an overview of this modelling framework.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">### BIVARIATE META-ANALYSIS, ESTIMATED THROUGH REML
+
+# RUN THE MODEL
+model &lt;- mvmeta(cbind(PD,AL),S=berkey98[5:7],data=berkey98)
+
+# SUMMARIZE THE RESULTS
+summary(model)
+
+# RESIDUALS AND FITTED VALUES
+residuals(model)
+fitted(model)
+
+# LOG-LIKELIHOOD AND AIC VALUE
+logLik(model)
+AIC(model)
+
+
+### BIVARIATE META-REGRESSION, ESTIMATED THROUGH METHOD OF MOMENTS
+
+# RUN THE MODEL AND SUMMARIZE THE RESULTS
+model &lt;- mvmeta(cbind(PD,AL)~pubyear,S=berkey98[5:7],data=berkey98,method="mm")
+summary(model)
+
+# BLUP ESTIMATES AND 90% PREDICTION INTERVALS, AGGREGATED BY OUTCOME
+blup(model,pi=TRUE,aggregate="y",pi.level=0.90)
+
+# COCHRAN Q TEST FOR RESIDUAL HETEROGENEITY
+qtest(model)
+
+# PREDICTED AVERAGED OUTOCOMES AND STANDARD ERRORS FROM YEAR 1985 TO 1989
+newdata &lt;- data.frame(pubyear=1985:1989)
+predict(model,newdata,se=TRUE)
+
+# MODEL FRAME AND MODEL MATRIX
+model.frame(model)
+model.matrix(model)
+
+
+### UNIVARIATE META-REGRESSION, FIXED-EFFECTS MODEL
+
+# RUN THE MODEL
+model &lt;- mvmeta(sbp~ish,S=sbp_se^2,data=hyp,method="fixed")
+summary(model)
+
+# RESIDUALS AND FITTED VALUES
+residuals(model)
+fitted(model)
+
+# COCHRAN Q TEST FOR RESIDUAL HETEROGENEITY
+qtest(model)
+
+
+### MULTIVARIATE META-ANALYSIS WITH MORE THAN 2 OUTCOMES
+
+# RUN THE MODEL
+y &lt;- as.matrix(fibrinogen[2:5])
+S &lt;- as.matrix(fibrinogen[6:15])
+model &lt;- mvmeta(y,S)
+summary(model)
+
+
+### IN THE PRESENCE OF MISSING VALUES
+
+# RUN THE MODEL
+y &lt;- as.matrix(smoking[11:13])
+S &lt;- as.matrix(smoking[14:19])
+model &lt;- mvmeta(y,S)
+summary(model)
+
+# MODEL FRAME: SEE help(na.omit.data.frame.mvmeta) FOR MORE EXAMPLES
+model.frame(model)
+
+
+### WHEN WITHIN-STUDY COVIARIANCES ARE NOT AVAILABLE AND/OR NEED TO BE INPUTTED
+
+# GENERATE S
+(S &lt;- inputcov(hyp[c("sbp_se","dbp_se")],cor=hyp$rho))
+
+# RUN THE MODEL
+model &lt;- mvmeta(cbind(sbp,dbp),S=S,data=hyp)
+
+# INPUTTING THE CORRELATION DIRECTLY IN THE MODEL
+model &lt;- mvmeta(cbind(y1,y2),cbind(V1,V2),data=p53,control=list(Scor=0.95))
+summary(model)
+
+# SEE help(hyp) AND help(p53) FOR MORE EXAMPLES
+
+
+### STRUCTURING THE BETWEEN-STUDY (CO)VARIANCE
+
+# DIAGONAL
+S &lt;- as.matrix(hsls[5:10])
+model &lt;- mvmeta(cbind(b1,b2,b3),S,data=hsls,bscov="diag")
+summary(model)
+model$Psi
+
+# COMPOUND SYMMETRY
+model &lt;- mvmeta(cbind(b1,b2,b3),S,data=hsls,bscov="cs")
+summary(model)
+model$Psi
+
+# SEE help(mvmetaCovStruct) FOR DETAILS AND ADDITIONAL EXAMPLES
+
+
+### USE OF THE CONTROL LIST
+
+# PRINT THE ITERATIONS AND CHANGE THE DEFAULT FOR STARTING VALUES
+y &lt;- as.matrix(smoking[11:13])
+S &lt;- as.matrix(smoking[14:19])
+model &lt;- mvmeta(y,S,control=list(showiter=TRUE,igls.iter=20))
+
+# SEE help(mvmeta.control) FOR FURTHER DETAILS
+</code></pre>
+
+
+</div>

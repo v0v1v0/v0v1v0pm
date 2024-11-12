@@ -1,0 +1,723 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mscmt</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multivariate SCM Using Time Series</h2>
+
+<h3>Description</h3>
+
+<p><code>mscmt</code> performs the Multivariate Synthetic Control Method Using Time 
+Series.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mscmt(
+  data,
+  treatment.identifier = NULL,
+  controls.identifier = NULL,
+  times.dep = NULL,
+  times.pred = NULL,
+  agg.fns = NULL,
+  placebo = FALSE,
+  placebo.with.treated = FALSE,
+  univariate = FALSE,
+  univariate.with.dependent = FALSE,
+  check.global = TRUE,
+  inner.optim = "wnnlsOpt",
+  inner.opar = list(),
+  outer.optim = "DEoptC",
+  outer.par = list(),
+  outer.opar = list(),
+  std.v = c("sum", "mean", "min", "max"),
+  alpha = NULL,
+  beta = NULL,
+  gamma = NULL,
+  return.ts = TRUE,
+  single.v = FALSE,
+  verbose = TRUE,
+  debug = FALSE,
+  seed = NULL,
+  cl = NULL,
+  times.pred.training = NULL,
+  times.dep.validation = NULL,
+  v.special = integer(),
+  cv.alpha = 0,
+  spec.search.treated = FALSE,
+  spec.search.placebos = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Typically, a list of matrices with rows corresponding to times 
+and columns corresponding to units for all relevant features (dependent as
+well as predictor variables, identified by the list elements' names).
+This might be the result of converting from a 
+<code>data.frame</code>
+by using function <code>listFromLong</code>. 
+</p>
+<p>For convenience, <code>data</code> may alternatively be the 
+result of function <code>dataprep</code> of package 
+<code>'Synth'</code>. In this case, the parameters <code>treatment.identifier</code>,
+<code>controls.identifier</code>, <code>times.dep</code>, <code>times.pred</code>, 
+and <code>agg.fns</code> are ignored, as these input parameters are generated
+automatically from <code>data</code>. The parameters <code>univariate</code>, 
+<code>alpha</code>, <code>beta</code>, and <code>gamma</code> are ignored by fixing them to 
+their defaults.
+Using results of <code>dataprep</code> is experimental, because
+the automatic generation of input parameters may fail due to lack of 
+information contained in results of <code>dataprep</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>treatment.identifier</code></td>
+<td>
+<p>A character scalar containing the name of the 
+treated unit. 
+Must be contained in the column names of the matrices in <code>data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>controls.identifier</code></td>
+<td>
+<p>A character vector containing the names of at 
+least two control units.
+Entries must be contained in the column names of the matrices in <code>data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>times.dep</code></td>
+<td>
+<p>A matrix with two rows (containing start times in
+the first and end times in the second row) and one column for each dependent
+variable, where the column names must exactly match the names of the
+corresponding dependent variables. 
+A sequence of dates with the given start and end times of
+</p>
+
+<ul>
+<li>
+<p> annual dates, if the format of start/end time is "dddd", e.g. "2016",
+</p>
+</li>
+<li>
+<p> quarterly dates, if the format of start/end time is "ddddQd", e.g. 
+"2016Q1",
+</p>
+</li>
+<li>
+<p> monthly dates, if the format of start/end time is "dddd?dd" with "?"
+different from "W" (see below), e.g. "2016/03" or "2016-10",
+</p>
+</li>
+<li>
+<p> weekly dates, if the format of start/end time is "ddddWdd", e.g. 
+"2016W23",
+</p>
+</li>
+<li>
+<p> daily dates, if the format of start/end time is "dddd-dd-dd", e.g. 
+"2016-08-18",
+</p>
+</li>
+</ul>
+<p>will be constructed; these dates are looked for in the row names of
+the respective matrices in <code>data</code>. In applications with 
+cross-validation, <code>times.dep</code> belongs to the main period.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>times.pred</code></td>
+<td>
+<p>A matrix with two rows (containing start times in
+the first and end times in the second row) and one column for each predictor
+variable, where the column names must exactly match the names of the
+corresponding predictor variables.
+A sequence of dates with the given start and end times of
+</p>
+
+<ul>
+<li>
+<p> annual dates, if the format of start/end time is "dddd", e.g. "2016",
+</p>
+</li>
+<li>
+<p> quarterly dates, if the format of start/end time is "ddddQd", e.g. 
+"2016Q1",
+</p>
+</li>
+<li>
+<p> monthly dates, if the format of start/end time is "dddd?dd" with "?"
+different from "W" (see below), e.g. "2016/03" or "2016-10",
+</p>
+</li>
+<li>
+<p> weekly dates, if the format of start/end time is "ddddWdd", e.g. 
+"2016W23",
+</p>
+</li>
+<li>
+<p> daily dates, if the format of start/end time is "dddd-dd-dd", e.g. 
+"2016-08-18",
+</p>
+</li>
+</ul>
+<p>will be constructed; these dates are looked for in the row names of
+the respective matrices in <code>data</code>. In applications with 
+cross-validation, <code>times.pred</code> belongs to the main period.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>agg.fns</code></td>
+<td>
+<p>Either <code>NULL</code> (default) or a character vector containing
+one name of an aggregation function for each predictor variable (i.e., each
+column of <code>times.pred</code>). The character string "id" may be used as a
+"no-op" aggregation. Each aggregation function must accept a numeric vector
+and return either a numeric scalar ("classical" MSCM) or a numeric vector 
+(leading to MSCM*T* if length of vector is at least two).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>placebo</code></td>
+<td>
+<p>A logical scalar. If <code>TRUE</code>, a placebo study is 
+performed where, apart from the treated unit, each control unit is considered
+as treated unit in separate optimizations. Defaults to <code>FALSE</code>. 
+Depending on the number of control units and the complexity of the problem, 
+placebo studies may take a long time to finish.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>placebo.with.treated</code></td>
+<td>
+<p>A logical scalar. If <code>TRUE</code>, the treated
+unit is included as control unit (for other treated units in placebo 
+studies). Defaults to <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>univariate</code></td>
+<td>
+<p>A logical scalar. If <code>TRUE</code>, a series of univariate
+SCMT optimizations is done (instead of one MSCMT optimization) even if
+there is more than one dependent variable. Defaults to <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>univariate.with.dependent</code></td>
+<td>
+<p>A logical scalar. If <code>TRUE</code> (and if
+<code>univariate</code> is also <code>TRUE</code>), all dependent variables (contained
+in the column names of <code>times.dep</code>) apart from the current (real) 
+dependent variable are included as predictors in the series of univariate
+SCMT optimizations. Defaults to <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>check.global</code></td>
+<td>
+<p>A logical scalar. If <code>TRUE</code> (default), a check for
+the feasibility of the unrestricted outer optimum (where actually no 
+restrictions are imposed by the predictor variables) is made before 
+starting the actual optimization procedure.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inner.optim</code></td>
+<td>
+<p>A character scalar containing the name of the optimization
+method for the inner optimization. Defaults to <code>"wnnlsOpt"</code>, which
+(currently) is the only supported implementation, because it outperforms
+all other inner optimizers we are aware of. 
+<code>"ipopOpt"</code>, which uses <code>ipop</code>, and 
+<code>LowRankQPOpt</code>, which uses <code>LowRankQP</code> as inner
+optimizer, have experimental support for benchmark purposes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inner.opar</code></td>
+<td>
+<p>A list containing further parameters for the inner 
+optimizer. Defaults to the empty list. (For <code>"wnnlsOpt"</code>, there are no
+meaningful further parameters.)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outer.optim</code></td>
+<td>
+<p>A character vector containing the name(s) of the 
+optimization method(s) for the outer optimization. Defaults to 
+<code>"DEoptC"</code>, which (currently) is the recommended global optimizer. 
+The optimizers currently supported can be found in the documentation of
+parameter <code>outer.opar</code>, where the default control parameters for
+the various optimizers are listed.
+If <code>outer.optim</code> has length greater
+than 1, one optimization is invoked for each outer optimizer (and, 
+potentially, each random seed, see below), and the best result is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outer.par</code></td>
+<td>
+<p>A list containing further parameters for the outer 
+optimization procedure. Defaults to the empty list. Entries in this list may 
+override the following hard-coded general defaults:
+</p>
+
+<ul>
+<li> <p><code>lb=1e-8</code>, corresponding to the lower bound for the ratio of
+predictor weights,
+</p>
+</li>
+<li> <p><code>opt.separate=TRUE</code>, corresponding
+to an improved outer optimization where each predictor is treated as the 
+(potentially) most important predictor (i.e. with maximal weight) in 
+separate optimizations (one for each predictor), see [1].
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outer.opar</code></td>
+<td>
+<p>A list (or a list of lists, if <code>outer.optim</code> has
+length greater than 1) containing further parameters for the outer 
+optimizer(s). Defaults to the empty list. Entries in this list may override
+the following hard-coded defaults for the individual optimizers, which
+are quite modest concerning the computing time. 
+<code>dim</code> is a variable holding the problem dimension, 
+typically the number of predictors minus one.
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+<b>Optimizer</b>  </td>
+<td style="text-align: left;"> <b>Package</b>     </td>
+<td style="text-align: left;"> <b>Default parameters</b> </td>
+</tr>
+<tr>
+<td style="text-align: left;"> 
+<code>DEoptC</code>     </td>
+<td style="text-align: left;"> <code>MSCMT</code>       </td>
+<td style="text-align: left;"> <code>nG=500</code>, <code>nP=20*dim</code>, <code>waitgen=100</code>, </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+                  </td>
+<td style="text-align: left;">                    </td>
+<td style="text-align: left;"> <code>minimpr=1e-14</code>, <code>F=0.5</code>, <code>CR=0.9</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>cma_es</code>     </td>
+<td style="text-align: left;"> <code>cmaes</code>       </td>
+<td style="text-align: left;"> <code>maxit=2500</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>crs</code>        </td>
+<td style="text-align: left;"> <code>nloptr</code>      </td>
+<td style="text-align: left;"> <code>maxeval=2.5e4</code>, <code>xtol_rel=1e-14</code>, </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+                  </td>
+<td style="text-align: left;">                    </td>
+<td style="text-align: left;"> <code>population=20*dim</code>, <code>algorithm="NLOPT_GN_CRS2_LM"</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>DEopt</code>      </td>
+<td style="text-align: left;"> <code>NMOF</code>        </td>
+<td style="text-align: left;"> <code>nG=100</code>, <code>nP=20*dim</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>DEoptim</code>    </td>
+<td style="text-align: left;"> <code>DEoptim</code>     </td>
+<td style="text-align: left;"> <code>nP=20*dim</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>ga</code>         </td>
+<td style="text-align: left;"> <code>GA</code>          </td>
+<td style="text-align: left;"> <code>maxiter=50</code>, <code>monitor=FALSE</code>, </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+                  </td>
+<td style="text-align: left;">                    </td>
+<td style="text-align: left;"> <code>popSize=20*dim</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>genoud</code>     </td>
+<td style="text-align: left;"> <code>rgenoud</code>     </td>
+<td style="text-align: left;"> <code>print.level=0</code>, <code>max.generations=70</code>, </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+                  </td>
+<td style="text-align: left;">                    </td>
+<td style="text-align: left;"> <code>solution.tolerance=1e-12</code>, <code>pop.size=20*dim</code>, </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+                  </td>
+<td style="text-align: left;">                    </td>
+<td style="text-align: left;"> <code>wait.generations=dim</code>, <code>boundary.enforcement=2</code>, </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+                  </td>
+<td style="text-align: left;">                    </td>
+<td style="text-align: left;"> <code>gradient.check=FALSE</code>, <code>MemoryMatrix=FALSE</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>GenSA</code>      </td>
+<td style="text-align: left;"> <code>GenSA</code>       </td>
+<td style="text-align: left;"> <code>max.call=1e7</code>, <code>max.time=25/dim</code>,  </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+                  </td>
+<td style="text-align: left;">                    </td>
+<td style="text-align: left;"> <code>trace.mat=FALSE</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>isres</code>      </td>
+<td style="text-align: left;"> <code>nloptr</code>      </td>
+<td style="text-align: left;"> <code>maxeval=2e4</code>, <code>xtol_rel=1e-14</code>, </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+                  </td>
+<td style="text-align: left;">                    </td>
+<td style="text-align: left;"> <code>population=20*dim</code>, <code>algorithm="NLOPT_GN_ISRES"</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>malschains</code> </td>
+<td style="text-align: left;"> <code>Rmalschains</code> </td>
+<td style="text-align: left;"> <code>popsize=20*dim</code>, <code>maxEvals=25000</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>nlminbOpt</code>  </td>
+<td style="text-align: left;"> <code>MSCMT/stats</code> </td>
+<td style="text-align: left;"> <code>nrandom=30</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>optimOpt</code>   </td>
+<td style="text-align: left;"> <code>MSCMT/stats</code> </td>
+<td style="text-align: left;"> <code>nrandom=25</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>PSopt</code>      </td>
+<td style="text-align: left;"> <code>NMOF</code>        </td>
+<td style="text-align: left;"> <code>nG=100</code>, <code>nP=20*dim</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>psoptim</code>    </td>
+<td style="text-align: left;"> <code>pso</code>         </td>
+<td style="text-align: left;"> <code>maxit=700</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>soma</code>       </td>
+<td style="text-align: left;"> <code>soma</code>        </td>
+<td style="text-align: left;"> <code>nMigrations=100</code> 
+</td>
+</tr>
+</table>
+<p>If <code>outer.opar</code> is a list of lists, its names must correspond to (a 
+subset of) the outer optimizers chosen in <code>outer.optim</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>std.v</code></td>
+<td>
+<p>A character scalar containing one of the function names
+"sum", "mean", "min", or "max" for the standardization of the predictor 
+weights (weights are divided by <code>std.v(weights)</code> before reporting). 
+Defaults to "sum", partial matching allowed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>A numerical vector with weights for the dependent variables
+in an MSCMT optimization or <code>NULL</code> (default). If not <code>NULL</code>,
+the length of <code>alpha</code> must agree with the number of dependent
+variables, <code>NULL</code> is equivalent to weight 1 for all dependent 
+variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta</code></td>
+<td>
+<p>Either <code>NULL</code> (default), a numerical vector, or a list.
+If <code>beta</code> is a numerical vector or a list, its length must agree
+with the number of dependent variables. 
+</p>
+
+<ul>
+<li>
+<p> If <code>beta</code> is a numerical vector,
+the <code>i</code>th dependent variable is discounted with discount factor 
+<code>beta[i]</code> (the observations of the dependent variables must thus be 
+in chronological order!). 
+</p>
+</li>
+<li>
+<p> If <code>beta</code> is a list, the components of <code>beta</code> must be 
+numerical vectors with lengths corresponding to the numbers of observations 
+for the individual dependent variables. These observations are then 
+multiplied with the corresponding component of <code>beta</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma</code></td>
+<td>
+<p>Either <code>NULL</code> (default), a numerical vector, or a list.
+If <code>gamma</code> is a numerical vector or a list, its length must agree
+with the number of predictor variables. 
+</p>
+
+<ul>
+<li>
+<p> If <code>gamma</code> is a numerical vector,
+the output of <code>agg.fns[i]</code> applied to the <code>i</code>th predictor variable
+is discounted with discount factor <code>gamma[i]</code> (the output of 
+<code>agg.fns[i]</code> must therefore be in chronological order!). 
+</p>
+</li>
+<li>
+<p> If <code>gamma</code> is a list, the components of <code>gamma</code> must be 
+numerical vectors with lengths corresponding to the lengths of the output of 
+<code>agg.fns</code> for the individual predictor variables. The output of 
+<code>agg.fns</code> is then multiplied with the corresponding component of 
+<code>gamma</code>.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>return.ts</code></td>
+<td>
+<p>A logical scalar. If <code>TRUE</code> (default), most results are
+converted to time series.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>single.v</code></td>
+<td>
+<p>A logical scalar. If <code>FALSE</code> (default), a selection
+of feasible (optimal!) predictor weight vectors is generated. If <code>TRUE</code>, 
+the one optimal weight vector which has maximal order statistics is generated 
+to facilitate cross validation studies.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>A logical scalar. If <code>TRUE</code> (default), output is verbose.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>debug</code></td>
+<td>
+<p>A logical scalar. If <code>TRUE</code>, output is very verbose. 
+Defaults to <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>A numerical vector or <code>NULL</code>. If not <code>NULL</code>, the
+random number generator is initialized with the elements of <code>seed</code> via
+<code>set.seed(seed)</code> (see Random) before
+calling the optimizer, performing repeated optimizations (and staying with 
+the best) if <code>seed</code> has length greater than 1. Defaults to <code>NULL</code>. 
+If not <code>NULL</code>, the seeds <code>int.seed</code> (default: 53058) and 
+<code>unif.seed</code> (default: 812821) for <code>genoud</code> are 
+also initialized to the corresponding element of <code>seed</code>, but this can 
+be overridden with the list elements <code>int.seed</code> and <code>unif.seed</code> 
+of (the corresponding element of) <code>outer.opar</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+<p><code>NULL</code> (default) or an object of class <code>cluster</code>
+obtained by <code>makeCluster</code> of package <code>parallel</code>. 
+Repeated estimations (see <code>outer.optim</code> and <code>seed</code>) and
+placebo studies will make use of the cluster <code>cl</code> (if not <code>NULL</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>times.pred.training</code></td>
+<td>
+<p>A matrix with two rows (containing start times in
+the first and end times in the second row) and one column for each predictor
+variable, where the column names must exactly match the names of the
+corresponding predictor variables (or <code>NULL</code> by default).
+If not <code>NULL</code>, <code>times.pred.training</code> defines training periods
+for cross-validation applications. For the format of the start and end times,
+see the documentation of parameter <code>times.pred</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>times.dep.validation</code></td>
+<td>
+<p>A matrix with two rows (containing start times in
+the first and end times in the second row) and one column for each dependent
+variable, where the column names must exactly match the names of the
+corresponding dependent variables (or <code>NULL</code> by default). 
+If not <code>NULL</code>, <code>times.dep.validation</code> defines validation period(s)
+for cross-validation applications. For the format of the start and end times,
+see the documentation of parameter <code>times.dep</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>v.special</code></td>
+<td>
+<p>integer vector containing indices of important predictors
+with special treatment (see below). Defaults to the empty set.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv.alpha</code></td>
+<td>
+<p>numeric scalar containing the minimal proportion (of the
+maximal feasible weight) for the weights of the predictors selected by 
+<code>v.special</code>. Defaults to <code>0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spec.search.treated</code></td>
+<td>
+<p>A logical scalar. If <code>TRUE</code>, a specification 
+search (for the optimal set of included predictors) is done for the treated unit. Defaults to <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spec.search.placebos</code></td>
+<td>
+<p>A logical scalar. If <code>TRUE</code>, a specification 
+search (for the optimal set of included predictors) is done for the control unit. Defaults to <code>FALSE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>mscmt</code> combines, if necessary, the preparation of the raw data (which 
+is expected to be in "list" format, possibly after conversion from a 
+<code>data.frame</code>
+with function <code>listFromLong</code>) and the call to the appropriate
+MSCMT optimization procedures (depending on the input parameters).
+For details on the input parameters <code>alpha</code>, <code>beta</code>, and 
+<code>gamma</code>, see [1]. For details on cross-validation, see [2].
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>"mscmt"</code>, which is essentially a list
+containing the results of the estimation and, if applicable, the placebo
+study.
+The most important list elements are 
+</p>
+
+<ul>
+<li>
+<p> the weight vector <code>w</code> for the control units,
+</p>
+</li>
+<li>
+<p> a matrix <code>v</code> with weight vectors for the predictors in its 
+columns,
+</p>
+</li>
+<li>
+<p> scalars <code>loss.v</code> and <code>rmspe</code> with the dependent loss and its 
+square root,
+</p>
+</li>
+<li>
+<p> a vector <code>loss.w</code> with the predictor losses corresponding to the
+various weight vectors in the columns of <code>v</code>,
+</p>
+</li>
+<li>
+<p> a matrix <code>predictor.table</code> containing aggregated statistics of
+predictor values (similar to list element <code>tab.pred</code> of 
+function <code>synth.tab</code> of package <code>'Synth'</code>),
+</p>
+</li>
+<li>
+<p> a list of multivariate time series <code>combined</code> containing, 
+for each dependent and predictor variable, a multivariate time series 
+with elements <code>treated</code> for the actual values of the treated unit,
+<code>synth</code> for the synthesized values, and <code>gaps</code> for the differences.
+</p>
+</li>
+</ul>
+<p>Placebo studies produce a list containing individual results for each 
+unit (as treated unit), starting with the original treated unit, as well
+as a list element named <code>placebo</code> with aggregated results for each
+dependent and predictor variable.
+</p>
+<p>If <code>times.pred.training</code> and <code>times.dep.validation</code> are not 
+<code>NULL</code>, a cross-validation is done and a list of elements <code>cv</code>
+with the results of the cross-validation period and <code>main</code> with
+the results of the main period is returned.
+</p>
+
+
+<h3>References</h3>
+
+<p>[1] Becker M, Klößner S (2018).
+“Fast and Reliable Computation of Generalized Synthetic Controls.”
+<em>Econometrics and Statistics</em>, <b>5</b>, 1–19.
+<a href="https://doi.org/10.1016/j.ecosta.2017.08.002">https://doi.org/10.1016/j.ecosta.2017.08.002</a>. 
+</p>
+<p>[2] Becker M, Klößner S, Pfeifer G (2018).
+“Cross-Validating Synthetic Controls.”
+<em>Economics Bulletin</em>, <b>38</b>, 603-609.
+Working Paper, <a href="http://www.accessecon.com/Pubs/EB/2018/Volume38/EB-18-V38-I1-P58.pdf">http://www.accessecon.com/Pubs/EB/2018/Volume38/EB-18-V38-I1-P58.pdf</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+## for examples, see the package vignettes:
+browseVignettes(package="MSCMT")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

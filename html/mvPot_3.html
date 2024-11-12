@@ -1,0 +1,179 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>censoredLikelihoodBR</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Censored log-likelihood function for the Brown–Resnick model.</h2>
+
+<h3>Description</h3>
+
+<p>Compute the peaks-over-threshold censored negative log-likelihood function for the Brown–Resnick model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">censoredLikelihoodBR(
+  obs,
+  loc,
+  vario,
+  u,
+  p = 499L,
+  vec = NULL,
+  nCores = 1L,
+  cl = NULL,
+  likelihood = "mgp",
+  ntot = NULL,
+  ...
+)
+
+censoredLikelihood(
+  obs,
+  loc,
+  vario,
+  u,
+  p = 499L,
+  vec = NULL,
+  nCores = 1L,
+  cl = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obs</code></td>
+<td>
+<p>List of vectors for which at least one component exceeds a high threshold.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loc</code></td>
+<td>
+<p>Matrix of coordinates as given by <code>expand.grid()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vario</code></td>
+<td>
+<p>Semi-variogram function taking a vector of coordinates as input.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>u</code></td>
+<td>
+<p>Vector of threshold under which to censor components.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>Number of samples used for quasi-Monte Carlo estimation. Must be a prime number.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vec</code></td>
+<td>
+<p>Generating vector for the quasi-Monte Carlo procedure. For a given prime <code>p</code> and dimension,
+can be computed using <code>genVecQMC</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nCores</code></td>
+<td>
+<p>Number of cores used for the computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+<p>Cluster instance as created by <code>makeCluster</code> of the <code>parallel</code> package.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>likelihood</code></td>
+<td>
+<p>vector of strings specifying the contribution. Either <code>"mgp"</code> for multivariate generalized Pareto,
+<code>"poisson"</code> for a Poisson contribution for the observations falling below or <code>"binom"</code> for a binomial contribution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ntot</code></td>
+<td>
+<p>integer number of observations below and above the threshold, to be used with Poisson or binomial likelihood</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments passed to Cpp routine.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function computes the censored negative log-likelihood function based on the representation
+developed by Wadsworth et al. (2014) and Engelke et al. (2015). Margins must have been
+standardized first, for instance to the unit Frechet scale.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Negative censored log-likelihood for the set of observations <code>obs</code> and semi-variogram <code>vario</code> with <code>attributes</code>  <code>exponentMeasure</code> for all of the <code>likelihood</code> type selected, in the order <code>"mgp"</code>, <code>"poisson"</code>, <code>"binom"</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Raphael de Fondeville
+</p>
+
+
+<h3>References</h3>
+
+<p>Wadsworth, J. L. and J. A. Tawn (2014). Efficient inference for spatial extreme value
+processes associated to log-Gaussian random functions. Biometrika, 101(1), 1-15.
+</p>
+<p>Asadi, P., Davison A. C. and S. Engelke (2015). Extremes on River Networks.
+Annals of Applied Statistics, 9(4), 2023-2050.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#Define semi-variogram function
+vario &lt;- function(h){
+   0.5 * norm(h, type = "2")^1.5
+}
+
+#Define locations
+loc &lt;- expand.grid(1:4, 1:4)
+
+#Simulate data
+obs &lt;- simulPareto(1000, loc, vario)
+
+#Evaluate risk functional
+maxima &lt;- sapply(obs, max)
+thres &lt;- quantile(maxima, 0.9)
+
+#Select exceedances
+exceedances &lt;- obs[maxima &gt; thres]
+
+#Compute generating vector
+p &lt;- 499
+latticeRule &lt;- genVecQMC(p, (nrow(loc) - 1))
+primeP &lt;- latticeRule$primeP
+vec &lt;- latticeRule$genVec
+
+
+#Compute log-likelihood function
+censoredLikelihoodBR(obs = exceedances, loc = loc, vario = vario,
+ u = thres, p = primeP, vec = vec, ntot = 1000)
+</code></pre>
+
+
+</div>

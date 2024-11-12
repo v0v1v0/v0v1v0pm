@@ -1,0 +1,261 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>movebank_download_study</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Download data from movebank</h2>
+
+<h3>Description</h3>
+
+
+<ul>
+<li> <p><code>movebank_download_study</code> downloads a complete study from Movebank by the study id or name.
+</p>
+</li>
+<li> <p><code>movebank_download_deployment</code> downloads all tag, individual and deployment information and merges it into one
+<code>data.frame</code>
+</p>
+</li>
+<li> <p><code>movebank_download_study_info</code> downloads all study level information, either for all studies, one study with
+the argument <code>id</code> or a subset, for example, <code>license_type = "CC_0"</code>
+</p>
+</li>
+<li> <p><code>movebank_retrieve</code> is a more flexible function for retrieving information directly from the api.
+</p>
+</li>
+<li> <p><code>movebank_get_study_id</code> using a character string retrieve the associated study id.
+</p>
+</li>
+</ul>
+<h3>Usage</h3>
+
+<pre><code class="language-R">movebank_download_study(
+  study_id,
+  attributes = "all",
+  ...,
+  remove_movebank_outliers = TRUE
+)
+
+movebank_download_study_info(...)
+
+movebank_download_deployment(study_id, ...)
+
+movebank_retrieve(
+  entity_type = NA,
+  ...,
+  handle = movebank_handle(),
+  rename_columns = FALSE,
+  omit_derived_data = TRUE,
+  convert_spatial_columns = TRUE,
+  progress = vroom::vroom_progress()
+)
+
+movebank_get_study_id(study_id, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>study_id</code></td>
+<td>
+<p>the study id as a number or a character string can be used to identify a study. This character string
+needs to be unique enough to identify one and only one study. Argument applicable to all functions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>attributes</code></td>
+<td>
+<p>a character vector with the event data attributes to download. By default <code>"all"</code> are downloaded,
+this make it slightly slower, to speed up <code>NULL</code> can be used as it reduces it to the minimal set of required
+attributes (only for location data). Alternatively a vector of attributes can be provided (the minimal ones are
+automatically added). Argument applicable to <code>movebank_download_study</code> and <code>movebank_retrieve</code>. See 'Details' for more information.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>arguments added to the
+<a href="https://github.com/movebank/movebank-api-doc/blob/master/movebank-api.md">movebank api</a> call. See 'Details' for some
+common arguments.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>remove_movebank_outliers</code></td>
+<td>
+<p>if <code>TRUE</code> outliers according to the movebank logic are removed. This should
+correspond to the <code>visible</code> attribute in movebank. Argument applicable to <code>movebank_download_study</code> and <code>movebank_retrieve</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>entity_type</code></td>
+<td>
+<p>the entity type of the data requested from movebank (e.g. <code>"study"</code>, <code>"tag"</code>, <code>"event"</code>).
+Alternatively it can be the complete api url for testing purposes. Argument applicable to <code>movebank_retrieve</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>handle</code></td>
+<td>
+<p>the curl handle used to perform the api call, generally this is extracted from the system keyring if
+correctly set up with <code>movebank_store_credentials</code>. Argument applicable to all functions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rename_columns</code></td>
+<td>
+<p>if <code>TRUE</code> column names of properties that are repeated in the api output (e.g. <code>id</code>,
+<code>local_identifier</code> and <code>comments</code>) will be appended with the <code>entity_type</code> (e.g. "tag", "individual"). Argument applicable to <code>movebank_download_study</code>, <code>movebank_download_study_info</code>, <code>movebank_retrieve</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>omit_derived_data</code></td>
+<td>
+<p>derived data (e.g. <code>timestamp_start</code>, <code>timestamp_end</code>, <code>number_of_events</code>
+and <code>number_of_deployments</code>) is omitted from the result. The default is <code>TRUE</code> as this data quickly becomes
+unrepresentative if the results are processed. However in some occasions it might be worth retrieving it,
+for example if you want to identify deployment periods without downloading all data. Argument applicable to <code>movebank_download_study</code> and <code>movebank_retrieve</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convert_spatial_columns</code></td>
+<td>
+<p>if <code>TRUE</code> column pairs containing spatial data will be converted to an <code>sfc</code> column. Argument applicable to all functions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>if <code>TRUE</code> a progress bar will be displayed. More details can be found here <code>vroom</code>. Argument applicable to <code>movebank_download_study</code> and <code>movebank_retrieve</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Caution, when downloading data with <code>movebank_download_study</code> without specifying the sensor in the argument <code>sensor_type_id</code>
+(see below), all data of all sensors will be downloaded, but only the attributes of location sensors will be
+included. We recommend to always specify the sensor(s) to ensure that all associated attributes are downloaded.
+Use e.g. <code>movebank_download_study_info(study_id=my_study_id)$sensor_type_ids</code> to find out which sensors are
+available in a given study.
+<code>attributes = "all"</code> is the default, and it will include only location sensor attributes if no sensor is specified
+in <code>sensor_type_id</code>. When sensors are specified, it will download all associated attributes of all sensors.
+<code>attributes = NULL</code> should only be used when downloading location data (by specifying the sensor), as only timestamp,
+location and track id is downloaded. To specify only a subset of attributes to download, check the list of attributes
+available for a specific sensor (e.g. GPS) in a given study, use
+<code>movebank_retrieve(entity_type = "study_attribute", study_id = myStudyID, sensor_type_id = "gps")$short_name</code>
+(more details in "Downloading data from movebank" vignette).
+</p>
+<p>The api is quite flexible for adjusting requests. This is elaborately documented in the
+<a href="https://github.com/movebank/movebank-api-doc/blob/master/movebank-api.md">movebank api documentation</a>. To identify the available arguments, please note that <code>movebank_download_study</code> is based on the entity_type "event", <code>movebank_download_study_info</code> on the entity_type "study" and <code>movebank_download_deployment</code> on the entity_type "deployment", "individual" and "tag".
+Here a list of a few arguments that are common for the entity_type "event":
+</p>
+
+<ul>
+<li> <p><code>sensor_type_id</code> can be used to restrict the download to specific sensors. It can be either a character or and
+integer with the tag_type. For a full list of options see: <code>movebank_retrieve(entity_type='tag_type')</code>, values from
+the <code>id</code> and <code>external_id</code> columns are valid.
+</p>
+</li>
+<li> <p><code>timestamp_start</code> and <code>timestamp_end</code> can be used to limit the temporal range to download.
+This argument can either be formatted as a <code>POSIXct</code> timestamp, <code>Date</code> or a character string
+(e.g. <code>"20080604133046000"</code>(<code>yyyyMMddHHmmssSSS</code>))
+</p>
+</li>
+<li> <p><code>event_reduction_profile</code> might be useful to reduce the data downloaded (e.g. daily locations) possible values
+are character strings (e.g. <code>"EURING_01"</code>). For details see the movebank api
+<a href="https://github.com/movebank/movebank-api-doc/blob/master/movebank-api.md#get-reduced-event-data">documentation</a>.
+Note that for the time being the required attributes need to be explicitly stated (e.g. <code>attributes = NULL</code>)
+as <code>"all"</code> does not work with the current movebank api.
+</p>
+</li>
+<li> <p><code>individual_local_identifier</code> for selecting one or more individuals by the local identifier
+</p>
+</li>
+</ul>
+<p>For more elaborate usage see <code>vignette("movebank", package='move2')</code>
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>movebank_download_study</code> returns a <code>move2</code> object. <br><code>movebank_retrieve</code>, <code>movebank_download_deployment</code>, <code>movebank_download_study_info</code> return a <code>data.frame</code>/<code>tbl</code>.<br><code>movebank_get_study_id</code> returns a <code>big integer</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other movebank-download: 
+<code>movebank_handle()</code>,
+<code>movebank_store_credentials()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+## download entire study (all data of all sensors)
+movebank_download_study_info(study_id = myStudyID)$sensor_type_ids
+movebank_download_study(2911040, sensor_type_id = c("gps", "acceleration"))
+
+## download data of one individual
+movebank_download_study(2911040,
+  individual_local_identifier = "unbanded-160"
+)
+## download gps data for multiple individuals
+movebank_download_study(2911040,
+  sensor_type_id = "gps",
+  individual_local_identifier = c("1094-1094", "1103-1103")
+)
+movebank_download_study(2911040,
+  sensor_type_id = "gps",
+  individual_id = c(2911086, 2911065)
+)
+## download acceleration data of one or several individuals
+movebank_download_study(2911040,
+  sensor_type_id = "acceleration",
+  individual_local_identifier = "1094-1094"
+)
+## download data of a specific time window and sensor
+movebank_download_study(2911040,
+  sensor_type_id = "gps",
+  timestamp_start = as.POSIXct("2008-08-01 00:00:00"),
+  timestamp_end = as.POSIXct("2008-08-03 00:00:00")
+)
+
+## download study filtered to one location per day
+## (see movebank api documentation for options)
+## also possible to add specific columns in "attributes"
+movebank_download_study(2911040,
+  sensor_type_id = "gps",
+  event_reduction_profile = "EURING_01",
+  attributes = NULL
+)
+## download data associated to tag, individual and deployment
+movebank_download_deployment(2911040)
+## download study information for all studies
+movebank_download_study_info()
+## download study information for all studies where you have
+## access to download the data
+movebank_download_study_info(i_have_download_access = TRUE)
+## download study information for a specific study
+movebank_download_study_info(id = 2911040)
+## get study id
+movebank_get_study_id(study_id = "Galapagos Albatrosses")
+## Find studies you can download and have a creative commons zero license
+## Note "CC_BY" is also frequently used
+movebank_download_study_info(
+  license_type = "CC_0",
+  i_have_download_access = TRUE,
+  attributes = c("name", "id")
+)
+## Download list of own studies
+movebank_download_study_info(i_am_owner = TRUE)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

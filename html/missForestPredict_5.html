@@ -1,0 +1,258 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>missForest</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Imputes a dataframe and returns imputation models to be used on new observations</h2>
+
+<h3>Description</h3>
+
+<p>Imputes a dataframe and (if save_models = TRUE) returns imputation models to be used on new observations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">missForest(
+  xmis,
+  maxiter = 10,
+  fixed_maxiter = FALSE,
+  var_weights = NULL,
+  decreasing = FALSE,
+  initialization = "mean/mode",
+  x_init = NULL,
+  class.weights = NULL,
+  return_integer_as_integer = FALSE,
+  save_models = TRUE,
+  predictor_matrix = NULL,
+  proportion_usable_cases = c(1, 0),
+  verbose = TRUE,
+  convergence_error = "OOB",
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>xmis</code></td>
+<td>
+<p>dataframe containing missing values of class dataframe ("tibble" class tbl_df is also supported). Matrix format is not supported. See details for column format.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>maximum number of iterations. By default the algorithm will stop when converge is reached or
+after running for maxiter, whichever occurs first.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixed_maxiter</code></td>
+<td>
+<p>if set to TRUE, the algorithm will run for the exact number of iterations specified in maxiter,
+regardless of the convergence criteria. Default is FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var_weights</code></td>
+<td>
+<p>named vector of weights for each variable in the convergence criteria.
+The names should correspond to variable names.
+By default the weights are set to the proportion of missing values on each variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>decreasing</code></td>
+<td>
+<p>(boolean) if TRUE the order in which the variables are imputed is by decreasing amount of missing values.
+(the variable with highest amount of missing values will be imputed first). If FALSE the variable with lowest amount of missing values will be imputed first.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initialization</code></td>
+<td>
+<p>initialization method before running RF models; supported: mean/mode, median/mode and custom. Default is mean/mode.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x_init</code></td>
+<td>
+<p>if <code>initialization = custom</code>; a complete dataframe to be used as initialization (see vignette for example).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>class.weights</code></td>
+<td>
+<p>a named list containing <code>class.weights</code> parameter to be passed to ranger for categorical variables.
+The names of the list needs to respect the names of the categorical variables in the dataframe.
+(See <code>ranger</code> function documentation in <code>ranger</code> package for details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>return_integer_as_integer</code></td>
+<td>
+<p>Internally, integer columns are treated as double (double precision floating point numbers).
+If TRUE, the imputations will be rounded to closest integer and returned as integer (This might be desirable for count variables).
+If FALSE, integer columns will be returned as double (This might be desirable, for example, for patient age imputation).
+Default is FALSE. The same behaviour will be applied to new observations when using missForestPredict.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>save_models</code></td>
+<td>
+<p>if TRUE, imputation models are saved and a new observation (or a test set) can be imputed using the models learned;
+saving models on a dataset with a high number of variables will occupy RAM memory on the machine. Default is TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>predictor_matrix</code></td>
+<td>
+<p>predictor matrix indicating which variables to use in the imputation of each variable.
+See documentation for function <code>create_predictor_matrix</code> for details on the matrix format.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>proportion_usable_cases</code></td>
+<td>
+<p>a vector with two components: the first one is a minimum threshold for <code>p_obs</code>
+and the second one is a maximum threshold for <code>p_miss</code>. Variables for which <code>p_obs</code> is greater than or equal to 1 (by default)
+will be filtered from the predictor matrix. Variables for which <code>p_miss</code> is lower than or equal to 0 (by default)
+will be filtered from the predictor matrix. For more details on <code>p_obs</code> and <code>p_miss</code> see the documentation for
+the <code>prop_usable_cases</code> function. If parameter <code>predictor_matrix</code> is specified, the <code>proportion_usable_cases</code>
+will be applied to this provided matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>(boolean) if TRUE then missForest returns OOB error estimates (MSE and NMSE) and runtime.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convergence_error</code></td>
+<td>
+<p>Which error should be used for the convergence criterion. Supported values: OOB and apparent.
+If a different value is provided, it defaults to OOB. See vignette for full details on convergence.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other arguments passed to ranger function (some arguments that are specific to each variable type are not supported).
+See vignette for <code>num.trees</code> example.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>An adaptation of the original missForest algorithm (Stekhoven et al. 2012) is used.
+Variables are initialized with a mean/mode, median/mode or custom imputation.
+Then, they are imputed iteratively "on the fly" for a maximum number of iterations or until the convergence criteria are met.
+The imputation sequence is either increasing or decreasing.
+At each iteration, a random forest model is build for each variable using as outcome on the observed (non-missing) values
+of the variable and as predictors the values of the other variables from previous iteration
+for the first variable in the sequence or current iteration for next variables in the sequence
+(on-the-fly). The ranger package (Wright et al. 2017) is used for building the random forest models.
+</p>
+<p>The convergence criterion is based on the out-of-boostrap (OOB) error or the apparent error and uses NMSE (normalized mean squared error)
+for both continuous and categorical variables.
+</p>
+<p>Imputation models for all variables and all iterations are saved (if <code>save_models</code> is TRUE)  and can be later
+applied to new observations.
+</p>
+<p>Both dataframe and tibble (tbl_df class) are supported as input. The imputed dataframe will be retured with the same class.
+Numeric and integer columns are supported and treated internally as continuous variables.
+Factor and character columns are supported and treated internally as categorical variables.
+Other types (like boolean or dates) are not supported.
+NA values are considered missing values.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Object of class <code>missForest</code> with elements
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>ximp</code></td>
+<td>
+<p>dataframe with imputed values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+<p>x_init if custom initalization is used; otherwise list of mean/mode or median/mode for each variable</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initialization</code></td>
+<td>
+<p>value of initialization parameter</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>impute_sequence</code></td>
+<td>
+<p>vector variable names in the order in which imputation has been run</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>maxiter parameter as passed to the function</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>models</code></td>
+<td>
+<p>list of random forest models for each iteration</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>return_integer_as_integer</code></td>
+<td>
+<p>Parameter return_integer_as_integer as passed to the function</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>integer_columns</code></td>
+<td>
+<p>list of columns of integer type in the data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>OOB_err</code></td>
+<td>
+<p>dataframe with out-of-bag errors for each iteration and each variable</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+
+<ul>
+<li>
+<p> Stekhoven, D. J., &amp; Bühlmann, P. (2012). MissForest-non-parametric missing value imputation for mixed-type data. Bioinformatics, 28(1), 112-118. doi: <a href="https://doi.org/10.1093/bioinformatics/btr597">10.1093/bioinformatics/btr597</a>
+</p>
+</li>
+<li>
+<p> Wright, M. N. &amp; Ziegler, A. (2017). ranger: A fast implementation of random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. doi: <a href="https://doi.org/10.18637/jss.v077.i01">10.18637/jss.v077.i01</a>.
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(iris)
+iris_mis &lt;- produce_NA(iris, proportion = 0.1)
+imputation_object &lt;- missForest(iris_mis, num.threads = 2)
+iris_imp &lt;- imputation_object$ximp
+
+</code></pre>
+
+
+</div>

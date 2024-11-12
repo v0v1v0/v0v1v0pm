@@ -1,0 +1,757 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mfp2</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multivariable Fractional Polynomial Models with Extensions</h2>
+
+<h3>Description</h3>
+
+<p>Selects the multivariable fractional polynomial (MFP) model that best predicts
+the outcome variable. It also has the ability to model a sigmoid relationship
+between <code>x</code> and an outcome variable <code>y</code> using the approximate cumulative
+distribution (ACD) transformation proposed by Royston (2014).
+This function provides two interfaces for input data: one for inputting
+data matrix <code>x</code> and  outcome vector <code>y</code> directly and the other for using a
+<code>formula</code> object together with a dataframe <code>data</code>. Both interfaces are
+equivalent in terms of functionality.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mfp2(x, ...)
+
+## Default S3 method:
+mfp2(
+  x,
+  y,
+  weights = NULL,
+  offset = NULL,
+  cycles = 5,
+  scale = NULL,
+  shift = NULL,
+  df = 4,
+  center = TRUE,
+  subset = NULL,
+  family = c("gaussian", "poisson", "binomial", "cox"),
+  criterion = c("pvalue", "aic", "bic"),
+  select = 0.05,
+  alpha = 0.05,
+  keep = NULL,
+  xorder = c("ascending", "descending", "original"),
+  powers = NULL,
+  ties = c("breslow", "efron", "exact"),
+  strata = NULL,
+  nocenter = NULL,
+  acdx = NULL,
+  ftest = FALSE,
+  control = NULL,
+  verbose = TRUE,
+  ...
+)
+
+## S3 method for class 'formula'
+mfp2(
+  formula,
+  data,
+  weights = NULL,
+  offset = NULL,
+  cycles = 5,
+  scale = NULL,
+  shift = NULL,
+  df = 4,
+  center = TRUE,
+  subset = NULL,
+  family = c("gaussian", "poisson", "binomial", "cox"),
+  criterion = c("pvalue", "aic", "bic"),
+  select = 0.05,
+  alpha = 0.05,
+  keep = NULL,
+  xorder = c("ascending", "descending", "original"),
+  powers = NULL,
+  ties = c("breslow", "efron", "exact"),
+  strata = NULL,
+  nocenter = NULL,
+  ftest = FALSE,
+  control = NULL,
+  verbose = TRUE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>for <code>mfp2.default</code>: <code>x</code> is an input matrix of dimensions
+nobs x nvars. Each row is an observation vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>not used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>for <code>mfp2.default</code>: <code>y</code> is a vector for the response variable.
+For <code>family = "binomial"</code> it should be  a vector with two levels (see
+<code>stats::glm()</code>). For <code>family = "cox"</code> it must be a <code>survival::Surv()</code> object
+containing 2 columns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>a vector of observation weights of length nobs.
+Default is <code>NULL</code> which assigns a weight of 1 to each observation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offset</code></td>
+<td>
+<p>a vector of length nobs that is included in the linear
+predictor. Useful for the poisson family (e.g. log of exposure time).
+Default is <code>NULL</code> which assigns an offset  of 0 to each observation.
+If supplied, then values must also be supplied to the <code>predict()</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cycles</code></td>
+<td>
+<p>an integer, specifying the maximum number of iteration cycles.
+Default is 5.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p>a numeric vector of length nvars or single numeric specifying
+scaling factors. If a single numeric, then the value will be replicated as
+necessary. The formula interface <code>mfp2.formula</code> only supports single numeric
+input to set a default value, individual values can be set using <code>fp</code> terms
+in the <code>formula</code> input.
+Default is <code>NULL</code> which lets the program estimate the scaling factors
+(see Details section). If scaling is not required set <code>scale = 1</code> to disable
+it.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>shift</code></td>
+<td>
+<p>a numeric vector of length nvars or a single numeric specifying
+shift terms. If a single numeric, then the value will be replicated as
+necessary. The formula interface <code>mfp2.formula</code> only supports single numeric
+input to set a default value, individual values can be set using <code>fp</code> terms
+in the <code>formula</code> input.
+Default is <code>NULL</code> which lets the program estimate the shifts
+(see Details section). If shifting is not required, set <code>shift = 0</code> to
+disable it.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>a numeric vector of length nvars or a single numeric that sets the
+(default) degrees of freedom (df) for each predictor. If a single numeric,
+then the value will be replicated as necessary. The formula interface
+<code>mfp2.formula</code> only supports single numeric input to set a default value,
+individual values can be set using <code>fp</code> terms in the <code>formula</code> input.
+The df (not counting the intercept) are twice the degree of a fractional
+polynomial (FP). For example, an FP2 has 4 df, while FPm has 2*m df.
+The program overrides default df based on the number of distinct (unique)
+values for a variable as follows:
+2-3 distinct values are assigned <code>df = 1</code> (linear), 4-5 distinct values are
+assigned <code>df = min(2, default)</code> and &gt;= 6 distinct values are assigned
+<code>df = default</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>center</code></td>
+<td>
+<p>a logical determining whether variables are centered before
+final model fitting. The default <code>TRUE</code> implies mean centering, except for
+binary covariates, where the covariate is centered using the lower of the two
+distinct values of the covariate. See Details section below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>an optional vector specifying a subset of observations
+to be used in the fitting process. Default is <code>NULL</code> and all observations are
+used. See Details below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>a character string representing a <code>glm()</code> family object as well
+as Cox models. For more information, see details section below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>criterion</code></td>
+<td>
+<p>a character string specifying the criterion used to select
+variables and FP models of different degrees.
+Default is to use p-values in which case the user can specify
+the nominal significance level (or use default level of 0.05) for variable and
+functional form selection (see <code>select</code> and <code>alpha</code> parameters below).
+If the user specifies the BIC (<code>bic</code>) or AIC (<code>aic</code>) criteria the program
+ignores the nominal significance levels and selects variables and functional
+forms using the chosen information criterion.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>select</code></td>
+<td>
+<p>a numeric vector of length nvars or a single numeric that
+sets the nominal significance levels for variable selection on each predictor
+by backward elimination. If a single numeric, then the value will be replicated
+as necessary. The formula interface <code>mfp2.formula</code> only supports single numeric
+input to set a default value, individual values can be set using <code>fp</code> terms
+in the <code>formula</code> input. The default nominal significance level is 0.05
+for all variables. Setting the nominal significance level to be 1 for
+certain variables forces them into the model, leaving all other variables
+to be selected.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>a numeric vector of length nvars or a single numeric that
+sets the significance levels for testing between FP models of
+different degrees. If a single numeric, then the value will be replicated
+as necessary. The formula interface <code>mfp2.formula</code> only supports single numeric
+input to set a default value, individual values can be set using <code>fp</code> terms
+in the <code>formula</code> input. The default nominal significance level is 0.05 for all
+variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep</code></td>
+<td>
+<p>a character vector with names of variables to be kept
+in the model. In case that <code>criterion = "pvalue"</code>, this is equivalent to
+setting the selection level for the variables in <code>keep</code> to 1.
+However, this option also keeps the specified variables in the model when
+using the BIC or AIC criteria.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xorder</code></td>
+<td>
+<p>a string determining the order of entry of the covariates
+into the model-selection algorithm. The default is <code>ascending</code>, which enters
+them by ascending p-values, or decreasing order of significance in a
+multiple regression (i.e. most significant first).
+<code>descending</code> places them in reverse significance order, whereas
+<code>original</code> respects the original order in <code>x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>powers</code></td>
+<td>
+<p>a named list of numeric values that sets the permitted FP
+powers for each covariate. The default is NULL, and each covariate is assigned
+<code>powers = c(-2, -1, -0.5, 0, 0.5, 1, 2, 3)</code>, where 0 means the natural
+logarithm. Powers are sorted before further
+processing in the program. If some variables are not assigned powers, the
+default powers will be assigned. The formula interface offers two options
+for supplying powers: through the 'powers' argument and the 'fp()' function.
+So, if the user supplies powers in both options for a certain variable, the
+powers supplied through 'fp()' will be given preference.For the algorithm to
+select the powers, each variable must have a minimum of two powers. If the
+users wants to use one power, they should first transform their variables
+before using <code>mfp2()</code> function and specify appropriate df</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ties</code></td>
+<td>
+<p>a character string specifying the method for tie handling in
+Cox regression. If there are no tied death times all the methods are
+equivalent. Default is the Breslow method. This argument is used for Cox
+models only and has no effect on other model families.
+See <code>survival::coxph()</code> for details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strata</code></td>
+<td>
+<p>a numeric vector or matrix of variables that define strata
+to be used for stratification in a Cox model. A new factor, whose levels are
+all possible combinations of the variables supplied will be created.
+Default is <code>NULL</code> and a Cox model without stratification would be fitted.
+See <code>survival::coxph()</code> for details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nocenter</code></td>
+<td>
+<p>a numeric vector with a list of values for fitting Cox
+models. See <code>survival::coxph()</code> for details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>acdx</code></td>
+<td>
+<p>a numeric vector of names of continuous variables to undergo
+the approximate cumulative distribution (ACD) transformation.
+It also invokes the function-selection procedure to determine the
+best-fitting FP1(p1, p2) model (see Details section). Not present in the
+formula interface <code>mfp2.formula</code> and to be set using <code>fp</code> terms in the
+<code>formula</code> input.
+The variable representing the ACD transformation of <code>x</code> is named <code>A_x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ftest</code></td>
+<td>
+<p>a logical; for normal error models with small samples, critical
+points from the F-distribution can be used instead of Chi-Square
+distribution. Default <code>FALSE</code> uses the latter. This argument is used for
+Gaussian models only and has no effect for other model families.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>a list object with parameters controlling model fit details.
+Returned by either <code>stats::glm.control()</code> or <code>survival::coxph.control()</code>.
+Default is <code>NULL</code> to use default parameters for the given model class.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>a logical; run in verbose mode.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>for <code>mfp2.formula</code>: an object of class <code>formula</code>: a symbolic
+description of the model to be fitted. Special <code>fp</code> terms can be used to
+define fp-transformations. The details of model specification are given
+under ‘Details’.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>for <code>mfp2.formula</code>: a <code>data.frame</code> which contains all variables
+specified in <code>formula</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>mfp2()</code> returns an object of class inheriting from <code>glm</code> or <code>copxh</code>,
+depending on the <code>family</code> parameter.
+</p>
+<p>The function <code>summary()</code> (i.e. <code>summary.mfp2()</code>) can be used to obtain or
+print a summary of the results.
+The generic accessor function <code>coef()</code> can be used to extract the vector of
+coefficients from the fitted model object.
+The generic <code>predict()</code> can be used to obtain predictions from the fitted
+model object.
+</p>
+<p>An object of class <code>mfp2</code> is a list containing all entries as for <code>glm</code>
+or <code>coxph</code>, and in addition the following entries:
+</p>
+
+<ul>
+<li>
+<p> convergence_mfp: logical value indicating convergence of mfp algorithm.
+</p>
+</li>
+<li>
+<p> fp_terms: a data.frame with information on fractional polynomial
+terms.
+</p>
+</li>
+<li>
+<p> transformations: a data.frame with information on shifting, scaling
+and centering for all variables.
+</p>
+</li>
+<li>
+<p> fp_powers: a list with all powers of fractional polynomial terms.
+Each entry of the list is named according to the transformation of the
+variable.
+</p>
+</li>
+<li>
+<p> acd: a vector with information for which variables the acd
+transformation was applied.
+</p>
+</li>
+<li>
+<p> x_original: the scaled and shifted input matrix but without
+transformations.
+</p>
+</li>
+<li>
+<p> y: the original outcome variable.
+</p>
+</li>
+<li>
+<p> x: the final transformed input matrix used to fit the final model.
+</p>
+</li>
+<li>
+<p> call_mfp: the call to the <code>mfp2()</code> function.
+</p>
+</li>
+<li>
+<p> family_string: the family stored as character string.
+</p>
+</li>
+</ul>
+<p>The <code>mfp2</code> object may contain further information depending on family.
+</p>
+
+
+<h3>Methods (by class)</h3>
+
+
+<ul>
+<li> <p><code>mfp2(default)</code>: Default method using input matrix <code>x</code> and outcome vector <code>y</code>.
+</p>
+</li>
+<li> <p><code>mfp2(formula)</code>: Provides formula interface for <code>mfp2</code>.
+</p>
+</li>
+</ul>
+<h3>Brief summary of FPs</h3>
+
+<p>In the following we denote fractional polynomials for a variable <code class="reqn">x</code> by
+increasing complexity as either FP1 or FP2. In this example,
+<code class="reqn">FP2(p1, p2)</code> for <code class="reqn">p1\neq p2</code> is the most flexible FP transformation,
+where </p>
+<p style="text-align: center;"><code class="reqn">FP2(p1, p2) = \beta_1 x^{p1} + \beta_2 x^{p2}.</code>
+</p>
+
+<p>When <code class="reqn">p1 = p2</code> (repeated powers), the FP2 model is given by
+</p>
+<p style="text-align: center;"><code class="reqn">FP2(p1, p2) = \beta_1 x^{p1} + \beta_2 x^{p1}log(x).</code>
+</p>
+
+<p>The powers <code class="reqn">p1</code> and <code class="reqn">p2</code> are usually chosen from a predefined set
+of powers <code class="reqn">S = {(-2, -1, -0.5, 0, 0.5, 1, 2, 3)}</code> where the power
+of 0 indicates the natural logarithm. The best FP2 is then estimated by using a
+closed testing procedure that seeks the best combination from all 36 pairs of
+powers <code class="reqn">(p1, p2)</code>. Functions that only involve a single power of
+the variable are denoted as FP1, i.e.
+</p>
+<p style="text-align: center;"><code class="reqn">FP1(p1) = \beta_1 x^{p1}.</code>
+</p>
+
+<p>For details see e.g. Sauerbrei et al (2006).
+</p>
+
+
+<h3>Details on <code>family</code> option</h3>
+
+<p><code>mfp2()</code> supports the family object as used by <code>stats::glm()</code>. The built in
+families are specified via a character string. <code>mfp2(..., family = "binomial")</code>
+fits a logistic regression model, while <code>mfp2(..., family = "gaussian")</code>
+fits a linear regression (ordinary least squares) model.
+</p>
+<p>For Cox models, the response should preferably be a <code>Surv</code> object,
+created by the <code>survival::Surv()</code> function, and the <code>family = "cox"</code>.
+Only right-censored data are currently supported. To fit stratified Cox
+models, the <code>strata</code> option can be used, or alternatively <code>strata</code> terms
+can be included in the model formula when using the formula interface
+<code>mfp2.formula</code>.
+</p>
+
+
+<h3>Details on shifting, scaling, centering</h3>
+
+<p>Fractional polynomials are defined only for positive variables due to the
+use of logarithms and other powers. Thus, <code>mfp2()</code> estimates shifts for
+each variables to ensure positivity or assumes that the variables are
+already positive when computing fractional powers of the input variables
+in case that shifting is disabled manually.
+</p>
+<p>If the values of the variables are too large or too small, it is important to
+conduct variable scaling to reduce the chances of numerical underflow or
+overflow which can lead to inaccuracies and difficulties in estimating the
+model. Scaling can be done automatically or by directly specifying the
+scaling values so that the magnitude of the <code>x</code> values are not too extreme.
+By default scaling factors are estimated by the program as follows.
+</p>
+<p>After adjusting the location of <code class="reqn">x</code> so that its minimum value is positive,
+creating <code class="reqn">x'</code>, automatic scaling will divide each value of <code class="reqn">x'</code> by
+<code class="reqn">10^p</code> where the exponent <code class="reqn">p</code> is given by
+</p>
+<p style="text-align: center;"><code class="reqn">p = sign(k) \times floor(|k|) \quad \text{where} \quad k = log_{10} (max(x')- min(x'))</code>
+</p>
+
+<p>The FP transformation of <code class="reqn">x'</code> is centered on the mean of the observed
+values of <code class="reqn">x'</code>. For example, for the FP1 model <code class="reqn">\beta_0 + \beta_1x^p</code>,
+the actual model fitted by the software would be
+<code class="reqn">\beta'_0 + \beta'_1(x'^p-mean(x'^p))</code>. This approach ensures that
+the revised constant <code class="reqn">\beta'_0</code> or baseline hazard function in a Cox
+model retains a meaningful interpretation.
+</p>
+<p>So in brief: shifting is required to make input values positive, scaling
+helps to bring the values to a reasonable range. Both operations are
+conducted before estimating the FP powers for an input variable.
+Centering, however, is done after estimating the FP functions for each
+variable.
+Centering before estimating the FP powers may result in different powers and
+should be avoided. Also see <code>transform_vector_fp()</code> for some more details.
+</p>
+
+
+<h3>Details on the <code>subset</code> argument</h3>
+
+<p>Note that subsetting occurs after data pre-processing (shifting and scaling),
+but before model selection and fitting. In detail, when the option <code>subset</code> is
+used and scale, shift or centering values are to be estimated, then <code>mfp2()</code>
+first estimates these parameters using the full dataset (no subsetting).
+It then conduct subsetting before proceeding to perform model selection and
+fitting on the specified subset of the data.
+</p>
+<p>Therefore, subsetting in <code>mfp2()</code> is not equivalent to subsetting the data
+before passing it to <code>mfp2()</code>, and thus cannot be used to implement, for example,
+cross-validation or to remove <code>NA</code>. These tasks should be done by the caller
+beforehand. However, it does allow to use the same data pre-processing
+for different subsets of the data. An example use case is when separate
+models are to be estimated for women and men in the dataset, but a common
+data pre-processing should be applied. In this case the <code>subset</code> option
+can be used to restrict model selection to either women or men, but the
+data processing (e.g. shifting factors) will be shared between the two models.
+</p>
+
+
+<h3>Details on  approximate cumulative distribution transformation</h3>
+
+<p>The approximate cumulative distribution (ACD) transformation (Royston 2014)
+converts each predictor, <code class="reqn">x</code>, smoothly to an approximation, <code class="reqn">acd(x)</code>,
+of its empirical cumulative distribution function.
+This is done by smoothing a probit transformation of
+the scaled ranks of <code class="reqn">x</code>. <code class="reqn">acd(x)</code> could be used instead of <code class="reqn">x</code>
+as a covariate. This has the advantage of providing sigmoid curves, something
+that regular FP functions cannot achieve.
+Details of the precise definition and some possible uses of the ACD
+transformation in a univariate context are given by Royston (2014).
+Royston and Sauerbrei (2016) describes how one could go further and replace FP2
+functions with a pair of FP1 functions, one in <code class="reqn">x</code> and the other in
+<code class="reqn">acd(x)</code>.
+</p>
+<p>This alternative class of four-parameter functions provides about
+the same flexibility as the standard FP2 family, but the ACD component offers
+the additional possibility of sigmoid functions.
+Royston (2014) discusses how the extended class of functions known as
+<code class="reqn">FP1(p1, p2)</code>, namely
+</p>
+<p style="text-align: center;"><code class="reqn">FP1(p1, p2) = \beta_1 x^{p1} + \beta_2 acd(x)^{p2}</code>
+</p>
+
+<p>can be fitted optimally by seeking the best combination of all 64 pairs of
+powers (p1, p2). The optimisation is invoked by use of the <code>acdx</code> parameter.
+Royston (2014) also described simplification of the chosen function through
+model reduction by applying significance testing to six sub-families of
+functions,M1-M6, giving models M1 (most complex) through M6 (null):
+</p>
+
+<ul>
+<li>
+<p> M1: FP1(p1, p2) (no simplification)
+</p>
+</li>
+<li>
+<p> M2: FP1(p1, .) (regular FP1 function of <code class="reqn">x</code>)
+</p>
+</li>
+<li>
+<p> M3: FP1(., p2) (regular FP1 function of <code class="reqn">acd(x)</code>)
+</p>
+</li>
+<li>
+<p> M4: FP1(1, .) (linear function of <code class="reqn">x</code>)
+</p>
+</li>
+<li>
+<p> M5: FP1(., 1) (linear function of <code class="reqn">acd(x)</code>)
+</p>
+</li>
+<li>
+<p> M6: Null (<code class="reqn">x</code> omitted entirely)
+</p>
+</li>
+</ul>
+<p>Selection among these six sub-functions is performed by a closed test
+procedure known as the function-selection pocedure FSPA.
+It maintains the family-wise type 1 error
+probability for selecting <code class="reqn">x</code> at the value determined by the
+<code>select</code> parameter. To obtain a 'final' model, a structured sequence of up
+to five tests is carried out, the first at the significance level specified
+by the <code>select</code> parameter, and the remainder at the significance level
+provided by the <code>alpha</code> option.
+The sequence of tests is as follows:
+</p>
+
+<ul>
+<li>
+<p> Test 1: Compare the deviances of models 6 and 1 on 4 d.f.
+If not significant then stop and omit <code class="reqn">x</code>, otherwise continue to step 2.
+</p>
+</li>
+<li>
+<p> Test 2: Compare the deviances of models 4 and 1 on 3 d.f.
+If not significant then accept model 4 and stop. Otherwise, continue to step 3.
+</p>
+</li>
+<li>
+<p> Test 3: Compare the deviance of models 2 and 1 on 2 d.f.
+If not significant then accept model 2 and stop. Otherwise continue to step 4.
+</p>
+</li>
+<li>
+<p> Test 4: Compare the deviance of models 3 and 1 on 2 d.f.
+If significant then model 1 cannot be simplified; accept model 1 and stop.
+Otherwise continue to step 5.
+</p>
+</li>
+<li>
+<p> Test 5: Compare the deviances of models 5 and 3 on 1 d.f.
+If significant then model 3 cannot be simplified; accept model 3.
+Otherwise, accept model 5. End of procedure.
+</p>
+</li>
+</ul>
+<p>The result is the selection of one of the six models.
+</p>
+
+
+<h3>Details on model specification using a <code>formula</code>
+</h3>
+
+<p><code>mfp2</code> supports model specifications using two different interfaces: one
+which allows passing of the data matrix <code>x</code> and outcome vector <code>y</code> directly
+(as done in e.g. <code>stats::glm.fit()</code> or <code>glmnet</code>) and another which conforms
+to the formula interface used by many commonly used R modelling functions
+such as <code>stats::glm()</code> or <code>survival::coxph()</code>.
+</p>
+<p>Both interfaces are equivalent in terms of possible fitted models, only the
+details of specification differ. In the standard interface all details
+regarding FP-transformations are given as vectors. In the formula interface
+all details are specified using special <code>fp()</code> function. These support the
+specification of degrees of freedom (<code>df</code>), nominal significance level for
+variable selection (<code>select</code>), nominal significance level for functional form
+selection (<code>alpha</code>), shift values (<code>shift</code>), scale values (<code>scale</code>),
+centering (<code>center</code>) and the ACD-transformation (<code>acd</code>). Values specified
+through <code>fp()</code> function override the values specified as defaults and passed to
+the <code>mfp2()</code> function.
+</p>
+<p>The formula may also contain <code>strata</code> terms to fit stratified Cox models, or
+an <code>offset</code> term to specify a model offset.
+</p>
+<p>Note that for a formula using <code>.</code>, such as <code>y ~ .</code> the <code>mfp2()</code> function may not
+fit a linear model, but may perform variable and functional form selection
+using FP-transformations, depending on the default settings of <code>df</code>,
+<code>select</code> and <code>alpha</code> passed as arguments to <code>mfp2()</code>.
+For example, using <code>y ~ .</code> with default settings means that <code>mfp2()</code> will
+apply FP transformation with 4 df to all continuous variables and use alpha
+equal to 0.05 to select functional forms, along with the selection algorithm
+with a significance level of 0.05 for all variables.
+</p>
+
+
+<h3>Compatibility with <code>mfp</code> package</h3>
+
+<p><code>mfp2</code> is an extension of the <code>mfp</code> package and can be used to reproduce
+the results from a model fitted by <code>mfp</code>. Since both packages implement the
+MFP algorithm, they use functions with the same names (e.g <code>fp()</code>). Therefore,
+if you load both packages using a call to <code>library</code>, there will
+be namespace conflicts and only the functions from the package loaded last
+will work properly.
+</p>
+
+
+<h3>Convergence and Troubleshooting</h3>
+
+<p>Typically, <code>mfp2</code> requires two to four cycles to achieve convergence. Lack of
+convergence involves oscillation between two or more models and is extremely
+rare. If the model does not converge, you can try changing the nominal
+significance levels for variable (<code>select</code>) or function selection (<code>alpha</code>).
+</p>
+
+
+<h3>References</h3>
+
+<p>Royston, P. and Sauerbrei, W., 2008. <em>Multivariable Model - Building:
+A Pragmatic Approach to Regression Anaylsis based on Fractional Polynomials
+for Modelling Continuous Variables. John Wiley &amp; Sons.</em><br></p>
+<p>Sauerbrei, W., Meier-Hirmer, C., Benner, A. and Royston, P., 2006.
+<em>Multivariable regression model building by using fractional
+polynomials: Description of SAS, STATA and R programs.
+Comput Stat Data Anal, 50(12): 3464-85.</em><br></p>
+<p>Royston, P. 2014. <em>A smooth covariate rank transformation for use in
+regression models with a sigmoid dose-response function.
+Stata Journal 14(2): 329-341.</em><br></p>
+<p>Royston, P. and Sauerbrei, W., 2016. <em>mfpa: Extension of mfp using the
+ACD covariate transformation for enhanced parametric multivariable modeling.
+The Stata Journal, 16(1), pp.72-87.</em><br></p>
+<p>Sauerbrei, W. and Royston, P., 1999. <em>Building multivariable prognostic
+and diagnostic models: transformation of the predictors by using fractional
+polynomials. J Roy Stat Soc a Sta, 162:71-94.</em>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>summary.mfp2()</code>, <code>coef.mfp2()</code>, <code>predict.mfp2()</code>, <code>fp()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Gaussian model
+data("prostate")
+x = as.matrix(prostate[,2:8])
+y = as.numeric(prostate$lpsa)
+# default interface
+fit1 = mfp2(x, y, verbose = FALSE)
+fit1$fp_terms
+fracplot(fit1) # generate plots
+summary(fit1)
+# formula interface
+fit1b = mfp2(lpsa ~ fp(age) + fp(svi, df = 1) + fp(pgg45) + fp(cavol) + fp(weight) +
+fp(bph) + fp(cp), data = prostate)
+
+# logistic regression model
+data("pima")
+xx &lt;- as.matrix(pima[, 2:9])
+yy &lt;- as.vector(pima$y)
+fit2 &lt;- mfp2(xx, yy, family = "binomial", verbose = FALSE)
+fit2$fp_terms
+
+# Cox regression model
+data("gbsg")
+# create dummy variable for grade using ordinal coding
+gbsg &lt;- create_dummy_variables(gbsg, var_ordinal = "grade", drop_variables = TRUE)
+xd &lt;- as.matrix(gbsg[, -c(1, 6, 10, 11)])
+yd &lt;- survival::Surv(gbsg$rectime, gbsg$censrec)
+# fit mfp and keep hormon in the model
+fit3 &lt;- mfp2(xd, yd, family = "cox", keep = "hormon", verbose = FALSE)
+fit3$fp_terms
+
+</code></pre>
+
+
+</div>

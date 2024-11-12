@@ -1,0 +1,163 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>neLht</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Linear hypotheses for natural effect models</h2>
+
+<h3>Description</h3>
+
+<p><code>neLht</code> allows to calculate linear combinations of natural effect model parameter estimates.<br><code>neEffdecomp</code> automatically extracts relevant causal parameter estimates from a natural effect model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">neEffdecomp(model, xRef, covLev, ...)
+
+## S3 method for class 'neModel'
+neEffdecomp(model, xRef, covLev, ...)
+
+neLht(model, ...)
+
+## S3 method for class 'neModel'
+neLht(model, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>a fitted natural effect model object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xRef</code></td>
+<td>
+<p>a vector including reference levels for the exposure, <em>x*</em> and <em>x</em>, at which natural effect components need to be evaluated (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covLev</code></td>
+<td>
+<p>a vector including covariate levels at which natural effect components need to be evaluated (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments (passed to <code>glht</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>neLht</code> is a wrapper of <code>glht</code> and offers the same functionality (see ‘Details’ section of  <code>glht</code> for details on argument specification). 
+It returns objects that inherit from the class <code>"neLht"</code> in order to make output of their corresponding methods (see <code>neLht-methods</code>) more compatible for natural effect models
+containing bootstrap variance-covariance matrices and standard errors.
+</p>
+<p><code>neEffdecomp</code> is a convenience function that automatically extracts causal parameter estimates from a natural effect model
+and derives natural effect components.
+That is, natural direct, natural indirect and total causal effect estimates are returned if no exposure-mediator interaction is modelled (i.e. two-way decomposition). 
+If mediated interaction is allowed for in the natural effect model, there are two ways of decomposing the total effect into (natural) direct and indirect effects components: 
+either as the sum of the pure direct and the total indirect effect or as the sum of the pure indirect and the total direct effect (i.e. three-way decomposition).
+In total, five causal effect estimates are returned in this case.
+</p>
+<p>For continuous exposures, default exposure levels at which natural effect components are evaluated are <em>x*</em> = 0 and <em>x</em> = 1.
+For multicategorical exposures, default levels are the reference level of the factor that encodes the exposure variable and the level corresponding to its first dummy variable for <em>x*</em> and <em>x</em>, respectively.  
+If one wishes to evaluate natural effect components at different reference levels (e.g. if the natural effect model includes mediated interaction, quadratic or higher-order polynomial terms for the exposure; see examples), 
+these can be specified as a vector of the form <code>c(x*,x)</code> via the <code>xRef</code> argument.
+</p>
+<p>If applicable, covariate levels at which natural effect components are evaluated can also be specified. This is particularly useful for natural effect models encoding effect modification by baseline covariates (e.g. moderated mediation).
+By default, these levels are set to 0 for continuous covariates and to the reference level for categorical covariates coded as factors. 
+Different covariate levels can be specified via the <code>covLev</code> argument, which requires a vector including valid levels for covariates that are specified in the natural effect model (or a subset of covariates that are specified as modifiers of either the natural direct or indirect effect or both).
+Levels need to be preceded by the name of the corresponding covariate, e.g., <code>covLev = c(gender = "M", age = 30)</code>. Covariates for which the levels are left unspecified are set to their default levels (see examples). 
+The <code>print</code> and <code>summary</code> functions for <code>neEffdecomp</code> objects return the covariate levels at which natural effect components are evaluated. 
+No specific levels are returned for covariates that are not specified as modifier since effect decomposition is independent of the level of these covariates (see examples).
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>c("neLht", "glht")</code> (see <code>glht</code>). 
+If the bootstrap is used for obtaining standard errors when fitting the <code>neModel</code> object, the returned object additionally inherits from class <code>"neLhtBoot"</code>. 
+<code>neEffdecomp</code> returns an object that additionally inherits from class <code>"neEffdecomp"</code>.
+</p>
+<p>See <code>neLht-methods</code> for methods for <code>neLht</code> objects (and <code>glht-methods</code> for additional methods for <code>glht</code> objects).
+</p>
+
+
+<h3>Note</h3>
+
+<p><code>neEffdecomp</code> is internally called by <code>plot.neModel</code> to create confidence interval plots for <code>neModel</code> objects.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>plot.neLht</code>, <code>neLht-methods</code>, <code>glht</code>, <code>glht-methods</code>, <code>neModel</code>, <code>plot.neModel</code>, <code>summary</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(UPBdata)
+
+impData &lt;- neImpute(UPB ~ att * negaff + gender + educ + age, 
+                    family = binomial, data = UPBdata)
+neMod &lt;- neModel(UPB ~ att0 * att1 + gender + educ + age, 
+                 family = binomial, expData = impData, se = "robust")
+
+lht &lt;- neLht(neMod, linfct = c("att0 = 0", "att0 + att0:att1 = 0", 
+                               "att1 = 0", "att1 + att0:att1 = 0", 
+                               "att0 + att1 + att0:att1 = 0"))
+summary(lht)
+
+## or obtain directly via neEffdecomp
+eff &lt;- neEffdecomp(neMod)
+summary(eff)
+
+## changing reference levels for multicategorical exposures
+UPBdata$attcat &lt;- factor(cut(UPBdata$att, 3), labels = c("L", "M", "H"))
+impData &lt;- neImpute(UPB ~ attcat * negaff + gender + educ + age,
+                    family = binomial, data = UPBdata)
+neMod &lt;- neModel(UPB ~ attcat0 * attcat1 + gender + educ + age,
+                 family = binomial, expData = impData, se = "robust")
+                 
+neEffdecomp(neMod)
+neEffdecomp(neMod, xRef = c("L", "H"))
+neEffdecomp(neMod, xRef = c("M", "H"))
+
+
+## changing reference levels for continuous exposures
+impData &lt;- neImpute(UPB ~ (att + I(att^2)) * negaff + gender + educ + age,
+                    family = binomial, data = UPBdata)
+neMod &lt;- neModel(UPB ~ (att0 + I(att0^2)) * (att1 + I(att1^2)) + gender + educ + age,
+                 family = binomial, expData = impData, se = "robust")
+neEffdecomp(neMod)
+neEffdecomp(neMod, xRef = c(-1, 0))
+
+## changing covariate levels when allowing for modification 
+## of the indirect effect by baseline covariates
+impData &lt;- neImpute(UPB ~ (att + negaff + gender + educ + age)^2,
+                    family = binomial, data = UPBdata)
+neMod &lt;- neModel(UPB ~ att0 * att1 + gender + educ + age + att1:gender + att1:age,
+                 family = binomial, expData = impData, se = "robust")
+neEffdecomp(neMod)
+neEffdecomp(neMod, covLev = c(gender = "F", age = 0)) # default covariate levels
+neEffdecomp(neMod, covLev = c(gender = "M", age = 40))
+neEffdecomp(neMod, covLev = c(gender = "M", age = 40, educ = "L"))
+neEffdecomp(neMod, covLev = c(gender = "M", age = 40, educ = "M"))
+neEffdecomp(neMod, covLev = c(gender = "M", age = 40, educ = "H"))
+# effect decomposition is independent of education level
+neEffdecomp(neMod, covLev = c(gender = "M")) 
+# age is set to its default level when left unspecified
+
+</code></pre>
+
+
+</div>

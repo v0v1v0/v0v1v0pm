@@ -1,0 +1,310 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>augment</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>A fast and general method for building augmented data</h2>
+
+<h3>Description</h3>
+
+<p>A fast and general method for reshaping standard longitudinal data into a new
+structure called augmented'. This format is suitable under a multi-state
+framework using the <code>msm</code> package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">augment(
+  data,
+  data_key,
+  n_events,
+  pattern,
+  state = list("IN", "OUT", "DEAD"),
+  t_start,
+  t_end,
+  t_cens,
+  t_death,
+  t_augmented,
+  more_status,
+  check_NA = FALSE,
+  convert = FALSE,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A <code>data.table</code> or <code>data.frame</code> object in longitudinal
+format where each row represents an observation in which the exact starting
+and ending time of the process are known and recorded. If <code>data</code> is a
+<code>data.frame</code>, then <code>augment</code> internally casts it to a <code>data.table</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data_key</code></td>
+<td>
+<p>A keying variable which <code>augment</code> uses to define a key
+for <code>data</code>. This represents the subject ID (see
+<code>setkey</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_events</code></td>
+<td>
+<p>An integer variable indicating the progressive (monotonic)
+event number of a given ID. <code>augment</code> always checks whether
+<code>n_events</code> is monotonic increasing within the provided <code>data_key</code>
+and stops the execution in case the check fails (see 'Details').
+If missing, <code>augment</code> fastly creates a variable named <code>"n_events"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pattern</code></td>
+<td>
+<p>Either an integer, a factor or a character with 2 or 3 unique
+values which provides the ID status at the end of the study. <code>pattern</code>
+has a predefined structure. When 2 values are detected, they must be in the
+format: 0 = "alive", 1 = "dead". When 3 values are detected, then the format
+must be: 0 = "alive", 1 = "dead during a transition", 2 = "dead after a
+transition has ended" (see 'Details').</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>state</code></td>
+<td>
+<p>A list of three and exactly three possible states which a
+subject can reach. <code>state</code> has a predefined structure as follows:
+IN, OUT, DEAD (see 'Details').</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t_start</code></td>
+<td>
+<p>The starting time of an observation. It can be passed as date,
+integer, or numeric format.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t_end</code></td>
+<td>
+<p>The ending time of an observation. It can be passed as date,
+integer, or numeric format.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t_cens</code></td>
+<td>
+<p>The censoring time of the study. This is the date until each
+ID is observed, if still active in the cohort.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t_death</code></td>
+<td>
+<p>The exact death time of a subject ID. If <code>t_death</code> is
+missing, <code>t_cens</code> is assumed to contain both censoring and death times
+and a warning is raised.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t_augmented</code></td>
+<td>
+<p>A variable indicating the name of the new time variable
+of the process in the augmented format. If <code>t_augmented</code> is missing,
+then the default name 'augmented' is assumed and the corresponding new
+variable is added to <code>data</code>. <code>t_augmented</code> is cast to integer
+or to numeric depending whether <code>t_start</code> is a date or a difftime,
+respectively. The suffix '_int' or '_num' is pasted to <code>t_augmented</code>
+and a new variable is computed accordingly.
+This is done because <code>msm</code> can't correctly deal with date
+or difftime variables. Both variables are positioned before <code>t_start</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>more_status</code></td>
+<td>
+<p>A variable which marks further transitions beside the
+default ones given by <code>state</code>. <code>more_status</code> can be a factor or a
+character (see 'Details'). If missing, <code>augment</code> ignores it.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>check_NA</code></td>
+<td>
+<p>If <code>TRUE</code>, then arguments <code>data_key</code>,
+<code>n_events</code>, <code>pattern</code>, <code>t_start</code> and <code>t_end</code> are looked
+up for any missing data and if the function finds any, it stops with error.
+Default is <code>FALSE</code> because <code>augment</code> is not intended for
+running consistency checks, beside what is mandatory, and because the
+procedure is computationally onerous and could cause memory overhead for
+very large datasets. Argument <code>more_status</code> is the only one for which
+<code>augment</code> always checks for the presence of missing data and, again,
+if it finds any it just stops with error.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convert</code></td>
+<td>
+<p>If <code>TRUE</code>, then the returned object is automatically
+converted to the class <code>data.frame</code>. This is done in place and comes
+at very low cost both from running time and memory consumption
+(see <code>setDF</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>If <code>FALSE</code>, all information produced by <code>print</code>,
+<code>cat</code> and <code>message</code> are suppressed. Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>In order to get the data processed, a monotonic increasing process
+needs to be ensured. In the first place, <code>augment</code> checks this both in
+case <code>n_events</code> is missing or not. The data are efficiently ordered through
+<code>setkey</code> function with <code>data_key</code> as the primary
+key and <code>t_start</code> as the secondary key. In the second place, it checks
+the monotonicity of <code>n_events</code> and if it fails, it stops with error and
+returns the subjects given by <code>data_key</code> for whom the condition is not
+met. If <code>n_events</code> is missing, then <code>augment</code> internally computes
+the progression number with the name <em>n_events</em> and runs the same
+procedure.
+</p>
+<p>Attention needs to be payed to argument <code>pattern</code>. Integer values can
+be 0 and 1 if only two status are defined and they must correspond to the
+status 'alive' and 'dead'. If three values are defined, then they must be 0,
+1 and 2 if <code>pattern</code> is an integer, or 'alive', 'dead inside a
+transition' and dead outside a transition' if <code>pattern</code> is either a
+character or a factor. The order matters: it is not possible to specify
+0 as 'dead' for instance.
+</p>
+<p>When passing a list of states, the order is important so that the first
+element must be the state corresponding to the starting time
+(i.e. 'IN', inside the hospital), the second element must correspond
+to the ending time (i.e. 'OUT', outside the hospital), and the third state
+is the absorbing state (i.e. 'DEAD').
+</p>
+<p><code>more_status</code> allows to manage multiple transitions beside what already
+specified in <code>state</code>. In particular, if the corresponding observation
+is a standard admission which adds no other information than what is inside
+<code>state</code>, then <code>more_status</code> must be set to 'df' which stands for
+'Default' (see 'Examples' or run ?hosp and look at the variable 'rehab_it').
+In general, it is always a good practice to fully specify the transition
+with a bunch of self-explanatory characters in order to quickly understand
+which is the current transition.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An augmented format dataset of class <code>data.table</code>, or
+<code>data.frame</code> when <code>convert</code> is <code>TRUE</code>, where each row
+represents a specific transition for a given subject. <code>augment</code> returns
+them after some important variables have been computed:<br></p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>augmented</code></td>
+<td>
+<p>The new timing variable for the process when looking
+at transitions. If <code>t_augmented</code> is missing, then <code>augment</code> creates
+<em>augmented</em> by default. <em>augmented</em>. The function looks directly
+to <code>t_start</code> and <code>t_end</code> to build it and thus it inherits their class.
+In particular, if <code>t_start</code> is a date format, then <code>augment</code>
+computes a new variable cast as integer and names it <em>augmented_int</em>.
+If <code>t_start</code> is a difftime format, then <code>augment</code> computes a new
+variable cast as a numeric and names it <em>augmented_num.</em></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>status</code></td>
+<td>
+<p>A status flag which contains the states as specified
+in <code>state</code>. <code>augment</code> automatically checks whether argument
+<code>pattern</code> has 2 or 3 unique values and computes the correct structure
+of a given subject as reported in the vignette. The variable is cast as
+character.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>status_num</code></td>
+<td>
+<p>The corresponding integer version of <em>status</em>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_status</code></td>
+<td>
+<p>A mix of <code>status</code> and <code>n_events</code> cast as
+character. This becomes useful when a multi-state model on the progression
+of the process needs to be implemented.</p>
+</td>
+</tr>
+</table>
+<p>If <code>more_status</code> is passed, then <code>augment</code> computes some more
+variables. They mimic the meaning of <em>status</em>, <em>status_num</em>,
+and <em>n_status</em> but they account for the more complex structure defined.
+They are: <code>status_exp</code>, <code>status_exp_num</code>, and <code>n_status_exp</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Francesco Grossetti <a href="mailto:francesco.grossetti@unibocconi.it">francesco.grossetti@unibocconi.it</a>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Jackson, C.H. (2011). Multi-State Models for Panel Data:<br>
+The <em>msm</em> Package for R. Journal of Statistical Software, 38(8), 1-29.<br>
+URL <a href="https://www.jstatsoft.org/v38/i08/">https://www.jstatsoft.org/v38/i08/</a>.
+</p>
+<p>M. Dowle, A. Srinivasan, T. Short, S. Lianoglou with contributions from
+R. Saporta and E. Antonyan (2016):<br><em>data.table</em>: Extension of <em>data.frame</em>. R package version 1.9.6<br>
+URL <a href="https://github.com/Rdatatable/data.table/wiki">https://github.com/Rdatatable/data.table/wiki</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>data.table</code> <code>setkey</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># loading data
+data( hosp )
+
+# 1.
+# augmenting hosp
+hosp_augmented = augment( data = hosp, data_key = subj, n_events = adm_number,
+                          pattern = label_3, t_start = dateIN, t_end = dateOUT,
+                          t_cens = dateCENS )
+
+# 2.
+# augmenting hosp by passing more information regarding transitions
+# with argument more_status
+hosp_augmented_more = augment( data = hosp, data_key = subj, n_events = adm_number,
+                               pattern = label_3, t_start = dateIN, t_end = dateOUT,
+                               t_cens = dateCENS, more_status = rehab_it )
+# 3.
+# augmenting hosp and returning a data.frame
+hosp_augmented = augment( data = hosp, data_key = subj, n_events = adm_number,
+                          pattern = label_3, t_start = dateIN, t_end = dateOUT,
+                          t_cens = dateCENS, convert = TRUE )
+class( hosp_augmented )
+
+</code></pre>
+
+
+</div>

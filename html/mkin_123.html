@@ -1,0 +1,113 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mixed</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create a mixed effects model from an mmkin row object</h2>
+
+<h3>Description</h3>
+
+<p>Create a mixed effects model from an mmkin row object
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mixed(object, ...)
+
+## S3 method for class 'mmkin'
+mixed(object, method = c("none"), ...)
+
+## S3 method for class 'mixed.mmkin'
+print(x, digits = max(3, getOption("digits") - 3), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>An mmkin row object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Currently not used</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>The method to be used</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A mixed.mmkin object to print</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>Number of digits to use for printing.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object of class 'mixed.mmkin' which has the observed data in a
+single dataframe which is convenient for plotting
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">sampling_times = c(0, 1, 3, 7, 14, 28, 60, 90, 120)
+n_biphasic &lt;- 8
+err_1 = list(const = 1, prop = 0.07)
+
+DFOP_SFO &lt;- mkinmod(
+  parent = mkinsub("DFOP", "m1"),
+  m1 = mkinsub("SFO"),
+  quiet = TRUE)
+
+set.seed(123456)
+log_sd &lt;- 0.3
+syn_biphasic_parms &lt;- as.matrix(data.frame(
+  k1 = rlnorm(n_biphasic, log(0.05), log_sd),
+  k2 = rlnorm(n_biphasic, log(0.01), log_sd),
+  g = plogis(rnorm(n_biphasic, 0, log_sd)),
+  f_parent_to_m1 = plogis(rnorm(n_biphasic, 0, log_sd)),
+  k_m1 = rlnorm(n_biphasic, log(0.002), log_sd)))
+
+ds_biphasic_mean &lt;- lapply(1:n_biphasic,
+  function(i) {
+    mkinpredict(DFOP_SFO, syn_biphasic_parms[i, ],
+      c(parent = 100, m1 = 0), sampling_times)
+  }
+)
+
+set.seed(123456L)
+ds_biphasic &lt;- lapply(ds_biphasic_mean, function(ds) {
+  add_err(ds,
+    sdfunc = function(value) sqrt(err_1$const^2 + value^2 * err_1$prop^2),
+    n = 1, secondary = "m1")[[1]]
+})
+
+## Not run: 
+f_mmkin &lt;- mmkin(list("DFOP-SFO" = DFOP_SFO), ds_biphasic, error_model = "tc", quiet = TRUE)
+
+f_mixed &lt;- mixed(f_mmkin)
+print(f_mixed)
+plot(f_mixed)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

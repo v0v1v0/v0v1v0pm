@@ -1,0 +1,128 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>local_mock</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Mock functions in a package</h2>
+
+<h3>Description</h3>
+
+<p><code>local_mock()</code> temporarily substitutes implementations of package functions.
+This is useful for testing code that relies on functions that are
+slow, have unintended side effects or access resources that may not be
+available when testing.
+</p>
+<p><code>with_mock()</code> substitutes, runs code locally, and restores in one go.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">local_mock(
+  ...,
+  .parent = parent.frame(),
+  .env = get_mock_env(.parent),
+  .defer_env = parent.frame()
+)
+
+with_mock(..., .parent = parent.frame(), .env = get_mock_env(.parent))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p><code style="white-space: pre;">⁠[any]⁠</code><br> Named arguments redefine mocked functions.
+An unnamed argument containing code in braces (<code>{}</code>) should be provided
+to <code>with_mock()</code>,
+it will be evaluated after mocking the functions.
+Use <code style="white-space: pre;">⁠:=⁠</code> to mock functions that start with a dot
+to avoid potential collision with current or future arguments
+to <code>with_mock()</code> or <code>local_mock()</code>.
+Passing more than one unnamed argument to <code>with_mock()</code>,
+or code that is not inside braces, gives a warning.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.parent</code></td>
+<td>
+<p><code style="white-space: pre;">⁠[environment]⁠</code><br> the environment in which to evaluate the expressions,
+defaults to <code>parent.frame()</code>. Usually doesn't need to be changed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.env</code></td>
+<td>
+<p><code style="white-space: pre;">⁠[environment]⁠</code><br> the environment in which to patch the functions,
+defaults to <code>topenv()</code>. Usually doesn't need to be changed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.defer_env</code></td>
+<td>
+<p><code style="white-space: pre;">⁠[environment]⁠</code><br>
+Attach exit handlers to this environment.
+Typically, this should be either the current environment
+or a parent frame (accessed through <code>parent.frame()</code>).
+This argument is passed on as <code>envir</code> to <code>withr::defer()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This works by adding a shadow environment as a parent of the environment
+in which the expressions are evaluated.  Everything happens at the R level,
+but only functions in your own package can be mocked.
+Otherwise, the implementation is modeled after the original version in the
+<code>testthat</code> package, which is now deprecated.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>local_mock()</code> returns <code>NULL</code>, invisibly.
+</p>
+<p><code>with_mock()</code> returns the result of the last unnamed argument.
+Visibility is preserved.
+</p>
+
+
+<h3>References</h3>
+
+<p>Suraj Gupta (2012): <a href="https://blog.thatbuthow.com/how-r-searches-and-finds-stuff/">How R Searches And Finds Stuff</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">some_func &lt;- function() stop("oops")
+some_other_func &lt;- function() some_func()
+my_env &lt;- environment()
+
+tester_func &lt;- function() {
+  # The default for .env works well most of the time,
+  # unfortunately not in examples
+  local_mock(some_func = function() 42, .env = my_env)
+  some_other_func()
+}
+try(some_other_func())
+tester_func()
+
+tester_func_with &lt;- function() {
+  with_mock(
+    some_func = function() 42,
+    .env = my_env,
+    {
+      some_other_func()
+    }
+  )
+}
+tester_func_with()
+</code></pre>
+
+
+</div>

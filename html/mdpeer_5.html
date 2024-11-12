@@ -1,0 +1,316 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>riPEER</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Graph-constrained regression with penalty term being a linear combination of graph-based and ridge penalty terms</h2>
+
+<h3>Description</h3>
+
+<p>Graph-constrained regression with penalty term being a linear combination of graph-based and ridge penalty terms.
+</p>
+<p>See <em>Details</em> for model description and optimization problem formulation.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">riPEER(Q, y, Z, X = NULL, optim.metod = "rootSolve",
+  rootSolve.x0 = c(1e-05, 1e-05), rootSolve.Q0.x0 = 1e-05, sbplx.x0 = c(1,
+  1), sbplx.lambda.lo = c(10^(-5), 10^(-5)), sbplx.lambda.up = c(1e+06,
+  1e+06), compute.boot.CI = FALSE, boot.R = 1000, boot.conf = 0.95,
+  boot.set.seed = TRUE, boot.parallel = "multicore", boot.ncpus = 4,
+  verbose = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Q</code></td>
+<td>
+<p>graph-originated penalty matrix <code class="reqn">(p \times p)</code>; typically: a graph Laplacian matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>response values matrix <code class="reqn">(n \times 1)</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Z</code></td>
+<td>
+<p>design matrix <code class="reqn">(n \times p)</code> modeled as random effects variables (to be penalized in regression modeling);
+<strong>assumed to be already standarized</strong></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>design matrix <code class="reqn">(n \times k)</code> modeled as fixed effects variables (not to be penalized in regression modeling);
+if does not contain columns of 1s, such column will be added to be treated as intercept in a model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optim.metod</code></td>
+<td>
+<p>optimization method used to optimize <code class="reqn">\lambda = (\lambda_Q, \lambda_R)</code>
+</p>
+
+<ul>
+<li>
+<p> "rootSolve" (default) - optimizes by finding roots of non-linear equations by the Newton-Raphson method; from <code>rootSolve</code> package
+</p>
+</li>
+<li>
+<p> "sbplx" -  optimizes with the use of Subplex Algorithm: 'Subplex is a variant of Nelder-Mead that uses Nelder-Mead on a sequence of subspaces'; from <code>nloptr</code> package
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rootSolve.x0</code></td>
+<td>
+<p>vector containing initial guesses for <code class="reqn">\lambda = (\lambda_Q, \lambda_R)</code> used in "rootSolve" algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rootSolve.Q0.x0</code></td>
+<td>
+<p>vector containing initial guess for <code class="reqn">\lambda_R</code> used in "rootSolve" algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sbplx.x0</code></td>
+<td>
+<p>vector containing initial guesses for <code class="reqn">\lambda = (\lambda_Q, \lambda_R)</code> used in "sbplx" algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sbplx.lambda.lo</code></td>
+<td>
+<p>vector containing minimum values of <code class="reqn">\lambda = (\lambda_Q, \lambda_R)</code> grid search in "sbplx" algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sbplx.lambda.up</code></td>
+<td>
+<p>vector containing mximum values of <code class="reqn">\lambda = (\lambda_Q, \lambda_R)</code> grid search in "sbplx" algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>compute.boot.CI</code></td>
+<td>
+<p>logical whether or not compute bootstrap confidence intervals for <code class="reqn">b</code> regression coefficient estimates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.R</code></td>
+<td>
+<p>number of bootstrap replications used in bootstrap confidence intervals computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.conf</code></td>
+<td>
+<p>confidence level assumed in bootstrap confidence intervals computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.set.seed</code></td>
+<td>
+<p>logical whether or not set seed in bootstrap confidence intervals computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.parallel</code></td>
+<td>
+<p>value of <code>parallel</code> argument in <code>boot</code> function in bootstrap confidence intervals computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.ncpus</code></td>
+<td>
+<p>value of <code>ncpus</code> argument in <code>boot</code> function in bootstrap confidence intervals computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>logical whether or not set verbose mode (print out function execution messages)</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Estimates coefficients of linear model of the formula:
+</p>
+<p style="text-align: center;"><code class="reqn">y =  X\beta + Zb + \varepsilon</code>
+</p>
+
+<p>where:
+</p>
+
+<ul>
+<li> <p><code class="reqn">y</code> - response,
+</p>
+</li>
+<li> <p><code class="reqn">X</code> - data matrix,
+</p>
+</li>
+<li> <p><code class="reqn">Z</code> - data matrix,
+</p>
+</li>
+<li> <p><code class="reqn">\beta</code> - regression coefficients, <em>not penalized</em> in estimation process,
+</p>
+</li>
+<li> <p><code class="reqn">b</code> - regression coefficients, <em>penalized</em> in estimation process and for whom there is, possibly a prior graph of similarity / graph of connections available.
+</p>
+</li>
+</ul>
+<p>The method uses a penalty being a linear combination of a graph-based and ridge penalty terms:
+</p>
+<p style="text-align: center;"><code class="reqn">\beta_{est}, b_{est}= arg \; min_{\beta,b} \{ (y - X\beta - Zb)^T(y - X\beta - Zb) + \lambda_Qb^TQb +  \lambda_Rb^Tb \}</code>
+</p>
+
+<p>where:
+</p>
+
+<ul>
+<li> <p><code class="reqn">Q</code> - a graph-originated penalty matrix; typically: a graph Laplacian matrix,
+</p>
+</li>
+<li> <p><code class="reqn">\lambda_Q</code> - regularization parameter for a graph-based penalty term
+</p>
+</li>
+<li> <p><code class="reqn">\lambda_R</code> - regularization parameter for ridge penalty term
+</p>
+</li>
+</ul>
+<p>The two regularization parameters, <code class="reqn">\lambda_Q</code> and <code class="reqn">\lambda_R</code>, are estimated as ML estimators from equivalent
+Linear Mixed Model optimizaton problem formulation (see: References).
+</p>
+
+<ul>
+<li>
+<p> Graph-originated penalty term allows imposing similarity between coefficients based on graph information given.
+</p>
+</li>
+<li>
+<p> Ridge-originated penalty term facilitates parameters estimation: it reduces computational issues
+arising from singularity in a graph-originated
+penalty matrix and yields plausible results in situations when graph information
+is not informative.
+</p>
+</li>
+</ul>
+<p>Bootstrap confidence intervals computation is available (not set as a default option).
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>b.est</code></td>
+<td>
+<p>vector of <code class="reqn">b</code> coefficient estimates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta.est</code></td>
+<td>
+<p>vector of <code class="reqn">\beta</code> coefficient estimates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.Q</code></td>
+<td>
+<p><code class="reqn">\lambda_Q</code> regularization parameter value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.R</code></td>
+<td>
+<p><code class="reqn">\lambda_R</code> regularization parameter value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.2</code></td>
+<td>
+<p><code>lambda.R</code>/<code>lambda.Q</code> value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.CI</code></td>
+<td>
+<p>data frame with two columns, <code>lower</code> and <code>upper</code>, containing, respectively, values of lower and upper bootstrap confidence intervals for <code class="reqn">b</code> regression coefficient estimates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>obj.fn.val</code></td>
+<td>
+<p>optimization problem objective function value</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Karas, M., Brzyski, D., Dzemidzic, M., J., Kareken, D.A., Randolph, T.W., Harezlak, J. (2017).
+Brain connectivity-informed regularization methods for regression. doi: https://doi.org/10.1101/117945
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(1234)
+n &lt;- 200
+p1 &lt;- 10
+p2 &lt;- 90
+p &lt;- p1 + p2
+# Define graph adjacency matrix
+A &lt;- matrix(rep(0, p*p), nrow = p, ncol = p)
+A[1:p1, 1:p1] &lt;- 1
+A[(p1+1):p, (p1+1):p] &lt;- 1
+L &lt;- Adj2Lap(A)
+# Define Q penalty matrix as graph Laplacian matrix normalized)
+Q &lt;- L2L.normalized(L)
+# Define Z,X design matrices and aoutcome y
+Z &lt;- matrix(rnorm(n*p), nrow = n, ncol = p)
+b.true &lt;- c(rep(1, p1), rep(0, p2))
+X &lt;- matrix(rnorm(n*3), nrow = n, ncol = 3)
+beta.true &lt;- runif(3)
+intercept &lt;- 0
+eta &lt;- intercept + Z %*% b.true + X %*% beta.true
+R2 &lt;- 0.5
+sd.eps &lt;- sqrt(var(eta) * (1 - R2) / R2)
+error &lt;- rnorm(n, sd = sd.eps)
+y &lt;- eta + error
+
+## Not run: 
+riPEER.out &lt;- riPEER(Q, y, Z, X)
+plt.df &lt;- data.frame(x = 1:p, y = riPEER.out$b.est)
+ggplot(plt.df, aes(x = x, y = y, group = 1)) + geom_line() + labs("b estimates")
+
+## End(Not run)
+
+## Not run: 
+# riPEER with 0.95 bootstrap confidence intervals computation
+riPEER.out &lt;- riPEER(Q, y, Z, X, compute.boot.CI = TRUE, boot.R = 500)
+plt.df &lt;- data.frame(x = 1:p, 
+                     y = riPEER.out$b.est, 
+                     lo = riPEER.out$boot.CI[,1], 
+                     up =  riPEER.out$boot.CI[,2])
+ggplot(plt.df, aes(x = x, y = y, group = 1)) + geom_line() +  
+  geom_ribbon(aes(ymin=lo, ymax=up), alpha = 0.3)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

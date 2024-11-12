@@ -1,0 +1,204 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>est_marg_liks</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate the marginal likelihoods for one or more inference models</h2>
+
+<h3>Description</h3>
+
+<p>Estimate the marginal likelihoods (aka evidence)
+for one or more inference models, based on a single alignment.
+Also, the marginal likelihoods are compared, resulting in a
+relative weight for each model, where a relative weight of a model
+close to <code>1.0</code> means that that model is way likelier than
+the others.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">est_marg_liks(
+  fasta_filename,
+  inference_models = list(beautier::create_inference_model(mcmc =
+    beautier::create_ns_mcmc())),
+  beast2_optionses = rep(list(beastier::create_mcbette_beast2_options()), times =
+    length(inference_models)),
+  verbose = FALSE,
+  os = rappdirs::app_dir()$os
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>fasta_filename</code></td>
+<td>
+<p>name of the FASTA file</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inference_models</code></td>
+<td>
+<p>a list of one or more inference models,
+as can be created by create_inference_model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beast2_optionses</code></td>
+<td>
+<p>list of one or more <code>beast2_options</code>
+structures,
+as can be created by create_mcbette_beast2_options.
+Use of reduplicated plural to achieve difference with
+<code>beast2_options</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>if TRUE show debug output</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>os</code></td>
+<td>
+<p>name of the operating system,
+must be <code>unix</code> (Linux, Mac) or <code>win</code> (Windows)</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>In the process, multiple (temporary) files are created (where
+<code>[x]</code> denotes the index in a list)
+</p>
+
+<ul>
+<li> <p><code>beast2_optionses[x]$input_filename</code>
+path to the the BEAST2 XML input file
+</p>
+</li>
+<li> <p><code>beast2_optionses[x]$output_state_filename</code>
+path to the BEAST2 XML state file
+</p>
+</li>
+<li> <p><code>inference_models[x]$mcmc$tracelog$filename</code>
+path to the BEAST2 trace file with parameter estimates
+</p>
+</li>
+<li> <p><code>inference_models[x]$mcmc$treelog$filename</code>
+path to the BEAST2 <code>trees</code> file with the posterior trees
+</p>
+</li>
+<li> <p><code>inference_models[x]$mcmc$screenlog$filename</code>
+path to the BEAST2 screen output file
+</p>
+</li>
+</ul>
+<p>These file can be deleted manually by bbt_delete_temp_files,
+else these will be deleted automatically by the operating system.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a data.frame showing the estimated marginal likelihoods
+(and its estimated error) per combination of models. Columns are:
+</p>
+
+<ul>
+<li> <p><code>site_model_name</code>: name of the site model
+</p>
+</li>
+<li> <p><code>clock_model_name</code>: name of the clock model
+</p>
+</li>
+<li> <p><code>tree_prior_name</code>: name of the tree prior
+</p>
+</li>
+<li> <p><code>marg_log_lik</code>: estimated marginal (natural) log likelihood
+</p>
+</li>
+<li> <p><code>marg_log_lik_sd</code>: estimated error of <code>marg_log_lik</code>
+</p>
+</li>
+<li> <p><code>weight</code>: relative model weight, a value from 1.0 (all
+evidence is in favor of this model combination) to 0.0 (no
+evidence in favor of this model combination)
+</p>
+</li>
+<li> <p><code>ess</code>: effective sample size of the marginal likelihood
+estimation
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Richèl J.C. Bilderbeek
+</p>
+
+
+<h3>See Also</h3>
+
+
+<ul>
+<li> <p>can_run_mcbette: see if 'mcbette' can run
+</p>
+</li>
+<li> <p>est_marg_liks: estimate multiple marginal likelihood of a
+single inference mode
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">if (can_run_mcbette()) {
+
+  # Use an example FASTA file
+  fasta_filename &lt;- system.file("extdata", "simple.fas", package = "mcbette")
+
+  # Create two inference models
+  inference_model_1 &lt;- beautier::create_ns_inference_model(
+    site_model = beautier::create_jc69_site_model()
+  )
+  inference_model_2 &lt;- beautier::create_ns_inference_model(
+    site_model = beautier::create_hky_site_model()
+  )
+
+  # Shorten the run, by doing a short (dirty, unreliable) MCMC
+  inference_model_1$mcmc &lt;- beautier::create_test_ns_mcmc()
+  inference_model_2$mcmc &lt;- beautier::create_test_ns_mcmc()
+
+  # Combine the inference models
+  inference_models &lt;- list(inference_model_1, inference_model_2)
+
+  # Create the BEAST2 options, that will write the output
+  # to different (temporary) filanems
+  beast2_options_1 &lt;- beastier::create_mcbette_beast2_options()
+  beast2_options_2 &lt;- beastier::create_mcbette_beast2_options()
+
+  # Combine the two BEAST2 options sets,
+  # use reduplicated plural
+  beast2_optionses &lt;- list(beast2_options_1, beast2_options_2)
+
+  # Compare the models
+  marg_liks &lt;- est_marg_liks(
+    fasta_filename,
+    inference_models = inference_models,
+    beast2_optionses = beast2_optionses
+  )
+
+  # Interpret the results
+  interpret_marg_lik_estimates(marg_liks)
+
+  beastier::remove_beaustier_folders()
+  beastier::check_empty_beaustier_folders()
+}
+</code></pre>
+
+
+</div>

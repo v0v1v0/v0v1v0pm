@@ -1,0 +1,315 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>missoNet</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit a series of missoNet models with user-supplied regularization parameters for the lasso penalties</h2>
+
+<h3>Description</h3>
+
+<p>This function fits the conditional graphical lasso models to datasets with missing response values. 
+‘<code>missoNet</code>’ computes the regularization path for the lasso penalties sequentially along the
+bivariate regularization parameter sequence <code class="reqn">\{(\lambda_B, \lambda_\Theta)\}</code> provided by the user.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">missoNet(
+  X,
+  Y,
+  lambda.Beta,
+  lambda.Theta,
+  rho = NULL,
+  Beta.maxit = 10000,
+  Beta.thr = 1e-08,
+  eta = 0.8,
+  Theta.maxit = 10000,
+  Theta.thr = 1e-08,
+  eps = 1e-08,
+  penalize.diagonal = TRUE,
+  diag.penalty.factor = NULL,
+  standardize = TRUE,
+  standardize.response = TRUE,
+  fit.relax = FALSE,
+  parallel = FALSE,
+  cl = NULL,
+  verbose = 1
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>Numeric predictor matrix (<code class="reqn">n\times p</code>): columns correspond to predictor variables and rows correspond to samples. Missing values are not allowed. There is no need for centering or scaling of the variables. <code>'X'</code> should not include a column of ones for an intercept.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+<p>Numeric response matrix (<code class="reqn">n\times q</code>): columns correspond to response variables and rows correspond to samples. Missing values should be coded as either <code>'NA'</code>s or <code>'NaN'</code>s. There is no need for centering or scaling of the variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.Beta</code></td>
+<td>
+<p>A scalar or a numeric vector: a user-supplied sequence of non-negative value(s) for {<code class="reqn">\lambda_B</code>} used to penalize the elements of the coefficient matrix <code class="reqn">\mathbf{B}</code>. Note that the values will be sequentially visited in the given orders as inputs to the regularization parameter sequence <code class="reqn">\{(\lambda_B, \lambda_\Theta)\}</code>; <code>'lambda.Beta'</code> must have the same length as <code>'lambda.Theta'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.Theta</code></td>
+<td>
+<p>A scalar or a numeric vector: a user-supplied sequence of non-negative value(s) for {<code class="reqn">\lambda_\Theta</code>} used to penalize the (off-diagonal) elements of the precision matrix <code class="reqn">\mathbf{\Theta}</code>. Note that the values will be sequentially visited in the given orders as inputs to the regularization parameter sequence <code class="reqn">\{(\lambda_B, \lambda_\Theta)\}</code>; <code>'lambda.Theta'</code> must have the same length as <code>'lambda.Beta'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho</code></td>
+<td>
+<p>(Optional) A scalar or a numeric vector of length <code class="reqn">q</code>: the elements are user-supplied probabilities of missingness for the response variables. The default is <code>'rho = NULL'</code> and the program will compute the empirical missing rates for each of the columns of <code>'Y'</code> and use them as the working missing probabilities. The default setting should suffice in most cases; misspecified missing probabilities would introduce biases into the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Beta.maxit</code></td>
+<td>
+<p>The maximum number of iterations of the fast iterative shrinkage-thresholding algorithm (FISTA) for updating <code class="reqn">\hat{\mathbf{B}}</code>. The default is <code>'Beta.maxit = 10000'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Beta.thr</code></td>
+<td>
+<p>The convergence threshold of the FISTA algorithm for updating <code class="reqn">\hat{\mathbf{B}}</code>; the default is <code>'Beta.thr = 1.0E-8'</code>. Iterations stop when the absolute parameter change is less than (<code>'Beta.thr'</code> <code>*</code> <code>sum(abs(</code><code class="reqn">\hat{\mathbf{B}}</code><code>))</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eta</code></td>
+<td>
+<p>The backtracking line search shrinkage factor; the default is <code>'eta = 0.8'</code>. Most users will be able to use the default value, some experienced users may want to tune <code>'eta'</code> according to the properties of a specific dataset for a faster convergence of the FISTA algorithm. Note that <code>'eta'</code> must be in (0, 1).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Theta.maxit</code></td>
+<td>
+<p>The maximum number of iterations of the ‘<code>glasso</code>’ algorithm for updating <code class="reqn">\hat{\mathbf{\Theta}}</code>. The default is <code>'Theta.maxit = 10000'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Theta.thr</code></td>
+<td>
+<p>The convergence threshold of the ‘<code>glasso</code>’ algorithm for updating <code class="reqn">\hat{\mathbf{\Theta}}</code>; the default is <code>'Theta.thr = 1.0E-8'</code>. Iterations stop when the average absolute parameter change is less than (<code>'Theta.thr'</code> <code>*</code> <code>ave(abs(offdiag(</code><code class="reqn">\hat{\mathbf{\Sigma}}</code><code>)))</code>), where <code class="reqn">\hat{\mathbf{\Sigma}}</code> denotes the empirical working covariance matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>A numeric tolerance level for the L1 projection of the empirical covariance matrix; the default is <code>'eps = 1.0E-8'</code>. The empirical covariance matrix will be projected onto a L1 ball to have <code>min(eigen(</code><code class="reqn">\hat{\mathbf{\Sigma}}</code><code>)$value)</code> == <code>'eps'</code>, if any of the eigenvalues is less than the specified tolerance. Most users will be able to use the default value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>penalize.diagonal</code></td>
+<td>
+<p>Logical: should the diagonal elements of <code class="reqn">\mathbf{\Theta}</code> be penalized? The default is <code>'TRUE'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>diag.penalty.factor</code></td>
+<td>
+<p>Numeric: a separate penalty multiplication factor for the diagonal elements of <code class="reqn">\mathbf{\Theta}</code> when <code>'penalize.diagonal = TRUE'</code>. <code class="reqn">\lambda_\Theta</code> is multiplied by this number to allow a differential shrinkage of the diagonal elements. The default is <code>'NULL'</code> and the program will guess a value based on an initial estimate of <code class="reqn">\mathbf{\Theta}</code>. This factor could be <code>'0'</code> for no shrinkage (equivalent to <code>'penalize.diagonal = FALSE'</code>) or <code>'1'</code> for an equal shrinkage.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>standardize</code></td>
+<td>
+<p>Logical: should the columns of <code>'X'</code> be standardized so each has unit variance? The default is <code>'TRUE'</code>. The estimated results will always be returned on the original scale. If <code>'X'</code> has been standardized prior to fitting the model, you might not wish to standardize it inside the algorithm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>standardize.response</code></td>
+<td>
+<p>Logical: should the columns of <code>'Y'</code> be standardized so each has unit variance? The default is <code>'TRUE'</code>. The estimated results will always be returned on the original scale. If <code>'Y'</code> has been standardized prior to fitting the model, you might not wish to standardize it inside the algorithm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fit.relax</code></td>
+<td>
+<p>Logical: the default is <code>'FALSE'</code>. If <code>'TRUE'</code>, the program will re-estimate the edges in the active set (i.e. nonzero off-diagonal elements) of the network structure <code class="reqn">\hat{\mathbf{\Theta}}</code> without penalization (<code class="reqn">\lambda_\Theta=0</code>). This debiased estimate of <code class="reqn">\mathbf{\Theta}</code> could be useful for some interdependency analyses. WARNING: there may be convergence issues if the empirical covariance matrix is not of full rank (e.g. <code class="reqn">n &lt; q)</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>Logical: the default is <code>'FALSE'</code>. If <code>'TRUE'</code>, the program uses clusters to fit models with each element of the <code class="reqn">\lambda</code> sequence <code class="reqn">\{(\lambda_B, \lambda_\Theta)\}</code> in parallel. Must register parallel clusters beforehand, see examples below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+<p>A cluster object created by ‘<code>parallel::makeCluster</code>’ for parallel evaluations. This is only needed when <code>'parallel = TRUE'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Value of <code>'0'</code>, <code>'1'</code> or <code>'2'</code>. <code>'verbose = 0'</code> – silent; <code>'verbose = 1'</code> (the default) – limited tracing with progress bars; <code>'verbose = 2'</code> – detailed tracing. Note that displaying the progress bars slightly increases the computation overhead compared to the silent mode. The detailed tracing should be used for monitoring progress only when the program runs extremely slowly, and it is not supported under <code>'parallel = TRUE'</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>‘<code>missoNet</code>’ is the main model-fitting function which is specifically proposed to fit the conditional 
+graphical lasso models / penalized multi-task Gaussian regressions to (corrupted) datasets with response values missing at random (MAR).
+To facilitate the interpretation of the model, let's temporarily assume that there are no missing values 
+in the data used to fit the model. Suppose we have <code class="reqn">n</code> observations of both a <code class="reqn">p</code>-variate predictor <code class="reqn">X \in \mathcal{R}^p</code>
+and a <code class="reqn">q</code>-variate response <code class="reqn">Y \in \mathcal{R}^q</code>, for the <code class="reqn">i</code>th sample (<code class="reqn">i = 1,...,n</code>), 
+‘<code>missoNet</code>’ assumes the model
+</p>
+<p style="text-align: center;"><code class="reqn">Y_i = \mu + X_i\mathbf{B} + E_i,\ \ E_i \sim \mathcal{MVN}(0_q, (\mathbf{\Theta})^{-1}),</code>
+</p>
+
+<p>where <code class="reqn">Y_i \in \mathcal{R}^{1\times q}</code> and <code class="reqn">X_i \in \mathcal{R}^{1\times p}</code> are one 
+realization of the <code class="reqn">q</code> responses and the <code class="reqn">p</code> predictors, respectively. 
+<code class="reqn">E_i \in \mathcal{R}^{1\times q}</code> is an error vector drawn from a multivariate Gaussian distribution. 
+</p>
+<p>The regression coefficient matrix <code class="reqn">\mathbf{B} \in \mathcal{R}^{p\times q}</code> that mapping predictors to responses and 
+the precision (inverse covariance) matrix <code class="reqn">\mathbf{\Theta} \in \mathcal{R}^{q\times q}</code> that revealing the 
+responses' conditional dependencies are the parameters to be estimated by solving a penalized MLE problem
+</p>
+<p style="text-align: center;"><code class="reqn">(\hat{\mathbf{\Theta}},\hat{\mathbf{B}}) = {\mathrm{argmin}}_{\mathbf{\Theta} \succeq 0,\ \mathbf{B}}\ 
+g(\mathbf{\Theta},\mathbf{B}) + \lambda_{\Theta}(\|\mathbf{\Theta}\|_{1,\mathrm{off}} + 1_{n\leq \mathrm{max}(p,q)} \|\mathbf{\Theta}\|_{1,\mathrm{diag}}) + \lambda_{B}\|\mathbf{B}\|_1,</code>
+</p>
+
+<p>where 
+</p>
+<p style="text-align: center;"><code class="reqn">g(\mathbf{\Theta},\mathbf{B}) = \mathrm{tr}\left[\frac{1}{n}(\mathbf{Y} - \mathbf{XB})^\top(\mathbf{Y} - \mathbf{XB}) \mathbf{\Theta}\right] 
+- \mathrm{log}|\mathbf{\Theta}|.</code>
+</p>
+
+<p>The response matrix <code class="reqn">\mathbf{Y} \in \mathcal{R}^{n\times q}</code> has <code class="reqn">i</code>th row (<code class="reqn">Y_i - \frac{1}{n}\sum_{j=1}^n Y_j</code>), 
+and the predictor matrix <code class="reqn">\mathbf{X} \in \mathcal{R}^{n\times p}</code> has <code class="reqn">i</code>th row (<code class="reqn">X_i - \frac{1}{n}\sum_{j=1}^n X_j</code>). 
+The intercept <code class="reqn">\mu \in \mathcal{R}^{1\times q}</code> is canceled out because of centering of the data matrices <code class="reqn">\mathbf{Y}</code> and <code class="reqn">\mathbf{X}</code>. 
+<code class="reqn">1_{n\leq \mathrm{max}(p,q)}</code> denotes the indicator function for whether penalizing the diagonal elements of <code class="reqn">\mathbf{\Theta}</code> or not. 
+When <code class="reqn">n\leq \mathrm{max}(p,q)</code>, a global minimizer of the objective function defined above does not exist without the diagonal penalization.
+</p>
+<p>Missingness in real data is inevitable. In this instance, the estimates based only on complete cases are likely to be biased, 
+and the objective function is likely to no longer be a biconvex optimization problem. In addition, many algorithms cannot be directly employed since they 
+require complete datasets as inputs. ‘<code>missoNet</code>’ aims to handle the specific situation where the response matrix <code class="reqn">\mathbf{Y}</code> contains values that 
+are missing at random (MAR. Please refer to the vignette or other resources for more information about the differences between MAR, missing completely at 
+random (MCAR) and missing not at random (MNAR)). As it should be, ‘<code>missoNet</code>’ is also applicable to datasets with MCAR response values or without any missing values. 
+The method provides a unified framework for automatically solving a convex modification of the multi-task learning problem defined above, 
+using corrupted datasets. Moreover, ‘<code>missoNet</code>’ enjoys the theoretical and computational benefits of convexity and returns 
+solutions that are comparable/close to the clean conditional graphical lasso estimates. Please refer to the original manuscript (coming soon) for more details of our method.
+</p>
+
+
+<h3>Value</h3>
+
+<p>This function returns a <code>'list'</code> consisting of the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>est.list</code></td>
+<td>
+<p>A named <code>'list'</code> storing the lists of results estimated at each of the <code class="reqn">\lambda</code> pairs, (<code class="reqn">\lambda_B</code>, <code class="reqn">\lambda_\Theta</code>). Each sub-<code>'list'</code> contains:
+</p>
+
+<ul>
+<li> <p><code>Beta</code>: the penalized estimate of the regression coefficient matrix <code class="reqn">\hat{\mathbf{B}}</code> (<code class="reqn">p\times q</code>).
+</p>
+</li>
+<li> <p><code>Theta</code>: the penalized estimate of the precision matrix <code class="reqn">\hat{\mathbf{\Theta}}</code> (<code class="reqn">q\times q</code>).
+</p>
+</li>
+<li> <p><code>mu</code>: a vector of length <code class="reqn">q</code> storing the model intercept <code class="reqn">\hat{\mu}</code>.
+</p>
+</li>
+<li> <p><code>lambda.Beta</code>: the value of <code class="reqn">\lambda_B</code> used to fit the model.
+</p>
+</li>
+<li> <p><code>lambda.Theta</code>: the value of <code class="reqn">\lambda_\Theta</code> used to fit the model.
+</p>
+</li>
+<li> <p><code>relax.net</code>: the relaxed (debiased) estimate of the conditional network structure <code class="reqn">\hat{\mathbf{\Theta}}_\mathrm{rlx}</code> (<code class="reqn">q\times q</code>) if <code>'fit.relax = TRUE'</code> when calling ‘<code>missoNet</code>’.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho</code></td>
+<td>
+<p>A vector of length <code class="reqn">q</code> storing the working missing probabilities for the <code class="reqn">q</code> response variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>penalize.diagonal</code></td>
+<td>
+<p>Logical: whether the diagonal elements of <code class="reqn">\mathbf{\Theta}</code> were penalized.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>diag.penalty.factor</code></td>
+<td>
+<p>The additional penalty multiplication factor for the diagonal elements of <code class="reqn">\mathbf{\Theta}</code> when <code>'penalize.diagonal'</code> was returned as <code>'TRUE'</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Yixiao Zeng <a href="mailto:yixiao.zeng@mail.mcgill.ca">yixiao.zeng@mail.mcgill.ca</a>, Celia M.T. Greenwood and Archer Yi Yang.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Simulate a dataset with response values missing completely at random (MCAR), 
+## the overall missing rate is around 10%.
+set.seed(123)  # reproducibility
+sim.dat &lt;- generateData(n = 300, p = 50, q = 20, rho = 0.1, missing.type = "MCAR")
+tr &lt;- 1:240  # training set indices
+tst &lt;- 241:300  # test set indices
+X.tr &lt;- sim.dat$X[tr, ]  # predictor matrix
+Y.tr &lt;- sim.dat$Z[tr, ]  # corrupted response matrix
+
+
+## Fit one missoNet model with two scalars for 'lambda.Beta' and 'lambda.Theta'.
+fit1 &lt;- missoNet(X = X.tr, Y = Y.tr, lambda.Beta = 0.1, lambda.Theta = 0.2)
+
+
+## Fit a series of missoNet models with the lambda pairs := (lambda.Beta, lambda.Theta)
+## sequentially extracted from the 'lambda.Beta' and 'lambda.Theta' vectors, note that the 
+## two vectors must have the same length.
+lamB.vec &lt;- 10^(seq(from = 0, to = -1, length.out = 5))
+lamTht.vec &lt;- rep(0.1, 5)
+fit2 &lt;- missoNet(X = X.tr, Y = Y.tr, lambda.Beta = lamB.vec, lambda.Theta = lamTht.vec)
+
+
+## Parallelization on a cluster with two cores.
+cl &lt;- parallel::makeCluster(2)
+fit2 &lt;- missoNet(X = X.tr, Y = Y.tr, lambda.Beta = lamB.vec, lambda.Theta = lamTht.vec, 
+                 parallel = TRUE, cl = cl)
+parallel::stopCluster(cl)
+
+
+## Extract the estimates at ('lamB.vec[1]', 'lamTht.vec[1]').
+## The estimates at the subsequent lambda pairs could be accessed in the same way.
+Beta.hat &lt;- fit2$est.list[[1]]$Beta
+Theta.hat &lt;- fit2$est.list[[1]]$Theta
+lambda.Beta &lt;- fit2$est.list[[1]]$lambda.Beta  # equal to 'lamB.vec[1]'
+lambda.Theta &lt;- fit2$est.list[[1]]$lambda.Theta  # equal to 'lamTht.vec[1]'
+
+
+## Fit a series of missoNet models using PRE-STANDARDIZED training data
+## if you wish to compare the results with other softwares. 
+X.tr.std &lt;- scale(X.tr, center = TRUE, scale = TRUE)
+Y.tr.std &lt;- scale(Y.tr, center = TRUE, scale = TRUE)
+fit3 &lt;- missoNet(X = X.tr.std, Y = Y.tr.std, lambda.Beta = lamB.vec, lambda.Theta = lamTht.vec,
+                 standardize = FALSE, standardize.response = FALSE)
+
+</code></pre>
+
+
+</div>

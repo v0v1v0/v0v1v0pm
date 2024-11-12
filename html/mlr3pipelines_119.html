@@ -1,0 +1,115 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_graphs_convert_types</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Convert Column Types</h2>
+
+<h3>Description</h3>
+
+<p>Converts all columns of type <code>type_from</code> to <code>type_to</code>, using the corresponding R function (e.g. <code>as.numeric()</code>, <code>as.factor()</code>).
+It is possible to further subset the columns that should be affected using the <code>affect_columns</code> argument.
+The resulting <code>Graph</code> contains a <code>PipeOpColApply</code>, followed, if appropriate, by a <code>PipeOpFixFactors</code>.
+</p>
+<p>Unlike R's <code>as.factor()</code> function, <code>ppl("convert_types")</code> will convert <code>ordered</code> types into (unordered) <code>factor</code> vectors.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pipeline_convert_types(
+  type_from,
+  type_to,
+  affect_columns = NULL,
+  id = NULL,
+  fixfactors = NULL,
+  more_args = list()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>type_from</code></td>
+<td>
+<p><code>character</code> <br>
+Which column types to convert. May be any combination of <code>"logical"</code>, <code>"integer"</code>, <code>"numeric"</code>, <code>"factor"</code>, <code>"ordered"</code>, <code>"character"</code>, or <code>"POSIXct"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type_to</code></td>
+<td>
+<p><code>character(1)</code> <br>
+Which type to convert to. Must be a scalar value, exactly one of the types allowed in <code>type_from</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>affect_columns</code></td>
+<td>
+<p><code>function</code> | <code>Selector</code> | <code>NULL</code> <br>
+Which columns to affect. This argument can further restrict the columns being converted, beyond the <code>type_from</code> argument.
+Must be a <code>Selector</code>-like function, which takes a <code>Task</code> as argument and returns a <code>character</code> of features to use.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p><code>character(1)</code> | <code>NULL</code> <br>
+ID to give to the constructed <code>PipeOp</code>s.
+Defaults to an ID built automatically from <code>type_from</code> and <code>type_to</code>.
+If a <code>PipeOpFixFactors</code> is appended, its ID will be <code>paste0(id, "_ff")</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixfactors</code></td>
+<td>
+<p><code>logical(1)</code> | <code>NULL</code> <br>
+Whether to append a <code>PipeOpFixFactors</code>. Defaults to <code>TRUE</code> if and only if <code>type_to</code> is <code>"factor"</code> or <code>"ordered"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>more_args</code></td>
+<td>
+<p><code>list</code> <br>
+Additional arguments to give to the conversion function. This could e.g. be used to pass the timezone to <code>as.POSIXct</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>Graph</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library("mlr3")
+
+data_chr = data.table::data.table(
+  x = factor(letters[1:3]),
+  y = letters[1:3],
+  z = letters[1:3]
+)
+task_chr = TaskClassif$new("task_chr", data_chr, "x")
+str(task_chr$data())
+
+graph = ppl("convert_types", "character", "factor")
+str(graph$train(task_chr)[[1]]$data())
+
+graph_z = ppl("convert_types", "character", "factor",
+  affect_columns = selector_name("z"))
+graph_z$train(task_chr)[[1]]$data()
+
+# `affect_columns` and `type_from` are both applied. The following
+# looks for a 'numeric' column with name 'z', which is not present;
+# the task is therefore unchanged.
+graph_z = ppl("convert_types", "numeric", "factor",
+  affect_columns = selector_name("z"))
+graph_z$train(task_chr)[[1]]$data()
+</code></pre>
+
+
+</div>

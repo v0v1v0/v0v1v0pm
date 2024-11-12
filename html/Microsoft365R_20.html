@@ -1,0 +1,306 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ms_drive_item</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>File or folder in a drive</h2>
+
+<h3>Description</h3>
+
+<p>Class representing an item (file or folder) in a OneDrive or SharePoint document library.
+</p>
+
+
+<h3>Format</h3>
+
+<p>An R6 object of class <code>ms_drive_item</code>, inheriting from <code>ms_object</code>.
+</p>
+
+
+<h3>Fields</h3>
+
+
+<ul>
+<li> <p><code>token</code>: The token used to authenticate with the Graph host.
+</p>
+</li>
+<li> <p><code>tenant</code>: The Azure Active Directory tenant for the parent drive.
+</p>
+</li>
+<li> <p><code>type</code>: always "drive item" for a drive item object.
+</p>
+</li>
+<li> <p><code>properties</code>: The item properties (metadata).
+</p>
+</li>
+</ul>
+<h3>Methods</h3>
+
+
+<ul>
+<li> <p><code>new(...)</code>: Initialize a new object. Do not call this directly; see 'Initialization' below.
+</p>
+</li>
+<li> <p><code>delete(confirm=TRUE, by_item=FALSE)</code>: Delete this item. By default, ask for confirmation first. For personal OneDrive, deleting a folder will also automatically delete its contents; for business OneDrive or SharePoint document libraries, you may need to set <code>by_item=TRUE</code> to delete the contents first depending on your organisation's policies. Note that this can be slow for large folders.
+</p>
+</li>
+<li> <p><code>update(...)</code>: Update the item's properties (metadata) in Microsoft Graph.
+</p>
+</li>
+<li> <p><code>do_operation(...)</code>: Carry out an arbitrary operation on the item.
+</p>
+</li>
+<li> <p><code>sync_fields()</code>: Synchronise the R object with the item metadata in Microsoft Graph.
+</p>
+</li>
+<li> <p><code>open()</code>: Open the item in your browser.
+</p>
+</li>
+<li> <p><code>copy(dest, dest_folder_item=NULL)</code>: Copy the item to the given location.
+</p>
+</li>
+<li> <p><code>move(dest, dest_folder_item=NULL)</code>: Move the item to the given location.
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠list_items(...), list_files(...)⁠</code>: List the files and folders under the specified path.
+</p>
+</li>
+<li> <p><code>download(dest, overwrite, recursive, parallel)</code>: Download the file or folder. See below.
+</p>
+</li>
+<li> <p><code>create_share_link(type, expiry, password, scope)</code>: Create a shareable link to the file or folder.
+</p>
+</li>
+<li> <p><code>upload(src, dest, blocksize, , recursive, parallel)</code>: Upload a file or folder. See below.
+</p>
+</li>
+<li> <p><code>create_folder(path)</code>: Create a folder. Only applicable for a folder item.
+</p>
+</li>
+<li> <p><code>get_item(path)</code>: Get a child item (file or folder) under this folder.
+</p>
+</li>
+<li> <p><code>get_parent_folder()</code>: Get the parent folder for this item, as a drive item object. Returns the root folder for the root. Not supported for remote items.
+</p>
+</li>
+<li> <p><code>get_path()</code>: Get the absolute path for this item, as a character string. Not supported for remote items.
+</p>
+</li>
+<li> <p><code>is_folder()</code>: Information function, returns TRUE if this item is a folder.
+</p>
+</li>
+<li> <p><code>load_dataframe(delim=NULL, ...)</code>: Download a delimited file and return its contents as a data frame. See 'Saving and loading data' below.
+</p>
+</li>
+<li> <p><code>load_rds()</code>: Download a .rds file and return the saved object.
+</p>
+</li>
+<li> <p><code>load_rdata(envir)</code>: Load a .RData or .Rda file into the specified environment.
+</p>
+</li>
+<li> <p><code>save_dataframe(df, file, delim=",", ...)</code> Save a dataframe to a delimited file.
+</p>
+</li>
+<li> <p><code>save_rds(object, file)</code>: Save an R object to a .rds file.
+</p>
+</li>
+<li> <p><code>save_rdata(..., file)</code>: Save the specified objects to a .RData file.
+</p>
+</li>
+</ul>
+<h3>Initialization</h3>
+
+<p>Creating new objects of this class should be done via the <code>get_item</code> method of the <code>ms_drive</code> class. Calling the <code>new()</code> method for this class only constructs the R object; it does not call the Microsoft Graph API to retrieve or create the actual item.
+</p>
+
+
+<h3>File and folder operations</h3>
+
+<p>This class exposes methods for carrying out common operations on files and folders. Note that for the methods below, any paths to child items are relative to the folder's own path.
+</p>
+<p><code>open</code> opens this file or folder in your browser. If the file has an unrecognised type, most browsers will attempt to download it.
+</p>
+<p><code>list_items(path, info, full_names, filter, n, pagesize)</code> lists the items under the specified path. It is the analogue of base R's <code>dir</code>/<code>list.files</code>. Its arguments are
+</p>
+
+<ul>
+<li> <p><code>path</code>: The path.
+</p>
+</li>
+<li> <p><code>info</code>: The information to return: either "partial", "name" or "all". If "partial", a data frame is returned containing the name, size, ID and whether the item is a file or folder. If "name", a vector of file/folder names is returned. If "all", a data frame is returned containing <em>all</em> the properties for each item (this can be large).
+</p>
+</li>
+<li> <p><code>full_names</code>: Whether to prefix the folder path to the names of the items.
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠filter, n⁠</code>: See 'List methods' below.
+</p>
+</li>
+<li> <p><code>pagesize</code>: The number of results to return for each call to the REST endpoint. You can try reducing this argument below the default of 1000 if you are experiencing timeouts.
+</p>
+</li>
+</ul>
+<p><code>list_files</code> is a synonym for <code>list_items</code>.
+</p>
+<p><code>download</code> downloads the item to the local machine. If this is a file, it is downloaded; in this case, the <code>dest</code> argument can be the path to the destination file, or NULL to return the downloaded content in a raw vector. If the item is a folder, all its files are downloaded, including subfolders if the <code>recursive</code> argument is TRUE.
+</p>
+<p><code>upload</code> uploads a file or folder from the local machine into the folder item. The <code>src</code> argument can be the path to the source file, a rawConnection or a textConnection object. If <code>src</code> is a folder, all its files are uploaded, including subfolders if the <code>recursive</code> argument iS TRUE. An <code>ms_drive_item</code> object is returned invisibly.
+</p>
+<p>Uploading is done in blocks of 32MB by default; you can change this by setting the <code>blocksize</code> argument. For technical reasons, the block size <a href="https://learn.microsoft.com/en-us/graph/api/driveitem-createuploadsession?view=graph-rest-1.0#upload-bytes-to-the-upload-session">must be a multiple of 320KB</a>.
+</p>
+<p>Uploading and downloading folders can be done in parallel, which can result in substantial speedup when transferring a large number of small files. This is controlled by the <code>parallel</code> argument to <code>upload</code> and <code>download</code>, which can have the following values:
+</p>
+
+<ul>
+<li>
+<p> TRUE: A cluster with 5 workers is created
+</p>
+</li>
+<li>
+<p> A number: A cluster with this many workers is created
+</p>
+</li>
+<li>
+<p> A cluster object, created via the parallel package
+</p>
+</li>
+<li>
+<p> FALSE: The transfer is done serially
+</p>
+</li>
+</ul>
+<p><code>get_item</code> retrieves the file or folder with the given path, as another object of class <code>ms_drive_item</code>.
+</p>
+
+<ul><li> <p><code>copy</code> and <code>move</code> can take the destination location as either a full pathname (in the <code>dest</code> argument), or a name plus a drive item object (in the <code>dest_folder_item</code> argument). If the latter is supplied, any path in <code>dest</code> is ignored with a warning. Note that copying is an <em>asynchronous</em> operation, meaning the method returns before the copy is complete.
+</p>
+</li></ul>
+<p>For copying and moving, the destination folder must exist beforehand. When copying/moving a large number of files, it's much more efficient to supply the destination folder in the <code>dest_folder_item</code> argument rather than as a path.
+</p>
+<p><code>create_folder</code> creates a folder with the specified path. Trying to create an already existing folder is an error. This returns an <code>ms_drive_item</code> object, invisibly.
+</p>
+<p><code>create_share_link(path, type, expiry, password, scope)</code> returns a shareable link to the item. Its arguments are
+</p>
+
+<ul>
+<li> <p><code>path</code>: The path.
+</p>
+</li>
+<li> <p><code>type</code>: Either "view" for a read-only link, "edit" for a read-write link, or "embed" for a link that can be embedded in a web page. The last one is only available for personal OneDrive.
+</p>
+</li>
+<li> <p><code>expiry</code>: How long the link is valid for. The default is 7 days; you can set an alternative like "15 minutes", "24 hours", "2 weeks", "3 months", etc. To leave out the expiry date, set this to NULL.
+</p>
+</li>
+<li> <p><code>password</code>: An optional password to protect the link.
+</p>
+</li>
+<li> <p><code>scope</code>: Optionally the scope of the link, either "anonymous" or "organization". The latter allows only users in your AAD tenant to access the link, and is only available for OneDrive for Business or SharePoint.
+</p>
+</li>
+</ul>
+<p>This method returns a URL to access the item, for <code>type="view"</code> or "<code style="white-space: pre;">⁠type=edit"⁠</code>. For <code>type="embed"</code>, it returns a list with components <code>webUrl</code> containing the URL, and <code>webHtml</code> containing a HTML fragment to embed the link in an IFRAME. The default is a viewable link, expiring in 7 days.
+</p>
+
+
+<h3>Saving and loading data</h3>
+
+<p>The following methods are provided to simplify the task of loading and saving datasets and R objects.
+</p>
+
+<ul>
+<li> <p><code>load_dataframe</code> downloads a delimited file and returns its contents as a data frame. The delimiter can be specified with the <code>delim</code> argument; if omitted, this is "," if the file extension is .csv, ";" if the file extension is .csv2, and a tab otherwise. If the readr package is installed, the <code>readr::read_delim</code> function is used to parse the file, otherwise <code>utils::read.delim</code> is used. You can supply other arguments to the parsing function via the <code>...</code> argument.
+</p>
+</li>
+<li> <p><code>save_dataframe</code> is the inverse of <code>load_dataframe</code>: it uploads the given data frame to a folder item. Specify the delimiter with the <code>delim</code> argument. The <code>readr::write_delim</code> function is used to serialise the data if that package is installed, and <code>utils::write.table</code> otherwise.
+</p>
+</li>
+<li> <p><code>load_rds</code> downloads a .rds file and returns its contents as an R object. It is analogous to the base <code>readRDS</code> function but for OneDrive/SharePoint drive items.
+</p>
+</li>
+<li> <p><code>save_rds</code> uploads a given R object as a .rds file, analogously to <code>saveRDS</code>.
+</p>
+</li>
+<li> <p><code>load_rdata</code> downloads a .RData or .Rda file and loads its contents into the given environment. It is analogous to the base <code>load</code> function but for OneDrive/SharePoint drive items.
+</p>
+</li>
+<li> <p><code>save_rdata</code> uploads the given R objects as a .RData file, analogously to <code>save</code>.
+</p>
+</li>
+</ul>
+<h3>List methods</h3>
+
+<p>All <code style="white-space: pre;">⁠list_*⁠</code> methods have <code>filter</code> and <code>n</code> arguments to limit the number of results. The former should be an <a href="https://learn.microsoft.com/en-us/graph/query-parameters#filter-parameter">OData expression</a> as a string to filter the result set on. The latter should be a number setting the maximum number of (filtered) results to return. The default values are <code>filter=NULL</code> and <code>n=Inf</code>. If <code>n=NULL</code>, the <code>ms_graph_pager</code> iterator object is returned instead to allow manual iteration over the results.
+</p>
+<p>Support in the underlying Graph API for OData queries is patchy. Not all endpoints that return lists of objects support filtering, and if they do, they may not allow all of the defined operators. If your filtering expression results in an error, you can carry out the operation without filtering and then filter the results on the client side.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>ms_graph</code>, <code>ms_site</code>, <code>ms_drive</code>
+</p>
+<p><a href="https://learn.microsoft.com/en-us/graph/overview">Microsoft Graph overview</a>,
+<a href="https://learn.microsoft.com/en-us/graph/api/resources/onedrive?view=graph-rest-1.0">OneDrive API reference</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+
+# personal OneDrive
+mydrv &lt;- get_personal_onedrive()
+
+docs &lt;- mydrv$get_item("Documents")
+docs$list_files()
+docs$list_items()
+
+# this is the file 'Documents/myfile.docx'
+myfile &lt;- docs$get_item("myfile.docx")
+myfile$properties
+
+# rename a file
+myfile$update(name="newname.docx")
+
+# copy a file (destination folder must exist)
+myfile$copy("/Documents/folder2/myfile_copied.docx")
+
+# alternate way of copying: supply the destination folder
+destfolder &lt;- docs$get_item("folder2")
+myfile$copy("myfile_copied.docx", dest_folder_item=destfolder)
+
+# move a file (destination folder must exist)
+myfile$move("Documents/folder2/myfile_moved.docx")
+
+# open the file in the browser
+myfile$open()
+
+# download the file to the working directory
+myfile$download()
+
+# shareable links
+myfile$create_share_link()
+myfile$create_share_link(type="edit", expiry="24 hours")
+myfile$create_share_link(password="Use-strong-passwords!")
+
+# delete the file (will ask for confirmation first)
+myfile$delete()
+
+# saving and loading data
+myfolder &lt;- mydrv$get_item("myfolder")
+myfolder$save_dataframe(iris, "iris.csv")
+iris2 &lt;- myfolder$get_item("iris.csv")$load_dataframe()
+identical(iris, iris2)  # TRUE
+
+myfolder$save_rds(iris, "iris.rds")
+iris3 &lt;- myfolder$get_item("iris.rds")$load_rds()
+identical(iris, iris3)  # TRUE
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

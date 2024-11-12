@@ -1,0 +1,85 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>calc_balanced_precision</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate balanced precision given actual and baseline precision</h2>
+
+<h3>Description</h3>
+
+<p>Implements Equation 1 from Wu <em>et al.</em> 2021 <a href="https://doi.org/10.1016/j.ajhg.2021.08.012">doi:10.1016/j.ajhg.2021.08.012</a>.
+It is the same as Equation 7 if <code>AUPRC</code> (aka <code>prAUC</code>) is used in place of <code>precision</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">calc_balanced_precision(precision, prior)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>precision</code></td>
+<td>
+<p>actual precision of the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>baseline precision, aka frequency of positives.
+Can be calculated with calc_baseline_precision</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>the expected precision if the data were balanced
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kelly Sovacool <a href="mailto:sovacool@umich.edu">sovacool@umich.edu</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">prior &lt;- calc_baseline_precision(otu_mini_bin,
+  outcome_colname = "dx",
+  pos_outcome = "cancer"
+)
+calc_balanced_precision(otu_mini_bin_results_rf$performance$Precision, prior)
+
+otu_mini_bin_results_rf$performance %&gt;%
+  dplyr::mutate(
+    balanced_precision = calc_balanced_precision(Precision, prior),
+    aubprc = calc_balanced_precision(prAUC, prior)
+  ) %&gt;%
+  dplyr::select(AUC, Precision, balanced_precision, aubprc)
+
+# cumulative performance for a single model
+sensspec_1 &lt;- calc_model_sensspec(
+  otu_mini_bin_results_glmnet$trained_model,
+  otu_mini_bin_results_glmnet$test_data,
+  "dx"
+)
+head(sensspec_1)
+prior &lt;- calc_baseline_precision(otu_mini_bin,
+  outcome_colname = "dx",
+  pos_outcome = "cancer"
+)
+sensspec_1 %&gt;%
+  dplyr::mutate(balanced_precision = calc_balanced_precision(precision, prior)) %&gt;%
+  dplyr::rename(recall = sensitivity) %&gt;%
+  calc_mean_perf(group_var = recall, sum_var = balanced_precision) %&gt;%
+  plot_mean_prc(ycol = mean_balanced_precision)
+</code></pre>
+
+
+</div>

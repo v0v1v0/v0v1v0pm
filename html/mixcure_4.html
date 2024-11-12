@@ -1,0 +1,283 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mixcure</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Mixture cure models</h2>
+
+<h3>Description</h3>
+
+<p>Fit some parametric and semiparametric mixture cure models
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mixcure(
+  lformula,
+  iformula,
+  data,
+  lmodel,
+  imodel,
+  postuncure = NULL,
+  emmax = 100,
+  eps = 1e-04,
+  savedata = FALSE,
+  debug = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>lformula</code></td>
+<td>
+<p>a formula specifying the latency model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iformula</code></td>
+<td>
+<p>a formula specifying the incidence model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a data frame in which to interpret the variables named in the
+formulas in lmodel and imodel.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lmodel</code></td>
+<td>
+<p>a list of at least one component: fun,
+a text string specifying R function to fit the latency model. Other arguments to the
+function specified in fun can be added to the list. If lmodel is not supplied,
+the default is lmodel = list(fun = "coxph")
+and it fits the semiparametric PH latency model to the data. Other latency
+models currently implemented include
+</p>
+
+<ul>
+<li>
+<p> fun = "survfit" (for nonparametric mixture cure models),
+</p>
+</li>
+<li>
+<p> fun = "survreg"  (for parametric mixture cure models),
+</p>
+</li>
+<li>
+<p> fun = "flexsurvreg"  (for parametric mixture cure models),
+</p>
+</li>
+<li>
+<p> fun = "flexsurvspline" (for parametric mixture cure models),
+</p>
+</li>
+<li>
+<p> fun = "cox.aalen" (for semiparametric multiplicative-additive hazards
+models),
+</p>
+</li>
+<li>
+<p> fun = "prop.odds" (for semiparametric proportional odds models).</p>
+</li>
+</ul>
+<p>R functions for other regression models for
+survival data can be added as long as they meet certain criteria. See
+details on how a new regression model for survival data can be added.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>imodel</code></td>
+<td>
+<p>a list of at least one component: fun,
+a text string specifying the R function to fit the incidence model.
+Other arguments to the
+function specified in fun can be added to the list. If imodel is not supplied,
+the default is imodel = list(fun = "glm",
+family = binomial()) and it fits the logistic regression as the
+incidence model to the data. The other incidence model currently implemented is
+fun = "gam".
+R functions for other regression models as the incidence model can be added
+as long as they meet certain criteria. See details on how a new regression model
+for incidence model can be added.
+</p>
+<p>A covariate
+may be used in both lformula and iformula. A model with the intercept
+term only in iformula assumes that there are cured patients and that the cure
+rates are the same for all patients.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>postuncure</code></td>
+<td>
+<p>a vector of initial probabilities of being uncured for all
+subjects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>emmax</code></td>
+<td>
+<p>the maximum number of EM iterations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>tolerance for EM convergence. Iteration stops once the relative
+change in log likelihoods is less than eps.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>savedata</code></td>
+<td>
+<p>If TRUE, the data set will be stored in the final object. It
+is mainly used for bootstrap in <code>summary()</code> to get standard errors. Default is FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>debug</code></td>
+<td>
+<p>for debug purpose.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function fits mixture cure models, where the latency and incidence
+parts of the mixture cure models can be fit using existing R regression
+functions. We implemented the logistic regression and the
+generalized additive model for the incidence part and the semiparametric
+proportional hazards and additive hazards models and the parametric failure
+time models for the latency parts. To include a new regression model xxx()
+for the incidence part, you need to add the following functions: </p>
+
+<ul>
+<li>
+<p> incidence.xxx() </p>
+</li>
+<li>
+<p> coef.incidence.xxx() </p>
+</li>
+<li>
+<p> loglik.incidence.xxx()
+</p>
+</li>
+<li>
+<p> curepred.incidence.xxx() </p>
+</li>
+</ul>
+<p>To include a new regression model xxx() for the latency part, you need to
+add the following functions:
+</p>
+
+<ul>
+<li>
+<p> latency.xxx()
+</p>
+</li>
+<li>
+<p> coef.latency.xxx()
+</p>
+</li>
+<li>
+<p> loglik.latency.xxx()
+</p>
+</li>
+<li>
+<p> survpred.latency.xxx() </p>
+</li>
+</ul>
+<p>When mixcure program ends, it may produce warning messages such as "In eval(expr,
+envir, enclos) : non-integer #successes in a binomial glm!." The message is
+due to the fact that glm is picky when it comes to specifying binomial
+models. It warns if it detects that the number of trials or successes is
+non-integer, but it still fits the model properly. If you want to suppress
+the warning (and you're sure it's not a problem), use family=quasibinomial
+instead.
+</p>
+<p>This package requires the following R packages: survival, boot, survey and
+any packages that provide the latency and incidence models.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list consists of the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>ifit</code></td>
+<td>
+<p>the final fit from the model for cure probability.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lfit</code></td>
+<td>
+<p>the final fit from the model for failure time of uncured subjects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>survprob</code></td>
+<td>
+<p>the final estimate of the survival probability for each subject at its own observed time if uncured</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>postuncure</code></td>
+<td>
+<p>the final estimate of the posterior uncure probability for each subject based its observed values. The prior uncure probability can be obtained from ifit$uncureprob</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>em</code></td>
+<td>
+<p>a matrix containing the iterations of the EM algorithm and
+convergence errors (for debug purpose)</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Yingwei Peng
+</p>
+
+
+<h3>References</h3>
+
+<p>Peng, Y. and Yu, B. Cure Models: Methods, Applications, and Implementation.
+CRC/Chapman &amp; Hall, 2020
+</p>
+<p>Peng, Y. and Taylor, J. M. G. Cure models. In Klein, J.,
+van Houwelingen, H., Ibrahim, J. G., and Scheike, T. H., editors, Handbook
+of Survival Analysis, Handbooks of Modern Statistical Methods series,
+chapter 6, pages 113-134. Chapman &amp; Hall, Boca Raton, FL, USA, 2014
+</p>
+<p>Peng, Y. Fitting semiparametric cure models. Computational Statistics &amp; Data
+Analysis, 41: 481-490, 2003
+</p>
+
+
+<h3>See Also</h3>
+
+<p>summary.mixcure, predict.mixcure, plot.predict.mixcure
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data(leukaemia)
+z = mixcure(Surv(time, cens) ~ transplant, ~ transplant, data = leukaemia)
+
+</code></pre>
+
+
+</div>

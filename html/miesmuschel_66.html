@@ -1,0 +1,184 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mies_evaluate_offspring</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Evaluate Proposed Configurations Generated in a MIES Iteration</h2>
+
+<h3>Description</h3>
+
+<p>Calls <code style="white-space: pre;">⁠$eval_batch⁠</code> of a given <code>OptimInstance</code> on a set
+of configurations as part of a MIES operation. The <code>dob</code> extra-info in the archive
+is also set properly to indicate a progressed generation.
+</p>
+<p>This function can be used directly, but it is easier to use it within the <code>OptimizerMies</code>
+class if standard GA operation is desired.
+</p>
+<p>Multifidelity evaluation is supported as described in <code>vignette("mies-multifid")</code>. For this,
+an extra component named after <code>budget_id</code> is appended to each individual, chosen from
+the <code>fidelity</code> argument and depending on the value of <code>survivor_budget</code>. <code>budget_id</code> should
+have the same values as given to the other <code style="white-space: pre;">⁠mies_*⁠</code> functions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mies_evaluate_offspring(
+  inst,
+  offspring,
+  budget_id = NULL,
+  fidelity = NULL,
+  reevaluate_fidelity = NULL,
+  fidelity_monotonic = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>inst</code></td>
+<td>
+<p>(<code>OptimInstance</code>)<br>
+Optimization instance to evaluate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offspring</code></td>
+<td>
+<p>(<code>data.frame</code>)<br>
+Proposed configurations to be evaluated, must have columns named after the <code>inst</code>'s search space, minus <code>budget_id</code> if not <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>budget_id</code></td>
+<td>
+<p>(<code>character(1)</code> | <code>NULL</code>)<br>
+Budget component when doing multi-fidelity optimization. This component of the search space is added
+to <code>individuals</code> according to <code>fidelity</code>. Should be <code>NULL</code> when no multi-fidelity optimization is performed (default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fidelity</code></td>
+<td>
+<p>(<code>atomic(1)</code> | <code>NULL</code>)<br>
+Atomic scalar indicating the value to be assigned to the <code>budget_id</code> component of offspring.
+This value must be <code>NULL</code> if no multi-fidelity optimization is performed (the default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reevaluate_fidelity</code></td>
+<td>
+<p>(<code>atomic(1)</code>)<br>
+Fidelity with which to evaluate alive individuals from previous generations that have a budget value below (if <code>fidelity_monotonic</code> is <code>TRUE</code>) or
+different from the current <code>fidelity</code> value. Default <code>NULL</code>: Do not re-evaluate. Must be <code>NULL</code> when <code>budget_id</code> and <code>fidelity</code> are <code>NULL</code>.
+See also <code>mies_step_fidelity</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fidelity_monotonic</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+When <code>reevaluate_fidelity</code> is non-<code>NULL</code>, then this indicates whether individuals should only ever be re-evaluated when fidelity would be increased.
+Default <code>TRUE</code>. Ignored when <code>reevaluate_fidelity</code> is <code>NULL</code></p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>invisible <code>data.table</code>: the performance values returned when evaluating the <code>offspring</code> values
+through <code>eval_batch</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other mies building blocks: 
+<code>mies_generate_offspring()</code>,
+<code>mies_get_fitnesses()</code>,
+<code>mies_init_population()</code>,
+<code>mies_select_from_archive()</code>,
+<code>mies_step_fidelity()</code>,
+<code>mies_survival_comma()</code>,
+<code>mies_survival_plus()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library("bbotk")
+lgr::threshold("warn")
+
+# Define the objective to optimize
+objective &lt;- ObjectiveRFun$new(
+  fun = function(xs) {
+    z &lt;- exp(-xs$x^2 - xs$y^2) + 2 * exp(-(2 - xs$x)^2 - (2 - xs$y)^2)
+    list(Obj = z)
+  },
+  domain = ps(x = p_dbl(-2, 4), y = p_dbl(-2, 4)),
+  codomain = ps(Obj = p_dbl(tags = "maximize"))
+)
+
+# Get a new OptimInstance
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 100)
+)
+
+mies_init_population(inst = oi, mu = 3)
+# Initial state:
+oi$archive
+
+# 'offspring' is just a data.frame of values to evaluate.
+# In general it should be created using 'mies_generate_offspring()'.
+offspring = data.frame(x = 1:2, y = 2:1)
+
+mies_evaluate_offspring(oi, offspring = offspring)
+
+# This evaluated the given points and assigned them 'dob' 2.
+oi$archive
+
+# Note that at this point one would ordinarily call a 'mies_survival_*()'
+# function.
+
+###
+# Advanced demo, making use of additional components and doing multi-fidelity
+##
+
+# declare 'y' the budget parameter. It will not be in the 'offspring'
+# table any more.
+budget_id = "y"
+# but: offspring may contain any other value that is appended to 'oi'. These
+# are ignored by the objective.
+offspring = data.frame(x = 0:1, z = 3)
+
+mies_evaluate_offspring(oi, offspring = offspring, budget_id = budget_id,
+  fidelity = 1)
+
+# This now has the additional column 'z'. Values of y for the new evaluations
+# are 1.
+oi$archive
+
+offspring = data.frame(x = 2, z = 3)
+# Increasing the fidelity will not cause re-evaluation of existing individuals
+# when `reevaluate_fidelity` is not given.
+mies_evaluate_offspring(oi, offspring = offspring, budget_id = budget_id,
+  fidelity = 2)
+oi$archive
+
+offspring = data.frame(x = 3, z = 3)
+# Depending on the effect of fidelity, this may however have a biasing effect,
+# so it may be desirable to re-evaluate surviving individuals from previous
+# generations. The 'reevaluate_fidelity' may even be different from 'fidelity'
+mies_evaluate_offspring(oi, offspring = offspring, budget_id = budget_id,
+  fidelity = 3, reevaluate_fidelity = 2)
+
+# In this example, only individuals with 'y = 1' were re-evaluated, since
+# 'fidelity_monotonic' is TRUE.
+oi$archive
+
+</code></pre>
+
+
+</div>

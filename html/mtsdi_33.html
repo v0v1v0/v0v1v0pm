@@ -1,0 +1,255 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mnimput</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multivariate Normal Imputation
+</h2>
+
+<h3>Description</h3>
+
+<p>Perform the modified EM algorithm imputation on a normal multivariate dataset
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mnimput(formula, dataset, by = NULL, log = FALSE, log.offset = 1, 
+		eps = 1e-3, maxit = 1e2, ts = TRUE, method = "spline", 
+		sp.control = list(df = NULL, weights = NULL), ar.control = 
+		list(order = NULL, period = NULL), ga.control = list(formula, 
+		weights = NULL), f.eps = 1e-6, f.maxit = 1e3, ga.bf.eps = 1e-6, 
+		ga.bf.maxit = 1e3, verbose = FALSE, digits = getOption("digits"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>formula indicating the missing data frame, for instance, <code>~X1+X2+X3+...+Xp</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dataset</code></td>
+<td>
+<p>data with missing values to be imputated</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>factor for variance windows. Default is <code>NULL</code> for a single variance matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>log</code></td>
+<td>
+<p>logical. If <code>TRUE</code> data will be transformed into <code>log</code> scale. Default is <code>FALSE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>log.offset</code></td>
+<td>
+<p>If <code>log</code> is <code>TRUE</code>, log values will be shifted by this offset. Default is 1</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eps</code></td>
+<td>
+<p>stop criterion</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit</code></td>
+<td>
+<p>maximum number of iterations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ts</code></td>
+<td>
+<p>logical. <code>TRUE</code> if is time series</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>method for univariate time series filtering. It may be <code>smooth</code>, <code>gam</code> or <code>arima</code>. See Details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sp.control</code></td>
+<td>
+<p>list for Spline smooth control. See Details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ar.control</code></td>
+<td>
+<p>list for ARIMA fitting control. See Details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ga.control</code></td>
+<td>
+<p>list for GAM fitting control. See Details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>f.eps</code></td>
+<td>
+<p>convergence criterion for the ARIMA filter. See <code>arima</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>f.maxit</code></td>
+<td>
+<p>maximum number of iterations for the ARIMA filter. See <code>arima</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ga.bf.eps</code></td>
+<td>
+<p>covergence criterion for the backfitting algorithm of GAM models. See <code>gam</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ga.bf.maxit</code></td>
+<td>
+<p>maximum number of iterations for the backfitting algorithm of GAM models. See <code>gam</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>if <code>TRUE</code> convergence information on each iteration is printed. Default is <code>FALSE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>an integer indicating the decimal places. If not supplied, it is taken from <code>options</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This is a modified version of the EM algorithm for imputation of missing values. It is also applicable to time series data. When it is explicited the time series attribute through the argument <code>ts</code>, missing values are estimated accounting for both correlation between time series and time structure of the series itself.  Several filters can be used for prediction of the mean vector in the E-step.
+</p>
+<p>One can select the method for the univariate time series filtering by the argument <code>method</code>. The default method is <code>"spline"</code>. In this case a smooth spline is fitted to each of the time series at each iteration. Some parameters can be passed to <code>smooth.spline</code> through <code>sm.control</code>. <code>df</code> is a vector as long as the number of columns in <code>dataset</code> holding fixed degrees of freedom of the splines. If <code>NULL</code>, the degrees of freedom of each spline are chosen by cross-validation. If <code>df</code> has length 1, this values is recycled for all the covariates. <code>weights</code> must be a matrix of the same size of <code>dataset</code> with the weights for <code>smooth.spline</code>. If <code>NULL</code>, all the observations will have weights equal to <code class="reqn">1</code>. 
+</p>
+<p>Other possibity for time series filtering is to fitting an ARIMA model for each of the time series by setting <code>method</code> to <code>"arima"</code>. The ARIMA models must be identified before using this function, nonetheless. <code>arima</code> function can be partially controlled through <code>ar.control</code>. Each column of <code>order</code> must hold the corresponding <code class="reqn">(p,d,q)</code> parameters for each univariate time series if <code>period</code> is <code>NULL</code>. If <code>period</code> is not <code>NULL</code>, <code>order</code> must also hold the multiplicative seasonality parameters, so each column of <code>order</code> takes the form <code class="reqn">(p,d,q,P,D,Q)</code>. <code>period</code> is the multiplicative seasonality period. <code>f.eps</code> and <code>f.maxit</code> control de convergence of the ARIMA fitting algorithm. Convergence problems due non stationarity may arise when using this option.
+</p>
+<p>Last but not least, a very interesting approach to modelling temporal patterns to use a full fledged regression model. It is possible to use generalised aditive (or linear) models with exogenous variates to proper filtering of time patterns. One must set method to <code>gam</code> and supply a vector of formulas in <code>ga.control</code>. One must supply one formula for each covariate. Using covariates that are part of the formula of the imputation model may yield some colinearity among the variates. See <code>gam</code> and <code>glm</code> for details. In order to use regression models for the level, set <code>method</code> to <code>"gam"</code>
+</p>
+<p>Simulations have shown that the algorithm is stable and yields good results on imputation of normal data.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The function returns an object of class <code>mtsdi</code> containing
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>function call</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dataset</code></td>
+<td>
+<p>imputed dataset</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>muhat</code></td>
+<td>
+<p>estimated mean vector</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigmahat</code></td>
+<td>
+<p>estimated covariance matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>missings</code></td>
+<td>
+<p>vector holding the number of missing values on each row</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iterations</code></td>
+<td>
+<p>number of iterations until convergence or reach <code>maxit</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convergence</code></td>
+<td>
+<p>convergence value. See Details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>converged</code></td>
+<td>
+<p>a logical indicating if the algorithm converged</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>time</code></td>
+<td>
+<p>elapsed time of the process</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Washington Junger <a href="mailto:wjunger@ims.uerj.br">wjunger@ims.uerj.br</a> and Antonio Ponce de Leon <a href="mailto:ponce@ims.uerj.br">ponce@ims.uerj.br</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Junger, W.L. and Ponce de Leon, A. (2015) Imputation of Missing Data in Time Series for Air Pollutants. Atmospheric Environment, 102, 96-104.
+</p>
+<p>Johnson, R., Wichern, D. (1998) <em>Applied Multivariate Statistical Analysis</em>. Prentice Hall.
+</p>
+<p>Dempster, A., Laird, N., Rubin, D. (1977) Maximum Likelihood from Incomplete Data via the Algorithm EM. <em>Journal of the Royal Statistical Society</em> 39(B)), 1–38.
+</p>
+<p>McLachlan, G. J., Krishnan, T. (1997) <em>The EM algorithm and extensions</em>. John Wiley and Sons.
+</p>
+<p>Box, G., Jenkins, G., Reinsel, G. (1994) <em>Time Series Analysis: Forecasting and Control</em>. 3 ed. Prentice Hall.
+</p>
+<p>Hastie, T. J.; Tibshirani, R. J. (1990) <em>Generalized Additive Models</em>. Chapman and Hall.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mnimput</code>, <code>predict.mtsdi</code>, <code>edaprep</code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(miss)
+f &lt;- ~c31+c32+c33+c34+c35
+## one-window covariance
+i &lt;- mnimput(f,miss,eps=1e-3,ts=TRUE, method="spline",sp.control=list(df=c(7,7,7,7,7)))
+summary(i)
+
+## two-window covariances
+b&lt;-c(rep("year1",12),rep("year2",12))
+ii &lt;- mnimput(f,miss,by=b,eps=1e-3,ts=TRUE, method="spline",sp.control=list(df=c(7,7,7,7,7)))
+summary(ii)
+</code></pre>
+
+
+</div>

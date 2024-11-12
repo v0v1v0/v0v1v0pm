@@ -1,0 +1,183 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>matsindf_apply</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Apply a function to a <code>matsindf</code> data frame (and more)</h2>
+
+<h3>Description</h3>
+
+<p>Applies <code>FUN</code> to <code>.dat</code> or
+performs the calculation specified by <code>FUN</code>
+on numbers or matrices.
+<code>FUN</code> must return a named list.
+The values of the list returned <code>FUN</code> become
+entries in columns in a returned data frame
+or entries in the sub-lists of a returned list.
+The names of the items in the list returned by <code>FUN</code> become
+names of the columns in a returned data frame or
+names of the list items in the returned list.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">matsindf_apply(.dat = NULL, FUN, ..., .warn_missing_FUN_args = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>.dat</code></td>
+<td>
+<p>A list of named items or a data frame.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>FUN</code></td>
+<td>
+<p>The function to be applied to <code>.dat</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Named arguments to be passed by name to <code>FUN</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.warn_missing_FUN_args</code></td>
+<td>
+<p>A boolean that tells
+whether to warn of missing arguments to <code>FUN</code>.
+Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>If <code>is.null(.dat)</code> and <code>...</code> are all named numbers or matrices
+of the form <code>argname = m</code>,
+<code>m</code>s are passed to <code>FUN</code> by <code>argname</code>s.
+The return value is a named list provided by <code>FUN</code>.
+The arguments in <code>...</code> are not included in the output.
+</p>
+<p>If <code>is.null(.dat)</code> and <code>...</code> are all lists of numbers or matrices
+of the form <code>argname = l</code>,
+<code>FUN</code> is <code>Map</code>ped across the various <code>l</code>s
+to obtain a list of named lists returned from <code>FUN</code>.
+The return value is a list
+whose top-level names are the names of the returned items from <code>FUN</code>
+<code>.dat</code> is not included in the return value.
+</p>
+<p>If <code>!is.null(.dat)</code> and <code>...</code> are all named, <code>length == 1</code> character strings
+of the form <code>argname = string</code>,
+<code>argname</code>s are expected to be names of arguments to <code>FUN</code>, and
+<code>string</code>s are expected to be column names in <code>.dat</code>.
+The return value is <code>.dat</code> with additional columns (at right)
+whose names are the names of list items returned from <code>FUN</code>.
+When <code>.dat</code> contains columns whose names are same as columns added at the right,
+a warning is emitted.
+</p>
+<p><code>.dat</code> can be a list of named items in which case a list will be returned
+instead of a data frame.
+</p>
+<p>If items in <code>.dat</code> have same names as arguments to <code>FUN</code>,
+it is not necessary to specify any arguments in <code>...</code>.
+<code>matsindf_apply</code> assumes that the appropriately-named items in <code>.dat</code> are
+intended to be arguments to <code>FUN</code>.
+When an item name appears in both <code>...</code> and <code>.dat</code>,
+<code>...</code> takes precedence.
+</p>
+<p>if <code>.dat</code> is a data frame,
+the items in its columns (possibly matrices)
+are <code>unname()</code>d before calling <code>FUN</code>.
+</p>
+<p><code>NULL</code> arguments in <code>...</code> are ignored for the purposes of deciding whether
+all arguments are numbers, matrices, lists of numbers of matrices, or named character strings.
+However, all <code>NULL</code> arguments are passed to <code>FUN</code>,
+so <code>FUN</code> should be able to deal with <code>NULL</code> arguments appropriately.
+</p>
+<p>If <code>.dat</code> is present, <code>...</code> contains <code>length == 1</code> strings, and one of the <code>...</code> strings is not the name
+of a column in <code>.dat</code>,
+<code>FUN</code> is called WITHOUT the argument whose column is missing.
+I.e., that argument is treated as missing.
+If <code>FUN</code> works despite the missing argument, execution proceeds.
+If <code>FUN</code> cannot handle the missing argument, an error will occur in <code>FUN</code>.
+</p>
+<p>It is suggested that <code>FUN</code> is able to handle empty data gracefully,
+returning an empty result with the same names as when
+non-empty data are fed to <code>FUN</code>.
+Attempts are made to handle zero-row data (in <code>.dat</code> or <code>...</code>)
+gracefully.
+First, <code>FUN</code> is called with the empty (but named) data.
+If <code>FUN</code> can handle empty data without error,
+the result is returned.
+If <code>FUN</code> errors when fed empty data, <code>FUN</code> is called with an empty
+argument list in the hopes that <code>FUN</code> has reasonable default values.
+If that fails,
+<code>.dat</code> is returned unmodified (if not <code>NULL</code>)
+or the data in <code>...</code> is returned.
+</p>
+<p>If <code>.dat</code> is <code>NULL</code> and all named arguments in <code>...</code>
+are similarly <code>NULL</code>,
+the result will be a list with each named argument
+being an empty list.
+See examples.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A named list or a data frame. (See details.)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(matsbyname)
+example_fun &lt;- function(a, b){
+  return(list(c = sum_byname(a, b),
+              d = difference_byname(a, b)))
+}
+# Single values for arguments
+matsindf_apply(FUN = example_fun, a = 2, b = 2)
+# Matrices for arguments
+a &lt;- 2 * matrix(c(1,2,3,4), nrow = 2, ncol = 2, byrow = TRUE,
+              dimnames = list(c("r1", "r2"), c("c1", "c2")))
+b &lt;- 0.5 * a
+matsindf_apply(FUN = example_fun, a = a, b = b)
+# Single values in lists are treated like columns of a data frame
+matsindf_apply(FUN = example_fun, a = list(2, 2), b = list(1, 2))
+# Matrices in lists are treated like columns of a data frame
+matsindf_apply(FUN = example_fun, a = list(a, a), b = list(b, b))
+# Single numbers in a data frame
+DF &lt;- data.frame(a = c(4, 4, 5), b = c(4, 4, 4))
+matsindf_apply(DF, FUN = example_fun, a = "a", b = "b")
+# By default, arguments to FUN come from DF
+matsindf_apply(DF, FUN = example_fun)
+# Now put some matrices in a data frame.
+DF2 &lt;- data.frame(a = I(list(a, a)), b = I(list(b,b)))
+matsindf_apply(DF2, FUN = example_fun, a = "a", b = "b")
+# All arguments to FUN are supplied by named items in .dat
+matsindf_apply(list(a = 1, b = 2), FUN = example_fun)
+# All arguments are supplied by named arguments in ..., but mix them up.
+# Note that the named arguments override the items in .dat
+matsindf_apply(list(a = 1, b = 2, z = 10), FUN = example_fun, a = "z", b = "b")
+# A warning is issued when an output item has same name as an input item.
+matsindf_apply(list(a = 1, b = 2, c = 10), FUN = example_fun, a = "c", b = "b")
+# When a zero-row data frame supplied to .dat,
+# .dat is returned unmodified, unless FUN can handle empty data.
+DF3 &lt;- DF2[0, ]
+DF3
+matsindf_apply(DF3, FUN = example_fun, a = "a", b = "b")
+# A list of named but empty lists is returned if
+# NULL is passed to all named arguments.
+matsindf_apply(FUN = example_fun, a = NULL, b = NULL)
+</code></pre>
+
+
+</div>

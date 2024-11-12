@@ -1,0 +1,240 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvMISE_b</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>A multivariate mixed-effects selection model with correlated outcome-specific random intercepts</h2>
+
+<h3>Description</h3>
+
+<p>This function fits a multivariate mixed-effects selection model with correlated outcome-specific
+random intercepts allowing potential ignorable or non-ignorable missing values in the outcome.
+Here an outcome refers to a response variable, for example, a genomic feature. The proposed model and function jointly analyze multiple outcomes/features.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mvMISE_b(Y, X, id, maxIter = 100, tol = 0.001, verbose = FALSE, cov_miss = NULL, 
+    miss_y = TRUE, sigma_diff = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+<p>an outcome matrix. Each row is a sample, and each column is an outcome variable, with potential missing values (NAs).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>a covariate matrix. Each row is a sample, and each column is a covariate. The covariates can be common among all of the outcomes (e.g., age, gender) or outcome-specific.
+If a covariate is specific for the k-th outcome, one may set all the values corresponding to the other outcomes to be zero. 
+If X is common across outcomes, the row number of X equals 
+the row number of Y. Otherwise, if X is outcome-specific, the row number of X equals the number of elements in Y, i.e., outcome-specific X is stacked across outcomes within
+each cluster. See the Examples for demonstration.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>a vector of cluster/batch index, matching with the rows of Y, and X if it is not outcome specific.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxIter</code></td>
+<td>
+<p>the maximum number of iterations for the EM algorithm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>the tolerance level for the relative change in the observed-data log-likelihood function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>logical. If TRUE, the iteration history of each step of the EM algorithm will be printed. The default is FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cov_miss</code></td>
+<td>
+<p>the covariate that can be used in the missing-data model. If it is NULL, 
+the missingness is assumed to be independent of the covariates. 
+Check the Details for the missing-data model.
+If it is specified and the covariate is not outcome specific, its length equals the length of id. If it is outcome specific, the outcome-specific covariate is stacked across outcomes within
+each cluster.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>miss_y</code></td>
+<td>
+<p>logical. If TRUE, the missingness depends on the outcome Y (see the Details). The default is TRUE.
+This outcome-dependent missing data pattern was motivated by and was observed in the mass-spectrometry-based quantitative proteomics data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma_diff</code></td>
+<td>
+<p>logical. If TRUE, the sample error variance of the first sample in each cluster/batch is different from that for the rest of samples within the same cluster/batch.
+This option is designed and used when analyzing batch-processed proteomics data with the first sample in each cluster/batch being the common reference sample. The default is FALSE.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The multivariate mixed-effects selection model consists of two components, the outcome model and the missing-data model. Here the outcome model 
+is a multivariate mixed-effects model, with correlations among multivariate outcomes modeled via correlated outcome-specific random intercepts with 
+a factor-analytic structure
+</p>
+<p style="text-align: center;"><code class="reqn">\mathbf{y}_{i} =  \mathbf{X}_{i}\boldsymbol{\beta} + \left(\mathbf{I}_{K}\otimes\mathbf{1}_{n_{i}}\right) \boldsymbol{\tau}b_{i}+\mathbf{e}_{i},</code>
+</p>
+
+<p>where <code class="reqn">i</code> denotes a cluster/batch, <code class="reqn">n_{i}</code> is the number of samples/observations within each cluster,
+<code class="reqn">\boldsymbol{\tau}</code> is a <code class="reqn">K\times 1</code> vector for the outcome-specific variance components corresponding to 
+the random effect <code class="reqn">b_i</code> (a standard normal random variable), and <code class="reqn">K</code> is the number of outcomes. 
+By default, a matrix with each column as an indicator for each outcome is generated and is used as the random-effect design matrix (<code class="reqn">\mathbf{I}_{K}\otimes\mathbf{1}_{n_{i}}</code>), 
+and the model will estimate the outcome-specific random intercepts.
+The factor-analytic structure assumes the outcome-specific random intercepts are identically correlated and this model 
+is often used to capture the highly structured experimental or biological correlations among naturally related outcomes.
+For example, the correlation among multiple phosphopeptides (i.e. phosphorylated segments) of a same protein.
+The model assumes that the random effects are derived from a latent variable <code class="reqn">b_i</code> with a loading vector <code class="reqn">\boldsymbol{\tau}</code>.
+With this model specification, only <code class="reqn">K</code> parameters instead of <code class="reqn">K(K+1)/2</code> are needed 
+in the estimation for the covariance matrix of random-effects, and as such that greatly facilitates the computation.
+</p>
+<p>The missing-data model can be written as
+</p>
+<p style="text-align: center;"><code class="reqn">\textrm{Pr}\left(r_{ik}=1|\mathbf{y}_{ik}\right)= \mathrm{exp}\left(\phi_{0} + \phi_{1}/n_{i}\cdot \mathbf{1}^{'}\mathbf{y}_{ik}  + 
+\phi_{2}/n_{i}\cdot \mathbf{1}^{'}\mathbf{c}_{i} \right),</code>
+</p>
+
+<p>where <code class="reqn">r_{ik}</code> is the missing indicator for the k-th outcome in the i-th cluster. If <code class="reqn">r_{ik}=1</code>, the values of the k-th outcome in the i-th cluster  
+<code class="reqn">\mathbf{y}_{ik}</code> are missing altogether.
+The estimation is implemented via an EM algorithm. Parameters in the missing-data models can be specified via the arguments miss_y and cov_miss. If miss_y 
+= TURE, the missingness depends on the outcome values. 
+If cov_miss is specified, the missingness can (additionally) depend on the specified covariate (cov_miss).
+</p>
+<p>The model also works for fully observed data if miss_y = FALSE and cov_miss = NULL. It would also work for a univariate outcome with potential missing values, if the outcome Y is a matrix
+with one column.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>beta</code></td>
+<td>
+<p>the estimated fixed-effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var</code></td>
+<td>
+<p>the variance-covariance matrix of the estimated fixed effects. With the fixed effects and their covariance matrix estimates, 
+one can obtain the Wald-statistics for testing fixed-effects beta/sqrt(diag(var)).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pval</code></td>
+<td>
+<p>the parametric p-values for testing non-zero fixed-effects. It is obtained as the two-sided p-value based on the Wald statistics of beta/sqrt(diag(var)).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma2</code></td>
+<td>
+<p>the estimated sample error variance(s). If sigma_diff is TRUE, it returns a vector of two elements,
+the variances for the first sample and for the rest of samples within each cluster.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tau</code></td>
+<td>
+<p>the estimated variance components for the outcome-specific factor-analytic random-effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>phi</code></td>
+<td>
+<p>the estimated parameters for the missing-data mechanism. Check the Details for the missing-data model.
+A zero estimate implies that the parameter is ignored via the specification of miss_y and/or cov_miss.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loglikelihood</code></td>
+<td>
+<p>the observed-data log-likelihood values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>the number of iterations for the EM algorithm when reaching the convergence.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Jiebiao Wang, Pei Wang, Donald Hedeker, and Lin S. Chen. Using multivariate mixed-effects selection models for analyzing batch-processed proteomics data with non-ignorable missingness. Biostatistics. doi:10.1093/biostatistics/kxy022
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(sim_dat)
+
+# Covariates X common across outcomes with common coefficients
+
+fit0 = mvMISE_b(Y = sim_dat$Y, X = sim_dat$X, id = sim_dat$id)
+
+
+
+# In the example below, we showed how to estimate outcome-specific
+# coefficients for a common covariate. The second column of
+# sim_dat$X matrix is a common covariate. But it has different
+# effects/coefficients on different outcomes.
+
+nY = ncol(sim_dat$Y)
+# stack X across outcomes
+X_mat = sim_dat$X[rep(1:nrow(sim_dat$X), nY), ]
+# Y_ind is the indicator matrix corresponding to different outcomes
+Y_ind = kronecker(diag(nY), rep(1, nrow(sim_dat$Y)))
+# generate outcome-specific covariates
+cidx = 2  # the index for the covariate with outcome-specific coefficient
+X_mat = cbind(1, X_mat[, cidx] * Y_ind)
+
+# X_mat is a matrix of 460 (92*5) by 6, the first column is
+# intercept and the next 5 columns are covariate for each outcome
+
+fit1 = mvMISE_b(Y = sim_dat$Y, X = X_mat, id = sim_dat$id)
+
+
+# A covariate only specific to the first outcome
+
+X_mat1 = X_mat[, 1:2]
+
+fit2 = mvMISE_b(Y = sim_dat$Y, X = X_mat1, id = sim_dat$id)
+
+
+## An example that allows missingness depending on both a covariate
+## and the outcome
+
+fit3 = mvMISE_e(Y = sim_dat$Y, X = sim_dat$X, id = sim_dat$id, 
+    cov_miss = sim_dat$X[, 2])
+
+
+</code></pre>
+
+
+</div>

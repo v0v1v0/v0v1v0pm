@@ -1,0 +1,159 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bin_data</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create bins in variable time series</h2>
+
+<h3>Description</h3>
+
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt="[Stable]"></a>
+</p>
+<p>In time series with variable measurements, an often recurring task is calculating the total time
+spent (i.e. the duration) in fixed bins, for example per hour or day. However, this may be
+difficult when two subsequent measurements are in different bins or span over multiple bins.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bin_data(
+  data,
+  start_time,
+  end_time,
+  by = c("sec", "min", "hour", "day"),
+  fixed = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A data frame or tibble containing the time series.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start_time</code></td>
+<td>
+<p>The column name of the start time of the interval, a POSIXt.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>end_time</code></td>
+<td>
+<p>The column name of the end time of the interval, a POSIXt.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>A binning specification.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixed</code></td>
+<td>
+<p>Whether to create fixed bins. If <code>TRUE</code>, bins will be rounded to, for example,
+whole hours or days (depending on <code>by</code>). If <code>FALSE</code>, bins will be created based on the
+first timestamp.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A tibble containing the group columns (if any), date, hour (if <code>by = "hour"</code>), and
+the duration in seconds.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>link_gaps()</code> for linking gaps to data.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(dplyr)
+
+data &lt;- tibble(
+  participant_id = 1,
+  datetime = c(
+    "2022-06-21 15:00:00", "2022-06-21 15:55:00",
+    "2022-06-21 17:05:00", "2022-06-21 17:10:00"
+  ),
+  confidence = 100,
+  type = "WALKING"
+)
+
+# get bins per hour, even if the interval is longer than one hour
+data |&gt;
+  mutate(datetime = as.POSIXct(datetime)) |&gt;
+  mutate(lead = lead(datetime)) |&gt;
+  bin_data(
+    start_time = datetime,
+    end_time = lead,
+    by = "hour"
+  )
+
+# Alternatively, you can give an integer value to by to create custom-sized
+# bins, but only if fixed = FALSE. Not that these bins are not rounded to,
+# as in this example 30 minutes, but rather depends on the earliest time
+# in the group.
+data |&gt;
+  mutate(datetime = as.POSIXct(datetime)) |&gt;
+  mutate(lead = lead(datetime)) |&gt;
+  bin_data(
+    start_time = datetime,
+    end_time = lead,
+    by = 1800L,
+    fixed = FALSE
+  )
+
+# More complicated data for showcasing grouping:
+data &lt;- tibble(
+  participant_id = 1,
+  datetime = c(
+    "2022-06-21 15:00:00", "2022-06-21 15:55:00",
+    "2022-06-21 17:05:00", "2022-06-21 17:10:00"
+  ),
+  confidence = 100,
+  type = c("STILL", "WALKING", "STILL", "WALKING")
+)
+
+# binned_intervals also takes into account the prior grouping structure
+out &lt;- data |&gt;
+  mutate(datetime = as.POSIXct(datetime)) |&gt;
+  group_by(participant_id) |&gt;
+  mutate(lead = lead(datetime)) |&gt;
+  group_by(participant_id, type) |&gt;
+  bin_data(
+    start_time = datetime,
+    end_time = lead,
+    by = "hour"
+  )
+print(out)
+
+# To get the duration for each bin (note to change the variable names in sum):
+purrr::map_dbl(
+  out$bin_data,
+  ~ sum(as.double(.x$lead) - as.double(.x$datetime),
+    na.rm = TRUE
+  )
+)
+
+# Or:
+out |&gt;
+  tidyr::unnest(bin_data, keep_empty = TRUE) |&gt;
+  mutate(duration = .data$lead - .data$datetime) |&gt;
+  group_by(bin, .add = TRUE) |&gt;
+  summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
+</code></pre>
+
+
+</div>

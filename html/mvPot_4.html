@@ -1,0 +1,181 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>censoredLikelihoodXS</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Censored log-likelihood function of the extremal Student model</h2>
+
+<h3>Description</h3>
+
+<p>Compute the peaks-over-threshold censored negative log-likelihood function for the extremal Student model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">censoredLikelihoodXS(
+  obs,
+  loc,
+  corrFun,
+  nu,
+  u,
+  p = 499L,
+  vec = NULL,
+  nCores = 1L,
+  cl = NULL,
+  likelihood = "mgp",
+  ntot = NULL,
+  std = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obs</code></td>
+<td>
+<p>List of vectors for which at least one component exceeds a high threshold.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loc</code></td>
+<td>
+<p>Matrix of coordinates as given by <code>expand.grid()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>corrFun</code></td>
+<td>
+<p>correlation function taking a vector of coordinates as input.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nu</code></td>
+<td>
+<p>degrees of freedom of the Student process</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>u</code></td>
+<td>
+<p>Vector of thresholds under which to censor components.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>Number of samples used for quasi-Monte Carlo estimation. Must be a prime number.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vec</code></td>
+<td>
+<p>Generating vector for the quasi-Monte Carlo procedure. For a given <code>p</code> and dimensionality,
+can be computed using <code>genVecQMC</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nCores</code></td>
+<td>
+<p>Number of cores used for the computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+<p>Cluster instance as created by <code>makeCluster</code> of the <code>parallel</code> package.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>likelihood</code></td>
+<td>
+<p>vector of string specifying the contribution. Either <code>"mgp"</code> for multivariate generalized Pareto, 
+<code>"poisson"</code> for a Poisson contribution for the observations falling below or <code>"binom"</code> for a binomial contribution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ntot</code></td>
+<td>
+<p>integer number of observations below and above the threshold, to be used with Poisson or binomial likelihood</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>std</code></td>
+<td>
+<p>logical; if <code>std = TRUE</code>, consider <code>obs/u</code> for scalar u and exceedances over 1 rather than <code>obs</code> <code class="reqn">&gt;</code> <code>u</code> for potentially vector <code>u</code>. This affects the value of the log-likelihood function. Default to <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments passed to Cpp routine.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function computes the censored log-likelihood function based on the representation
+developed by Ribatet (2013); see also Thibaud and Opitz (2015). Margins must have been
+standardized, for instance to unit Frechet.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Negative censored log-likelihood function for the set of observations <code>obs</code> and correlation function <code>corrFun</code>, with <code>attributes</code>  <code>exponentMeasure</code> for all of the <code>likelihood</code> type selected, in the order <code>"mgp"</code>, <code>"poisson"</code>, <code>"binom"</code>..
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Leo Belzile
+</p>
+
+
+<h3>References</h3>
+
+<p>Thibaud, E. and T. Opitz (2015). Efficient inference and simulation for elliptical Pareto processes. Biometrika, 102(4), 855-870.
+</p>
+<p>Ribatet, M. (2013). Spatial extremes: max-stable processes at work. JSFS, 154(2), 156-177.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#Define correlation function
+corrFun &lt;- function(h, alpha = 1, lambda = 1){
+   exp(-norm(h, type = "2")^alpha/lambda)
+}
+
+#Define locations
+loc &lt;- expand.grid(1:4, 1:4)
+
+#Compute generating vector
+p &lt;- 499L
+latticeRule &lt;- genVecQMC(p, (nrow(loc) - 1))
+primeP &lt;- latticeRule$primeP
+vec &lt;- latticeRule$genVec
+
+#Simulate data
+Sigma &lt;- exp(-as.matrix(dist(loc))^0.8)
+obs &lt;- rExtremalStudentParetoProcess(n = 1000, nu = 5, Sigma = Sigma)
+obs &lt;- split(obs, row(obs))
+
+#Evaluate risk functional
+maxima &lt;- sapply(obs, max)
+thresh &lt;- quantile(maxima, 0.9)
+
+#Select exceedances
+exceedances &lt;- obs[maxima &gt; thresh]
+
+#Compute log-likelihood function
+eval &lt;- censoredLikelihoodXS(exceedances, loc, corrFun, nu = 5, u = thresh, primeP, vec)
+
+</code></pre>
+
+
+</div>

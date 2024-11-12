@@ -1,0 +1,355 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_optimizers_mbo</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Model Based Optimization</h2>
+
+<h3>Description</h3>
+
+<p><code>OptimizerMbo</code> class that implements Model Based Optimization (MBO).
+The implementation follows a modular layout relying on a loop_function determining the MBO flavor to be used, e.g.,
+bayesopt_ego for sequential single-objective Bayesian Optimization, a Surrogate, an AcqFunction, e.g., mlr_acqfunctions_ei for
+Expected Improvement and an AcqOptimizer.
+</p>
+<p>MBO algorithms are iterative optimization algorithms that make use of a continuously updated surrogate model built for the objective function.
+By optimizing a comparably cheap to evaluate acquisition function defined on the surrogate prediction, the next candidate is chosen for evaluation.
+</p>
+<p>Detailed descriptions of different MBO flavors are provided in the documentation of the respective loop_function.
+</p>
+<p>Termination is handled via a bbotk::Terminator part of the bbotk::OptimInstance to be optimized.
+</p>
+<p>Note that in general the Surrogate is updated one final time on all available data after the optimization process has terminated.
+However, in certain scenarios this is not always possible or meaningful, e.g., when using <code>bayesopt_parego()</code> for multi-objective optimization
+which uses a surrogate that relies on a scalarization of the objectives.
+It is therefore recommended to manually inspect the Surrogate after optimization if it is to be used, e.g., for visualization purposes to make
+sure that it has been properly updated on all available data.
+If this final update of the Surrogate could not be performed successfully, a warning will be logged.
+</p>
+
+
+<h3>Archive</h3>
+
+<p>The bbotk::Archive holds the following additional columns that are specific to MBO algorithms:
+</p>
+
+<ul>
+<li> <p><code style="white-space: pre;">⁠[acq_function$id]⁠</code> (<code>numeric(1)</code>)<br>
+The value of the acquisition function.
+</p>
+</li>
+<li> <p><code>.already_evaluated</code> (<code style="white-space: pre;">⁠logical(1))⁠</code><br>
+Whether this point was already evaluated. Depends on the <code>skip_already_evaluated</code> parameter of the AcqOptimizer.
+</p>
+</li>
+</ul>
+<h3>Super classes</h3>
+
+<p><code>bbotk::Optimizer</code> -&gt; <code>bbotk::OptimizerBatch</code> -&gt; <code>OptimizerMbo</code>
+</p>
+
+
+<h3>Active bindings</h3>
+
+<div class="r6-active-bindings">
+
+<dl>
+<dt><code>loop_function</code></dt>
+<dd>
+<p>(loop_function | <code>NULL</code>)<br>
+Loop function determining the MBO flavor.</p>
+</dd>
+<dt><code>surrogate</code></dt>
+<dd>
+<p>(Surrogate | <code>NULL</code>)<br>
+The surrogate.</p>
+</dd>
+<dt><code>acq_function</code></dt>
+<dd>
+<p>(AcqFunction | <code>NULL</code>)<br>
+The acquisition function.</p>
+</dd>
+<dt><code>acq_optimizer</code></dt>
+<dd>
+<p>(AcqOptimizer | <code>NULL</code>)<br>
+The acquisition function optimizer.</p>
+</dd>
+<dt><code>args</code></dt>
+<dd>
+<p>(named <code>list()</code>)<br>
+Further arguments passed to the <code>loop_function</code>.
+For example, <code>random_interleave_iter</code>.</p>
+</dd>
+<dt><code>result_assigner</code></dt>
+<dd>
+<p>(ResultAssigner | <code>NULL</code>)<br>
+The result assigner.</p>
+</dd>
+<dt><code>param_classes</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Supported parameter classes that the optimizer can optimize.
+Determined based on the <code>surrogate</code> and the <code>acq_optimizer</code>.
+This corresponds to the values given by a paradox::ParamSet's
+<code style="white-space: pre;">⁠$class⁠</code> field.</p>
+</dd>
+<dt><code>properties</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Set of properties of the optimizer.
+Must be a subset of <code>bbotk_reflections$optimizer_properties</code>.
+MBO in principle is very flexible and by default we assume that the optimizer has all properties.
+When fully initialized, properties are determined based on the <code>loop_function</code> and <code>surrogate</code>.</p>
+</dd>
+<dt><code>packages</code></dt>
+<dd>
+<p>(<code>character()</code>)<br>
+Set of required packages.
+A warning is signaled prior to optimization if at least one of the packages is not installed, but loaded (not attached) later on-demand via <code>requireNamespace()</code>.
+Required packages are determined based on the <code>acq_function</code>, <code>surrogate</code> and the <code>acq_optimizer</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-OptimizerMbo-new"><code>OptimizerMbo$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-OptimizerMbo-print"><code>OptimizerMbo$print()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-OptimizerMbo-reset"><code>OptimizerMbo$reset()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-OptimizerMbo-clone"><code>OptimizerMbo$clone()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="bbotk" data-topic="Optimizer" data-id="format"><a href="../../bbotk/html/Optimizer.html#method-Optimizer-format"><code>bbotk::Optimizer$format()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="bbotk" data-topic="Optimizer" data-id="help"><a href="../../bbotk/html/Optimizer.html#method-Optimizer-help"><code>bbotk::Optimizer$help()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="bbotk" data-topic="OptimizerBatch" data-id="optimize"><a href="../../bbotk/html/OptimizerBatch.html#method-OptimizerBatch-optimize"><code>bbotk::OptimizerBatch$optimize()</code></a></span></li>
+</ul></details><hr>
+<a id="method-OptimizerMbo-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Creates a new instance of this R6 class.
+</p>
+<p>If <code>surrogate</code> is <code>NULL</code> and the <code>acq_function$surrogate</code> field is populated, this Surrogate is used.
+Otherwise, <code>default_surrogate(instance)</code> is used.
+If <code>acq_function</code> is NULL and the <code>acq_optimizer$acq_function</code> field is populated, this AcqFunction is used (and therefore its <code style="white-space: pre;">⁠$surrogate⁠</code> if  populated; see above).
+Otherwise <code>default_acqfunction(instance)</code> is used.
+If <code>acq_optimizer</code> is NULL, <code>default_acqoptimizer(instance)</code> is used.
+</p>
+<p>Even if already initialized, the <code>surrogate$archive</code> field will always be overwritten by the bbotk::Archive of the current bbotk::OptimInstance to be optimized.
+</p>
+<p>For more information on default values for <code>loop_function</code>, <code>surrogate</code>, <code>acq_function</code> and <code>acq_optimizer</code>, see <code>?mbo_defaults</code>.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>OptimizerMbo$new(
+  loop_function = NULL,
+  surrogate = NULL,
+  acq_function = NULL,
+  acq_optimizer = NULL,
+  args = NULL,
+  result_assigner = NULL
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>loop_function</code></dt>
+<dd>
+<p>(loop_function | <code>NULL</code>)<br>
+Loop function determining the MBO flavor.</p>
+</dd>
+<dt><code>surrogate</code></dt>
+<dd>
+<p>(Surrogate | <code>NULL</code>)<br>
+The surrogate.</p>
+</dd>
+<dt><code>acq_function</code></dt>
+<dd>
+<p>(AcqFunction | <code>NULL</code>)<br>
+The acquisition function.</p>
+</dd>
+<dt><code>acq_optimizer</code></dt>
+<dd>
+<p>(AcqOptimizer | <code>NULL</code>)<br>
+The acquisition function optimizer.</p>
+</dd>
+<dt><code>args</code></dt>
+<dd>
+<p>(named <code>list()</code>)<br>
+Further arguments passed to the <code>loop_function</code>.
+For example, <code>random_interleave_iter</code>.</p>
+</dd>
+<dt><code>result_assigner</code></dt>
+<dd>
+<p>(ResultAssigner | <code>NULL</code>)<br>
+The result assigner.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-OptimizerMbo-print"></a>
+
+
+
+<h4>Method <code>print()</code>
+</h4>
+
+<p>Print method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>OptimizerMbo$print()</pre></div>
+
+
+
+<h5>Returns</h5>
+
+<p>(<code>character()</code>).
+</p>
+
+
+<hr>
+<a id="method-OptimizerMbo-reset"></a>
+
+
+
+<h4>Method <code>reset()</code>
+</h4>
+
+<p>Reset the optimizer.
+Sets the following fields to <code>NULL</code>:
+<code>loop_function</code>, <code>surrogate</code>, <code>acq_function</code>, <code>acq_optimizer</code>, <code>args</code>, <code>result_assigner</code>
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>OptimizerMbo$reset()</pre></div>
+
+
+<hr>
+<a id="method-OptimizerMbo-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>OptimizerMbo$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+if (requireNamespace("mlr3learners") &amp;
+    requireNamespace("DiceKriging") &amp;
+    requireNamespace("rgenoud")) {
+
+  library(bbotk)
+  library(paradox)
+  library(mlr3learners)
+
+  # single-objective EGO
+  fun = function(xs) {
+    list(y = xs$x ^ 2)
+  }
+  domain = ps(x = p_dbl(lower = -10, upper = 10))
+  codomain = ps(y = p_dbl(tags = "minimize"))
+  objective = ObjectiveRFun$new(fun = fun, domain = domain, codomain = codomain)
+
+  instance = OptimInstanceBatchSingleCrit$new(
+    objective = objective,
+    terminator = trm("evals", n_evals = 5))
+
+  surrogate = default_surrogate(instance)
+
+  acq_function = acqf("ei")
+
+  acq_optimizer = acqo(
+    optimizer = opt("random_search", batch_size = 100),
+    terminator = trm("evals", n_evals = 100))
+
+  optimizer = opt("mbo",
+    loop_function = bayesopt_ego,
+    surrogate = surrogate,
+    acq_function = acq_function,
+    acq_optimizer = acq_optimizer)
+
+  optimizer$optimize(instance)
+
+  # multi-objective ParEGO
+  fun = function(xs) {
+    list(y1 = xs$x^2, y2 = (xs$x - 2) ^ 2)
+  }
+  domain = ps(x = p_dbl(lower = -10, upper = 10))
+  codomain = ps(y1 = p_dbl(tags = "minimize"), y2 = p_dbl(tags = "minimize"))
+  objective = ObjectiveRFun$new(fun = fun, domain = domain, codomain = codomain)
+
+  instance = OptimInstanceBatchMultiCrit$new(
+    objective = objective,
+    terminator = trm("evals", n_evals = 5))
+
+  optimizer = opt("mbo",
+    loop_function = bayesopt_parego,
+    surrogate = surrogate,
+    acq_function = acq_function,
+    acq_optimizer = acq_optimizer)
+
+  optimizer$optimize(instance)
+}
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,107 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>gradient</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compute gradient of a multivariate polynomial.</h2>
+
+<h3>Description</h3>
+
+<p>This is a wrapper for deriv.mpoly.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">gradient(mpoly)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table><tr style="vertical-align: top;">
+<td><code>mpoly</code></td>
+<td>
+<p>an object of class mpoly</p>
+</td>
+</tr></table>
+<h3>Value</h3>
+
+<p>An object of class mpoly or mpolyList.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>deriv.mpoly()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">m &lt;- mp("x y + y z + z^2")
+gradient(m)
+
+
+# gradient descent illustration using the symbolically
+# computed gradient of the rosenbrock function (shifted)
+rosenbrock &lt;- mp("(1 - x)^2 + 100 (y - x^2)^2")
+fn &lt;- as.function(rosenbrock)
+(rosenbrock_gradient &lt;- gradient(rosenbrock))
+gr &lt;- as.function(rosenbrock_gradient)
+
+# visualize the function
+library(ggplot2)
+s &lt;- seq(-5, 5, .05)
+df &lt;- expand.grid(x = s, y = s)
+df$z &lt;- apply(df, 1, fn)
+ggplot(df, aes(x = x, y = y)) +
+  geom_raster(aes(fill = z + 1e-10)) +
+  scale_fill_continuous(trans = "log10")
+  
+# run the gradient descent algorithm using line-search
+# step sizes computed with optimize()
+current &lt;- steps &lt;- c(-3,-4)
+change &lt;- 1
+tol &lt;- 1e-5
+while(change &gt; tol){
+  last  &lt;- current
+  delta &lt;- optimize(
+    function(delta) fn(current - delta*gr(current)),
+    interval = c(1e-10, .1)
+  )$minimum
+  current &lt;- current - delta*gr(current)
+  steps   &lt;- unname(rbind(steps, current))
+  change  &lt;- abs(fn(current) - fn(last))
+}
+steps &lt;- as.data.frame(steps)
+names(steps) &lt;- c("x", "y")
+  
+# visualize steps, note the optim at c(1,1)
+# the routine took 5748 steps
+ggplot(df, aes(x = x, y = y)) +
+  geom_raster(aes(fill = z + 1e-10)) +
+  geom_path(data = steps, color = "red") +
+  geom_point(data = steps, color = "red", size = .5) +
+  scale_fill_continuous(trans = "log10")
+
+# it gets to the general region of space quickly
+# but once it gets on the right arc, it's terrible
+# here's what the end game looks like
+last_steps &lt;- tail(steps, 100)
+rngx &lt;- range(last_steps$x); sx &lt;- seq(rngx[1], rngx[2], length.out = 201)
+rngy &lt;- range(last_steps$y); sy &lt;- seq(rngy[1], rngy[2], length.out = 201)
+df &lt;- expand.grid(x = sx, y = sy)
+df$z &lt;- apply(df, 1, fn) 
+ggplot(df, aes(x = x, y = y)) +
+  geom_raster(aes(fill = z)) +
+  geom_path(data = last_steps, color = "red", size = .25) +
+  geom_point(data = last_steps, color = "red", size = 1) +
+  scale_fill_continuous(trans = "log10") 
+  
+
+</code></pre>
+
+
+</div>

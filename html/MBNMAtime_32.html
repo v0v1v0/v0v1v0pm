@@ -1,0 +1,499 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mb.run</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Run MBNMA time-course models</h2>
+
+<h3>Description</h3>
+
+<p>Fits a Bayesian time-course model for model-based network meta-analysis
+(MBNMA) that can account for repeated measures over time within studies by
+applying a desired time-course function. Follows the methods of Pedder et al. (2019).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mb.run(
+  network,
+  fun = tpoly(degree = 1),
+  positive.scale = FALSE,
+  intercept = NULL,
+  link = "identity",
+  sdscale = FALSE,
+  parameters.to.save = NULL,
+  rho = 0,
+  covar = "varadj",
+  omega = NULL,
+  corparam = FALSE,
+  class.effect = list(),
+  UME = FALSE,
+  pd = "pv",
+  parallel = FALSE,
+  priors = NULL,
+  n.iter = 20000,
+  n.chains = 3,
+  n.burnin = floor(n.iter/2),
+  n.thin = max(1, floor((n.iter - n.burnin)/1000)),
+  model.file = NULL,
+  jagsdata = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>network</code></td>
+<td>
+<p>An object of class <code>"mb.network"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun</code></td>
+<td>
+<p>An object of class <code>"timefun"</code> generated (see Details) using any of
+<code>tloglin()</code>, <code>tpoly()</code>, <code>titp()</code>, <code>temax()</code>, <code>tfpoly()</code>, <code>tspline()</code> or <code>tuser()</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>positive.scale</code></td>
+<td>
+<p>A boolean object that indicates whether all continuous
+mean responses (y) are positive and therefore whether the baseline response
+should be given a prior that constrains it to be positive (e.g. for scales that cannot be &lt;0).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intercept</code></td>
+<td>
+<p>A boolean object that indicates whether an intercept (written
+as <code>alpha</code> in the model) is to be included. If left as <code>NULL</code> (the default), an intercept will
+be included only for studies reporting absolute means, and will be excluded for
+studies reporting change from baseline (as indicated in <code>network$cfb</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>link</code></td>
+<td>
+<p>Can take either <code>"identity"</code> (the default),
+<code>"log"</code> (for modelling Ratios of Means (Friedrich et al. 2011)) or
+<code>"smd"</code> (for modelling Standardised Mean Differences - although this also corresponds to an identity link function).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sdscale</code></td>
+<td>
+<p>Logical object to indicate whether to write a model that specifies a reference SD
+for standardising when modelling using Standardised Mean Differences. Specifying <code>sdscale=TRUE</code>
+will therefore only modify the model if link function is set to SMD (<code>link="smd"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parameters.to.save</code></td>
+<td>
+<p>A character vector containing names of parameters
+to monitor in JAGS</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho</code></td>
+<td>
+<p>The correlation coefficient when modelling within-study correlation between time points. The default is a string representing a
+prior distribution in JAGS, indicating that it be estimated from the data (e.g. <code>rho="dunif(0,1)"</code>). <code>rho</code> also be assigned a
+numeric value (e.g. <code>rho=0.7</code>), which fixes <code>rho</code> in the model to this value (e.g. for use in a deterministic sensitivity analysis).
+If set to <code>rho=0</code> (the default) then this implies modelling no correlation between time points.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covar</code></td>
+<td>
+<p>A character specifying the covariance structure to use for modelling within-study correlation between time-points. This can
+be done by specifying one of the following:
+</p>
+
+<ul>
+<li> <p><code>"varadj"</code> - a univariate likelihood with a variance adjustment to assume a constant correlation between subsequent
+time points (Jansen et al. 2015). This is the default.
+</p>
+</li>
+<li> <p><code>"CS"</code> - a multivariate normal likelihood with a
+<a href="https://support.sas.com/resources/papers/proceedings/proceedings/sugi30/198-30.pdf">compound symmetry</a> structure
+</p>
+</li>
+<li> <p><code>"AR1"</code> - a multivariate normal likelihood with an
+<a href="https://support.sas.com/resources/papers/proceedings/proceedings/sugi30/198-30.pdf">autoregressive AR1</a> structure
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>omega</code></td>
+<td>
+<p>DEPRECATED IN VERSION 0.2.3 ONWARDS (~uniform(-1,1) now used for correlation between parameters
+rather than a Wishart prior).
+A scale matrix for the inverse-Wishart prior for the covariance matrix used
+to model the correlation between time-course parameters (see Details for time-course functions). <code>omega</code> must
+be a symmetric positive definite matrix with dimensions equal to the number of time-course parameters modelled using
+relative effects (<code>pool="rel"</code>). If left as <code>NULL</code> (the default) a diagonal matrix with elements equal to 1
+is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>corparam</code></td>
+<td>
+<p>A boolean object that indicates whether correlation should be modeled
+between relative effect time-course parameters. Default is <code>FALSE</code> and this is automatically set to <code>FALSE</code> if class effects are modeled.
+Setting it to <code>TRUE</code> models correlation between time-course parameters. This can help identify parameters
+that are estimated poorly for some treatments by allowing sharing of information between
+parameters for different treatments in the network, but may also cause some shrinkage.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>class.effect</code></td>
+<td>
+<p>A list of named strings that determines which time-course
+parameters to model with a class effect and what that effect should be
+(<code>"common"</code> or <code>"random"</code>). For example: <code>list(emax="common", et50="random")</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>UME</code></td>
+<td>
+<p>Can take either <code>TRUE</code> or <code>FALSE</code> (for an unrelated mean effects
+model on all or no time-course parameters respectively) or can be a vector
+of parameter name strings to model as UME. For example: <code>c("beta.1", "beta.2")</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pd</code></td>
+<td>
+<p>Can take either:
+</p>
+
+<ul>
+<li> <p><code>pv</code> only pV will be reported (as automatically outputted by R2jags).
+</p>
+</li>
+<li> <p><code>plugin</code> calculates pD by the plug-in
+method (Spiegelhalter et al. 2002). It is faster, but may output negative
+non-sensical values, due to skewed deviances that can arise with non-linear models.
+</p>
+</li>
+<li> <p><code>pd.kl</code> (the default) calculates pD by the Kullback–Leibler divergence (Plummer 2008). This
+will require running the model for additional iterations but
+will always produce a sensical result.
+</p>
+</li>
+<li> <p><code>popt</code> calculates pD using an optimism adjustment which allows for calculation
+of the penalized expected deviance (Plummer 2008)
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>A boolean value that indicates whether JAGS should be run in
+parallel (<code>TRUE</code>) or not (<code>FALSE</code>). If <code>TRUE</code> then the number of cores to
+use is automatically calculated. Functions that involve updating the model (e.g. <code>devplot()</code>, <code>fitplot()</code>)
+cannot be used with models implemented in parallel.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priors</code></td>
+<td>
+<p>A named list of parameter values (without indices) and
+replacement prior distribution values given as strings
+<strong>using distributions as specified in JAGS syntax</strong> (see Plummer (2017)).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.iter</code></td>
+<td>
+<p>number of total iterations per chain (including burn in; default: 20000)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.chains</code></td>
+<td>
+<p>number of Markov chains (default: 3)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.burnin</code></td>
+<td>
+<p>length of burn in, i.e. number of iterations to discard at the
+beginning. Default is <code style="white-space: pre;">⁠n.iter/2``, that is, discarding the first half of the simulations. If ⁠</code>n.burnin' is 0, jags() will run 100 iterations for adaption.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.thin</code></td>
+<td>
+<p>thinning rate. Must be a positive integer. Set <code style="white-space: pre;">⁠n.thin &gt; 1`` to save memory and computation time if ⁠</code>n.iter<code style="white-space: pre;">⁠is large. Default is⁠</code>max(1, floor(n.chains * (n.iter-n.burnin) / 1000))“ which will only thin if there are at least 2000
+simulations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.file</code></td>
+<td>
+<p>The file path to a JAGS model (.jags file) that can be used
+to overwrite the JAGS model that is automatically written based on the
+specified options in <code>MBNMAtime</code>. Useful for adding further model flexibility.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>jagsdata</code></td>
+<td>
+<p>A named list of the data objects to be used in the JAGS model. Only
+required if users are defining their own JAGS model using <code>model.file</code>. Format
+should match that of standard models fitted in <code>MBNMAtime</code>
+(see <code>mbnma$model.arg$jagsdata</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Arguments to be sent to R2jags.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object of S3 class <code style="white-space: pre;">⁠c("mbnma", "rjags")`` containing parameter results from the model. Can be summarized by ⁠</code>print()<code style="white-space: pre;">⁠and can check traceplots using⁠</code>R2jags::traceplot()<code style="white-space: pre;">⁠or various functions from the package⁠</code>mcmcplots‘.#’
+</p>
+<p>If there are errors in the JAGS model code then the object will be a list
+consisting of two elements - an error message from JAGS that can help with
+debugging and <code>model.arg</code>, a list of arguments provided to <code>mb.run()</code>
+which includes <code>jagscode</code>, the JAGS code for the model that can help
+users identify the source of the error.
+</p>
+
+
+<h3>Time-course parameters</h3>
+
+<p>Nodes that are automatically monitored (if present in the model) have the
+same name as in the time-course function for named time-course parameters (e.g. <code>emax</code>).
+However, for named only as <code>beta.1</code>, <code>beta.2</code>, <code>beta.3</code> or <code>beta.4</code> parameters
+may have an alternative interpretation.
+</p>
+<p>Details of the interpretation and model specification of different parameters can be shown by using the
+<code>summary()</code> method on an <code>"mbnma"</code> object generated by <code>mb.run()</code>.
+</p>
+<p><em>Parameters modelled using relative effects</em>
+</p>
+
+<ul>
+<li>
+<p> If pooling is relative (e.g. <code>pool.1="rel"</code>) for a given parameter then the named parameter (e.g. <code>emax</code>) or a
+numbered <code>d</code> parameter (e.g. <code>d.1</code>) corresponds to the pooled relative effect for a given
+treatment compared to the network reference treatment for this time-course parameter.
+</p>
+</li>
+<li> <p><code>sd.</code> followed by a named (e.g. <code>emax</code>, <code>beta.1</code>) is the between-study SD (heterogeneity)
+for relative effects, reported if pooling for a time-course parameter is relative (e.g. <code>pool.1="rel"</code>) <em>and</em> the
+method for synthesis is random (e.g. <code style="white-space: pre;">⁠method.1="random⁠</code>).
+</p>
+</li>
+<li>
+<p> If class effects are modelled, parameters for classes are represented by the upper case name of the time-course
+parameter they correspond to. For example if <code>class.effect=list(emax="random")</code>, relative class effects will be
+represented by <code>EMAX</code>. The SD of the class effect (e.g. <code>sd.EMAX</code>, <code>sd.BETA.1</code>) is the SD of treatments within a class for the
+time-course parameter they correspond to.
+</p>
+</li>
+</ul>
+<p><em>Parameters modelled using absolute effects</em>
+</p>
+
+<ul>
+<li>
+<p> If pooling is absolute (e.g. <code>pool.1="abs"</code>) for a given parameter then the named parameter (e.g. <code>emax</code>) or a
+numbered <code>beta</code> parameter (e.g. <code>beta.1</code>) corresponds to the estimated absolute effect for this time-course parameter.
+</p>
+</li>
+<li>
+<p> For an absolute time-course parameter if the corresponding method is common (e.g. <code>method.1="common"</code>) the parameter
+corresponds to a single common parameter estimated across all studies and treatments. If the corresponding method is
+random (e.g. <code>method.1="random"</code>) then parameter is a mean effect around which the study-level absolute effects vary
+with SD corresponding to <code>sd.</code> followed by the named parameter (e.g. <code>sd.emax</code>, <code>sd.beta.1</code>) .
+</p>
+</li>
+</ul>
+<p><em>Other model parameters</em>
+</p>
+
+<ul>
+<li> <p><code>rho</code> The correlation coefficient for correlation between time-points. Its
+interpretation will differ depending on the covariance structure specified in <code>covar</code>
+</p>
+</li>
+<li> <p><code>totresdev</code> The residual deviance of the model
+</p>
+</li>
+<li> <p><code>deviance</code> The deviance of the model
+</p>
+</li>
+</ul>
+<h3>Time-course function</h3>
+
+<p>Several general time-course functions with up to 4 time-course parameters are provided, but a
+user-defined time-course relationship can instead be used. Details can be found in the respective
+help files for each function.
+</p>
+<p>Available time-course functions are:
+</p>
+
+<ul>
+<li>
+<p> Log-linear: <code>tloglin()</code>
+</p>
+</li>
+<li>
+<p> Polynomial: <code>tpoly()</code>
+</p>
+</li>
+<li>
+<p> Integrated Two-Component Prediction (ITP): <code>titp()</code>
+</p>
+</li>
+<li>
+<p> Emax: <code>temax()</code>
+</p>
+</li>
+<li>
+<p> Fractional polynomial: <code>tfpoly()</code>
+</p>
+</li>
+<li>
+<p> Splines (various spline types can be used): <code>tspline()</code>
+</p>
+</li>
+<li>
+<p> User-defined: <code>tuser()</code>
+</p>
+</li>
+</ul>
+<h3>Correlation between observations</h3>
+
+<p>When modelling correlation between observations using <code>rho</code>, values for <code>rho</code> must imply a
+positive semidefinite covariance matrix.
+</p>
+
+
+<h3>Advanced options</h3>
+
+<p><code>model.file</code> and <code>jagsdata</code> can be used to run an edited JAGS model and dataset. This allows
+users considerably more modelling flexibility than is possible using the basic <code>MBNMAtime</code> syntax,
+though requires strong understanding of JAGS and the MBNMA modelling framework. Treatment-specific
+priors, meta-regression and bias-adjustment are all possible in this way, and it allows users to
+make use of the subsequent functions in <code>MBNMAtime</code> (plotting, prediction, ranking) whilst fitting
+these more complex models.
+</p>
+
+
+<h3>References</h3>
+
+<p>Friedrich JO, Adhikari NKJ, Beyene J (2011).
+“Ratio of means for analyzing continuous outcomes in meta-analysis performed as well as mean difference methods.”
+<em>Journal of Clinical Epidemiology</em>, <b>64</b>(5), 556-564.
+<a href="https://doi.org/10.1016/j.jclinepi.2010.09.016">doi:10.1016/j.jclinepi.2010.09.016</a>.<br><br> Jansen JP, Vieira MC, Cope S (2015).
+“Network meta-analysis of longitudinal data using fractional polynomials.”
+<em>Stat Med</em>, <b>34</b>(15), 2294-311.
+ISSN 1097-0258 (Electronic) 0277-6715 (Linking), <a href="https://doi.org/10.1002/sim.6492">doi:10.1002/sim.6492</a>, <a href="https://pubmed.ncbi.nlm.nih.gov/25877808/">https://pubmed.ncbi.nlm.nih.gov/25877808/</a>.<br><br> Pedder H, Dias S, Bennetts M, Boucher M, Welton NJ (2019).
+“Modelling time-course relationships with multiple treatments: Model-Based Network Meta-Analysis for continuous summary outcomes.”
+<em>Res Synth Methods</em>, <b>10</b>(2), 267-286.<br><br> Plummer M (2008).
+“Penalized loss functions for Bayesian model comparison.”
+<em>Biostatistics</em>, <b>9</b>(3), 523-39.
+ISSN 1468-4357 (Electronic) 1465-4644 (Linking), <a href="https://pubmed.ncbi.nlm.nih.gov/18209015/">https://pubmed.ncbi.nlm.nih.gov/18209015/</a>.<br><br> Plummer M (2017).
+<em>JAGS user manual</em>.
+<a href="https://people.stat.sc.edu/hansont/stat740/jags_user_manual.pdf">https://people.stat.sc.edu/hansont/stat740/jags_user_manual.pdf</a>.<br><br> Spiegelhalter DJ, Best NG, Carlin BP, van der Linde A (2002).
+“Bayesian measures of model complexity and fit.”
+<em>J R Statistic Soc B</em>, <b>64</b>(4), 583-639.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Create mb.network object
+network &lt;- mb.network(osteopain)
+
+# Fit a linear time-course MBNMA with:
+# random relative treatment effects on the slope
+mb.run(network, fun=tpoly(degree=1, pool.1="rel", method.1="random"))
+
+# Fit an emax time-course MBNMA with:
+# fixed relative treatment effects on emax
+# a common parameter estimated independently of treatment
+# a common Hill parameter estimated independently of treatment
+# a prior for the Hill parameter (normal with mean 0 and precision 0.1)
+# data reported as change from baseline
+result &lt;- mb.run(network, fun=temax(pool.emax="rel", method.emax="common",
+                                    pool.et50="abs", method.et50="common",
+                                    pool.hill="abs", method.hill="common"),
+                 priors=list(hill="dunif(0.5, 2)"),
+                 intercept=TRUE)
+
+
+#### commented out to prevent errors from JAGS version in github actions build ####
+# Fit a log-linear MBNMA with:
+# random relative treatment effects on the rate
+# an autoregressive AR1 covariance structure
+# modelled as standardised mean differences
+# copdnet &lt;- mb.network(copd)
+# result &lt;- mb.run(copdnet, fun=tloglin(pool.rate="rel", method.rate="random"),
+#                covar="AR1", rho="dunif(0,1)", link="smd")
+
+
+
+####### Examine MCMC diagnostics (using mcmcplots package) #######
+
+# Traceplots
+# mcmcplots::traplot(result)
+
+# Plots for assessing convergence
+# mcmcplots::mcmcplot(result, c("rate", "sd.rate", "rho"))
+
+########## Output ###########
+
+# Print R2jags output and summary
+print(result)
+summary(result)
+
+# Plot forest plot of results
+plot(result)
+
+
+###### Additional model arguments ######
+
+# Use gout dataset
+goutnet &lt;- mb.network(goutSUA_CFBcomb)
+
+# Define a user-defined time-course relationship for use in mb.run
+timecourse &lt;- ~ exp(beta.1 * time) + (time^beta.2)
+
+# Run model with:
+# user-defined time-course function
+# random relative effects on beta.1
+# default common effects on beta.2
+# default relative pooling on beta.1 and beta.2
+# common class effect on beta.2
+mb.run(goutnet, fun=tuser(fun=timecourse, method.1="random"),
+       class.effect=list(beta.1="common"))
+
+# Fit a log-linear MBNMA
+# with variance adjustment for correlation between time-points
+result &lt;- mb.run(network, fun=tloglin(),
+                 rho="dunif(0,1)", covar="varadj")
+
+</code></pre>
+
+
+</div>

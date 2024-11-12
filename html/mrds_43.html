@@ -1,0 +1,542 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ddf</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Distance Detection Function Fitting</h2>
+
+<h3>Description</h3>
+
+<p>Generic function for fitting detection functions for distance sampling with
+single and double observer configurations. Independent observer, trial and
+dependent observer (removal) configurations are included. This is a generic
+function which does little other than to validate the calling arguments and
+methods and then calls the appropriate <code>method</code> specific function to do
+the analysis.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ddf(
+  dsmodel = call(),
+  mrmodel = call(),
+  data,
+  method = "ds",
+  meta.data = list(),
+  control = list(),
+  call = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>dsmodel</code></td>
+<td>
+<p>distance sampling model specification</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mrmodel</code></td>
+<td>
+<p>mark-recapture model specification</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>dataframe containing data to be analyzed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>analysis method</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meta.data</code></td>
+<td>
+<p>list containing settings controlling data structure</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>list containing settings controlling model fitting</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>not implemented for top level ddf function, this is set by ddf as it is passed to the other ddf generics.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The fitting code has certain expectations about <code>data</code>.  It should be a
+dataframe with at least the following fields named and defined as follows:
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;"> <code>object</code> </td>
+<td style="text-align: left;"> object number </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+              <code>observer</code> </td>
+<td style="text-align: left;"> observer number (1 or 2) for double
+              observer; only 1 if single observer </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+              <code>detected</code> </td>
+<td style="text-align: left;"> 1 if detected by the observer and 0 if
+              missed; always 1 for single observer </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+              <code>distance</code> </td>
+<td style="text-align: left;"> perpendicular distance</td>
+</tr>
+<tr>
+<td style="text-align: left;"> </td>
+</tr>
+</table>
+<p>If the data are for clustered objects, the dataframe should also contain a
+field named <code>size</code> that gives the observed number in the cluster. If
+the data are for a double observer survey, then there are two records for
+each observation and each should have the same object number. The code
+assumes the observations are listed in the same order for each observer such
+that if the data are subsetted by <code>observer</code> there will be the same
+number of records in each and each subset will be in the same <code>object</code>
+order. In addition to these predefined and pre-named fields, the dataframe
+can have any number and type of fields that are used as covariates in the
+<code>dsmodel</code> and <code>mrmodel</code>. At present, discrepancies between
+observations in <code>distance</code>, <code>size</code> and any user-specified
+covariates cannot be assimilated into the uncertainty of the estimate. The
+code presumes the values for those fields are the same for both records
+(observer=1 and observer=2) and it uses the value from observer 1. Thus it
+makes sense to make the values the same for both records in each pair even
+when both detect the object or when observer 1 doesn't detect the object the
+data would have to be taken from observer 2 and would not be consistent.
+</p>
+<p>Five different fitting methods are currently available and these in turn
+define whether <code>dsmodel</code> and <code>mrmodel</code> need to be defined.
+</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+Method          </td>
+<td style="text-align: left;"> Single/Double </td>
+<td style="text-align: left;"> <code>dsmodel</code> </td>
+<td style="text-align: left;"> <code>mrmodel</code>
+</td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>ds</code>       </td>
+<td style="text-align: left;">    Single     </td>
+<td style="text-align: left;">      yes       </td>
+<td style="text-align: left;">    no </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>io</code>       </td>
+<td style="text-align: left;">    Double     </td>
+<td style="text-align: left;">      yes       </td>
+<td style="text-align: left;">    yes </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>io.fi</code>    </td>
+<td style="text-align: left;">    Double     </td>
+<td style="text-align: left;">      no        </td>
+<td style="text-align: left;">    yes </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>trial</code>    </td>
+<td style="text-align: left;">    Double     </td>
+<td style="text-align: left;">      yes       </td>
+<td style="text-align: left;">    yes </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>trial.fi</code> </td>
+<td style="text-align: left;">    Double     </td>
+<td style="text-align: left;">      no        </td>
+<td style="text-align: left;">    yes </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>rem</code>      </td>
+<td style="text-align: left;">    Double     </td>
+<td style="text-align: left;">      yes       </td>
+<td style="text-align: left;">    yes </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+<code>rem.fi</code>   </td>
+<td style="text-align: left;">    Double     </td>
+<td style="text-align: left;">      no        </td>
+<td style="text-align: left;">    yes </td>
+</tr>
+<tr>
+<td style="text-align: left;"> </td>
+</tr>
+</table>
+<p>Methods with the suffix "<code>.fi</code>" use the assumption of full independence
+and do not use the distance sampling portion of the likelihood which is why a
+<code>dsmodel</code> is not needed. An <code>mrmodel</code> is only needed for double
+observer surveys and thus is not needed for method <code>ds</code>.
+</p>
+<p>The <code>dsmodel</code> specifies the detection function g(y) for the distance
+sampling data and the models restrict g(0)=1. For single observer data g(y)
+is the detection function for the single observer and if it is a double
+observer survey it is the relative detection function (assuming g(0)=1) of
+both observers as a team (the unique observations from both observers). In
+double observer surveys, the detection function is p(y)=p(0)g(y) such that
+p(0)&lt;1.  The detection function g(y) is specified by <code>dsmodel</code> and p(0)
+estimated from the conditional detection functions (see <code>mrmodel</code>
+below).  The value of <code>dsmodel</code> is specified using a hybrid
+formula/function notation.  The model definition is prefixed with a <code>~</code>
+and the remainder is a function definition with specified arguments.  At
+present there are two different functions, <code>cds</code> and
+<code>mcds</code>, for conventional distance sampling and multi-covariate
+distance sampling.  Both functions have the same required arguments
+(<code>key</code>,<code>formula</code>).  The first specifies the key function this
+can be half-normal ("hn"), hazard-rate ("hr"), gamma ("gamma") or uniform
+("unif"). The argument <code>formula</code> specifies the formula
+for the log of the scale parameter of the key function (e.g., the equivalent
+of the standard deviation in the half-normal).  The variable <code>distance</code>
+should not be included in the formula because the scale is for distance.
+See Marques, F.F.C. and S.T. Buckland (2004) for more details on the
+representation of the scale formula. For the hazard rate and gamma
+functions, an additional <code>shape.formula</code> can be specified for the model
+of the shape parameter.  The default will be ~1.
+Adjustment terms can be specified by setting <code>adj.series</code> which can have
+the values: "none", "cos" (cosine), "poly" (polynomials), and "herm" 
+(Hermite polynomials). One must also specify a vector of orders for the
+adjustment terms (<code>adj.order</code>) and a scaling (<code>adj.scale</code>) which
+may be "width" or "scale" (for scaling by the scale parameter). Note that 
+the uniform key can only be used with adjustments (usually cosine adjustments
+for a Fourier-type analysis).
+</p>
+<p>The <code>mrmodel</code> specifies the form of the conditional detection functions
+(i.e.,probability it is seen by observer j given it was seen by observer
+3-j) for each observer (j=1,2) in a double observer survey.  The value is
+specified using the same mix of formula/function notation but in this case
+the functions are <code>glm</code> and <code>gam</code>.  The arguments for the
+functions are <code>formula</code> and <code>link</code>.  At present, only <code>glm</code>
+is allowed and it is restricted to <code>link=logit</code>.  Thus, currently the
+only form for the conditional detection functions is logistic as expressed
+in eq 6.32 of Laake and Borchers (2004).  In contrast to <code>dsmodel</code>, the
+argument <code>formula</code> will typically include <code>distance</code> and all other
+covariates that affect detection probability.  For example,
+<code>mrmodel=~glm(formula=~distance+size+sex)</code> constructs a conditional
+detection function based on the logistic form with additive factors,
+distance, size, and sex.  As another example,
+<code>mrmodel=~glm(formula=~distance*size+sex)</code> constructs the same model
+with an added interaction between distance and size.
+</p>
+<p>The argument <code>meta.data</code> is a list that enables various options about
+the data to be set. These options include:
+</p>
+
+<dl>
+<dt><code>point</code></dt>
+<dd>
+<p>if <code>TRUE</code> the data are from point counts and
+<code>FALSE</code> (default) implies line transect data</p>
+</dd>
+<dt><code>width</code></dt>
+<dd>
+<p>distance specifying half-width of the transect</p>
+</dd>
+<dt><code>left</code></dt>
+<dd>
+<p>distance specifying inner truncation value</p>
+</dd>
+<dt><code>binned</code></dt>
+<dd>
+<p><code>TRUE</code> or <code>FALSE</code> to specify whether
+distances should be binned for analysis</p>
+</dd>
+<dt><code>breaks</code></dt>
+<dd>
+<p>if <code>binned=TRUE</code>, this is a required sequence of
+break points that are used for plotting/gof. They should match
+<code>distbegin</code>, <code>distend</code> values if bins are fixed</p>
+</dd>
+<dt><code>int.range</code></dt>
+<dd>
+<p>an integration range for detection probability;
+either a vector of 2 or matrix with 2 columns</p>
+</dd>
+<dt><code>mono</code></dt>
+<dd>
+<p>constrain the detection function to be weakly
+monotonically decreasing (only applicable when there are no covariates in
+the detection function)</p>
+</dd>
+<dt><code>mono.strict</code></dt>
+<dd>
+<p>when <code>TRUE</code> constrain the detection function
+to be strictly monotonically decreasing (again, only applicable when there
+are no covariates in the detection function)</p>
+</dd>
+</dl>
+<p>Using <code>meta.data=list(int.range=c(1,10))</code> is the same as
+<code>meta.data=list(left=1,width=10)</code>. If
+<code>meta.data=list(binned=TRUE)</code> is used, the dataframe needs to contain
+the fields distbegin and distend for each observation which specify the left
+and right hand end points of the distance interval containing the
+observation. This is a general data structure that allows the intervals to
+change rather than being fixed as in the standard distance analysis tools.
+Typically, if the intervals are changing so is the integration range.  For
+example, assume that distance bins are generated using fixed angular
+measurements from an aircraft in which the altitude is varying.  Because all
+analyses are truncated (i.e., the last interval does not go to infinity),
+the transect width (and the left truncation point if there is a blindspot
+below the aircraft) can potentially change for each observation. The
+argument <code>int.range</code> can also be entered as a matrix with 2 columns
+(left and width) and a row for each observation.
+</p>
+<p>The argument <code>control</code> is a list that enables various analysis options
+to be set.  It is not necessary to set any of these for most analyses.  They
+were provided so the user can optionally see intermediate fitting output and
+to control fitting if the algorithm doesn't converge which happens
+infrequently.  The list values include:
+</p>
+
+<dl>
+<dt><code>showit</code></dt>
+<dd>
+<p>Integer (0-3, default 0) controls the
+(increasing)amount of information printed during fitting. 0 - none, &gt;=1 -
+information about refitting and bound changes is printed, &gt;=2 -
+information about adjustment term fitting is printed, ==3 -per-iteration
+parameter estimates and log-likelihood printed.</p>
+</dd>
+<dt><code>estimate</code></dt>
+<dd>
+<p>if FALSE fits model but doesn't estimate predicted
+probabilities</p>
+</dd>
+<dt><code>refit</code></dt>
+<dd>
+<p>if TRUE the algorithm will attempt multiple
+optimizations at different starting values if it doesn't converge</p>
+</dd>
+<dt><code>nrefits</code></dt>
+<dd>
+<p>number of refitting attempts</p>
+</dd>
+<dt><code>initial</code></dt>
+<dd>
+<p>a named list of starting values for the dsmodel
+parameters (e.g. <code>$scale</code>, <code>$shape</code>, <code>$adjustment</code>)</p>
+</dd>
+<dt><code>lowerbounds</code></dt>
+<dd>
+<p>a vector of lowerbounds for the dsmodel 
+parameters in the order the ds parameters will appear in the par 
+element of the ddf object, i.e. <code>fit.ddf$par</code> where <code>fit.ddf</code> 
+is a fitted ddf model.</p>
+</dd>
+<dt><code>upperbounds</code></dt>
+<dd>
+<p>a vector of upperbounds for the dsmodel 
+parameters in the order the ds parameters will appear in the par 
+element of the ddf object, i.e. <code>fit.ddf$par</code> where <code>fit.ddf</code> 
+is a fitted ddf model.</p>
+</dd>
+<dt><code>limit</code></dt>
+<dd>
+<p>if TRUE restrict analysis to observations with
+<code>detected</code>=1</p>
+</dd>
+<dt><code>debug</code></dt>
+<dd>
+<p> if TRUE, if fitting fails, return an object with
+fitting information</p>
+</dd>
+<dt><code>nofit</code></dt>
+<dd>
+<p>if TRUE don't fit a model, but use the starting values
+and generate an object based on those values</p>
+</dd>
+<dt><code>optimx.method</code></dt>
+<dd>
+<p>one (or a vector of) string(s) giving the
+optimisation method to use. If more than one is supplied, the results from
+one are used as the starting values for the next. See
+<code>optimx</code></p>
+</dd>
+<dt><code>optimx.maxit</code></dt>
+<dd>
+<p>maximum number of iterations to use in the
+optimisation.</p>
+</dd>
+<dt><code>mono.random.start</code></dt>
+<dd>
+<p>By default when monotonicity constraints
+are enforced, a grid of starting values are tested. Instead random
+starting values can be used (uniformly distributed between the upper and
+lower bounds). Set <code>TRUE</code> for random start, <code>FALSE</code> (default)
+uses the grid method</p>
+</dd>
+<dt><code>mono.outer.iter</code></dt>
+<dd>
+<p>Number of outer iterations to be used by
+<code>solnp</code> when fitting a monotonic model. Default 200.</p>
+</dd>
+<dt><code>silent</code></dt>
+<dd>
+<p>silences warnings within ds fitting method (helpful
+for running many times without generating many warning/error messages).</p>
+</dd>
+<dt><code>optimizer</code></dt>
+<dd>
+<p>By default this is set to 'both' for single 
+observer analyses and 'R' for double observer analyses. For single 
+observer analyses where optimizer = 'both', the R optimizer will be used 
+and if present the MCDS optimizer will also be used. The result with the 
+best likelihood value will be selected. To run only a specified optimizer 
+set this value to either 'R' or 'MCDS'. The MCDS optimizer cannot currently
+be used for detection function fitting with double observer analyses.  
+See <code>mcds_dot_exe</code> for more information.</p>
+</dd>
+<dt><code>winebin</code></dt>
+<dd>
+<p>Location of the <code>wine</code> binary used to run
+<code>MCDS.exe</code>. See mcds_dot_exe for more information.</p>
+</dd>
+</dl>
+<p>Examples of distance sampling analyses are available at
+<a href="http://examples.distancesampling.org/">http://examples.distancesampling.org/</a>.
+</p>
+<p>Hints and tips on fitting (particularly optimisation issues) are on the
+<code>mrds_opt</code> manual page.
+</p>
+
+
+<h3>Value</h3>
+
+<p>model object of class=(method, "ddf")
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jeff Laake
+</p>
+
+
+<h3>References</h3>
+
+<p>Laake, J.L. and D.L. Borchers. 2004. Methods for incomplete
+detection at distance zero. In: Advanced Distance Sampling, eds. S.T.
+Buckland, D.R.Anderson, K.P. Burnham, J.L. Laake, D.L. Borchers, and L.
+Thomas. Oxford University Press.
+</p>
+<p>Marques, F.F.C. and S.T. Buckland. 2004. Covariate models for the detection
+function. In: Advanced Distance Sampling, eds. S.T. Buckland,
+D.R.Anderson, K.P. Burnham, J.L. Laake, D.L. Borchers, and L. Thomas.
+Oxford University Press.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>ddf.ds</code>, <code>ddf.io</code>,
+<code>ddf.io.fi</code>, <code>ddf.trial</code>,
+<code>ddf.trial.fi</code>, <code>ddf.rem</code>, <code>ddf.rem.fi</code>,
+<code>mrds_opt</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># load data
+data(book.tee.data)
+region &lt;- book.tee.data$book.tee.region
+egdata &lt;- book.tee.data$book.tee.dataframe
+samples &lt;- book.tee.data$book.tee.samples
+obs &lt;- book.tee.data$book.tee.obs
+
+# fit a half-normal detection function
+result &lt;- ddf(dsmodel=~mcds(key="hn", formula=~1), data=egdata, method="ds",
+              meta.data=list(width=4))
+
+# fit an independent observer model with full independence
+result.io.fi &lt;- ddf(mrmodel=~glm(~distance), data=egdata, method="io.fi",
+                    meta.data=list(width = 4))
+
+# fit an independent observer model with point independence
+result.io &lt;- ddf(dsmodel=~cds(key = "hn"), mrmodel=~glm(~distance),
+                 data=egdata, method="io", meta.data=list(width=4))
+## Not run: 
+
+# simulated single observer point count data (see ?ptdata.single)
+data(ptdata.single)
+ptdata.single$distbegin &lt;- (as.numeric(cut(ptdata.single$distance,
+                            10*(0:10)))-1)*10
+ptdata.single$distend &lt;- (as.numeric(cut(ptdata.single$distance,
+                          10*(0:10))))*10
+model &lt;- ddf(data=ptdata.single, dsmodel=~cds(key="hn"),
+             meta.data=list(point=TRUE,binned=TRUE,breaks=10*(0:10)))
+
+summary(model)
+
+plot(model,main="Single observer binned point data - half normal")
+
+model &lt;- ddf(data=ptdata.single, dsmodel=~cds(key="hr"),
+             meta.data=list(point=TRUE, binned=TRUE, breaks=10*(0:10)))
+
+summary(model)
+
+plot(model, main="Single observer binned point data - hazard rate")
+
+dev.new()
+
+# simulated double observer point count data (see ?ptdata.dual)
+# setup data
+data(ptdata.dual)
+ptdata.dual$distbegin &lt;- (as.numeric(cut(ptdata.dual$distance,
+                          10*(0:10)))-1)*10
+ptdata.dual$distend &lt;- (as.numeric(cut(ptdata.dual$distance,
+                        10*(0:10))))*10
+
+model &lt;- ddf(method="io", data=ptdata.dual, dsmodel=~cds(key="hn"),
+             mrmodel=~glm(formula=~distance*observer),
+             meta.data=list(point=TRUE, binned=TRUE, breaks=10*(0:10)))
+
+summary(model)
+
+plot(model, main="Dual observer binned point data", new=FALSE, pages=1)
+
+model &lt;- ddf(method="io", data=ptdata.dual,
+             dsmodel=~cds(key="unif", adj.series="cos", adj.order=1),
+             mrmodel=~glm(formula=~distance*observer),
+             meta.data=list(point=TRUE, binned=TRUE, breaks=10*(0:10)))
+
+summary(model)
+
+par(mfrow=c(2,3))
+plot(model,main="Dual observer binned point data",new=FALSE)
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

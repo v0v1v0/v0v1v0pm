@@ -1,0 +1,272 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>makeLearner</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create learner object.</h2>
+
+<h3>Description</h3>
+
+<p>For a classification learner the <code>predict.type</code> can be set to
+“prob” to predict probabilities and the maximum value selects the
+label. The threshold used to assign the label can later be changed using the
+setThreshold function.
+</p>
+<p>To see all possible properties of a learner, go to: LearnerProperties.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">makeLearner(
+  cl,
+  id = cl,
+  predict.type = "response",
+  predict.threshold = NULL,
+  fix.factors.prediction = FALSE,
+  ...,
+  par.vals = list(),
+  config = list()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+<p>(<code>character(1)</code>)<br>
+Class of learner. By convention, all classification learners
+start with “classif.” all regression learners with
+“regr.” all survival learners start with “surv.”
+all clustering learners with “cluster.” and all multilabel
+classification learners start with “multilabel.”.
+A list of all integrated learners is available on the
+learners help page.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>(<code>character(1)</code>)<br> Id string for object. Used to display object.
+Default is <code>cl</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>predict.type</code></td>
+<td>
+<p>(<code>character(1)</code>)<br> Classification: “response” (=
+labels) or “prob” (= probabilities and labels by selecting the ones
+with maximal probability). Regression: “response” (= mean response)
+or “se” (= standard errors and mean response). Survival:
+“response” (= some sort of orderable risk) or “prob” (= time
+dependent probabilities). Clustering: “response” (= cluster IDS) or
+“prob” (= fuzzy cluster membership probabilities), Multilabel:
+“response” (= logical matrix indicating the predicted class labels)
+or “prob” (= probabilities and corresponding logical matrix
+indicating class labels). Default is “response”.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>predict.threshold</code></td>
+<td>
+<p>(numeric)<br>
+Threshold to produce class labels. Has to be a named vector, where names correspond to class labels.
+Only for binary classification it can be a single numerical threshold for the positive class.
+See setThreshold for details on how it is applied.
+Default is <code>NULL</code> which means 0.5 / an equal threshold for each class.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fix.factors.prediction</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br> In some cases, problems occur
+in underlying learners for factor features during prediction. If the new
+features have LESS factor levels than during training (a strict subset),
+the learner might produce an  error like “type of predictors in new
+data do not match that of the training data”. In this case one can repair
+this problem by setting this option to <code>TRUE</code>. We will simply add the
+missing factor levels missing from the test feature (but present in
+training) to that feature. Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>(any)<br> Optional named (hyper)parameters. If you want to set
+specific hyperparameters for a learner during model creation, these should
+go here. You can get a list of available hyperparameters using
+<code style="white-space: pre;">⁠getParamSet(&lt;learner&gt;)⁠</code>. Alternatively hyperparameters can be given using
+the <code>par.vals</code> argument but <code>...</code> should be preferred!</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>par.vals</code></td>
+<td>
+<p>(list)<br> Optional list of named (hyper)parameters. The
+arguments in <code>...</code> take precedence over values in this list. We strongly
+encourage you to use <code>...</code> for passing hyperparameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>config</code></td>
+<td>
+<p>(named list)<br> Named list of config option to overwrite
+global settings set via configureMlr for this specific learner.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>(Learner).
+</p>
+
+
+<h3>
+<code>par.vals</code> vs. <code>...</code>
+</h3>
+
+<p>The former aims at specifying default hyperparameter settings from <code>mlr</code>
+which differ from the actual defaults in the underlying learner. For
+example, <code>respect.unordered.factors</code> is set to <code>order</code> in <code>mlr</code> while the
+default in ranger::ranger depends on the argument <code>splitrule</code>.
+<code style="white-space: pre;">⁠getHyperPars(&lt;learner&gt;)⁠</code> can be used to query hyperparameter defaults that
+differ from the underlying learner. This function also shows all
+hyperparameters set by the user during learner creation (if these differ
+from the learner defaults).
+</p>
+
+
+<h3>regr.randomForest</h3>
+
+<p>For this learner we added additional uncertainty estimation functionality
+(<code>predict.type = "se"</code>) for the randomForest, which is not provided by the
+underlying package.
+</p>
+<p>Currently implemented methods are:
+</p>
+
+<ul>
+<li>
+<p> If <code>se.method = "jackknife"</code> the standard error of a prediction is
+estimated by computing the jackknife-after-bootstrap, the mean-squared
+difference between the prediction made by only using trees which did not
+contain said observation and the ensemble prediction.
+</p>
+</li>
+<li>
+<p> If <code>se.method = "bootstrap"</code> the standard error of a prediction is
+estimated by bootstrapping the random forest, where the number of bootstrap
+replicates and the number of trees in the ensemble are controlled by
+<code>se.boot</code> and <code>se.ntree</code> respectively, and then taking the standard deviation
+of the bootstrap predictions. The "brute force" bootstrap is executed when
+<code>ntree = se.ntree</code>, the latter of which controls the number of trees in the
+individual random forests which are bootstrapped. The "noisy bootstrap" is
+executed when <code>se.ntree &lt; ntree</code> which is less computationally expensive. A
+Monte-Carlo bias correction may make the latter option preferable in many
+cases. Defaults are <code>se.boot = 50</code> and <code>se.ntree = 100</code>.
+</p>
+</li>
+<li>
+<p> If <code>se.method = "sd"</code>, the default, the standard deviation of the
+predictions across trees is returned as the variance estimate. This can be
+computed quickly but is also a very naive estimator. </p>
+</li>
+</ul>
+<p>For both “jackknife” and “bootstrap”, a Monte-Carlo bias
+correction is applied and, in the case that this results in a negative
+variance estimate, the values are truncated at 0.
+</p>
+<p>Note that when using the “jackknife” procedure for se estimation,
+using a small number of trees can lead to training data observations that are
+never out-of-bag. The current implementation ignores these observations, but
+in the original definition, the resulting se estimation would be undefined.
+</p>
+<p>Please note that all of the mentioned <code>se.method</code> variants do not affect the
+computation of the posterior mean “response” value. This is always the
+same as from the underlying randomForest.
+</p>
+
+
+<h3>regr.featureless</h3>
+
+<p>A very basic baseline method which is useful for model comparisons (if you
+don't beat this, you very likely have a problem).
+Does not consider any features of the task and only uses the target feature
+of the training data to make predictions.
+Using observation weights is currently not supported.
+</p>
+<p>Methods “mean” and “median” always predict a constant value
+for each new observation which corresponds to the observed mean or median of
+the target feature in training data, respectively.
+</p>
+<p>The default method is “mean” which corresponds to the ZeroR algorithm
+from WEKA.
+</p>
+
+
+<h3>classif.featureless</h3>
+
+<p>Method “majority” predicts always the majority class for each new
+observation. In the case of ties, one randomly sampled, constant class is
+predicted for all observations in the test set.
+This method is used as the default. It is very similar to the ZeroR
+classifier from WEKA. The only difference is
+that ZeroR always predicts the first class of the tied class values instead
+of sampling them randomly.
+</p>
+<p>Method “sample-prior” always samples a random class for each
+individual test observation according to the prior probabilities observed in
+the training data.
+</p>
+<p>If you opt to predict probabilities, the class probabilities always
+correspond to the prior probabilities observed in the training data.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other learner: 
+<code>LearnerProperties</code>,
+<code>getClassWeightParam()</code>,
+<code>getHyperPars()</code>,
+<code>getLearnerId()</code>,
+<code>getLearnerNote()</code>,
+<code>getLearnerPackages()</code>,
+<code>getLearnerParVals()</code>,
+<code>getLearnerParamSet()</code>,
+<code>getLearnerPredictType()</code>,
+<code>getLearnerShortName()</code>,
+<code>getLearnerType()</code>,
+<code>getParamSet()</code>,
+<code>helpLearner()</code>,
+<code>helpLearnerParam()</code>,
+<code>makeLearners()</code>,
+<code>removeHyperPars()</code>,
+<code>setHyperPars()</code>,
+<code>setId()</code>,
+<code>setLearnerId()</code>,
+<code>setPredictThreshold()</code>,
+<code>setPredictType()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+
+makeLearner("classif.rpart")
+makeLearner("classif.lda", predict.type = "prob")
+lrn = makeLearner("classif.lda", method = "t", nu = 10)
+getHyperPars(lrn)
+
+
+
+</code></pre>
+
+
+</div>

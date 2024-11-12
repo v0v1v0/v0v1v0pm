@@ -1,0 +1,210 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>createMAICInput</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Construct a MAIC input matrix</h2>
+
+<h3>Description</h3>
+
+<p>From index patient level data and a set of target baseline characteristics,
+construct the input matrix to the maic.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">createMAICInput(index, target, dictionary, matching.variables, x = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>index</code></td>
+<td>
+<p>A matrix or data.frame containing patient-level data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>target</code></td>
+<td>
+<p>A list containing target summary data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dictionary</code></td>
+<td>
+<p>A data frame containing the columns "match.id",
+"target.variable", "index.variable" and "match.type"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>matching.variables</code></td>
+<td>
+<p>A character vector indicating the match.id to use</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Return subject level inputs?</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <code>dictionary</code> is a data frame containing at least 4 vectors:
+</p>
+
+<ul>
+<li>
+<p> "match.id" - the name of the match, used to refer to it in the
+matching.variables list
+</p>
+</li>
+<li>
+<p> "target.variable" - the name of the variable in the target values
+list use to inform the matching. Use dependent on
+type
+</p>
+</li>
+<li>
+<p> "index.variable" - the name of the variable in the index data frame
+to match on.
+</p>
+</li>
+<li>
+<p> "match.type" - A string indicating the match type to use. The following
+values are accepted:
+</p>
+
+<ul>
+<li>
+<p> minimum - records with index values lower than the target variable 
+will be assigned 0 weight
+</p>
+</li>
+<li>
+<p> maximum - records with index values greater than the target variable 
+will be assigned 0 weight
+</p>
+</li>
+<li>
+<p> median - records with index values greater than the target variable will
+be assigned a value of 1, those lower 0. The target for matching
+will be a mean of 0.5
+</p>
+</li>
+<li>
+<p> quantile.X - Generalisation of the median code. records with index values
+greater than the target variable will be assigned a value of 
+1, those lower 0. The target for matching will be a mean of 
+0.X
+</p>
+</li>
+<li>
+<p> mean - records will match index value directly onto target value
+</p>
+</li>
+<li>
+<p> proportion - as mean, with index values encoded as 1 = true, 0 = false.
+If target proportion is exclusive (0 or 1 exactly) then
+excluded members of the index population shall receive no
+weighting.
+</p>
+</li>
+<li>
+<p> sd - a matching on the square of the index value on the sum of the
+square of the target mean and target standard deviation. The
+target mean is provided by the "supplementary.target.variable"
+</p>
+</li>
+<li>
+<p> var - a matching on the square of the index value on the sum of the
+square of the target mean and the variance specified by the target
+variable. The target mean is provided by the 
+"supplementary.target.variable"
+</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>In addition, the following vector may be necessary:
+</p>
+
+<ul><li>
+<p> "supplementary.target.variable" - The name of the variable in the target
+values list that provides e.g. the mean
+for sd and var matching.
+</p>
+</li></ul>
+<p>and, for estimating some p-values on difference (e.g. in proportion)
+</p>
+
+<ul><li>
+<p> "sample.size.variable" - The name of the variable in the target
+values list that provides the number of
+subjects in the sample. Only for reporting.
+</p>
+</li></ul>
+<p>It is possible to use these match types to match on other variables by 
+pre-processing the input correctly.
+</p>
+<p>Finally, the <code>matching.variables</code> is a list or character vector containing
+<code>match.id</code>s to be acted upon in this MAIC.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>maic.input</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">target &lt;- c("Air.Flow" = 60,
+           "Water.Temp" = 21,
+           "Prop.Acid.Conc.LT.90" = 0.7,
+           "min.air.flow" = 55)
+
+stackloss$match.conc.lt.90 &lt;- 
+  ifelse(stackloss$Acid.Conc. &lt; 90, 1, 0)
+
+dict &lt;- data.frame(
+  "match.id" = 
+    c("airflow", "watertemp", 
+      "acidconc", "min.airflow"),
+  "target.variable" = 
+    c("Air.Flow", "Water.Temp",
+      "Prop.Acid.Conc.LT.90", "min.air.flow"),
+  "index.variable" = 
+    c("Air.Flow", "Water.Temp",
+      "match.conc.lt.90", "Air.Flow"),
+  "match.type" = 
+    c("mean", "mean", "proportion", "min"),
+  stringsAsFactors = FALSE)
+
+ipmat &lt;- createMAICInput(
+  index = stackloss,
+  target = target,
+  dictionary = dict,
+  matching.variables = 
+    c("airflow", "watertemp", 
+      "acidconc", "min.airflow"))
+
+wts &lt;- maicWeight(ipmat)
+
+rcv &lt;- reportCovariates(
+  stackloss, target, dict, 
+  matching.variables = 
+    c("airflow", "watertemp", 
+      "acidconc", "min.airflow"),
+  wts)
+</code></pre>
+
+
+</div>

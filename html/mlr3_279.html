@@ -1,0 +1,534 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Resampling</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Resampling Class</h2>
+
+<h3>Description</h3>
+
+<p>This is the abstract base class for resampling objects like ResamplingCV and ResamplingBootstrap.
+</p>
+<p>The objects of this class define how a task is partitioned for resampling (e.g., in <code>resample()</code> or <code>benchmark()</code>),
+using a set of hyperparameters such as the number of folds in cross-validation.
+</p>
+<p>Resampling objects can be instantiated on a Task, which applies the strategy on the task and manifests in a
+fixed partition of <code>row_ids</code> of the Task.
+</p>
+<p>Predefined resamplings are stored in the dictionary mlr_resamplings,
+e.g. <code>cv</code> or <code>bootstrap</code>.
+</p>
+
+
+<h3>Stratification</h3>
+
+<p>All derived classes support stratified sampling.
+The stratification variables are assumed to be discrete and must be stored in the Task with column role <code>"stratum"</code>.
+In case of multiple stratification variables, each combination of the values of the stratification variables forms a strata.
+</p>
+<p>First, the observations are divided into subpopulations based one or multiple stratification variables (assumed to be discrete), c.f. <code>task$strata</code>.
+</p>
+<p>Second, the sampling is performed in each of the <code>k</code> subpopulations separately.
+Each subgroup is divided into <code>iter</code> training sets and <code>iter</code> test sets by the derived <code>Resampling</code>.
+These sets are merged based on their iteration number:
+all training sets from all subpopulations with iteration 1 are combined, then all training sets with iteration 2, and so on.
+Same is done for all test sets.
+The merged sets can be accessed via <code style="white-space: pre;">⁠$train_set(i)⁠</code> and <code style="white-space: pre;">⁠$test_set(i)⁠</code>, respectively.
+Note that this procedure can lead to set sizes that are slightly different from those
+without stratification.
+</p>
+
+
+<h3>Grouping / Blocking</h3>
+
+<p>All derived classes support grouping of observations.
+The grouping variable is assumed to be discrete and must be stored in the Task with column role <code>"group"</code>.
+</p>
+<p>Observations in the same group are treated like a "block" of observations which must be kept together.
+These observations either all go together into the training set or together into the test set.
+</p>
+<p>The sampling is performed by the derived Resampling on the grouping variable.
+Next, the grouping information is replaced with the respective row ids to generate training and test sets.
+The sets can be accessed via <code style="white-space: pre;">⁠$train_set(i)⁠</code> and <code style="white-space: pre;">⁠$test_set(i)⁠</code>, respectively.
+</p>
+
+
+<h3>Public fields</h3>
+
+<div class="r6-fields">
+
+<dl>
+<dt><code>label</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Label for this object.
+Can be used in tables, plot and text output instead of the ID.</p>
+</dd>
+<dt><code>param_set</code></dt>
+<dd>
+<p>(paradox::ParamSet)<br>
+Set of hyperparameters.</p>
+</dd>
+<dt><code>instance</code></dt>
+<dd>
+<p>(any)<br>
+During <code>instantiate()</code>, the instance is stored in this slot in an arbitrary format.
+Note that if a grouping variable is present in the Task, a Resampling may operate on the
+group ids internally instead of the row ids (which may lead to confusion).
+</p>
+<p>It is advised to not work directly with the <code>instance</code>, but instead only use the getters
+<code style="white-space: pre;">⁠$train_set()⁠</code> and <code style="white-space: pre;">⁠$test_set()⁠</code>.</p>
+</dd>
+<dt><code>task_hash</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+The hash of the Task which was passed to <code>r$instantiate()</code>.</p>
+</dd>
+<dt><code>task_nrow</code></dt>
+<dd>
+<p>(<code>integer(1)</code>)<br>
+The number of observations of the Task which was passed to <code>r$instantiate()</code>.</p>
+</dd>
+<dt><code>duplicated_ids</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)<br>
+If <code>TRUE</code>, duplicated rows can occur within a single training set or within a single test set.
+E.g., this is <code>TRUE</code> for Bootstrap, and <code>FALSE</code> for cross-validation.
+Only used internally.</p>
+</dd>
+<dt><code>man</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+String in the format <code style="white-space: pre;">⁠[pkg]::[topic]⁠</code> pointing to a manual page for this object.
+Defaults to <code>NA</code>, but can be set by child classes.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Active bindings</h3>
+
+<div class="r6-active-bindings">
+
+<dl>
+<dt><code>id</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Identifier of the object.
+Used in tables, plot and text output.</p>
+</dd>
+<dt><code>is_instantiated</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)<br>
+Is <code>TRUE</code> if the resampling has been instantiated.</p>
+</dd>
+<dt><code>hash</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Hash (unique identifier) for this object.</p>
+</dd>
+</dl>
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-Resampling-new"><code>Resampling$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Resampling-format"><code>Resampling$format()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Resampling-print"><code>Resampling$print()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Resampling-help"><code>Resampling$help()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Resampling-instantiate"><code>Resampling$instantiate()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Resampling-train_set"><code>Resampling$train_set()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Resampling-test_set"><code>Resampling$test_set()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Resampling-clone"><code>Resampling$clone()</code></a>
+</p>
+</li>
+</ul>
+<hr>
+<a id="method-Resampling-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Creates a new instance of this R6 class.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Resampling$new(
+  id,
+  param_set = ps(),
+  duplicated_ids = FALSE,
+  label = NA_character_,
+  man = NA_character_
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>id</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Identifier for the new instance.</p>
+</dd>
+<dt><code>param_set</code></dt>
+<dd>
+<p>(paradox::ParamSet)<br>
+Set of hyperparameters.</p>
+</dd>
+<dt><code>duplicated_ids</code></dt>
+<dd>
+<p>(<code>logical(1)</code>)<br>
+Set to <code>TRUE</code> if this resampling strategy may have duplicated row ids in a single training set or test set.
+</p>
+<p>Note that this object is typically constructed via a derived classes, e.g. ResamplingCV or ResamplingHoldout.</p>
+</dd>
+<dt><code>label</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+Label for the new instance.</p>
+</dd>
+<dt><code>man</code></dt>
+<dd>
+<p>(<code>character(1)</code>)<br>
+String in the format <code style="white-space: pre;">⁠[pkg]::[topic]⁠</code> pointing to a manual page for this object.
+The referenced help package can be opened via method <code style="white-space: pre;">⁠$help()⁠</code>.</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-Resampling-format"></a>
+
+
+
+<h4>Method <code>format()</code>
+</h4>
+
+<p>Helper for print outputs.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Resampling$format(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(ignored).</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-Resampling-print"></a>
+
+
+
+<h4>Method <code>print()</code>
+</h4>
+
+<p>Printer.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Resampling$print(...)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>...</code></dt>
+<dd>
+<p>(ignored).</p>
+</dd>
+</dl>
+</div>
+
+
+<hr>
+<a id="method-Resampling-help"></a>
+
+
+
+<h4>Method <code>help()</code>
+</h4>
+
+<p>Opens the corresponding help page referenced by field <code style="white-space: pre;">⁠$man⁠</code>.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Resampling$help()</pre></div>
+
+
+<hr>
+<a id="method-Resampling-instantiate"></a>
+
+
+
+<h4>Method <code>instantiate()</code>
+</h4>
+
+<p>Materializes fixed training and test splits for a given task and stores them in <code>r$instance</code>
+in an arbitrary format.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Resampling$instantiate(task)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>task</code></dt>
+<dd>
+<p>(Task)<br>
+Task used for instantiation.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>Returns the object itself, but modified <strong>by reference</strong>.
+You need to explicitly <code style="white-space: pre;">⁠$clone()⁠</code> the object beforehand if you want to keeps
+the object in its previous state.
+</p>
+
+
+<hr>
+<a id="method-Resampling-train_set"></a>
+
+
+
+<h4>Method <code>train_set()</code>
+</h4>
+
+<p>Returns the row ids of the i-th training set.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Resampling$train_set(i)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>i</code></dt>
+<dd>
+<p>(<code>integer(1)</code>)<br>
+Iteration.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>(<code>integer()</code>) of row ids.
+</p>
+
+
+<hr>
+<a id="method-Resampling-test_set"></a>
+
+
+
+<h4>Method <code>test_set()</code>
+</h4>
+
+<p>Returns the row ids of the i-th test set.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Resampling$test_set(i)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>i</code></dt>
+<dd>
+<p>(<code>integer(1)</code>)<br>
+Iteration.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>(<code>integer()</code>) of row ids.
+</p>
+
+
+<hr>
+<a id="method-Resampling-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Resampling$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>See Also</h3>
+
+
+<ul>
+<li>
+<p> Chapter in the <a href="https://mlr3book.mlr-org.com/">mlr3book</a>:
+<a href="https://mlr3book.mlr-org.com/chapters/chapter3/evaluation_and_benchmarking.html#sec-resampling">https://mlr3book.mlr-org.com/chapters/chapter3/evaluation_and_benchmarking.html#sec-resampling</a>
+</p>
+</li>
+<li>
+<p> Package <a href="https://CRAN.R-project.org/package=mlr3spatiotempcv"><span class="pkg">mlr3spatiotempcv</span></a> for spatio-temporal resamplings.
+</p>
+</li>
+<li> <p>Dictionary of Resamplings: mlr_resamplings
+</p>
+</li>
+<li> <p><code>as.data.table(mlr_resamplings)</code> for a table of available Resamplings in the running session (depending on the loaded packages).
+</p>
+</li>
+<li> <p><a href="https://CRAN.R-project.org/package=mlr3spatiotempcv"><span class="pkg">mlr3spatiotempcv</span></a> for additional Resamplings for spatio-temporal
+tasks.
+</p>
+</li>
+</ul>
+<p>Other Resampling: 
+<code>mlr_resamplings</code>,
+<code>mlr_resamplings_bootstrap</code>,
+<code>mlr_resamplings_custom</code>,
+<code>mlr_resamplings_custom_cv</code>,
+<code>mlr_resamplings_cv</code>,
+<code>mlr_resamplings_holdout</code>,
+<code>mlr_resamplings_insample</code>,
+<code>mlr_resamplings_loo</code>,
+<code>mlr_resamplings_repeated_cv</code>,
+<code>mlr_resamplings_subsampling</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">r = rsmp("subsampling")
+
+# Default parametrization
+r$param_set$values
+
+# Do only 3 repeats on 10% of the data
+r$param_set$values = list(ratio = 0.1, repeats = 3)
+r$param_set$values
+
+# Instantiate on penguins task
+task = tsk("penguins")
+r$instantiate(task)
+
+# Extract train/test sets
+train_set = r$train_set(1)
+print(train_set)
+intersect(train_set, r$test_set(1))
+
+# Another example: 10-fold CV
+r = rsmp("cv")$instantiate(task)
+r$train_set(1)
+
+# Stratification
+task = tsk("pima")
+prop.table(table(task$truth())) # moderately unbalanced
+task$col_roles$stratum = task$target_names
+
+r = rsmp("subsampling")
+r$instantiate(task)
+prop.table(table(task$truth(r$train_set(1)))) # roughly same proportion
+</code></pre>
+
+
+</div>

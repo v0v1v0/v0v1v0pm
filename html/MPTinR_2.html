@@ -1,0 +1,220 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bmpt.fia</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Compute FIA for MPTs
+</h2>
+
+<h3>Description</h3>
+
+<p>R-port of the function to compute FIA for MPT models by Wu, Myung, and Batchelder (2010a, 2010b). This function is essentially a copy of the original Matlab code to R (with significant parts moved to C++ and allowing for multicore functionality). Also, the order of input arguments is more R-like.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bmpt.fia(s, parameters, category, N, ineq0 = NULL, Sample = 2e+05, 
+        multicore = FALSE, split = NULL, mConst = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>s</code></td>
+<td>
+
+<p>see Details
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parameters</code></td>
+<td>
+
+<p>see Details
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>category</code></td>
+<td>
+
+<p>see Details
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N</code></td>
+<td>
+
+<p>see Details
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ineq0</code></td>
+<td>
+
+<p>see Details
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Sample</code></td>
+<td>
+
+<p>see Details
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>multicore</code></td>
+<td>
+
+<p>logical. Should fitting be distributed across several cores? Requires <span class="pkg">snowfall</span> and initialized cluster. See also below.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>split</code></td>
+<td>
+
+<p><code>NULL</code> (the default) or integer specifying in how many separate calls to the C++ workhorse the integrant should be calculated. See below.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mConst</code></td>
+<td>
+
+<p>A constant which is added in the Monte Carlo integration to avoid numerical underflows and is later subtracted (after appropriate transformation). Should be a power of 2 to avoid unnecessary numerical imprecision. 
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The following is the original description by Wu, Myung, &amp; Batchelder (2010a) for their Matlab function. All changes to the original document are in squared brackets []:
+</p>
+<p>This function computes the FIA complexity measure, C_FIA, using a Monte Carlo numerical integration algorithm. When inequality is present, sampling from the restricted parameter space is performed by rejection algorithm.
+</p>
+<p>[...] [see References for References]
+</p>
+<p>The following symbols are used in the body of the function:<br>
+S denotes number of parameters.<br>
+C denotes the number of categories.<br>
+M denotes the number of leaves in the tree.
+</p>
+<p>The first input argument <code>s</code> is related to the string representation of the BMPT model. It can be obtained by replacing all categories in the string by the capital letter C and all branching probabilities by the lower case letter p. 
+</p>
+<p>The second input argument <code>parameters</code> is a row vector that assigns parameters or constants to the p's in the  string <code>s</code>. Its length should be the same as the number of p's in <code>s</code>, and its elements correspond to the p's according to their order in <code>s</code>. Positive integer elements in <code>parameters</code> assign parameters to the corresponding p's, with the same integer denoting the same parameter. Constants are assigned to the p's using the negation of their values. 
+</p>
+<p>The [third] input argument <code>category</code> is a 1 by M vector assigning categories to the C's in the string ‘s’ in the same way <code>parameters</code> assigns branching probabilities, except that only positive consecutive integers from 1 to <code>J</code>, the total number of categories, are allowed. 
+</p>
+<p>The [fourth] input argument <code>N</code> specifies the total sample size.
+</p>
+<p>The [fifth] input argument <code>ineq0</code> assigns inequality constraints imposed on the parameters. It is a matrix with two columns. Each element denotes a parameter coded in the same way as in <code>parameters</code>. For each row, the parameter on the left column is constrained to be smaller than that on the right column. The number of rows is determined by the total number of simple inequality constraints of the form <code>theta_1 &lt; theta_2</code> in the model. [Default is <code>NULL</code> corresponding to no inequality restrictions.]
+</p>
+<p>The last input argument ‘Sample’ specifies the number of random samples to be drawn in the Monte Carlo algorithm. [Default is 200000.]
+</p>
+<p>[For returned values see Value]
+</p>
+<p>It should be noted that ‘lnconst’ can be computed analytically free of Monte Carlo error on a case by case basis described below. For this reason, the users can calculate <code>C_FIA</code> [see Wu, Myung &amp; Batchelder, 2010a; Equation 7] by adding <code>(S/2)*ln*(N/(2*pi))</code>, <code>lnInt</code> and their hand-calculated <code>lnconst</code> to minimize the Monte Carlo errors. [In our experience this error is rather low and negligible.]
+</p>
+<p>A sequence of inequalities <code>theta_1 &lt; theta_2 &lt; ... &lt; theta_k</code> reduces the parameter space to its <code>1/k!</code>, so in this case <code>lnconst</code> should be <code>-ln * (k!)</code>. In general, any combination of inequality constraints specifies a union of subsets of the parameter space, each satisfying some sequence of inequalities. For example, the subspace defined by <code>theta_1 &lt; theta_2</code> and <code>theta_3 &lt; theta_2</code> is a union of two subspaces, one satisfying <code>theta_1 &lt; theta_3 &lt; theta_2</code> and the other <code>theta_3 &lt; theta_1 &lt; theta_2</code>, so the proportion is given by <code>2 * (1/3!) = 1/3</code>.
+</p>
+<p>A coding example:<br>
+Suppose that for model 1HTM-5c of source monitoring [see Wu et al., 2010a] , the sample sizes of source A, source B and new items are 300, 300 and 400, respectively and the inequality constraint of <code>d_1 &lt; d_2</code> is imposed. In this case, the six input arguments should be specified as follows:<br>
+s = 'ppppCpCCppCCCppCpCCppCCCppCCC';<br>
+parameters = c(-.6,-.5,1,2,5,4,5,1,3,5,4,5,4,5); [adapted for R]<br>
+ineq0 = matrix(c(2,3), 1,2); [adapted for R]<br>
+category = c(1,1,2,1,2,3,5,4,5,4,5,6,7,8,9); [adapted for R]<br>
+N = 1000;
+</p>
+<p>Another coding example:<br>
+For the pair-clustering model in Batchelder and Riefer (1999, Figure 1), suppose in a pair-clustering experiment there are 300 pairs of words and 100 singletons, the six input arguments should be specified as follows:<br>
+s = 'pppCCppCCpCCpCC';
+parameters = c(-.75,1,2,3,3,3,3); [adapted for R]<br>
+ineq0 = NULL;  [adapted for R]<br>
+category = c(1,4,2,3,3,4,5,6); [adapted for R]<br>
+N = 400;
+</p>
+<p>[For more examples, see Examples]
+</p>
+<p>Since MPTinR version 1.1.3 the Monte Carlo integration is performed in C++ using <span class="pkg">RcppEigen</span>. With the default arguments, one instance of the C++ workhorse is called. To call multiple instances of the C++ workhorse, you can use the <code>split</code> argument (which can be useful to replicate results obtained with <code>multicore = TRUE</code> as described below). Note, that each time before calling the C++ code, the seed is set (the set of random seeds are generated before calling the function for the first time).
+</p>
+<p>Multicore functionality is achieved via <span class="pkg">snowfall</span> which needs to be loaded and a cluster initialized via <code>sfInit</code> when setting <code>multicore = TRUE</code>. When <code>split = NULL</code> (the default), the <code>Samples</code> will be evenly distributed on the different cores (using <code>sfClusterSplit</code>), so that only one instance of the underlying C++ workhorse is called on each core. Setting <code>split</code> to non-<code>NULL</code> will produce as many instances (distributed across cores). Note that in order to obtain comparable results (as snowfall uses load balancing), the random seed is set (at each core) before calling each instance of the C++ workhorse. This allows to replicate results obtained via multicore in a non-multicore environment when seting <code>split</code> appropriately (and <code>set.seed</code> beforehands).
+</p>
+
+
+<h3>Value</h3>
+
+<p>[A named vector:]
+</p>
+<p>The first output argument <code>CFIA</code> gives the FIA complexity value of the model.
+</p>
+<p>The second [and third] output argument <code>CI</code> gives the Monte Carlo confidence interval of <code>CFIA</code>. [<code>CI.l</code>, gives the lower, <code>CI.u</code>, the upper bound of the interval].
+</p>
+<p>The [fourth] output argument <code>lnInt</code> gives the log integral term in <code>C_FIA</code> [see Wu, Myung &amp; Batchelder, 2010a; Equation 7] for models without inequality constraints. When inequality constraints are present, <code>lnInt</code> does not take into account the change in the normalizing constant in the proposal distribution and must be adjusted with the output argument <code>lnconst</code>.
+</p>
+<p>The [fifth and sixth] output argument [<code>CI.lnint</code>] gives the Monte Carlo confidence interval of <code>lnInt</code>. [.l = lower &amp; .u = upper bound of the CI]
+</p>
+<p>When inequality constraints are present, the [seventh] output argument <code>lnconst</code> serves as an adjustment of ‘lnInt’. It estimates the logarithm of the proportion of parameter space [0,1]^S that satisfies those inequality constraints, and the log integral term is given by lnInt+lnconst.
+</p>
+<p>The next [two] output argument [<code>CI.lnconst</code>] give the Monte Carlo confidence interval of ‘lnconst’. [.l = lower &amp; .u = upper bound of the CI]
+</p>
+
+
+<h3>Note</h3>
+
+<p>The R version of the code should now (after moving the code to RcppEigen) be considerably faster than the Matlab version of this code.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>The original Matlab code was written by Hao Wu, Jay I. Myung, and William H. Batchelder.<br> This code was ported to R by Henrik Singmann and David Kellen. RcppEigen was added by Henrik Singmann and Christian Mueller. Multicore functionality was added by Henrik Singmann.
+</p>
+
+
+<h3>References</h3>
+
+<p>Wu, H., Myung, J.I., &amp; Batchelder, W.H. (2010a). Minimum description length model selection of multinomial processing tree models. <em>Psychonomic Bulletin &amp; Review</em>, 17, 275-286.
+</p>
+<p>Wu, H., Myung, J.I., &amp; Batchelder, W.H. (2010b). On the minimum description length complexity of multinomial processing trees. <em>Journal of Mathematical Psychology</em>, 54, 291-303.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>fit.mpt</code> for the main function of MPTinR.<br><code>get.mpt.fia</code> for a convenient wrapper of this function.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# The following example is the code for the first example in Wu, Myung &amp; Batchelder (2010a, pp. 280)
+# The result should be something like: CFIA = 12.61... or 12.62..., CI = 12.61... - 12.62....
+# Executing this command can take a while.
+
+bmpt.fia(s = "ppppCpCCppCCCppCpCCppCCCppCCC", 
+	parameters = c(-0.5, -0.5, 3, 2, 5, 1, 5, 4, 2, 5, 1, 5, 1, 5), 
+	category = c(1,1,2,1,2,3,5,4,5,4,5,6,7,8,9), 
+  N = 1000, ineq0 = matrix(c(4,3),1,2))
+
+bmpt.fia(s = "ppppCpCCppCCCppCpCCppCCCppCCC", 
+	parameters = c(-0.5, -0.5, 3, 2, 5, 1, 5, 4, 2, 5, 1, 5, 1, 5), 
+	category = c(1,1,2,1,2,3,5,4,5,4,5,6,7,8,9), 
+  N = 1000, ineq0 = matrix(c(4,3),1,2), mConst = 2L^8)
+
+## End(Not run)
+  </code></pre>
+
+
+</div>

@@ -1,0 +1,271 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>distBioCond</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Quantify the Distance between Each Pair of Samples in a <code>bioCond</code>
+</h2>
+
+<h3>Description</h3>
+
+<p>Given a <code>bioCond</code> object, <code>distBioCond</code> deduces, for each
+pair of samples contained in it, the average absolute difference in signal
+intensities of genomic intervals between them. Specifically, the function
+calculates a weighted minkowski (i.e., <em>p</em>-norm) distance between each
+pair of vectors of signal intensities, with the weights being inversely
+proportional to variances of individual intervals (see also
+"Details"). <code>distBioCond</code> returns a <code>dist</code> object
+recording the deduced average <code class="reqn">|M|</code> values. The object effectively
+quantifies the distance between each pair of samples and can be passed to
+<code>hclust</code> to perform a clustering analysis (see
+"Examples" below).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">distBioCond(
+  x,
+  subset = NULL,
+  method = c("prior", "posterior", "none"),
+  min.var = 0,
+  p = 2,
+  diag = FALSE,
+  upper = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A <code>bioCond</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>An optional vector specifying a subset of genomic intervals to
+be used for deducing the distances between samples of <code>x</code>. In
+practice, you may want to use only the intervals associated with large
+variations across the samples to calculate the distances, as such
+intervals are most helpful for distinguishing between the samples (see
+<code>varTestBioCond</code> and "Examples" below).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>A character string indicating the method to be used for
+calculating the variances of individual intervals. Must be one of
+<code>"prior"</code> (default), <code>"posterior"</code> and <code>"none"</code>. Can be
+abbreviated. Note that the <code>"none"</code> method does not consider the
+mean-variance trend associated with <code>x</code> (see "Details").</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min.var</code></td>
+<td>
+<p>Lower bound of variances read from the mean-variance
+curve associated with <code>x</code>. Any variance read from the curve less
+than <code>min.var</code> will be adjusted to this value. It's primarily used
+for safely reading positive values from the curve and taking into
+account the practical significance of a signal variation. Ignored if
+<code>method</code> is set to <code>"none"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>The power used to calculate the <em>p</em>-norm distance between
+each pair of samples (see "Details" for the specific formula).
+Any positive real could be
+specified, though setting <code>p</code> to a value other than 1
+and 2 makes little sense. The default corresponds to the Euclidean
+distance.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>diag, upper</code></td>
+<td>
+<p>Two arguments to be passed to
+<code>as.dist</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Variance of signal intensity varies considerably
+across genomic intervals, due to
+the heteroscedasticity inherent to count data as well as most of their
+transformations. On this account, separately scaling the signal intensities
+of each interval in a <code>bioCond</code> should lead to a more
+reasonable measure of distances between its samples.
+Suppose that <code class="reqn">X</code> and <code class="reqn">Y</code> are two vectors of signal intensities
+representing two samples of a <code>bioCond</code> and that <code class="reqn">xi</code>, <code class="reqn">yi</code>
+are their <code class="reqn">i</code>th elements corresponding to the <code class="reqn">i</code>th interval.
+<code>distBioCond</code> calculates the distance between <code class="reqn">X</code> and <code class="reqn">Y</code> as
+follows: </p>
+<p style="text-align: center;"><code class="reqn">d(X, Y) = (sum(wi * |yi - xi| ^ p) / sum(wi)) ^ (1 / p)</code>
+</p>
+
+<p>where <code class="reqn">wi</code> is the reciprocal of the scaled variance (see below)
+of interval <code class="reqn">i</code>, and <code class="reqn">p</code> defaults to 2.
+Since the weights of intervals are normalized to have a sum of 1,
+the resulting distance could be interpreted as an average absolute
+difference in signal intensities of intervals between the two samples.
+</p>
+<p>Since there typically exists a clear mean-variance dependence across genomic
+intervals, <code>distBioCond</code> takes advantage of the mean-variance curve
+associated with the <code>bioCond</code> to improve estimates of variances of
+individual intervals. By default, prior variances, which are the ones read
+from the curve, are used to deduce the weights of intervals for calculating
+the distances. Alternatively, one can choose to use posterior variances of
+intervals by setting <code>method</code> to <code>"posterior"</code>, which are weighted
+averages of prior and observed variances, with the weights being
+proportional to their respective numbers of degrees of freedom (see
+<code>fitMeanVarCurve</code> for details). Since the observed variances of
+intervals are associated with large uncertainty when the total number of
+samples is small, it is not recommended to use posterior variances in such
+cases. To be noted, if <code>method</code> is set to <code>"none"</code>,
+<code>distBioCond</code> will consider all genomic intervals to be associated with
+a constant variance. In this case, neither the prior variance nor the
+observed variance of each interval is used
+to deduce its weight for calculating the distances.
+This method is particularly suited to <code>bioCond</code> objects
+that have gone through a variance-stabilizing transformation (see
+<code>vstBioCond</code> for details and "Examples" below) as well as
+<code>bioCond</code>s whose structure matrices have been specifically
+designed (see below and "References" also).
+</p>
+<p>Another point deserving special attention is that <code>distBioCond</code> has
+considered the possibility that
+genomic intervals in the supplied <code>bioCond</code>
+are associated with different structure matrices. In order to objectively
+compare signal variation levels between genomic intervals,
+<code>distBioCond</code> further scales the variance of each interval
+(deduced by using whichever method is selected) by
+multiplying it with the geometric mean of diagonal
+elements of the interval's structure matrix. See <code>bioCond</code> and
+<code>setWeight</code> for a detailed description of structure matrix.
+</p>
+<p>Given a set of <code>bioCond</code> objects,
+<code>distBioCond</code> could also be used to quantify the distance between
+each pair of them, by first combining the <code>bioCond</code>s into a
+single <code>bioCond</code> and fitting a mean-variance curve for
+it (see <code>cmbBioCond</code> and "Examples" below).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>dist</code> object quantifying the distance between
+each pair of samples of <code>x</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Law, C.W., et al., <em>voom: Precision weights unlock linear
+model analysis tools for RNA-seq read counts.</em> Genome Biol, 2014.
+<strong>15</strong>(2): p. R29.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>bioCond</code> for creating a <code>bioCond</code> object;
+<code>fitMeanVarCurve</code> for fitting a mean-variance curve;
+<code>cmbBioCond</code> for combining a set of <code>bioCond</code> objects
+into a single one; <code>hclust</code> for performing a
+hierarchical clustering on a <code>dist</code> object;
+<code>vstBioCond</code> for applying a variance-stabilizing
+transformation to signal intensities of samples of a <code>bioCond</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(H3K27Ac, package = "MAnorm2")
+attr(H3K27Ac, "metaInfo")
+
+## Cluster a set of ChIP-seq samples from different cell lines (i.e.,
+## individuals).
+
+# Perform MA normalization and construct a bioCond.
+norm &lt;- normalize(H3K27Ac, 4:8, 9:13)
+cond &lt;- bioCond(norm[4:8], norm[9:13], name = "all")
+
+# Fit a mean-variance curve.
+cond &lt;- fitMeanVarCurve(list(cond), method = "local",
+                        occupy.only = FALSE)[[1]]
+plotMeanVarCurve(list(cond), subset = "all")
+
+# Measure the distance between each pair of samples and accordingly perform
+# a hierarchical clustering. Note that biological replicates of each cell
+# line are clustered together.
+d1 &lt;- distBioCond(cond, method = "prior")
+plot(hclust(d1, method = "average"), hang = -1)
+
+# Measure the distances using only hypervariable genomic intervals. Note the
+# change of scale of the distances.
+res &lt;- varTestBioCond(cond)
+f &lt;- res$fold.change &gt; 1 &amp; res$pval &lt; 0.05
+d2 &lt;- distBioCond(cond, subset = f, method = "prior")
+plot(hclust(d2, method = "average"), hang = -1)
+
+# Apply a variance-stabilizing transformation and associate a constant
+# function with the resulting bioCond as its mean-variance curve.
+vst_cond &lt;- vstBioCond(cond)
+vst_cond &lt;- setMeanVarCurve(list(vst_cond), function(x)
+                            rep_len(1, length(x)), occupy.only = FALSE,
+                            method = "constant prior")[[1]]
+plotMeanVarCurve(list(vst_cond), subset = "all")
+
+# Repeat the clustering analyses on the VSTed bioCond.
+d3 &lt;- distBioCond(vst_cond, method = "none")
+plot(hclust(d3, method = "average"), hang = -1)
+res &lt;- varTestBioCond(vst_cond)
+f &lt;- res$fold.change &gt; 1 &amp; res$pval &lt; 0.05
+d4 &lt;- distBioCond(vst_cond, subset = f, method = "none")
+plot(hclust(d4, method = "average"), hang = -1)
+
+## Cluster a set of individuals.
+
+# Perform MA normalization and construct bioConds to represent individuals.
+norm &lt;- normalize(H3K27Ac, 4, 9)
+norm &lt;- normalize(norm, 5:6, 10:11)
+norm &lt;- normalize(norm, 7:8, 12:13)
+conds &lt;- list(GM12890 = bioCond(norm[4], norm[9], name = "GM12890"),
+              GM12891 = bioCond(norm[5:6], norm[10:11], name = "GM12891"),
+              GM12892 = bioCond(norm[7:8], norm[12:13], name = "GM12892"))
+conds &lt;- normBioCond(conds)
+
+# Group the individuals into a single bioCond and fit a mean-variance curve
+# for it.
+cond &lt;- cmbBioCond(conds, name = "all")
+cond &lt;- fitMeanVarCurve(list(cond), method = "local",
+                        occupy.only = FALSE)[[1]]
+plotMeanVarCurve(list(cond), subset = "all")
+
+# Measure the distance between each pair of individuals and accordingly
+# perform a hierarchical clustering. Note that GM12891 and GM12892 are
+# actually a couple and they are clustered together.
+d1 &lt;- distBioCond(cond, method = "prior")
+plot(hclust(d1, method = "average"), hang = -1)
+
+# Measure the distances using only hypervariable genomic intervals. Note the
+# change of scale of the distances.
+res &lt;- varTestBioCond(cond)
+f &lt;- res$fold.change &gt; 1 &amp; res$pval &lt; 0.05
+d2 &lt;- distBioCond(cond, subset = f, method = "prior")
+plot(hclust(d2, method = "average"), hang = -1)
+
+</code></pre>
+
+
+</div>

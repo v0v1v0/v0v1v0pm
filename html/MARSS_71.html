@@ -1,0 +1,183 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MARSScv</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MARSScv is a wrapper for MARSS that re-fits the model with cross validated data.</h2>
+
+<h3>Description</h3>
+
+<p>MARSScv is a wrapper for MARSS that re-fits the model with cross validated data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MARSScv(
+  y,
+  model = NULL,
+  inits = NULL,
+  method = "kem",
+  form = "marxss",
+  silent = FALSE,
+  control = NULL,
+  fun.kf = c("MARSSkfas", "MARSSkfss"),
+  fold_ids = NULL,
+  future_cv = FALSE,
+  n_future_cv = floor(ncol(y)/3),
+  interval = "confidence",
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>A n x T matrix of n time series over T time steps. Only y
+is required for the function. A ts object (univariate or multivariate)
+can be used and this will be converted to a matrix with time in the
+columns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>Model specification using a list of parameter matrix text shortcuts or matrices.
+See Details and <code>MARSS.marxss()</code> for the default form.
+Or better yet open the Quick Start Guide <code>RShowDoc("Quick_Start",package="MARSS")</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inits</code></td>
+<td>
+<p>A list with the same form as the list output by <code>coef(fit)</code>
+that specifies initial values for the parameters. See also <code>MARSS.marxss()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>Estimation method. MARSS provides an EM algorithm (<code>method="kem"</code>)
+(see <code>MARSSkem()</code>) and the BFGS algorithm (<code>method="BFGS"</code>)
+(see <code>MARSSoptim()</code>). Fast TMB fitting provided by the companion package marssTMB.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>form</code></td>
+<td>
+<p>The equation form used in the <code>MARSS()</code> call.  The default is "marxss".
+See <code>MARSS.marxss()</code> or <code>MARSS.dfa()</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>silent</code></td>
+<td>
+<p>Setting to TRUE(1) suppresses printing of full error messages, warnings,
+progress bars and convergence information. Setting to FALSE(0) produces
+error output. Setting silent=2 will produce more verbose error messages and
+progress information.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>Estimation options for the maximization algorithm. The typically used
+control options for method="kem" are below but see  marssMLE for the full
+list of control options.  Note many of these are not allowed if method="BFGS";
+see  <code>MARSSoptim()</code> for the allowed control options for this method.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun.kf</code></td>
+<td>
+<p>What Kalman filter function to use.  MARSS has two:
+<code>MARSSkfas()</code> which is based on the Kalman filter in the
+<a href="https://cran.r-project.org/package=KFAS">KFAS</a> package based on
+Koopman and Durbin and <code>MARSSkfss()</code> which is a native
+R implementation of the Kalman filter and smoother in Shumway and
+Stoffer. The KFAS filter is much faster.  <code>MARSSkfas()</code>
+modifies the input and output in order to output the lag-one covariance
+smoother needed for the EM algorithm (per page 321 in Shumway and Stoffer (2000).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fold_ids</code></td>
+<td>
+<p>A n x T matrix of integers, with values assigned by the user to folds.
+If not included, data are randomly assigned to one of 10 folds</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>future_cv</code></td>
+<td>
+<p>Whether or not to use future cross validation (defaults to FALSE), where data up to
+time T-1 are used to predict data at time T. Data are held out by time slices, and
+the <code>fold_ids</code> argument is ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_future_cv</code></td>
+<td>
+<p>Number of time slices to hold out for future cross validation. Defaults
+to floor(n_future_cv/3). Predictions are made for the last n_future_cv time steps</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>interval</code></td>
+<td>
+<p>uncertainty interval for prediction. Can be one of "confidence" or "prediction",
+and defaults to "confidence"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>not used</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list object, containing <code>cv_pred</code> (a matrix of predictions), <code>cv_se</code> (a matrix of SEs),
+<code>fold_ids</code> (a matrix of fold ids used as data), and <code>df</code> (a dataframe containing
+the original data, predictions, SEs, and folds)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+dat &lt;- t(harborSealWA)
+dat &lt;- dat[2:4, ] # remove the year row
+# fit a model with 1 hidden state and 3 observation time series
+# cross validation here is random, 10 folds
+fit &lt;- MARSScv(dat, model = list(
+  Z = matrix(1, 3, 1),
+  R = "diagonal and equal"
+))
+
+# second, demonstrate passing in pre-specified folds
+fold_ids &lt;- matrix(
+  sample(1:5, size = nrow(dat) * ncol(dat), replace = TRUE),
+  nrow(dat), ncol(dat)
+)
+fit &lt;- MARSScv(dat, model = list(
+  Z = matrix(1, 3, 1),
+  R = "diagonal and equal"
+), fold_ids = fold_ids)
+
+# third, illustrate future cross validation
+fit &lt;- MARSScv(dat, model = list(
+  Z = matrix(1, 3, 1),
+  R = "diagonal and equal"
+), future_cv = TRUE, n_future_cv = 5)
+
+</code></pre>
+
+
+</div>

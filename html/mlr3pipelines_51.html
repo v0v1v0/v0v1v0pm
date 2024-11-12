@@ -1,0 +1,228 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_pipeops_classbalancing</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Class Balancing</h2>
+
+<h3>Description</h3>
+
+<p>Both undersamples a <code>Task</code> to keep only a fraction of the rows of the majority class,
+as well as oversamples (repeats data points) rows of the minority class.
+</p>
+<p>Sampling happens only during training phase. Class-balancing a <code>Task</code> by sampling may be
+beneficial for classification with imbalanced training data.
+</p>
+
+
+<h3>Format</h3>
+
+<p><code>R6Class</code> object inheriting from <code>PipeOpTaskPreproc</code>/<code>PipeOp</code>.
+</p>
+
+
+<h3>Construction</h3>
+
+<div class="sourceCode"><pre>PipeOpClassBalancing$new(id = "classbalancing", param_vals = list())
+</pre></div>
+
+<ul>
+<li> <p><code>id</code> :: <code>character(1)</code>
+Identifier of the resulting  object, default <code>"classbalancing"</code>
+</p>
+</li>
+<li> <p><code>param_vals</code> :: named <code>list</code><br>
+List of hyperparameter settings, overwriting the hyperparameter settings that would otherwise be set during construction. Default <code>list()</code>.
+</p>
+</li>
+</ul>
+<h3>Input and Output Channels</h3>
+
+<p>Input and output channels are inherited from <code>PipeOpTaskPreproc</code>. Instead of a <code>Task</code>, a
+<code>TaskClassif</code> is used as input and output during training and prediction.
+</p>
+<p>The output during training is the input <code>Task</code> with added or removed rows to balance target classes.
+The output during prediction is the unchanged input.
+</p>
+
+
+<h3>State</h3>
+
+<p>The <code style="white-space: pre;">⁠$state⁠</code> is a named <code>list</code> with the <code style="white-space: pre;">⁠$state⁠</code> elements inherited from <code>PipeOpTaskPreproc</code>.
+</p>
+
+
+<h3>Parameters</h3>
+
+<p>The parameters are the parameters inherited from <code>PipeOpTaskPreproc</code>; however, the <code>affect_columns</code> parameter is <em>not</em> present. Further parameters are:
+</p>
+
+<ul>
+<li> <p><code>ratio</code> :: <code>numeric(1)</code> <br>
+Ratio of number of rows of classes to keep, relative
+to the <code style="white-space: pre;">⁠$reference⁠</code> value. Initialized to 1.
+</p>
+</li>
+<li> <p><code>reference</code> :: <code>numeric(1)</code> <br>
+What the <code style="white-space: pre;">⁠$ratio⁠</code> value is measured against. Can be <code>"all"</code> (mean instance count of
+all classes), <code>"major"</code> (instance count of class with most instances), <code>"minor"</code>
+(instance count of class with fewest instances), <code>"nonmajor"</code> (average instance
+count of all classes except the major one), <code>"nonminor"</code> (average instance count
+of all classes except the minor one), and <code>"one"</code> (<code style="white-space: pre;">⁠$ratio⁠</code> determines the number of
+instances to have, per class). Initialized to <code>"all"</code>.
+</p>
+</li>
+<li> <p><code>adjust</code> :: <code>numeric(1)</code> <br>
+Which classes to up / downsample. Can be <code>"all"</code> (up and downsample all to match required
+instance count), <code>"major"</code>, <code>"minor"</code>, <code>"nonmajor"</code>, <code>"nonminor"</code> (see respective values
+for <code style="white-space: pre;">⁠$reference⁠</code>), <code>"upsample"</code> (only upsample), and <code>"downsample"</code>. Initialized to <code>"all"</code>.
+</p>
+</li>
+<li> <p><code>shuffle</code> :: <code>logical(1)</code> <br>
+Whether to shuffle the rows of the resulting task.
+In case the data is upsampled and <code>shuffle = FALSE</code>, the resulting task will have the original
+rows (which were not removed in downsampling) in the original order, followed by all newly added rows
+ordered by target class.
+Initialized to <code>TRUE</code>.
+</p>
+</li>
+</ul>
+<h3>Internals</h3>
+
+<p>Up / downsampling happens as follows: At first, a "target class count" is calculated, by taking the mean
+class count of all classes indicated by the <code>reference</code> parameter (e.g. if <code>reference</code> is <code>"nonmajor"</code>:
+the mean class count of all classes that are not the "major" class, i.e. the class with the most samples)
+and multiplying this with the value of the <code>ratio</code> parameter. If <code>reference</code> is <code>"one"</code>, then the "target
+class count" is just the value of <code>ratio</code> (i.e. <code>1 * ratio</code>).
+</p>
+<p>Then for each class that is referenced by the <code>adjust</code> parameter (e.g. if <code>adjust</code> is <code>"nonminor"</code>:
+each class that is not the class with the fewest samples), <code>PipeOpClassBalancing</code> either throws out
+samples (downsampling), or adds additional rows that are equal to randomly chosen samples (upsampling),
+until the number of samples for these classes equals the "target class count".
+</p>
+<p>Uses <code>task$filter()</code> to remove rows. When identical rows are added during upsampling, then the <code>task$row_roles$use</code> can <em>not</em> be used
+to duplicate rows because of [inaudible]; instead the <code>task$rbind()</code> function is used, and
+a new <code>data.table</code> is attached that contains all rows that are being duplicated exactly as many times as they are being added.
+</p>
+
+
+<h3>Fields</h3>
+
+<p>Only fields inherited from <code>PipeOpTaskPreproc</code>/<code>PipeOp</code>.
+</p>
+
+
+<h3>Methods</h3>
+
+<p>Only methods inherited from <code>PipeOpTaskPreproc</code>/<code>PipeOp</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>https://mlr-org.com/pipeops.html
+</p>
+<p>Other PipeOps: 
+<code>PipeOp</code>,
+<code>PipeOpEnsemble</code>,
+<code>PipeOpImpute</code>,
+<code>PipeOpTargetTrafo</code>,
+<code>PipeOpTaskPreproc</code>,
+<code>PipeOpTaskPreprocSimple</code>,
+<code>mlr_pipeops</code>,
+<code>mlr_pipeops_adas</code>,
+<code>mlr_pipeops_blsmote</code>,
+<code>mlr_pipeops_boxcox</code>,
+<code>mlr_pipeops_branch</code>,
+<code>mlr_pipeops_chunk</code>,
+<code>mlr_pipeops_classifavg</code>,
+<code>mlr_pipeops_classweights</code>,
+<code>mlr_pipeops_colapply</code>,
+<code>mlr_pipeops_collapsefactors</code>,
+<code>mlr_pipeops_colroles</code>,
+<code>mlr_pipeops_copy</code>,
+<code>mlr_pipeops_datefeatures</code>,
+<code>mlr_pipeops_encode</code>,
+<code>mlr_pipeops_encodeimpact</code>,
+<code>mlr_pipeops_encodelmer</code>,
+<code>mlr_pipeops_featureunion</code>,
+<code>mlr_pipeops_filter</code>,
+<code>mlr_pipeops_fixfactors</code>,
+<code>mlr_pipeops_histbin</code>,
+<code>mlr_pipeops_ica</code>,
+<code>mlr_pipeops_imputeconstant</code>,
+<code>mlr_pipeops_imputehist</code>,
+<code>mlr_pipeops_imputelearner</code>,
+<code>mlr_pipeops_imputemean</code>,
+<code>mlr_pipeops_imputemedian</code>,
+<code>mlr_pipeops_imputemode</code>,
+<code>mlr_pipeops_imputeoor</code>,
+<code>mlr_pipeops_imputesample</code>,
+<code>mlr_pipeops_kernelpca</code>,
+<code>mlr_pipeops_learner</code>,
+<code>mlr_pipeops_missind</code>,
+<code>mlr_pipeops_modelmatrix</code>,
+<code>mlr_pipeops_multiplicityexply</code>,
+<code>mlr_pipeops_multiplicityimply</code>,
+<code>mlr_pipeops_mutate</code>,
+<code>mlr_pipeops_nmf</code>,
+<code>mlr_pipeops_nop</code>,
+<code>mlr_pipeops_ovrsplit</code>,
+<code>mlr_pipeops_ovrunite</code>,
+<code>mlr_pipeops_pca</code>,
+<code>mlr_pipeops_proxy</code>,
+<code>mlr_pipeops_quantilebin</code>,
+<code>mlr_pipeops_randomprojection</code>,
+<code>mlr_pipeops_randomresponse</code>,
+<code>mlr_pipeops_regravg</code>,
+<code>mlr_pipeops_removeconstants</code>,
+<code>mlr_pipeops_renamecolumns</code>,
+<code>mlr_pipeops_replicate</code>,
+<code>mlr_pipeops_rowapply</code>,
+<code>mlr_pipeops_scale</code>,
+<code>mlr_pipeops_scalemaxabs</code>,
+<code>mlr_pipeops_scalerange</code>,
+<code>mlr_pipeops_select</code>,
+<code>mlr_pipeops_smote</code>,
+<code>mlr_pipeops_smotenc</code>,
+<code>mlr_pipeops_spatialsign</code>,
+<code>mlr_pipeops_subsample</code>,
+<code>mlr_pipeops_targetinvert</code>,
+<code>mlr_pipeops_targetmutate</code>,
+<code>mlr_pipeops_targettrafoscalerange</code>,
+<code>mlr_pipeops_textvectorizer</code>,
+<code>mlr_pipeops_threshold</code>,
+<code>mlr_pipeops_tunethreshold</code>,
+<code>mlr_pipeops_unbranch</code>,
+<code>mlr_pipeops_updatetarget</code>,
+<code>mlr_pipeops_vtreat</code>,
+<code>mlr_pipeops_yeojohnson</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library("mlr3")
+
+task = tsk("spam")
+opb = po("classbalancing")
+
+# target class counts
+table(task$truth())
+
+# double the instances in the minority class (spam)
+opb$param_set$values = list(ratio = 2, reference = "minor",
+  adjust = "minor", shuffle = FALSE)
+result = opb$train(list(task))[[1L]]
+table(result$truth())
+
+# up or downsample all classes until exactly 20 per class remain
+opb$param_set$values = list(ratio = 20, reference = "one",
+  adjust = "all", shuffle = FALSE)
+result = opb$train(list(task))[[1]]
+table(result$truth())
+</code></pre>
+
+
+</div>

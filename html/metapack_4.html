@@ -1,0 +1,291 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bmeta_analyze</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>bmeta_analyze supersedes the previous two functions: bayes_parobs, bayes_nmr</h2>
+
+<h3>Description</h3>
+
+<p>All other worker functions are superseded by this function, so that users can forget about the implementation details and focus on modeling. Meta-analytic data can be either aggregate or individual participant data (IPD). Aggregate data implies that the response consists of estimated effect sizes and their corresponding standard errors, whereas IPD is raw data. Data sets to be used for metapack should be formatted as follows:</p>
+
+<table>
+<tr>
+<td style="text-align: center;">
+   Outcome </td>
+<td style="text-align: center;"> SD </td>
+<td style="text-align: center;"> DesignM1 </td>
+<td style="text-align: center;"> DesignM2 </td>
+<td style="text-align: center;"> Trial indicator (<code>k</code>) </td>
+<td style="text-align: center;"> Treatment indicator (<code>t</code>) </td>
+<td style="text-align: center;"> n </td>
+</tr>
+<tr>
+<td style="text-align: center;">
+   <code class="reqn">y_{13}</code> </td>
+<td style="text-align: center;"> <code class="reqn">S_{13}</code> </td>
+<td style="text-align: center;"> <code class="reqn">x_{13}</code> </td>
+<td style="text-align: center;"> <code class="reqn">w_{13}</code> </td>
+<td style="text-align: center;"> 1 </td>
+<td style="text-align: center;"> 3 </td>
+<td style="text-align: center;"> 1000 </td>
+</tr>
+<tr>
+<td style="text-align: center;">
+   <code class="reqn">y_{10}</code> </td>
+<td style="text-align: center;"> <code class="reqn">S_{10}</code> </td>
+<td style="text-align: center;"> <code class="reqn">x_{10}</code> </td>
+<td style="text-align: center;"> <code class="reqn">w_{10}</code> </td>
+<td style="text-align: center;"> 1 </td>
+<td style="text-align: center;"> 0 </td>
+<td style="text-align: center;"> 545 </td>
+</tr>
+<tr>
+<td style="text-align: center;">
+   <code class="reqn">y_{20}</code> </td>
+<td style="text-align: center;"> <code class="reqn">S_{20}</code> </td>
+<td style="text-align: center;"> <code class="reqn">x_{20}</code> </td>
+<td style="text-align: center;"> <code class="reqn">w_{20}</code> </td>
+<td style="text-align: center;"> 2 </td>
+<td style="text-align: center;"> 0 </td>
+<td style="text-align: center;"> 1200 </td>
+</tr>
+<tr>
+<td style="text-align: center;">
+</td>
+</tr>
+</table>
+<p>The first treatment indicator is intentionally selected to be 3, a number greater than 1, to indicate that this data format works for both meta-regression and network meta-regression. Meta-regression refers to when trials included have 2 treatments (i.e., <code class="reqn">t = 0, 1</code> for all <code class="reqn">k</code>), and the treatments are compared head to head. On the other hand, network meta-regression includes more than two treatments, where each trial can have a different set of treatments, allowing indirect comparison between treatments that are not compared head to head as long as <em>consistency</em> holds (see <a href="https://onlinelibrary.wiley.com/doi/10.1002/jrsm.1044">Higgins et al. (2012)</a> for consistency).
+</p>
+<p><code>bmeta_analyze()</code> and <code>bmeta_analyse()</code> are synonyms.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bmeta_analyze(
+  formula,
+  data,
+  prior = list(),
+  mcmc = list(),
+  control = list(),
+  init = list()
+)
+
+bmeta_analyse(
+  formula,
+  data,
+  prior = list(),
+  mcmc = list(),
+  control = list(),
+  init = list()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>an object of class Formula: a symbolic description of the meta-analytic model to fit. For aggregate models, the vector of arm sample sizes must be provided using the function <code>ns()</code>. For example, <code>y1 + y2 | sd1 + sd2 ~ x1 + x2 + ns(n)</code>—an incomplete formula only for illustration purposes. If no <code>ns()</code> is found, individual participant data (IPD) model is assumed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a data frame, list, or environment (or an object coercible by as.data.frame to a data frame) containing the variables in the model. If not found in <code>data</code>, the variables are taken from <code>environment(formula)</code>, typically the environment from which <code>bmeta_analyze</code> is called.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>an optional object that contains the hyperparameter values for the model. To see the complete list of hyperparameters for a specific model, refer to the corresponding worker function's help page, e.g., <code>help(bayes_parobs)</code> or <code>help(bayes_nmr)</code>. For meta-analysis, <code>model</code> is required in the <code>prior</code> argument, which is passed to <code>fmodel</code> as an integer. If the response is univariate, <code>NoRecovery</code> is the only valid option.
+</p>
+
+<ul>
+<li> <p><code>model="NoRecovery"</code> - <code class="reqn">\Sigma_{tk} = diag(\sigma_{tk,11}^2,\ldots,\sigma_{tk,JJ}^2)</code> where <code class="reqn">\sigma_{tk,jj}^2 \sim IG(a_0,b_0)</code> and <code class="reqn">IG(a,b)</code> is <a href="https://en.wikipedia.org/wiki/Inverse-gamma_distribution">the inverse-gamma distribution</a>. This specification is useful if the user does not care about the correlation recovery. (<code>c0</code>, <code>dj0</code>, <code>a0</code>, <code>b0</code>, <code>Omega0</code>)
+</p>
+</li>
+<li> <p><code>model="EquiCovariance"</code> - <code class="reqn">\Sigma_{tk}=\Sigma</code> for every combination of <code class="reqn">(t,k)</code> and <code class="reqn">\Sigma^{-1}\sim Wish_{s_0}(\Sigma_0)</code>. This specification assumes that the user has prior knowledge that the correlation structure does not change across the arms included. (<code>c0</code>, <code>dj0</code>, <code>s0</code>, <code>Omega0</code>, <code>Sigma0</code>)
+</p>
+</li>
+<li> <p><code>model="EquiWithinTreat"</code> - <code class="reqn">\Sigma_{tk}=\Sigma_t</code> and <code class="reqn">\Sigma_t^{-1}\sim  Wish_{s_0}(\Sigma_0)</code>. This is a relaxed version of <code>model=2</code>, allowing the correlation structure to differ across trials but forcing it to stay identical within a trial. (<code>c0</code>, <code>dj0</code>, <code>s0</code>, <code>Omega0</code>, <code>Sigma0</code>)
+</p>
+</li>
+<li> <p><code>model="EquiCorrelation"</code> - <code class="reqn">\Sigma_{tk}=\delta_{tk} \rho \delta_{tk}</code> where <code class="reqn">\delta_{tk}=diag(\Sigma_{tk,11}^{1/2},\ldots,\Sigma_{tk,JJ}^{1/2})</code>, and <code class="reqn">\rho</code> is the correlation matrix. This specification allows the variances to vary across arms but requires that the correlations be the same. This is due to the lack of correlation information in the data, which would in turn lead to the nonidentifiability of the correlations if they were allowed to vary. However, this still is an ambitious model which permits maximal degrees of freedom in terms of variance and correlation estimation. (<code>c0</code>, <code>dj0</code>, <code>a0</code>, <code>b0</code>, <code>Omega0</code>)
+</p>
+</li>
+<li> <p><code>model="Hierarchical"</code> - The fifth model is hierarchical and thus may require more data than the others: <code class="reqn">(\Sigma_{tk}^{-1}\mid \Sigma)\sim  Wish_{\nu_0}((\nu_0-J-1)^{-1}\Sigma^{-1})</code> and <code class="reqn">\Sigma \sim  Wish_{d_0}(\Sigma_0)</code>. <code class="reqn">\Sigma_{tk}</code> encodes the within-treatment-arm variation while <code class="reqn">\Sigma</code> captures the between-treatment-arm variation. The hierarchical structure allows the "borrowing of strength" across treatment arms. (<code>c0</code>, <code>dj0</code>, <code>d0</code>, <code>nu0</code>, <code>Sigma0</code>, <code>Omega0</code>)
+</p>
+</li>
+</ul>
+<p>For network meta-analysis,
+</p>
+
+<ul>
+<li> <p><code>df</code> - the degrees of freedom of the multivariate t-distribution for the random effects. Any positive value can be assigned; if <code>df=Inf</code>, multivariate normal random effects will be assumed.
+</p>
+</li>
+<li> <p><code>c01</code> - the variance of the fixed-effect coefficients' prior distribuiton, a multivariate normal distribution, i.e., <code class="reqn">\theta \sim N(0, c_{1}I)</code>.
+</p>
+</li>
+<li> <p><code>c02</code> - the variance of the random-effects' variance-related coefficients' prior distribution, a multivariate normal distribution, i.e., <code class="reqn">\phi \sim N(0, c_{2}I)</code>.
+</p>
+</li>
+<li> <p><code>a4</code>, <code>b4</code>, <code>a5</code>, <code>b5</code> - the hyperparameters related to when the degrees of freedom for the random effects are treated as unknown/random. <code>df</code> is then considered to follow <code class="reqn">Ga(\nu_a, \nu_a/\nu_b)</code>, <code class="reqn">\nu_a \sim Ga(a_4, b_4)</code>, and <code class="reqn">\nu_b \sim IG(a_5, b_5)</code>. All gamma and inverse-gamma distributions are rate-parameterized.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mcmc</code></td>
+<td>
+<p>an optional object containing MCMC specification. <code>ndiscard</code> is the number of burn-in iterations. <code>nskip</code> configures the thinning of the MCMC. For instance, if <code>nskip=5</code>, parameters will be saved every 5 iterations. <code>nkeep</code> is the size of the posterior sample. The total number of iterations will be <code>ndiscard + nskip * nkeep</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>an optional object that contains the control tuning parameters for the Metropolis-Hastings algorithm. Similar to <code>prior</code>, the complete list of control parameters for a specific model is given in the corresponding worker function's help page (see <code>bayes_parobs</code> or <code>bayes_nmr</code>).
+These are the lists of available tuning parameters in <code>control</code> for meta-analysis and network meta-analysis. Keep in mind that <code>model</code> will render some irrelevant tuning parameters ineffective.
+</p>
+
+<ul>
+<li>
+<p> Meta-analysis - <code>model</code> (string), <code>sample_Rho</code> (logical), <code>Rho_stepsize</code> (double), <code>R_stepsize</code> (double), <code>delta_stepsize</code> (double), <code>sample_Rho</code> (logical)
+</p>
+</li>
+<li>
+<p> Network meta-analysis - <code>sample_df</code> (logical), <code>sample_Rho</code> (logical), <code>lambda_stepsize</code> (double), <code>phi_stepsize</code> (double), <code>Rho_stepsize</code> (double)
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+<p>(Optional) a list of initial values for the parameters to be sampled. The following is the list of available parameters for meta-analysis and network meta-analysis.
+</p>
+
+<ul>
+<li>
+<p> Meta-analysis - <code>theta</code> (vector), <code>gamR</code> (matrix), <code>Omega</code> (matrix), <code>Rho</code> (matrix)
+</p>
+</li>
+<li>
+<p> Network meta-analysis - <code>theta</code> (vector), <code>phi</code> (vector), <code>sig2</code> (vector), <code>Rho</code> (matrix)
+</p>
+</li>
+</ul>
+<p>The dimensions of the initial values must be conformable for matrix operations. If dimensions don't agree, <code>bmeta_analyze</code> will tell you the correct dimension.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>bmeta_analyze</code> currently subsumes two worker functions: <code>bayes_parobs</code> and <code>bayes_nmr</code>. <code>bmeta_analyze</code> offers a formula interface.
+All formulas are parsed using Formula. Formulas for <code>bmeta_analyze</code> are constrained to have a strict structure: one or two LHS, and two or three RHS. That is, <code>lhs_1 ~ rhs_1 | rhs2 | rhs3</code> or <code>lhs_1 | lhs_2 ~ rhs_1 | rhs2 | rhs3</code> (see Examples for more). The tilde (<code>~</code>) separates the LHS's and RHS's, each side further separated into parts by vertical bars (<code>|</code>).
+The meaning of each part is syntactically determined by its location inside the formula, like an English sentence. Therefore, all parts <strong>must</strong> come in the exact order as prescribed for <code>bmeta_analyze</code> to correctly configure your model.
+</p>
+
+<ul>
+<li>
+<p> The first LHS, the responses, is required for all models.
+</p>
+</li>
+<li>
+<p> The second LHS is only required for aggregate models, corresponding to the standard deviations of the responses.
+</p>
+</li>
+<li>
+<p> The first RHS corresponds to fixed-effects covariates.
+</p>
+</li>
+<li>
+<p> The second RHS corresponds to the variables in either the random-effects matrix (<code class="reqn">w_{tk}' * \gamma_{k}</code>') for multivariate meta-analysis or modeling the variances (<code class="reqn">\log\tau_{tk}</code> = <code class="reqn">z_{tk}' * \phi</code>) for univariate network meta-analysis.
+</p>
+</li>
+<li>
+<p> The third RHS corresponds to the treatment and trial indicators, and optionally the grouping variable if it exists. The order must be <code>treat + trial + group</code>, or <code>treat + trial</code> if no grouping exists. Variables here must be supplied in the exact order described; otherwise, model will not be correctly identified.
+</p>
+</li>
+</ul>
+<p>Internally, <code>bmeta_analyze</code> looks for three things: multivariate/univariate, meta-analyis/network meta-analysis, and <a href="https://en.wikipedia.org/wiki/Meta-analysis#Approaches">aggregate/IPD</a>.
+</p>
+
+<ul>
+<li>
+<p> multivariate/univariate: the dimension of the response is explicit in the formula, and determines univariate versus multivariate.
+</p>
+</li>
+<li>
+<p> meta-analysis/network meta-analysis: the number of levels (<code>nlevels</code>) of treatments determines this. If <code>treat</code> is not already a factor variable, it is coerced to one.
+</p>
+</li>
+<li>
+<p> aggregate/IPD: <code>bmeta_analyze</code> looks for <code>ns()</code> in the first RHS. Aggregate models <strong>must</strong> provide the arm sample sizes using the function <code>ns()</code> (e.g., if <code>n</code> is the sample sizes, <code style="white-space: pre;">⁠y1 + y2 | sd1 + sd2 ~ x1 + x2 + ns(n))⁠</code>). If there is no <code>ns()</code>, IPD is assumed. Currently, IPD models are a work in progress and not supported yet.
+</p>
+</li>
+</ul>
+<p>Currently, only <code>univariate/multivariate</code> + <code>meta-analysis</code> and <code>univariate</code> + <code style="white-space: pre;">⁠network meta-analysis⁠</code> are allowed. More models will be added in the future.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>bmeta_analyze</code> returns a classed object of <code>bsynthesis</code> for <em>Bayesian synthesis</em>
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Daeyoung Lim, <a href="mailto:daeyoung.lim@uconn.edu">daeyoung.lim@uconn.edu</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Yao, H., Kim, S., Chen, M. H., Ibrahim, J. G., Shah, A. K., &amp; Lin, J. (2015). Bayesian inference for multivariate meta-regression with a partially observed within-study sample covariance matrix. <em>Journal of the American Statistical Association</em>, <strong>110(510)</strong>, 528-544.
+</p>
+<p>Li, H., Chen, M. H., Ibrahim, J. G., Kim, S., Shah, A. K., Lin, J., &amp; Tershakovec, A. M. (2019). Bayesian inference for network meta-regression using multivariate random effects with applications to cholesterol lowering drugs. <em>Biostatistics</em>, <strong>20(3)</strong>, 499-516.
+</p>
+<p>Li, H., Lim, D., Chen, M. H., Ibrahim, J. G., Kim, S., Shah, A. K., &amp; Lin, J. (2021). Bayesian network meta-regression hierarchical models using heavy-tailed multivariate random effects with covariate-dependent variances. <em>Statistics in Medicine</em>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>bayes_parobs</code> for multivariate meta-analysis, and <code>bayes_nmr</code> for univariate network meta-analysis.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(2797542)
+data("cholesterol")
+f_1 &lt;- 'pldlc + phdlc + ptg | sdldl + sdhdl + sdtg ~ 0 + bldlc + bhdlc + btg +
+  age + durat + white + male + dm + ns(n) | treat | treat + trial + onstat'
+out_1 &lt;- bmeta_analyze(as.formula(f_1), data = cholesterol,
+  prior = list(model="NoRecovery"),
+  mcmc = list(ndiscard = 3, nskip = 1, nkeep = 1),
+  control=list(scale_x = TRUE, verbose=FALSE))
+
+set.seed(2797542)
+data("TNM")
+TNM$group &lt;- factor(match(TNM$treat, c("PBO", "R"), nomatch = 0))
+f_2 &lt;- 'ptg | sdtg ~
+  0 + bldlc + bhdlc + btg + age + white + male + bmi +
+  potencymed + potencyhigh + durat + ns(n) |
+  scale(bldlc) + scale(btg) + group | treat  + trial'
+out_2 &lt;- bmeta_analyze(as.formula(f_2), data = TNM,
+  mcmc = list(ndiscard = 1, nskip = 1, nkeep = 1),
+  control=list(scale_x = TRUE, verbose=FALSE))
+</code></pre>
+
+
+</div>

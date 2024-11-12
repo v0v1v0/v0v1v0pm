@@ -1,0 +1,159 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>neWeight.default</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Expand the dataset and calculate ratio-of-mediator probability weights</h2>
+
+<h3>Description</h3>
+
+<p>This function both expands the data along hypothetical exposure values and calculates ratio-of-mediator probability weights.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## Default S3 method:
+neWeight(
+  object,
+  formula,
+  data,
+  nRep = 5,
+  xSampling = c("quantiles", "random"),
+  xFit,
+  percLim = c(0.05, 0.95),
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>fitted model object representing the mediator model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a <code>formula</code> object providing a symbolic description of the mediator model. Redundant if already specified in call for fitted model specified in <code>object</code> (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>data, as matrix or data frame, containing the exposure (and other relevant) variables. Redundant if already specified in call for fitted model specified in <code>object</code> (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nRep</code></td>
+<td>
+<p>number of replications or hypothetical values of the exposure to sample for each observation unit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xSampling</code></td>
+<td>
+<p>character string indicating how to sample from the conditional exposure distribution.
+Possible values are <code>"quantiles"</code> or <code>"random"</code> (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>xFit</code></td>
+<td>
+<p>an optional fitted object (preferably <code>glm</code>) for the conditional exposure distribution (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>percLim</code></td>
+<td>
+<p>a numerical vector of the form <code>c(lower, upper)</code> indicating the extreme percentiles to sample when using <code>"quantiles"</code> as sampling method to sample from the conditional exposure distribution (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The calculated weights are ratios of fitted probabilities or probability densities from the distribution of the mediator model.
+This model needs to be specified as a fitted object in the <code>object</code> argument.
+</p>
+<p>If the model-fitting function used to fit the mediator model does not require specification of a <code>formula</code> or <code>data</code> argument,
+these need to be specified explicitly in order to enable <code>neWeight.default</code> to extract pointers to variable types relevant for mediation analysis.
+</p>
+<p>Whether a <code>formula</code> is specified externally (in the call for the fitted mediator model object which is specified in <code>object</code>) or internally (via the <code>formula</code> argument),
+it always needs to be of the form <code>M ~ X + C1 + C2</code>, with predictor variables entered in the following prespecified order:
+</p>
+
+<ol>
+<li>
+<p> exposure <code>X</code>: The first predictor is coded as exposure or treatment.
+</p>
+</li>
+<li>
+<p> baseline covariates <code>C</code>: All remaining predictor variables are automatically coded as baseline covariates.
+</p>
+</li>
+</ol>
+<p>It is important to adhere to this prespecified order to enable <code>neWeight</code> to create valid pointers to these different types of predictor variables.
+This requirement extends to the use of operators different than the <code>+</code> operator, such as the <code>:</code> and <code>*</code> operators (when e.g. adding interaction terms). 
+For instance, the formula specifications <code>M ~ X * C1 + C2</code>, <code>M ~ X + C1 + X:C1 + C2</code> and <code>Y ~ X + X:C1 + C1 + C2</code> will create identical pointers to the different types of variables,
+as the order of the unique predictor variables is identical in all three specifications. 
+</p>
+<p>Furthermore, categorical exposures that are not coded as factors in the original dataset, should be specified as factors in the formula, 
+using the <code>factor</code> function, e.g. <code>M ~ factor(X) + C1 + C2</code>. 
+Quadratic or higher-order polynomial terms can be included as well, by making use of the <code>I</code> function or by using the <code>poly</code> function.
+For instance, <code>M ~ X + I(X^2) + C1 + C2</code> and <code>M ~ poly(X, 2, raw = TRUE) + C1 + C2</code> are equivalent and result in identical pointers to the different types of variables.
+</p>
+<p>The command <code>terms(object, "vartype")</code> (with <code>object</code> replaced by the name of the resulting expanded dataset) can be used to check whether valid pointers have been created.
+</p>
+<p>In contrast to imputation models with categorical exposures, additional arguments need to be specified if the exposure is continuous.
+All of these additional arguments are related to the sampling procedure for the exposure.
+</p>
+<p>Whereas the number of replications <code>nRep</code> for categorical variables equals the number of levels for the exposure coded as a factor (i.e. the number of hypothetical exposure values), the number of desired replications needs to be specified explicitly for continuous exposures.
+Its default is 5.
+</p>
+<p>If <code>xFit</code> is left unspecified, the hypothetical exposure levels are automatically sampled from a linear model for the exposure, conditional on a linear combination of all covariates.
+If one wishes to use another model for the exposure, this default model specification can be overruled by referring to a fitted model object in the <code>xFit</code> argument.
+Misspecification of this sampling model does not induce bias in the estimated coefficients and standard errors of the natural effect model.
+</p>
+<p>The <code>xSampling</code> argument allows to specify how the hypothetical exposure levels should be sampled from the conditional exposure distribution (which is either entered explicitly using the <code>xFit</code> argument or fitted automatically as described in the previous paragraph).
+The <code>"random"</code> option randomly samples <code>nRep</code> draws from the exposure distribution, whereas the <code>"quantiles"</code> option (default) samples <code>nRep</code> quantiles at equal-sized probability intervals. Only the latter hence yields fixed exposure levels given <code>nRep</code> and <code>xFit</code>. <br><br>
+In order to guarantee that the entire support of the distribution is being sampled (which might be a concern if <code>nRep</code> is chosen to be small), the default lower and upper sampled quantiles are the 5th and 95th percentiles.
+The intermittent quantiles correspond to equal-sized probability intervals. So, for instance, if <code>nRep = 4</code>, then the sampled quantiles will correspond to probabilities 0.05, 0.35, 0.65 and 0.95.
+These default 'outer' quantiles can be changed by specifying the <code>percLim</code> argument accordingly. By specifying <code>percLim = NULL</code>, the standard quantiles will be sampled (e.g., 0.2, 0.4, 0.6 and 0.8 if <code>nRep = 4</code>).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A data frame of class <code>c("data.frame", "expData", "weightData")</code>. See <code>expData</code> for its structure.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>neWeight</code>, <code>neWeight.formula</code>, <code>expData</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(UPBdata)
+
+## example using glm
+fit.glm &lt;- glm(negaff ~ att + gender + educ + age, data = UPBdata)
+weightData &lt;- neWeight(fit.glm, nRep = 2)
+
+</code></pre>
+
+
+</div>

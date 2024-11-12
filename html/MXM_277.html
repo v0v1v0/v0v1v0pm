@@ -1,0 +1,257 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Fast MMPC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+A fast version of MMPC
+</h2>
+
+<h3>Description</h3>
+
+<p>A fast version of MMPC
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mmpc2(target, dataset, prior = NULL, max_k = 3, threshold = 0.05, 
+test = "testIndLogistic", ini = NULL, wei = NULL, ncores = 1, backward = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>target</code></td>
+<td>
+
+<p>The class variable. Provide either a string, an integer, a numeric value, a vector, a factor, an ordered factor or a Surv object. See also Details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dataset</code></td>
+<td>
+
+<p>The data-set; provide either a data frame or a matrix (columns = variables , rows = samples).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+
+<p>If you have prior knowledge of some variables that must be in the variable selection phase add them here. This an be a vector (if you have one variable) or a matrix (if you more variables). This does not work during the backward phase at the moment.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_k</code></td>
+<td>
+
+<p>The maximum conditioning set to use in the conditional indepedence test (see Details). Integer, default value is 3.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+
+<p>Threshold (suitable values in (0, 1)) for assessing p-values significance. Default value is 0.05.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>test</code></td>
+<td>
+
+<p>One of the following: "testIndBeta", "testIndReg", "testIndRQ", "testIndLogistic", "testIndMultinom", 
+"testIndOrdinal", "testIndPois", "testIndQPois", "testIndZIP", "testIndNB", "testIndClogit", 
+"testIndBinom", "testIndQBinom", "testIndIGreg", "censIndCR", "censIndWR", "censIndER", "testIndMMReg",
+"testIndMVreg", "testIndMultinom", "testIndOrdinal", "testIndTobit", "testIndGamma", "testIndNormLog" or "testIndSPML". 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ini</code></td>
+<td>
+
+<p>This is a supposed to be a list. To avoid calculating the univariate associations (first step of SES, MMPC and of FBED) again, you can extract them from the first run of omne of these algorithms and plug them here. 
+This can speed up the second run (and subequent runs of course) by 50%. See the details and the argument "univ" in the output values. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wei</code></td>
+<td>
+
+<p>A vector of weights to be used for weighted regression. The default value is NULL. An example where weights are used is surveys when stratified sampling has occured. 
+</p>
+</td>
+</tr>
+</table>
+<table>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+
+<p>How many cores to use. This plays an important role if you have tens of thousands of variables or really large sample sizes and tens of thousands of 
+variables and a regression based test which requires numerical optimisation. In other cases it will not make a difference in the overall time (in fact it can be slower). 
+The parallel computation is used in the first step of the algorithm, where univariate associations are examined, those take place in parallel. We have seen a reduction in time of 50% with 4 cores in comparison to 1 core. Note also, that the amount of reduction is not linear in the number of cores.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>backward</code></td>
+<td>
+
+<p>If TRUE, the backward (or symmetry correction) phase will be implemented. This removes any falsely included variables in the parents and children set of the target variable. It calls the <code>link{mmpcbackphase}</code> for this purpose.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>MMPC tests each feature for inclusion (selection). For each featurer it performsa conditional independence tets. Each test requires fitting two regression models, one without the feature and one with the feature included. In this version, we have changed the order of the tests. We find all possible subsets of the already selected features and for each of them we test each feature. This way, only half of the regression models the usual MMPC fits, are fitted. Also, less tests will be performed. It is the same algorithm, with a change in the sequence. 
+</p>
+<p>We have seen a 50% in the computational time, but the drawback is that if you want to run MMPC with different value of "max$_$k" and "alpha", this is not possible from here. This function is for oa signle pair of "max$_$k" and "alpha" values. It saves no test statistics, only p-values, no hashing and hence is memory efficient, but contains less information than <code>MMPC</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The output of the algorithm is an S3 object including:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>selectedVars</code></td>
+<td>
+
+<p>The selected variables, i.e., the signature of the target variable.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pvalues</code></td>
+<td>
+
+<p>For each feature included in the dataset, this vector reports the strength of its association with the target in the context of all other variable. Particularly, this vector reports the max p-values found when the association of each variable with the target is tested against different conditional sets. Lower values indicate higher association. <b>Note that these are the logarithm of the p-values</b>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>univ</code></td>
+<td>
+
+<p>A vector with the <b>logged p-values</b> of the univariate associations. This vector is very important for subsequent runs of MMPC with different hyper-parameters. After running SES with some hyper-parameters you might want to run MMPCagain with different hyper-parameters. To avoid calculating the univariate associations (first step) again, you can take this list from the first run of SES and plug it in the argument "ini" in the next run(s) of MMPC. This can speed up the second run (and subequent runs of course) by 50%. See the argument "univ" in the output values. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kapa_pval</code></td>
+<td>
+
+<p>A list with the same number of elements as the max$_k$. Every element in the list is a matrix. The first row is the <b>logged p-values</b>, the second row is the variable whose conditional association with the target variable was tests and the other rows are the conditioning variables. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_k</code></td>
+<td>
+
+<p>The max_k option used in the current run.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+
+<p>The threshold option used in the current run.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.tests</code></td>
+<td>
+
+<p>The number of tests performed by MMPC will be returned. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>runtime</code></td>
+<td>
+
+<p>The run time of the algorithm. A numeric vector. The first element is the user time, the second element is the system time and the third element is the elapsed time.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>test</code></td>
+<td>
+
+<p>The character name of the statistic test used.
+</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Ioannis Tsamardinos, Michail Tsagris
+</p>
+<p>R implementation and documentation: Michail Tsagris <a href="mailto:mtsagris@uoc.gr">mtsagris@uoc.gr</a>. 
+</p>
+
+
+<h3>References</h3>
+
+<p>Feature Selection with the R Package MXM: Discovering Statistically Equivalent Feature Subsets, Lagani, V. and Athineou, 
+G. and Farcomeni, A. and Tsagris, M. and Tsamardinos, I. (2017). Journal of Statistical Software, 80(7).
+</p>
+<p>Tsamardinos, I., Aliferis, C. F., &amp; Statnikov, A. (2003). Time and sample efficient discovery of Markov blankets and direct causal 
+relations. In Proceedings of the ninth ACM SIGKDD international conference on Knowledge discovery and data mining (pp. 673-678). ACM.
+</p>
+<p>Brown, L. E., Tsamardinos, I., &amp; Aliferis, C. F. (2004). A novel algorithm for scalable and accurate Bayesian network learning. 
+Medinfo, 711-715.
+</p>
+<p>Tsamardinos, Brown and Aliferis (2006). The max-min hill-climbing Bayesian network structure learning algorithm. Machine learning, 
+65(1), 31-78.
+</p>
+
+
+
+
+<h3>See Also</h3>
+
+<p><code>MMPC, certificate.of.exclusion2</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(123)
+
+#simulate a dataset with continuous data
+dataset &lt;- matrix(runif(100 * 40, 1, 100), ncol = 40)
+
+#define a simulated class variable 
+target &lt;- 3 * dataset[, 10] + 2 * dataset[, 15] + 3 * dataset[, 20] + rnorm(100, 0, 5)
+m &lt;- median(target)
+target[target &lt; m] &lt;- 0
+target[abs(target) &gt; 0 ] &lt;- 1
+
+m1 &lt;- mmpc2(target, dataset, max_k = 3, threshold = 0.05, test="testIndLogistic")
+m1$selectedVars  ## S3 class, $, not @
+m1$runtime
+
+m2 &lt;- MMPC(target, dataset, max_k = 3, threshold = 0.05, test="testIndLogistic")
+m2@selectedVars  ## S3 class, @, not $
+m2@runtime
+</code></pre>
+
+
+</div>

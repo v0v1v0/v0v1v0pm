@@ -1,0 +1,145 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>add_gaps</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Add gap periods to sensor data</h2>
+
+<h3>Description</h3>
+
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt="[Stable]"></a>
+</p>
+<p>Since there may be many gaps in mobile sensing data, it is pivotal to pay attention to them in
+the analysis. This function adds known gaps to data as "measurements", thereby allowing easier
+calculations for, for example, finding the duration. For instance, consider a participant spent
+30 minutes walking. However, if it is known there is gap of 15 minutes in this interval, we
+should somehow account for it. <code>add_gaps</code> accounts for this by adding the gap data to
+sensors data by splitting intervals where gaps occur.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">add_gaps(data, gaps, by = NULL, continue = FALSE, fill = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A data frame containing the data. See <code>get_data()</code> for retrieving data from an
+mpathsenser database.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gaps</code></td>
+<td>
+<p>A data frame (extension) containing the gap data. See <code>identify_gaps()</code> for
+retrieving gap data from an mpathsenser database. It should at least contain the columns <code>from</code>
+and <code>to</code> (both in a date-time format), as well as any specified columns in <code>by</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by</code></td>
+<td>
+<p>A character vector indicating the variable(s) to match by, typically the participant
+IDs. If NULL, the default, <code style="white-space: pre;">⁠*_join()⁠</code> will perform a natural join, using all variables in
+common across <code style="white-space: pre;">⁠x and ⁠</code>y'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>continue</code></td>
+<td>
+<p>Whether to continue the measurement(s) prior to the gap once the gap ends.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fill</code></td>
+<td>
+<p>A named list of the columns to fill with default values for the extra measurements
+that are added because of the gaps.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>In the example of 30 minutes walking where a 15 minute gap occurred (say after 5
+minutes), <code>add_gaps()</code> adds two rows: one after 5 minutes of the start of the interval
+indicating the start of the gap(if needed containing values from <code>fill</code>), and one after 20
+minutes of the start of the interval signalling the walking activity. Then, when calculating
+time differences between subsequent measurements, the gap period is appropriately accounted
+for. Note that if multiple measurements occurred before the gap, they will both be continued
+after the gap.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A tibble containing the data and the added gaps.
+</p>
+
+
+<h3>Warning</h3>
+
+<p>Depending on the sensor that is used to identify the gaps (though this is
+typically the highest frequency sensor, such as the accelerometer or gyroscope), there may be a
+small delay between the start of the gap and the <em>actual</em> start of the gap. For example, if the
+accelerometer samples every 5 seconds, it may be after 4.99 seconds after the last
+accelerometer measurement (so just before the next measurement), the app was killed. However,
+within that time other measurements may still have taken place, thereby technically occurring
+"within" the gap. This is especially important if you want to use these gaps in
+<code>add_gaps</code> since this issue may lead to erroneous results.
+</p>
+<p>An easy way to solve this problem is by taking into account all the sensors of interest when
+identifying the gaps, thereby ensuring there are no measurements of these sensors within the
+gap. One way to account for this is to (as in this example) search for gaps 5 seconds longer
+than you want and then afterwards increasing the start time of the gaps by 5 seconds.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>identify_gaps()</code> for finding gaps in the sampling; <code>link_gaps()</code> for linking gaps to
+ESM data, analogous to <code>link()</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Define some data
+dat &lt;- data.frame(
+  participant_id = "12345",
+  time = as.POSIXct(c("2022-05-10 10:00:00", "2022-05-10 10:30:00", "2022-05-10 11:30:00")),
+  type = c("WALKING", "STILL", "RUNNING"),
+  confidence = c(80, 100, 20)
+)
+
+# Get the gaps from identify_gaps, but in this example define them ourselves
+gaps &lt;- data.frame(
+  participant_id = "12345",
+  from = as.POSIXct(c("2022-05-10 10:05:00", "2022-05-10 10:50:00")),
+  to = as.POSIXct(c("2022-05-10 10:20:00", "2022-05-10 11:10:00"))
+)
+
+# Now add the gaps to the data
+add_gaps(
+  data = dat,
+  gaps = gaps,
+  by = "participant_id"
+)
+
+# You can use fill if you want to get rid of those pesky NA's
+add_gaps(
+  data = dat,
+  gaps = gaps,
+  by = "participant_id",
+  fill = list(type = "GAP", confidence = 100)
+)
+</code></pre>
+
+
+</div>

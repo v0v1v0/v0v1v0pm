@@ -1,0 +1,193 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlazy</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Cacheing objects for lazy-load access</h2>
+
+<h3>Description</h3>
+
+<p><code>mlazy</code> and friends are designed for handling collections of biggish objects, where only a few of the objects are accessed during any period, and especially where the individual objects might change and the collection might grow or shrink. As with "lazy loading" of packages, and the <code>gdata/ASOR</code> packages, the idea is to avoid the time &amp; memory overhead associated with loading in numerous huge R binary objects when not all will be needed. Unlike lazy loading and <code>gdata</code>, <code>mlazy</code> caches each mlazyed object in a separate file, so it also avoids the overhead that would be associated with changing/adding/deleting objects if all objects lived in the same big file. When a workspace is <code>Save</code>d, the code updates only those individual object files that need updating.
+</p>
+<p><code>mlazy</code> does not require any special structure for object collections; in particular, the data doesn't have to go into a package. <code>mlazy</code> is particularly useful for users of <code>cd</code> because each <code>cd</code> to/from a task causes a read/write of the binary image file (usually ".RData"), which can be very large if <code>mlazy</code> is not used. Read DETAILS next. Feedback is welcome.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mlazy( ..., what, envir=.GlobalEnv, save.now=TRUE)
+  # cache some objects
+mtidy( ..., what, envir=.GlobalEnv)
+  # (cache and) purge the cache to disk, freeing memory
+demlazy( ..., what, envir=.GlobalEnv)
+  # makes 'what' into normal uncached objects
+mcachees( envir=.GlobalEnv)
+  # shows which objects in  envir are cached
+attach.mlazy( dir, pos=2, name=)
+  # load mcached workspace into new search environment,
+  # or create empty s.e. for cacheing
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code> ...</code></td>
+<td>
+<p>unquoted object names, overridden by <code>what</code> if supplied</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> what</code></td>
+<td>
+<p>character vector of object names, all from the same environment. For <code>mtidy</code> and <code>demlazy</code>, defaults to all currently-cached objects in <code>envir</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> envir</code></td>
+<td>
+<p>environment or position on the search path, defaulting to the environment where <code>what</code> or <code>objs</code> live.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> save.now</code></td>
+<td>
+<p>see DETAILS</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> dir</code></td>
+<td>
+<p>name of directory, relative to <code>task.home</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> pos</code></td>
+<td>
+<p>numeric position of environment on search path, 2 or more</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> name</code></td>
+<td>
+<p>name to give environment, defaulting to something like "data:current.task:dir".</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>These functions are used only for their side-effects, except for <code>cachees</code> which returns a character vector of object names.
+</p>
+
+
+<h3>More details</h3>
+
+<p>All this is geared to working with saved images (i.e. ".RData" or "all.rda" files) rather than creating all objects anew each session via <code>source</code>. If you use the latter approach, <code>mlazy</code> will probably be of little value.
+</p>
+<p>The easiest way to set up cacheing is just to create your objects as normal, then call
+</p>
+<p><code>mlazy( &lt;&lt;objname1&gt;&gt;, &lt;&lt;objname2&gt;&gt;, &lt;&lt;etc&gt;&gt;)</code>
+</p>
+<p><code>Save()</code>
+</p>
+<p>This will not seem to do much immediately– your object can be read and changed as normal, and is still taking up memory. The memory and time savings will come in your next R session in this workspace.
+</p>
+<p>You should never see any differences (except in time &amp; memory usage) between working with cached (AKA mlazyed) and normal uncached objects.[One minor exception is that cacheing a function may stuff up the automatic backup system, or at any rate the "backstop" version of it which runs when you <code>cd</code>. This is deliberate, for speeding up <code>cd</code>. But why would you cache a <em>function</em> anyway?]
+</p>
+<p><code>mlazy</code> itself doesn't save the workspace image (the ".RData" or "all.rda" file), which is where the references live; that's why you need to call <code>Save</code> periodically. <code>save.image</code> and <code>save</code> will <b>not</b> work properly, and nor will <code>load</code>– see NOTE below. <code>Save</code> doesn't store cached objects directly in the ".RData" file, but instead stores the uncached objects as normal in <code>.RData</code> together with a special object called something like <code>.mcache00</code> (guaranteed not to conflict with one of your own objects). When the <code>.RData</code> file is subsequently reloaded by <code>cd</code>, the presence of the <code>.mcache00</code> object triggers the creation of "stub" objects that will load the real cached objects from disk when and only when each one is required; the <code>.mcache00</code> object is then deleted. Cached objects are loaded &amp; stored in a subdirectory "mlazy" from individual files called "obj*.rda", where "*" is a number.
+</p>
+<p><code>mlazy</code> and <code>Save</code> do not immediately free any memory, to avoid any unnecessary re-loading from disk if you access the objects again during the current session. To force a "memory purge" <em>during</em> an R session, you need to call <code>mtidy</code>. <code>mtidy</code> purges its arguments from the cache, replacing them by <code>promise</code>s just as when loading the workspace; when a reference is next accessed, its cached version will be re-loaded from disk. <code>mtidy</code> can be useful if you are looping over objects, and want to keep memory growth limited– you can <code>mtidy</code> each object as the last statement in the loop. By default, <code>mtidy</code> purges the cache of all objects that have previously been cached. <code>mtidy</code> also caches any formerly uncached arguments, so one call to <code>mtidy</code> can be used instead of <code>mlazy( ...); mtidy( ...)</code>.
+</p>
+<p><code>move</code> understands cached objects, and will shuffle the files accordingly.
+</p>
+<p><code>demlazy</code> will <b>delete</b> the corresponding "obj*.rda" file(s), so that only an in-memory copy will then exist; don't forget to <code>Save</code> soon after.
+</p>
+
+
+<h4>Warning</h4>
+
+<p>The system function <code>load</code> does not understand cacheing. If you merely <code>load</code> an image file saved using <code>Save</code>, cached objects will not be there, but there will be an extra object called something like <code>.mcache00</code>. Hence, if you have cached objects in your ROOT task, they will not be visible when you start R until you load the <code>mvbutils</code> library– another fine reason to do that in your <code>.First</code>. The <code>.First.lib</code> function in <code>mvbutils</code> calls <code>setup.mcache( .GlobalEnv)</code> to automatically prepare any references in the ROOT task.
+</p>
+
+
+
+<h4>Cacheing in other search environments</h4>
+
+<p>It is possible to cache in search environments other the current top one (AKA the current workspace, AKA <code>.GlobalEnv</code>). This could be useful if, for example, you have a large number of simulated datasets that you might need to access, but you don't want them cluttering up <code>.GlobalEnv</code>. If you weren't worried about cacheing, you'd probably do this by calling <code>attach( "&lt;&lt;filename&gt;&gt;")</code>. The cacheing equivalent is <code>attach.mlazy( "cachedir")</code>. The argument is the name of a directory where the cached objects will be (or already are) stored; the directory will be created if necessary. If there is a ".RData" file in the directory, <code>attach.mlazy</code> will load it and set up any references properly; the ".RData" file will presumably contain mostly references to cached data objects, but can contain normal uncached objects too.
+</p>
+<p>Once you have set up a cacheable search environment via <code>attach.mlazy</code> (typically in search position 2), you can cache objects into it using <code>mlazy</code> with the <code>envir</code> argument set (typically to 2). If the objects are originally somewhere else, they will be transferred to <code>envir</code> before cacheing. Whenever you want to save the cached objects, call <code>Save.pos(2)</code>.
+</p>
+<p>You will probably also want to modify or create the <code>.First.task</code> (see <code>cd</code>) of the current task so that it calls <code>attach.mlazy("&lt;&lt;cache directory name&gt;&gt;")</code>. Also, you should create a <code>.Last.task</code> (see <code>cd</code>) containing <code>detach(2)</code>, otherwise <code>cd(..)</code> and <code>cd(0/...)</code> won't work.
+</p>
+
+
+
+<h4>Options</h4>
+
+<p>By default, <code>mlazy</code> now saves &amp; loads into a auto-created subdirectory called "mlazy". In the earliest releases, though, it saved "obj*.rda" files into the same directory as ".RData". It will now <b>move</b> any "obj*.rda" files that it finds alongside ".RData" into the "mlazy" subdirectory. You can (possibly) override this by setting <code>options( mlazy.subdir=FALSE)</code>, but the default is likely more reliable.
+</p>
+<p>By default, there is no way to figure out what object is contained in a "obj*.rda" without forcibly loading that file or inspecting the <code>.mcache00</code> object in the "parent" <code>.RData</code> file– not that you should ever need to know. However, if you set <code>options( mlazy.index=TRUE)</code> (<b>recommended</b>), then a file "obj.ind" will be maintained in the "mlazy" directory, showing (object name - value) pairs in plain text (tab-separated). For directories with very large numbers of objects, there may be some speed penalty. If you want to create an index file for an existing "mlazy" directory that lacks one, <code>cd</code> to the task and call <code>mvbutils:::mupdate.mcache.index.if.opt(mlazy.index=TRUE)</code>.
+</p>
+<p>See <code>Save</code> for how to set compression options, and <code>save</code> for what you can set them to; <code>options(mvbutils.compression_level=1)</code> may save some time, at the expense of disk space.
+</p>
+
+
+
+<h4>Troubleshooting</h4>
+
+<p>In the unlikely event of needing to manually load a cached image file, use <code>load.refdb</code>– <code>cd</code> and <code>attach.mlazy</code> do this automatically.
+</p>
+<p>In the unlikely event of lost/corrupted data, you can manually reload individual "obj*.rda" files using <code>load</code>– each "obj*.rda" file contains one object stored with its correct name. Before doing that, call <code>demlazy( what=mcachees())</code> to avoid subsequent trouble. Once you have reloaded the objects, you can call <code>mlazy</code> again.
+</p>
+<p>See <b>Options</b> for the easy way to check what object is stored in a particular "obj*.rda" file. If that feature is turned off on your system, the failsafe way is to load the file into a new environment, e.g. <code>e &lt;- new.env(); load( "obj99.rda", e); ls( e)</code>.
+</p>
+<p>To see how memory changes when you call <code>mlazy</code> and <code>mtidy</code>, call <code>gc()</code>.
+</p>
+<p>To check object sizes <em>without</em> actually loading the cached objects, use <code>lsize</code>. Many functions that iterate over all objects in the environment, such as <code>eapply</code>, will cause <code>mlazy</code> objects to be loaded.
+</p>
+<p>Housekeeping of "obj**.rda" files happens during <code>Save</code>; any obsolete files (i.e. corresponding to objects that have been <code>remove</code>d) are deleted.
+</p>
+
+
+
+<h4>Inner workings</h4>
+
+<p>What happens: each workspace acquires a <code>mcache</code> attribute, which is a named numeric vector. The absolute values of the entries correspond to files– 53 corresponds to a file "obj53.rda", etc., and the names to objects. When an object <code>myobj</code> is <code>mlazy</code>ed, the <code>mcache</code> is augmented by a new element named "myobj" with a new file number, and that file is saved to disk. Also, "myobj" is replaced with an active binding (see <code>makeActiveBinding</code>). The active binding is a function which retrieves or sets the object's data within the function's environment. If the function is called in change-value mode, then it also makes negative the file number in <code>mcache</code>. Hence it's possible to tell whether an object has been changed since last being saved.
+</p>
+<p>When an object is first <code>mlazy</code>ed, the object data is placed directly into the active binding function's environment so that the function can find/modify the data. When an object is <code>mtidy</code>ed, or when a cached image is loaded from disk, the thing placed into the A.B.fun's environment is not the data itself, but instead a <code>promise</code> saying, in effect, "fetch me from disk when you need me". The promise gets forced when the object is accessed for reading or writing. This is how "lazy loading" of packages works, and also the <span class="pkg">gdata</span> package. However, for <code>mlazy</code> there is the additional requirement of being able to determine whether an object has been modified; for efficiency, only modified objects should be written to disk when there is a <code>Save</code>.
+</p>
+<p>There is presumably some speed penalty from using a cache, but experience to date suggests that the penalty is small. Cached objects are saved in compressed format, which seems to take a little longer than an uncompressed save, but loading seems pretty quick compared to uncompressed files.
+</p>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Mark Bravington</p>
+
+
+<h3>See Also</h3>
+
+<p><code>lsize</code>, <code>gc</code>, package <span class="pkg">gdata</span>, package <span class="pkg">ASOR</span>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+biggo &lt;- matrix( runif( 1e6), 1000, 1000)
+gc() # lots of memory
+mlazy( biggo)
+gc() # still lots of memory
+mtidy( biggo)
+gc() # better
+biggo[1,1]
+gc() # worse; it's been reloaded
+
+## End(Not run)
+</code></pre>
+
+
+</div>

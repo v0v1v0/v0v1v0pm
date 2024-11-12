@@ -1,0 +1,174 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mc_plot_line</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Plot data - ggplot2 geom_line</h2>
+
+<h3>Description</h3>
+
+<p>Function plots data with ggplot2 geom_line. Plot is returned as ggplot faced grid and
+is optimized for saving as facet, paginated PDF file.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mc_plot_line(
+  data,
+  filename = NULL,
+  sensors = NULL,
+  scale_coeff = NULL,
+  png_width = 1900,
+  png_height = 1900,
+  start_crop = NULL,
+  end_crop = NULL,
+  use_utc = TRUE,
+  localities = NULL,
+  facet = "locality",
+  color_by_logger = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>myClim object see myClim-package</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>filename</code></td>
+<td>
+<p>output file name/path with the extension - supported formats are .pdf and .png (default NULL)
+</p>
+<p>If NULL then the plot is displayed and can be returned into r environment but is not saved to file.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sensors</code></td>
+<td>
+<p>names of sensors; if NULL then all (default NULL) see <code>names(mc_data_sensors)</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale_coeff</code></td>
+<td>
+<p>scale coefficient for secondary axis (default NULL)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>png_width</code></td>
+<td>
+<p>width for png output (default 1900)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>png_height</code></td>
+<td>
+<p>height for png output (default 1900)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start_crop</code></td>
+<td>
+<p>POSIXct datetime in UTC for crop data (default NULL)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>end_crop</code></td>
+<td>
+<p>POSIXct datetime in UTC for crop data (default NULL)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_utc</code></td>
+<td>
+<p>if FALSE, then the time shift from <code>tz_offset</code> metadata is used to correct
+(shift) the output time-series (default TRUE)
+</p>
+<p>In the Agg-format myClim object <code>use_utc = FALSE</code> is allowed only for steps shorter than one day. In myClim
+the day nd longer time steps are defined by the midnight, but this represent whole day, week, month, year...
+shifting daily, weekly, monthly... data (shift midnight) does not make sense in our opinion.
+But when user need more flexibility, then myClim Raw-format
+can be used, In Raw-format <code>use_utc</code> is not limited, user can shift an data without the restrictions.
+See myClim-package</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>localities</code></td>
+<td>
+<p>names of localities; if NULL then all (default NULL)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>facet</code></td>
+<td>
+<p>possible values (<code>NULL</code>, <code>"locality"</code>, <code>"physical"</code>)
+</p>
+
+<ul>
+<li> <p><code>facet = "locality"</code> each locality is plotted (default)
+in separate plot in R and separate row in PDF if filename.pdf is provided.
+</p>
+</li>
+<li> <p><code>facet = "physical"</code> sensors with  identical physical (see mc_data_physical) are grouped together across localities.
+</p>
+</li>
+<li> <p><code>facet = NULL</code>, all localities and sensors (max 2 physicals, see details) are plotted in single plot
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>color_by_logger</code></td>
+<td>
+<p>If TRUE, the color is assigned by logger to differentiate individual loggers (random colors)
+if false, the color is assigned by physical. (default FALSE)</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Saving as the PDF file is recommended, because the plot is optimized
+to be paginate PDF (facet line plot is distributed to pages), each locality can be
+represented by separate plot (<code>facet = "locality"</code>) default, which is especially useful
+for bigger data. When <code>facet = NULL</code> then single plot is returned showing all localities together.
+When <code>facet = physical</code> sensors with identical physical units are grouped together across localities.
+Maximal number of physical units (elements) of sensors to be plotted in one
+plot is two. First element is related to primary and second to secondary y axis.
+In case, there are multiple sensors with identical physical on one locality,
+they are plotted together for <code>facet = "locality"</code> e.g., when you have
+TMS_T1, TMS_T2, TMS_T3, Thermo_T, and VWC you get plot with 5 lines of different colors and
+two y axes. Secondary y axes are scaled with calculation <code>values * scale_coeff</code>.
+If scaling coefficient is NULL than function try to detects scale coefficient from
+physical unit of sensors see mc_Physical. Scaling is useful when
+plotting together e.g. temperature and moisture. For native myClim loggers
+(TOMST, HOBO U-23) scaling coefficients are pre-defined.
+For other cases when plotting two physicals together,
+it is better to set scaling coefficients by hand.
+</p>
+
+
+<h3>Value</h3>
+
+<p>ggplot2 object
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">tms.plot &lt;- mc_filter(mc_data_example_agg, localities = "A6W79")
+p &lt;- mc_plot_line(tms.plot,sensors = c("TMS_T3","TMS_T1","TMS_moist"))
+p &lt;- p+ggplot2::scale_x_datetime(date_breaks = "1 week", date_labels = "%W")
+p &lt;- p+ggplot2::xlab("week")
+p &lt;- p+ggplot2::scale_color_manual(values=c("hotpink","pink", "darkblue"),name=NULL)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,222 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>remote_config</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Generic and SSH Remote Launch Configuration</h2>
+
+<h3>Description</h3>
+
+<p><code>remote_config</code> provides a flexible generic framework for generating
+the shell commands to deploy daemons remotely.
+</p>
+<p><code>ssh_config</code> generates a remote configuration for launching daemons over
+SSH, with the option of SSH tunnelling.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">remote_config(
+  command = NULL,
+  args = c("", "."),
+  rscript = "Rscript",
+  quote = FALSE
+)
+
+ssh_config(
+  remotes,
+  tunnel = FALSE,
+  timeout = 10,
+  command = "ssh",
+  rscript = "Rscript",
+  host
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>command</code></td>
+<td>
+<p>the command used to effect the daemon launch on the remote
+machine as a character string (e.g. <code>'ssh'</code>). Defaults to
+‘ssh’ for <code>ssh_config</code>, although may be substituted for the
+full path to a specific SSH application. The default NULL for
+<code>remote_config</code> does not effect any launches, but causes
+<code>launch_remote</code> to return the shell commands for manual
+deployment on remote machines.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>args</code></td>
+<td>
+<p>(optional) arguments passed to ‘command’, as a character
+vector that must include <code>"."</code> as an element, which will be
+substituted for the daemon launch command. Alternatively, a list of such
+character vectors to effect multiple launches (one for each list element).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rscript</code></td>
+<td>
+<p>(optional) name / path of the Rscript executable on the remote
+machine. The default assumes ‘Rscript’ is on the executable search
+path. Prepend the full path if necessary. If launching on Windows,
+‘Rscript’ should be replaced with ‘Rscript.exe’.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quote</code></td>
+<td>
+<p>[default FALSE] logical value whether or not to quote the daemon
+launch command (not required for Slurm ‘srun’ for example, but
+required for ‘ssh’).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>remotes</code></td>
+<td>
+<p>the character URL or vector of URLs to SSH into, using the
+'ssh://' scheme and including the port open for SSH connections (defaults
+to 22 if not specified), e.g. 'ssh://10.75.32.90:22' or 'ssh://nodename'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tunnel</code></td>
+<td>
+<p>[default FALSE] logical value whether to use SSH reverse
+tunnelling. If TRUE, a tunnel is created between the same ports on the
+local and remote machines. See the ‘SSH Tunnelling’ section below
+for how to correctly specify required settings.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>timeout</code></td>
+<td>
+<p>[default 10] maximum time allowed for connection setup in
+seconds.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>host</code></td>
+<td>
+<p>(optional) only applicable for reverse tunnelling. Should be
+specified if creating a standalone configuration object. If calling this
+function directly as an argument to <code>daemons</code>, this is not
+required and can be inferred from the ‘url’ supplied (see
+‘SSH Tunnelling’ section below).</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list in the required format to be supplied to the ‘remote’
+argument of <code>launch_remote</code>, <code>daemons</code>, or
+<code>make_cluster</code>.
+</p>
+
+
+<h3>SSH Direct Connections</h3>
+
+<p>The simplest use of SSH is to execute the daemon launch command on a
+remote machine, for it to dial back to the host / dispatcher URL.
+</p>
+<p>It is assumed that SSH key-based authentication is already in place. The
+relevant port on the host must also be open to inbound connections from
+the remote machine.
+</p>
+
+
+<h3>SSH Tunnelling</h3>
+
+<p>Use of SSH tunnelling provides a convenient way to launch remote daemons
+without requiring the remote machine to be able to access the host.
+Often firewall configurations or security policies may prevent opening a
+port to accept outside connections.
+</p>
+<p>In these cases SSH tunnelling offers a solution by creating a tunnel once
+the initial SSH connection is made. For simplicity, this SSH tunnelling
+implementation uses the same port on both the side of the host and that
+of the daemon. SSH key-based authentication must also already be in
+place.
+</p>
+<p>Tunnelling requires the hostname for the ‘host’ argument (or the
+‘url’ argument to <code>daemons</code> if called directly in
+that context) to be either ‘127.0.0.1’ or ‘localhost’.
+This is as the tunnel is created between <code>127.0.0.1:port</code> or
+equivalently <code>localhost:port</code> on each machine. The host listens to
+<code>port</code> on its machine and the remotes each dial into <code>port</code> on
+their own respective machines.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># example for Slurm
+remote_config(
+  command = "srun",
+  args = c("--mem 512", "-n 1", "."),
+  rscript = file.path(R.home("bin"), "Rscript")
+)
+
+# commands like SSH require quoting of the daemon launch command
+remote_config(
+  command = "/usr/bin/ssh",
+  args = c("-fTp 22 10.75.32.90", "."),
+  quote = TRUE
+)
+
+# can be used to start local dameons with special configurations
+remote_config(
+  command = "Rscript",
+  rscript = "--default-packages=NULL --vanilla"
+)
+
+# simple SSH example
+ssh_config(
+  remotes = c("ssh://10.75.32.90:222", "ssh://nodename"),
+  timeout = 5
+)
+
+# SSH tunnelling example
+ssh_config(
+  remotes = c("ssh://10.75.32.90:222", "ssh://nodename"),
+  tunnel = TRUE,
+  host = "tls+tcp://127.0.0.1:5555"
+)
+
+## Not run: 
+
+# launch 2 daemons on the remote machines 10.75.32.90 and 10.75.32.91 using
+# SSH, connecting back directly to the host URL over a TLS connection:
+
+daemons(
+  url = host_url(tls = TRUE),
+  remote = ssh_config(
+    remotes = c("ssh://10.75.32.90:222", "ssh://10.75.32.91:222"),
+    timeout = 1
+  )
+)
+
+# launch 2 nodes on the remote machine 10.75.32.90 using SSH tunnelling over
+# port 5555 ('url' hostname must be 'localhost' or '127.0.0.1'):
+
+cl &lt;- make_cluster(
+  url = "tcp://localhost:5555",
+  remote = ssh_config(
+    remotes = c("ssh://10.75.32.90", "ssh://10.75.32.90"),
+    tunnel = TRUE,
+    timeout = 1
+  )
+)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

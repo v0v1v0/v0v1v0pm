@@ -1,0 +1,160 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>subset.model.selection</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Subsetting model selection table</h2>
+
+<h3>Description</h3>
+
+<p>Extract a subset of a model selection table.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'model.selection'
+subset(x, subset, select, recalc.weights = TRUE, recalc.delta = FALSE, ...)
+## S3 method for class 'model.selection'
+x[i, j, recalc.weights = TRUE, recalc.delta = FALSE, ...]
+## S3 method for class 'model.selection'
+x[[..., exact = TRUE]] 
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a <code>model.selection</code> object to be subsetted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset,select</code></td>
+<td>
+<p>logical expressions indicating columns and rows to keep.
+See <code>subset</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>i,j</code></td>
+<td>
+<p>indices specifying elements to extract. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recalc.weights</code></td>
+<td>
+<p>logical value specyfying whether Akaike weights
+should be normalized across the new set of models to sum to one.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recalc.delta</code></td>
+<td>
+<p>logical value specyfying whether 
+Δ_IC
+should be calculated for the new set of models (not done by default).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exact</code></td>
+<td>
+<p>logical, see <code>[</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments passed to <code>[.data.frame</code> 
+(<code>drop</code>). </p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Unlike the method for <code>data.frame</code>, single bracket extraction with only 
+one index <code>x[i]</code> selects rows (models) rather than columns.
+</p>
+<p>To select rows according to presence or absence of the variables (rather than
+their value), a pseudo-function <code>has</code> may be used with <code>subset</code>, e.g.
+<code>subset(x, has(a, !b))</code>
+will select rows  with <em>a</em> <b>and</b> without <em>b</em> (this is
+equivalent to <code>!is.na(a) &amp; is.na(b)</code>). <code>has</code> can take any number of
+arguments.
+</p>
+<p>Complex model terms need to be enclosed within curly brackets 
+(e.g <code>{s(a,k=2)}</code>), except for within <code>has</code>. Backticks-quoting is 
+also possible, but then the name must match exactly (including whitespace) 
+the term name as returned by <code>getAllTerms</code>.
+</p>
+<p>Enclosing in <code>I</code> prevents the name from being interpreted as a column name.
+</p>
+<p>To select rows where one variable can be present conditional on the presence of 
+other variables, the function <code>dc</code> (<b>d</b>ependency <b>c</b>hain) can 
+be used. 
+<code>dc</code> takes any number of variables as arguments, and allows a variable to be 
+included only if all the preceding arguments are also included (e.g. <code>subset = 
+dc(a, b, c)</code> allows for models of form <code>a</code>, <code>a+b</code> and <code>a+b+c</code> but not 
+<code>b</code>, <code>c</code>, <code>b+c</code> or <code>a+c</code>).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>model.selection</code> object containing only the selected models (rows).
+If columns are selected (<em>via</em> argument <code>select</code> or the second index 
+<code>x[, j]</code>) and not all essential columns (i.e. all except 
+"varying" and "extra") are present in the result, a plain <code>data.frame</code> is 
+returned. Similarly, modifying values in the essential columns with <code>[&lt;-</code>, 
+<code>[[&lt;-</code> or <code>$&lt;-</code> produces a regular data frame. 
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kamil Bartoń</p>
+
+
+<h3>See Also</h3>
+
+<p><code>dredge</code>, <code>subset</code> and <code>[.data.frame</code> for
+subsetting and extracting from <code>data.frame</code>s.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">fm1 &lt;- lm(formula = y ~ X1 + X2 + X3 + X4, data = Cement, na.action = na.fail)
+
+# generate models where each variable is included only if the previous
+# are included too, e.g. X2 only if X1 is there, and X3 only if X2 and X1
+dredge(fm1, subset = dc(X1, X2, X3, X4))
+
+# which is equivalent to
+# dredge(fm1, subset = (!X2 | X1) &amp; (!X3 | X2) &amp; (!X4 | X3))
+
+# alternatively, generate "all possible" combinations
+ms0 &lt;- dredge(fm1)
+# ...and afterwards select the subset of models
+subset(ms0, dc(X1, X2, X3, X4))
+# which is equivalent to
+# subset(ms0, (has(!X2) | has(X1)) &amp; (has(!X3) | has(X2)) &amp; (has(!X4) | has(X3)))
+
+# Different ways of finding a confidence set of models:
+# delta(AIC) cutoff
+subset(ms0, delta &lt;= 4, recalc.weights = FALSE)
+# cumulative sum of Akaike weights
+subset(ms0, cumsum(weight) &lt;= .95, recalc.weights = FALSE)
+# relative likelihood
+subset(ms0, (weight / weight[1]) &gt; (1/8), recalc.weights = FALSE)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,420 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>nls.lm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Addresses NLS problems with the Levenberg-Marquardt algorithm</h2>
+
+<h3>Description</h3>
+
+<p>The purpose of <code>nls.lm</code> is to minimize the sum square of the
+vector returned by the function <code>fn</code>, by a modification of the
+Levenberg-Marquardt algorithm. The user may also provide a 
+function <code>jac</code> which calculates the Jacobian.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">nls.lm(par, lower=NULL, upper=NULL, fn, jac = NULL,
+       control = nls.lm.control(), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>par</code></td>
+<td>
+<p>A list or numeric vector of starting estimates. If
+<code>par</code> is a list, then each element must be of length 1. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower</code></td>
+<td>
+<p>A numeric vector of lower bounds on each parameter. If
+not given, the default lower bound for each parameter is set to
+<code>-Inf</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper</code></td>
+<td>
+<p>A numeric vector of upper bounds on each parameter. If
+not given, the default upper bound for each parameter is set to
+<code>Inf</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fn</code></td>
+<td>
+<p>A function that returns a vector of residuals, the sum square
+of which is to be minimized.  The first argument of <code>fn</code> must be
+<code>par</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>jac</code></td>
+<td>
+<p>A function to return the Jacobian for the <code>fn</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+
+<p>An optional list of control settings.  See <code>nls.lm.control</code> for
+the names of the settable control values and their effect.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments to be passed to <code>fn</code> and <code>jac</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Both functions <code>fn</code> and <code>jac</code> (if provided) must return
+numeric vectors. Length of the vector returned by <code>fn</code> must
+not be lower than the length of <code>par</code>. The vector returned by
+<code>jac</code> must have length equal to
+<code class="reqn">length(\code{fn}(\code{par}, \dots))\cdot length(\code{par})</code>.
+</p>
+<p>The <code>control</code> argument is a list;  see <code>nls.lm.control</code> for
+details.
+</p>
+<p><b>Successful completion.</b><br><br>
+The accuracy of <code>nls.lm</code> is controlled by the convergence
+parameters <code>ftol</code>, <code>ptol</code>, and <code>gtol</code>. These
+parameters are used in tests which make three types of comparisons
+between the approximation <code class="reqn">par</code> and a solution
+<code class="reqn">par_0</code>. <code>nls.lm</code> terminates when any of the tests
+is satisfied. If any of the convergence parameters is less than
+the machine precision, then <code>nls.lm</code> only attempts to satisfy
+the test defined by the machine precision. Further progress is not
+usually possible.<br>
+The tests assume that <code>fn</code> as well as <code>jac</code> are
+reasonably well behaved.  If this condition is not satisfied, then
+<code>nls.lm</code> may incorrectly indicate convergence. The validity
+of the answer can be checked, for example, by rerunning
+<code>nls.lm</code> with tighter tolerances.<br><br><em>First convergence test.</em><br>
+If <code class="reqn">|z|</code> denotes the Euclidean norm of a vector <code class="reqn">z</code>, then
+this test attempts to guarantee that
+</p>
+<p style="text-align: center;"><code class="reqn">|fvec| &lt; (1 + \code{ftol})\,|fvec_0|,</code>
+</p>
+
+<p>where <code class="reqn">fvec_0</code> denotes the result of <code>fn</code> function
+evaluated at <code class="reqn">par_0</code>. If this condition is satisfied
+with <code>ftol</code> <code class="reqn">\simeq 10^{-k}</code>, then the final
+residual norm <code class="reqn">|fvec|</code> has <code class="reqn">k</code> significant decimal digits
+and <code>info</code> is set to 1 (or to 3 if the second test is also
+satisfied). Unless high precision solutions are required, the
+recommended value for <code>ftol</code> is the square root of the machine
+precision.<br><br><em>Second convergence test.</em><br>
+If <code class="reqn">D</code> is the diagonal matrix whose entries are defined by the
+array <code>diag</code>, then this test attempt to guarantee that
+</p>
+<p style="text-align: center;"><code class="reqn">|D\,(par - par_0)| &lt; \code{ptol}\,|D\,par_0|,</code>
+</p>
+
+<p>If this condition is satisfied with <code>ptol</code> <code class="reqn">\simeq
+	  10^{-k}</code>, then the larger components of
+<code class="reqn">(D\,par)</code> have <code class="reqn">k</code> significant decimal digits and
+<code>info</code> is set to 2 (or to 3 if the first test is also
+satisfied). There is a danger that the smaller components of
+<code class="reqn">(D\,par)</code> may have large relative errors, but if
+<code>diag</code> is internally set, then the accuracy of the components
+of <code class="reqn">par</code> is usually related to their sensitivity. Unless high
+precision solutions are required, the recommended value for
+<code>ptol</code> is the square root of the machine precision.<br><br><em>Third convergence test.</em><br>
+This test is satisfied when the cosine of the angle between the
+result of <code>fn</code> evaluation <code class="reqn">fvec</code> and any column of the
+Jacobian at <code class="reqn">par</code> is at most <code>gtol</code> in absolute value.
+There is no clear relationship between this test and the accuracy
+of <code>nls.lm</code>, and furthermore, the test is equally well
+satisfied at other critical points, namely maximizers and saddle
+points.  Therefore, termination caused by this test (<code>info</code> =
+4) should be examined carefully. The recommended value for
+<code>gtol</code> is zero.<br><br><b>Unsuccessful completion.</b><br><br>
+Unsuccessful termination of <code>nls.lm</code> can be due to improper
+input parameters, arithmetic interrupts, an excessive number of
+function evaluations, or an excessive number of iterations. <br><br><em>Improper input parameters.</em><br><code>info</code> is set to 0 if <code class="reqn">length(\code{par}) = 0</code>, or
+<code class="reqn">length(fvec) &lt; length(\code{par})</code>, or <code>ftol</code> <code class="reqn">&lt; 0</code>,
+or <code>ptol</code> <code class="reqn">&lt; 0</code>, or <code>gtol</code> <code class="reqn">&lt; 0</code>, or <code>maxfev</code>
+<code class="reqn">\leq 0</code>, or <code>factor</code> <code class="reqn">\leq 0</code>.<br><br><em>Arithmetic interrupts.</em><br>
+If these interrupts occur in the <code>fn</code> function during an
+early stage of the computation, they may be caused by an
+unacceptable choice of <code class="reqn">par</code> by <code>nls.lm</code>. In this case,
+it may be possible to remedy the situation by rerunning
+<code>nls.lm</code> with a smaller value of <code>factor</code>.<br><br><em>Excessive number of function evaluations.</em><br>
+A reasonable value for <code>maxfev</code> is <code class="reqn">100\cdot
+    (length(\code{par}) + 1)</code>. If the
+number of calls to <code>fn</code> reaches <code>maxfev</code>, then this
+indicates that the routine is converging very slowly as measured
+by the progress of <code class="reqn">fvec</code> and <code>info</code> is set to 5. In this
+case, it may be helpful to force <code>diag</code> to be internally set.
+</p>
+<p><em>Excessive number of function iterations.</em><br>
+The allowed number of iterations defaults to 50, can be increased if
+desired. <br></p>
+<p>The list returned by <code>nls.lm</code> has methods 
+for the generic functions <code>coef</code>,
+<code>deviance</code>, <code>df.residual</code>,
+<code>print</code>, <code>residuals</code>, <code>summary</code>,
+<code>confint</code>,
+and <code>vcov</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>par</code></td>
+<td>
+<p>The best set of parameters found.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hessian</code></td>
+<td>
+<p>A symmetric matrix giving an estimate of the Hessian
+at the solution found.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fvec</code></td>
+<td>
+<p>The result of the last <code>fn</code> evaluation; that is, the
+residuals. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>info</code></td>
+<td>
+<p><code>info</code> is an integer code indicating
+the reason for termination.
+</p>
+
+<dl>
+<dt>0</dt>
+<dd>
+<p>Improper input parameters.</p>
+</dd>
+<dt>1</dt>
+<dd>
+<p>Both actual and predicted relative reductions in the
+sum of squares are at most <code>ftol</code>.</p>
+</dd>
+<dt>2</dt>
+<dd>
+<p>Relative error between two consecutive iterates is
+at most <code>ptol</code>.</p>
+</dd>
+<dt>3</dt>
+<dd>
+<p>Conditions for <code>info</code> = 1 and <code>info</code> = 2 both hold.</p>
+</dd>
+<dt>4</dt>
+<dd>
+<p>The cosine of the angle between <code>fvec</code> and any column
+of the Jacobian is at most <code>gtol</code> in absolute value.</p>
+</dd>
+<dt>5</dt>
+<dd>
+<p>Number of calls to <code>fn</code> has reached <code>maxfev</code>.</p>
+</dd>
+<dt>6</dt>
+<dd>
+<p><code>ftol</code> is too small. No further reduction in the sum
+of squares is possible.</p>
+</dd>
+<dt>7</dt>
+<dd>
+<p><code>ptol</code> is too small. No further improvement in the
+approximate solution <code>par</code> is possible.</p>
+</dd>
+<dt>8</dt>
+<dd>
+<p><code>gtol</code> is too small. <code>fvec</code> is orthogonal to the
+columns of the Jacobian to machine precision.</p>
+</dd>
+<dt>9</dt>
+<dd>
+<p>The number of iterations has reached <code>maxiter</code>.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>message</code></td>
+<td>
+<p>character string indicating reason for termination</p>
+</td>
+</tr>
+</table>
+<p>.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>diag</code></td>
+<td>
+<p>The result list of <code>diag</code>. See <b>Details</b>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>niter</code></td>
+<td>
+<p>The number of iterations completed before termination.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rsstrace</code></td>
+<td>
+<p>The residual sum of squares at each iteration.
+Can be used to check the progress each iteration. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>deviance</code></td>
+<td>
+<p>The sum of the squared residual vector.</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>The public domain FORTRAN sources of MINPACK package by J.J. Moré,
+implementing the Levenberg-Marquardt algorithm were downloaded from
+<a href="https://netlib.org/minpack/">https://netlib.org/minpack/</a>, and left unchanged. 
+The contents of this manual page are largely extracted from
+the comments of MINPACK sources.
+</p>
+
+
+<h3>References</h3>
+
+<p>J.J. Moré, "The Levenberg-Marquardt algorithm: implementation and
+theory," in <em>Lecture Notes in Mathematics</em>
+<b>630</b>: Numerical Analysis, G.A. Watson (Ed.),
+Springer-Verlag: Berlin, 1978, pp. 105-116.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>optim</code>, <code>nls</code>, <code>nls.lm.control</code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+###### example 1
+
+## values over which to simulate data 
+x &lt;- seq(0,5,length=100)
+
+## model based on a list of parameters 
+getPred &lt;- function(parS, xx) parS$a * exp(xx * parS$b) + parS$c 
+
+## parameter values used to simulate data
+pp &lt;- list(a=9,b=-1, c=6) 
+
+## simulated data, with noise  
+simDNoisy &lt;- getPred(pp,x) + rnorm(length(x),sd=.1)
+ 
+## plot data
+plot(x,simDNoisy, main="data")
+
+## residual function 
+residFun &lt;- function(p, observed, xx) observed - getPred(p,xx)
+
+## starting values for parameters  
+parStart &lt;- list(a=3,b=-.001, c=1)
+
+## perform fit 
+nls.out &lt;- nls.lm(par=parStart, fn = residFun, observed = simDNoisy,
+xx = x, control = nls.lm.control(nprint=1))
+
+## plot model evaluated at final parameter estimates  
+lines(x,getPred(as.list(coef(nls.out)), x), col=2, lwd=2)
+
+## summary information on parameter estimates
+summary(nls.out) 
+
+###### example 2 
+
+## function to simulate data 
+f &lt;- function(TT, tau, N0, a, f0) {
+    expr &lt;- expression(N0*exp(-TT/tau)*(1 + a*cos(f0*TT)))
+    eval(expr)
+}
+
+## helper function for an analytical gradient 
+j &lt;- function(TT, tau, N0, a, f0) {
+    expr &lt;- expression(N0*exp(-TT/tau)*(1 + a*cos(f0*TT)))
+    c(eval(D(expr, "tau")), eval(D(expr, "N0" )),
+      eval(D(expr, "a"  )), eval(D(expr, "f0" )))
+}
+
+## values over which to simulate data 
+TT &lt;- seq(0, 8, length=501)
+
+## parameter values underlying simulated data  
+p &lt;- c(tau = 2.2, N0 = 1000, a = 0.25, f0 = 8)
+
+## get data 
+Ndet &lt;- do.call("f", c(list(TT = TT), as.list(p)))
+## with noise
+N &lt;- Ndet +  rnorm(length(Ndet), mean=Ndet, sd=.01*max(Ndet))
+
+## plot the data to fit
+par(mfrow=c(2,1), mar = c(3,5,2,1))  
+plot(TT, N, bg = "black", cex = 0.5, main="data")
+
+## define a residual function 
+fcn     &lt;- function(p, TT, N, fcall, jcall)
+    (N - do.call("fcall", c(list(TT = TT), as.list(p))))
+
+## define analytical expression for the gradient 
+fcn.jac &lt;- function(p, TT, N, fcall, jcall) 
+    -do.call("jcall", c(list(TT = TT), as.list(p)))
+
+## starting values 
+guess &lt;- c(tau = 2.2, N0 = 1500, a = 0.25, f0 = 10)
+
+## to use an analytical expression for the gradient found in fcn.jac
+## uncomment jac = fcn.jac
+out &lt;- nls.lm(par = guess, fn = fcn, jac = fcn.jac,
+              fcall = f, jcall = j,
+              TT = TT, N = N, control = nls.lm.control(nprint=1))
+
+## get the fitted values 
+N1 &lt;- do.call("f", c(list(TT = TT), out$par))   
+
+## add a blue line representing the fitting values to the plot of data 
+lines(TT, N1, col="blue", lwd=2)
+
+## add a plot of the log residual sum of squares as it is made to
+## decrease each iteration; note that the RSS at the starting parameter
+## values is also stored
+plot(1:(out$niter+1), log(out$rsstrace), type="b",
+main="log residual sum of squares vs. iteration number",
+xlab="iteration", ylab="log residual sum of squares", pch=21,bg=2) 
+
+## get information regarding standard errors
+summary(out) 
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,158 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>model_averaging</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Average predictions from multiple models</h2>
+
+<h3>Description</h3>
+
+<p>Model Averaging consists in analyzing the same data with different models
+and to average their predictions.
+In order to perform weighted means of clearance predictions, (or
+concentrations, or any metric of interest), it is necessary to compute
+the "weight" of each estimation.
+It is informed by the likelihood of estimation.
+Two weighting scheme are currently implemented, one based on the log-
+likelihood ("LL", the default), the other on the Akaike criterion ("AIC").
+The method was previously described by Uster et al (2021) <a href="https://doi.org/10.1002/cpt.2065">doi:10.1002/cpt.2065</a>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">model_averaging(
+  ...,
+  output_function = as.data.frame,
+  scheme = c("LL", "AIC"),
+  estlist = NULL
+)
+
+compute_weights(..., scheme = c("LL", "AIC"), estlist = NULL)
+
+do_model_averaging(list_of_tabs, weights_matrix)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>estimation objects generated with <code>mapbayest()</code>, from which the weights will be computed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output_function</code></td>
+<td>
+<p>a unique function that takes any estimation object and returns a table with controlled variables, dimensions and attributes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scheme</code></td>
+<td>
+<p>scheme weight, either "LL" or "AIC"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estlist</code></td>
+<td>
+<p>a list of estimation objects. Overrides <code>...</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>list_of_tabs, weights_matrix</code></td>
+<td>
+<p>respectively outputs of the <code>output_function</code> and <code>compute_weights()</code></p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+
+<ul>
+<li> <p><code>model_averaging()</code> and <code>do_model_averaging()</code>: a data.frame of the same dimensions and attributes as the outputs
+</p>
+</li>
+<li> <p><code>compute_weights()</code>: a matrix with IDs as rows and estimation weights as columns
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(magrittr)
+
+# Three different models: A, B, and C.
+modA &lt;- exmodel(1, add_exdata = FALSE)
+modB &lt;- mrgsolve::param(modA, TVCL = 2, TVVC = 30)
+modC &lt;- mrgsolve::param(modA, TVCL = 10)
+
+# A common dataset that has 2 patients (ID 2 &amp; 9)
+data &lt;- adm_rows(ID = 2, time = 0, amt = 200, addl = 3, ii = 24, cmt = 1) %&gt;%
+    obs_rows(ID = 2, time = 84, DV = 1.5, cmt = 2) %&gt;%
+    adm_rows(ID = 9, time = 0, amt = 100, addl = 3, ii = 24, cmt = 1) %&gt;%
+    obs_rows(ID = 9, time = 96, DV = 1, cmt = 2)
+
+# Three different estimation objects: A, B and C.
+estA &lt;- mapbayest(modA, data)
+as.data.frame(estA)
+plot(estA) # Fit is pretty good
+
+estB &lt;- mapbayest(modB, data)
+as.data.frame(estB)
+plot(estB) # Excellent fit
+
+estC &lt;- mapbayest(modC, data)
+as.data.frame(estC)
+plot(estC) # Fit is worst
+
+# Model averaging
+model_averaging(A = estA, B = estB, C = estC)
+# Weighted average of the table returned by as.data.frame(est))
+
+# Internally, it first computes the "weight" of each model such as:
+W &lt;- compute_weights(A = estA, B = estB, C = estC)
+
+# Then multiply the prediction table with each weight such as:
+do_model_averaging(
+  list_of_tabs = list(
+    A = as.data.frame(estA),
+    B = as.data.frame(estB),
+    C = as.data.frame(estC)
+    ),
+  weights_matrix = W
+  )
+
+# If you do not want to perform an average of the full table, you can specify
+# a function that takes the estimation object as an input and returns
+# value(s) of interest: a single prediction, a clearance value, a full
+# table of augmented predictions... as long as the structure of the final
+# object is the same whatever the model.
+
+reframe &lt;- function(est){
+  # From any estimation object, return a table with ID, time and predictions
+  as.data.frame(est)[,c("ID", "time", "DV", "IPRED")]
+}
+
+model_averaging(A = estA, B = estB, C = estC, output_function = reframe)
+
+# Make a plot that compares predictions
+List_aug_tab &lt;- lapply(
+  X = list(A = estA, B = estB, C = estC),
+  FUN = \(x) augment(x)$aug_tab
+)
+List_aug_tab$.AVERAGE &lt;- do_model_averaging(List_aug_tab, W)
+
+mapbayr_plot(
+ aug_tab = dplyr::bind_rows(List_aug_tab, .id = "MODEL"),
+ obs_tab = data,
+ PREDICTION = "IPRED",
+ MODEL_color = c(.AVERAGE = "black")
+)
+
+</code></pre>
+
+
+</div>

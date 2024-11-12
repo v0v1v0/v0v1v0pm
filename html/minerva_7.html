@@ -1,0 +1,154 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mic_strength</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compute the association strengh</h2>
+
+<h3>Description</h3>
+
+<p>This function uses the null distribution of the <code>tic_e</code> computed with the function <code>mictools</code>. 
+Based on the available pvalue and the permutation null distribution it identifies reliable association between variables.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mic_strength(x, pval, alpha = NULL, C = 5, pthr = 0.05, pval.col = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>a numeric matrix with N samples on the rows and M variables on the columns (NxM).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pval</code></td>
+<td>
+<p>a data.frame with pvalues for each pair of association of the <code>x</code> input matrix. It should contain two colums with 
+the indices of the computed association according to the x input matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>float (0, 1.0] or &gt;=4 if alpha is in (0,1] then B will be max(n^alpha, 4) where n is the
+number of samples. If alpha is &gt;=4 then alpha defines directly the B
+parameter. If alpha is higher than the number of samples (n) it will be
+limited to be n, so B = min(alpha, n) Default value is 0.6 (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C</code></td>
+<td>
+<p>a positive integer number, the <code>C</code> parameter of the <code>mine</code> statistic. 
+See <code>mine</code> function for further details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pthr</code></td>
+<td>
+<p>threshold on pvalue for measure to consider for computing mic_e</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pval.col</code></td>
+<td>
+<p>an integer or character or vector relative to the columns of <code>pval</code> dataframe respectively for <code>pvalue</code>, 
+association between variable 1, variable 2 in the <code>x</code> input matrix. See Details for further information.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The method implemented here is a wrapper for the original method published by Albanese et al. (2018). The python version
+is available at <a href="https://github.com/minepy/mictools">https://github.com/minepy/mictools</a>.
+</p>
+<p>This function should be called after the estimation of the null distribution of <code>tic_e</code> scores based on permutations of the input data.
+</p>
+<p>The <code>mic</code> association is computed only for the variables for which the pvalue in the <code>pval</code> <code>data.frame</code> is less then 
+the threshold set with the <code>pthr</code> input parameter. 
+We assume the first column of the <code>pval</code> <code>data.frame</code> contains the pvalue, this value can be changed using 
+the <code>pval.col</code>[1] parameter. 
+</p>
+<p>The <code>pval.col</code> parameter, by default takes the first three columns in the <code>pval</code> <code>data.frame</code>, in particular the first column containing the <code>pvalues</code> 
+of the association between variable in column <code>pval.col[2]</code> and <code>pval.col[3]</code>.
+If a character vector is provided names in <code>pval.col</code> are matched with the names in <code>pval</code> <code>data.frame</code>.
+If <code>NULL</code> is passed it is assumed the first column contains pvalue, while the 2 and 3 the index or name of the variable in <code>x</code>.
+If one value is passed it refers to the <code>pvalue</code> column and the consecutive two columns are assume to contain variable indexes.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A dataframe with the <code>tic_e</code> Pvalue, the <code>mic</code> value and the column identifier regarding the input matrix
+<code>x</code> of the variables of which the association is computed.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mine</code>, <code>mictools</code>, <code>p.adjust</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(Spellman)
+mydata &lt;- as.matrix(Spellman[, 10:20])
+ticenull &lt;- mictools(mydata, nperm=1000)
+
+## Use the nominal pvalue:
+ms &lt;- mic_strength(mydata, pval=ticenull$pval, alpha=NULL, pval.col = c(1, 4,5))
+
+## Use the adjusted pvalue:
+ms &lt;- mic_strength(mydata, pval=ticenull$pval, alpha=NULL, pval.col = c(6, 4,5))
+
+ms 
+
+## Not run: 
+## Use qvalue
+require(qvalue)
+qobj &lt;- qvalue(ticenull$pval$pval)
+ticenull$pval$qvalue &lt;- qobj$qvalue
+ms &lt;- mic_strength(mydata, pval=ticenull$pval, alpha=NULL, pval.col = c("qvalue", "Var1", "Var2"))
+
+## Get the data from mictools repository
+
+lnf &lt;- "https://raw.githubusercontent.com/minepy/mictools/master/examples/datasaurus.txt"
+datasaurus &lt;- read.table(lnf, header=TRUE, row.names = 1, stringsAsFactors = FALSE)
+datasaurus &lt;- t(datasaurus)
+ticenull &lt;- mictools(datasaurus, nperm=200000)
+micres &lt;- mic_strength(mydata, ticenull$pval, pval.col=c(6, 4, 5))
+
+## Plot distribution of pvalues
+hist(ticenull$pval, breaks=50, freq=FALSE)
+
+## Plot distribution of tic_e values
+hist(ticenull$tic)
+
+## Correct pvalues using qvalue package
+require(qvalue)
+require(ggplot2)
+qobj &lt;- qvalue(ticenull$pval$pval)
+ticenull$pval$qvalue &lt;- qobj$qvalue
+micres &lt;- mic_strength(datasaurus, ticenull$pval, pval.col=c("qvalue", "Var1", "Var2"))
+
+hist(qobj$qvalue)
+
+df &lt;- data.frame(pi0.labmda=qobj$pi0.lambda, lambda=qobj$lambda, pi0.smooth=qobj$pi0.smooth)
+gp0 &lt;- ggplot(df, aes(lambda, pi0.labmda)) + geom_point() 
+gp0 &lt;- gp0 + geom_line(aes(lambda, pi0.smooth))
+gp0 &lt;- gp0 + geom_hline(yintercept = qobj$pi0, linetype="dashed", col="red")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

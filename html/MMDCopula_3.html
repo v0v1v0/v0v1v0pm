@@ -1,0 +1,278 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>BiCopEstMMD</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimation of parametric bivariate copulas using
+stochastic gradient descent on the MMD criteria</h2>
+
+<h3>Description</h3>
+
+<p>This function uses computes the MMD-estimator of a bivariate copula family.
+This computation is done through a stochastic gradient algorithm,
+that is itself computed by the function <code>BiCopGradMMD()</code>.
+The main arguments are the two vectors of observations, and the copula family.
+The bidimensional copula families are indexed in the same way as
+in <code>VineCopula::BiCop()</code> (which computes the MLE estimator).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">BiCopEstMMD(
+  u1,
+  u2,
+  family,
+  tau = NULL,
+  par = NULL,
+  par2 = NULL,
+  kernel = "gaussian",
+  gamma = "default",
+  alpha = 1,
+  niter = 100,
+  C_eta = 1,
+  epsilon = 1e-04,
+  method = "QMCV",
+  quasiRNG = "sobol",
+  ndrawings = 10
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>u1</code></td>
+<td>
+<p>vector of observations of the first coordinate, in <code class="reqn">[0,1]</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>u2</code></td>
+<td>
+<p>vector of observations of the second coordinate, in <code class="reqn">[0,1]</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>the chosen family of copulas
+(see the documentation of the class <code>VineCopula::BiCop()</code>
+for the available families).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tau</code></td>
+<td>
+<p>the copula family can be parametrized by the parameter <code>par</code>
+or by Kendall's tau.
+Here, the user can choose the initial value of tau for the stochastic gradient algorithm.
+If <code>NULL</code>, a random value is chosen instead.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>par</code></td>
+<td>
+<p>if different from <code>NULL</code>, the parameter <code>tau</code> is ignored,
+and the initial parameter must be given here.
+The initial Kendall's tau is then computed thanks to
+<code>VineCopula::BiCopPar2Tau()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>par2</code></td>
+<td>
+<p>initial value for the second parameter, if any. (Works only for Student copula).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kernel</code></td>
+<td>
+<p>the kernel used in the MMD distance:
+it can be a function taking in parameter <code>(u1, u2, v1, v2, gamma, alpha)</code>
+or a name giving the kernel to use in the list:
+</p>
+
+<ul>
+<li> <p><code>"gaussian"</code>: Gaussian kernel <code class="reqn">k(x,y) = \exp(-\|\frac{x-y}{\gamma}\|_2^2)
+   </code>
+</p>
+</li>
+<li> <p><code>"exp-l2"</code>: <code class="reqn">k(x,y) = \exp(-\|\frac{x-y}{\gamma}\|_2)
+   </code>
+</p>
+</li>
+<li> <p><code>"exp-l1"</code>: <code class="reqn">k(x,y) = \exp(-\|\frac{x-y}{\gamma}\|_1)
+   </code>
+</p>
+</li>
+<li> <p><code>"inv-l2"</code>: <code class="reqn">k(x,y) = 1/(1+\|\frac{x-y}{\gamma}\|_2)^\alpha
+   </code>
+</p>
+</li>
+<li> <p><code>"inv-l1"</code>: <code class="reqn">k(x,y) = 1/(1+\|\frac{x-y}{\gamma}\|_1)^\alpha
+   </code>
+</p>
+</li>
+</ul>
+<p>Each of these names can receive the suffix <code>".Phi"</code>, such as <code>"gaussian.Phi"</code>
+to indicates that the kernel <code class="reqn">k(x,y)</code> is replaced by
+<code class="reqn">k(\Phi^{-1}(x) , \Phi^{-1}(y))</code> where <code class="reqn">\Phi^{-1}</code> denotes the quantile
+function of the standard Normal distribution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma</code></td>
+<td>
+<p>parameter <code class="reqn">\gamma</code> to be used in the kernel.
+If <code>gamma="default"</code>, a default value is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>parameter <code class="reqn">\alpha</code> to be used in the kernel, if any.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>niter</code></td>
+<td>
+<p>the stochastic gradient algorithm is composed of two phases:
+a first "burn-in" phase and a second "averaging" phase.
+If <code>niter</code> is of size <code>1</code>, the same number of iterations is used for
+both phases of the stochastic gradient algorithm. If <code>niter</code> is of size <code>2</code>,
+then <code>niter[1]</code> iterations are done for the burn-in phase and <code>niter[2]</code>
+for the averaging phase.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C_eta</code></td>
+<td>
+<p>a multiplicative constant controlling for the size of the gradient descent step.
+The step size is then computed as <code>C_eta / sqrt(i_iter)</code>
+where <code>i_iter</code> is the index of the current iteration of the stochastic gradient algorithm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>epsilon</code></td>
+<td>
+<p>the differential of <code>VineCopula::BiCopTau2Par()</code>
+is computed thanks to a finite difference with increment <code>epsilon</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>the method of computing the stochastic gradient:
+</p>
+
+<ul>
+<li> <p><code>MC</code>: classical Monte-Carlo with <code>ndrawings</code> replications.
+</p>
+</li>
+<li> <p><code>QMCV</code>: usual Monte-Carlo on U with <code>ndrawings</code> replications,
+quasi Monte-Carlo on V.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quasiRNG</code></td>
+<td>
+<p>a function giving the quasi-random points in <code class="reqn">[0,1]^2</code> or a name giving
+the method to use in the list: </p>
+
+<ul>
+<li> <p><code>sobol</code>: use of the Sobol sequence
+implemented in <code>randtoolbox::sobol</code>
+</p>
+</li>
+<li> <p><code>halton</code>: use of the Halton sequence
+implemented in <code>randtoolbox::halton</code>
+</p>
+</li>
+<li> <p><code>torus</code>: use of the Torus sequence
+implemented in <code>randtoolbox::torus</code>
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ndrawings</code></td>
+<td>
+<p>number of replicas of the stochastic estimate of the gradient drawn
+at each step. The gradient is computed using the average of these replicas.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>an object of class <code>VineCopula::BiCop()</code>
+containing the estimated copula.
+</p>
+
+
+<h3>References</h3>
+
+<p>Alquier, P., Chérief-Abdellatif, B.-E., Derumigny, A., and Fermanian, J.D. (2022).
+Estimation of copulas via Maximum Mean Discrepancy.
+Journal of the American Statistical Association, <a href="https://doi.org/10.1080/01621459.2021.2024836">doi:10.1080/01621459.2021.2024836</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>VineCopula::BiCopEst()</code> for other methods of estimation
+such as Maximum Likelihood Estimation or Inversion of Kendall's tau.
+<code>BiCopGradMMD()</code> for the computation of the stochastic gradient.
+<code>BiCopEst.MO</code> for the estimation of Marshall-Olkin copulas by MMD.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Estimation of a bivariate Gaussian copula with correlation 0.5.
+dataSampled = VineCopula::BiCopSim(N = 500, family = 1, par = 0.5)
+estimator = BiCopEstMMD(u1 = dataSampled[,1], u2 = dataSampled[,2], family = 1, niter = 10)
+estimator$par
+
+
+# Estimation of a bivariate Student copula with correlation 0.5 and 5 degrees of freedom
+dataSampled = VineCopula::BiCopSim(N = 1000, family = 2, par = 0.5, par2 = 5)
+estimator = BiCopEstMMD(u1 = dataSampled[,1], u2 = dataSampled[,2], family = 2)
+estimator$par
+estimator$par2
+
+
+# Comparison with maximum likelihood estimation with and without outliers
+dataSampled = VineCopula::BiCopSim(N = 500, family = 1, par = 0.5)
+estimatorMMD = BiCopEstMMD(u1 = dataSampled[,1], u2 = dataSampled[,2], family = 1)
+estimatorMMD$par
+estimatorMLE = VineCopula::BiCopEst(u1 = dataSampled[,1], u2 = dataSampled[,2],
+  family = 1, method = "mle")
+estimatorMLE$par
+
+dataSampled[1:10,1] = 0.999
+dataSampled[1:10,2] = 0.001
+estimatorMMD = BiCopEstMMD(u1 = dataSampled[,1], u2 = dataSampled[,2], family = 1)
+estimatorMMD$par
+estimatorMLE = VineCopula::BiCopEst(u1 = dataSampled[,1], u2 = dataSampled[,2],
+  family = 1, method = "mle")
+estimatorMLE$par
+
+
+# Estimation of a bivariate Gaussian copula with real data
+data("daxreturns", package = "VineCopula")
+BiCopEstMMD(u1 = daxreturns[,1], u2 = daxreturns[,2], family = 1)
+estimator$par
+
+
+
+</code></pre>
+
+
+</div>

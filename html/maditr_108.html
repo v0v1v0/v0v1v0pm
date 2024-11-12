@@ -1,0 +1,215 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>to_list</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Apply an expression to each element of a list or vector</h2>
+
+<h3>Description</h3>
+
+
+<ul>
+<li> <p><code>to_list</code> always returns a list, each element of which is the
+result of expression <code>expr</code> on the elements of data. By
+default, NULL's will be removed from the result. You can change this behavior
+with <code>skip_null</code> argument.
+</p>
+</li>
+<li> <p><code>to_vec</code> is the same as <code>to_list</code> but tries to convert its result
+to vector via unlist.
+</p>
+</li>
+<li> <p><code>to_df</code> and <code>to_dfr</code> try to combine its results to data.table by rows.
+</p>
+</li>
+<li> <p><code>to_dfc</code> tries to combine its result to data.table by columns.
+</p>
+</li>
+</ul>
+<div class="sourceCode"></div>
+<p>Expression can use predefined variables: '.x' is a value of current list
+element, '.name' is a name of the element and '.index' is sequential number
+of the element.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">to_list(
+  data,
+  expr = NULL,
+  ...,
+  skip_null = TRUE,
+  trace = FALSE,
+  trace_step = 1L
+)
+
+to_vec(
+  data,
+  expr = NULL,
+  ...,
+  skip_null = TRUE,
+  trace = FALSE,
+  trace_step = 1L,
+  recursive = TRUE,
+  use.names = TRUE
+)
+
+to_df(
+  data,
+  expr = NULL,
+  ...,
+  trace = FALSE,
+  trace_step = 1L,
+  idvalue = NULL,
+  idname = "item_id"
+)
+
+to_dfr(
+  data,
+  expr = NULL,
+  ...,
+  trace = FALSE,
+  trace_step = 1L,
+  idvalue = NULL,
+  idname = "item_id"
+)
+
+to_dfc(data, expr = NULL, ..., trace = FALSE, trace_step = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>data.frame/list/vector</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expr</code></td>
+<td>
+<p>expression or function. Expression can use predefined variables:
+'.x' is a value of current list element, '.name' is a name of the element
+and '.index' is sequential number of the element.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments provided if 'expr' is function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>skip_null</code></td>
+<td>
+<p>logical Should we skip NULL's from result? Default is TRUE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trace</code></td>
+<td>
+<p>FALSE by default. Should we report progress during execution?
+Possible values are TRUE, FALSE, "pb" (progress bar) or custom expression in 'quote', e. g. 'quote(print(.x))'.
+Expression can contain '.x', '.name', and '.index' variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trace_step</code></td>
+<td>
+<p>integer. 1 by default.  Step for reporting progress. Ignored if 'trace' argument is equal to FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recursive</code></td>
+<td>
+<p>logical. Should unlisting be applied to list components of x? For details see unlist.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use.names</code></td>
+<td>
+<p>logical. TRUE by default. Should names of source list be
+preserved? Setting it to FALSE in some cases can greatly increase
+performance. For details see unlist.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>idvalue</code></td>
+<td>
+<p>expression for calculation id column. Usually it is just
+unquoted symbols: one of the '.name', '.index' or '.x'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>idname</code></td>
+<td>
+<p>character, 'item_id' by default. Name for the id column.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>'to_list' returns list, 'to_vec' tries to return vector and other functions return data.table
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">1:5 %&gt;%
+    to_list(rnorm(n = 3, .x))
+
+# or in 'lapply' style
+1:5 %&gt;%
+    to_list(rnorm, n = 3) %&gt;%
+    to_vec(mean)
+
+# or use an anonymous function
+1:5 %&gt;%
+    to_list(function(x) rnorm(3, x))
+
+# Use to_vec() to reduce output to a vector instead
+# of a list:
+# filtering - return only even numbers
+to_vec(1:10, if(.x %% 2 == 0) .x)
+
+# filtering - calculate mean only on the numeric columns
+to_vec(iris, if(is.numeric(.x)) mean(.x))
+
+# mean for numerics, number of distincts for others
+to_vec(iris, if(is.numeric(.x)) mean(.x) else uniqueN(.x))
+
+# means for Sepal
+to_vec(iris, if(startsWith(.name, "Sepal")) mean(.x))
+
+# A more realistic example: split a data frame into pieces, fit a
+# model to each piece, summarise and extract R^2
+mtcars %&gt;%
+    split(.$cyl) %&gt;%
+    to_list(summary(lm(mpg ~ wt, data = .x))) %&gt;%
+    to_vec(.x$r.squared)
+
+# If each element of the output is a data frame, use
+# to_df to row-bind them together:
+mtcars %&gt;%
+    split(.$cyl) %&gt;%
+    to_list(lm(mpg ~ wt, data = .x)) %&gt;%
+    to_df(c(cyl = .name, coef(.x)))
+
+## Not run: 
+# read all csv files in "data" to data.frame
+all_files = dir("data", pattern = "csv$", full.names = TRUE) %&gt;%
+    to_df(fread,
+          idvalue = basename(.x),
+          idname = "filename",
+          trace = "pb"
+          )
+
+## End(Not run)
+</code></pre>
+
+
+</div>

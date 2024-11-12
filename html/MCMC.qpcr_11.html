@@ -1,0 +1,209 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>HPDplot</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Plotting fixed effects for all genes for a single combination of factors
+</h2>
+
+<h3>Description</h3>
+
+<p>Calculates and plots posterior means with 95% credible intervals for specified 
+fixed effects (or their combination) for all genes
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">HPDplot(model, factors, factors2 = NULL, ylimits = NULL, 
+hpdtype = "w", inverse = FALSE, jitter = 0, plot = TRUE, grid = TRUE, 
+zero = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+
+<p>The output of mcmc.qpcr function.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>factors</code></td>
+<td>
+
+<p>A vector of names of fixed effects of interest; see details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>factors2</code></td>
+<td>
+
+<p>A second vector of fixed effect names to be subtracted from the first; see details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ylimits</code></td>
+<td>
+
+<p>Y-limits for the plot such as c(-3,6); autoscale by default.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hpdtype</code></td>
+<td>
+
+<p>Specify hpdtype="l" to plot the upper and lower 95% credible limits as a continuous
+dashed line across all genes. This is useful to compare credible intervals among several models on the same plot. 
+By default (hpdtype="w") the limits are plotted as whiskers around each point.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inverse</code></td>
+<td>
+
+<p>Plot the inverse of the result.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>jitter</code></td>
+<td>
+
+<p>For hpdtype="w", shifts the plotted values and whiskers by the specified distance along
+the x axis (reasonable jitter values are 0.15 or -0.15, for example). This helps plot 
+several results (different models or factor combinations) on the same plot (use 
+HPDpoints to add to existing plot) 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot</code></td>
+<td>
+
+<p>if plot = FALSE the function returns a table of calculated posterior modes, means, upper 
+and lower 95% credible limits (all on log(2) scale), and two types of p-values: derived from Bayesian z-scores, 
+and derived directly from MCMC sample. 
+</p>
+<p>All such outputs for a given experiment should be concatenated
+with rbind and processed by padj.qpcr() function to adjust the p-values for multiple comparisons 
+(disregarding the entries corresponding to control genes)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grid</code></td>
+<td>
+
+<p>Whether to draw vertical grid lines to separate genes. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>zero</code></td>
+<td>
+
+<p>Whether to draw a horizontal line at 0. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Various plot() options; such as col (color of lines and symbols), pch (type of symbol),
+main (plot title) etc. 
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Use summary(MCMCglmm object) first to see what fixed effect names are actually used 
+in the output. For example, if summary shows:
+</p>
+<p>gene1:conditionheat<br>
+gene2:conditionheat<br>
+....<br>
+gene1:timepointtwo<br>
+gene2:timepointtwo<br>
+....<br>
+gene1:conditionheat:timepointtwo<br>
+gene2:conditionheat:timepointtwo
+</p>
+<p>, it is possible to specify factors="conditionheat" to plot only the effects of the heat.
+</p>
+<p>If a vector of several fixed effect names is given, for example: 
+factors=c("timepointtwo","treatmentheat:timepointtwo")
+the function will plot the posterior mean and credible interval for the sum of these 
+effects.
+</p>
+<p>If a second vector is also given, for example,<br> 
+factors=c("f1","f2"), factors2=c("f3","f4")<br>
+the function will plot the difference between the sums of these two groups of factors.
+This is useful for pairwise analysis of differences in complicated designs.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A plot or a table (plot = F).
+</p>
+<p>Use the function HPDpoints() if you need to add graphs to already existing plot.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Mikhail V. Matz, UT Austin
+&lt;matz@utexas.edu&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Matz MV, Wright RM, Scott JG (2013) No Control Genes Required: Bayesian Analysis of qRT-PCR Data. PLoS ONE 8(8): e71448. doi:10.1371/journal.pone.0071448
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# loading Cq data and amplification efficiencies
+data(coral.stress) 
+data(amp.eff) 
+# extracting a subset of data 
+cs.short=subset(coral.stress, timepoint=="one")
+
+genecolumns=c(5,6,16,17) # specifying columns corresponding to genes of interest
+conditions=c(1:4) # specifying columns containing factors  
+
+# calculating molecule counts and reformatting:
+dd=cq2counts(data=cs.short,genecols=genecolumns,
+condcols=conditions,effic=amp.eff,Cq1=37) 
+
+# fitting the model
+mm=mcmc.qpcr(
+	fixed="condition",
+	data=dd,
+	controls=c("nd5","rpl11"),
+	nitt=3000,burnin=2000 # remove this line when analyzing real data!
+)
+
+# plotting log2(fold change) in response to heat stress for all genes
+HPDplot(model=mm,factors="conditionheat",main="response to heat stress")
+
+</code></pre>
+
+
+</div>

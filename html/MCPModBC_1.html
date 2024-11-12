@@ -1,0 +1,166 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>data_generator</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Data Generator</h2>
+
+<h3>Description</h3>
+
+<p>It generates data for a dose-finding trial.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">data_generator(doses, sample.size, distr, parm, 
+	censoring.rate = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>doses</code></td>
+<td>
+<p>a numeric vector indicating the doses that will be considered in the clinical trial.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sample.size</code></td>
+<td>
+<p>a numeric value indicating the sample size per dose in the clinical trial.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distr</code></td>
+<td>
+<p>a character value indicating the distribution of the response variable. Currently, the only option available is 'weibull'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parm</code></td>
+<td>
+<p>a named list of true values for the simulation. See mode in Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>censoring.rate</code></td>
+<td>
+<p>a numeric value between 0 and 1 indicating the censoring rate when generated data. It is required when <code>distr = "weibull"</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>If <code>distr = "weibull"</code>, the list <code>parm</code> should contain two components - <code>lambda</code> and <code>sigma</code> - that are 
+the scale and shape parameters in the following parametrization of the Weibull distribution: 
+</p>
+<p style="text-align: center;"><code class="reqn">
+f(t;\lambda,\sigma) = \frac{1}{\sigma\lambda^{1/\sigma}} t^{1/\sigma-1} \exp\left\{ -\left( t/\lambda \right)^{1/\sigma} \right\}, \ t &gt; 0,
+</code>
+</p>
+
+<p>with hazard rate given by
+</p>
+<p style="text-align: center;"><code class="reqn">
+h(t) = \frac{1}{\lambda^{1/\sigma}\sigma}t^{1/\sigma - 1}
+</code>
+</p>
+
+<p>and regression structure
+</p>
+<p style="text-align: center;"><code class="reqn">
+\log(\lambda_i) = d_i\beta_i.
+</code>
+</p>
+
+<p>where <code class="reqn">\log(\lambda_i)</code> represents the model effect for dose i, <code>doses[i]</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a data frame of dimension [length(doses)<code class="reqn">\times</code>sample.size] <code class="reqn">\times</code> 3 when <code>distr = "weibull"</code> 
+containing time-to-event, censoring indicator and dose.
+</p>
+
+
+<h3>References</h3>
+
+<p>Diniz, Márcio A. and Gallardo, Diego I. and Magalhães, Tiago M. (2023). Improved inference 
+for MCP-Mod approach for time-to-event endpoints with small sample sizes. arXiv 
+&lt;doi.org/10.48550/arXiv.2301.00325&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(DoseFinding)
+library(MCPModBC)
+
+## doses scenarios 
+doses &lt;- c(0, 5, 25, 50, 100)
+nd &lt;- length(doses)
+
+# median survival time for placebo dose
+mst.control &lt;- 4 
+
+# shape parameter
+sigma.true &lt;- 0.5
+
+# maximum hazard ratio between active dose and placebo dose 
+hr.ratio &lt;- 4  
+# minimum hazard ratio between active dose and placebo dose
+hr.Delta &lt;- 2 
+
+# hazard rate for placebo dose
+placEff &lt;- log(mst.control/(log(2)^sigma.true)) 
+
+# maximum hazard rate for active dose
+maxEff &lt;- log((mst.control*(hr.ratio^sigma.true))/(log(2)^sigma.true))
+
+# minimum hazard rate for active dose
+minEff.Delta &lt;- log((mst.control*(hr.Delta^sigma.true))/(log(2)^sigma.true))
+Delta &lt;- (minEff.Delta - placEff)
+
+## MCP Parameters  
+emax &lt;- guesst(d = doses[4], p = 0.5, model="emax")
+exp &lt;- guesst(d = doses[4], p = 0.1, model="exponential", Maxd = doses[nd])
+logit &lt;- guesst(d = c(doses[3], doses[4]), p = c(0.1,0.8), "logistic",  
+	Maxd= doses[nd])
+betam &lt;- guesst(d = doses[2], p = 0.3, "betaMod", scal=120, dMax=50, 
+	Maxd= doses[nd])
+
+models.candidate &lt;- Mods(emax = emax, linear = NULL,
+                         exponential = exp, logistic = logit,
+                         betaMod = betam, doses = doses,
+                         placEff = placEff, maxEff = (maxEff- placEff))
+plot(models.candidate)
+
+## True Model
+model.true &lt;- "emax"
+response &lt;- model_response(doses = doses,
+                           distr = "weibull", 
+                           model.true = model.true, 
+                           models.candidate = models.candidate) 
+lambda.true &lt;- response$lambda
+parm &lt;- list(lambda = lambda.true, sigma = sigma.true)
+
+## Scenario: Censoring 10%
+censoring.rate &lt;- 0.1
+
+dt &lt;- data_generator(doses = doses,
+                     sample.size = 20,
+                     distr = "weibull",
+                     parm = parm,                    
+                     censoring.rate = censoring.rate)
+## Print data
+#dt
+
+</code></pre>
+
+
+</div>

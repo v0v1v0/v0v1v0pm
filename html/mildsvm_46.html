@@ -1,0 +1,271 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>omisvm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit MI-SVM-OR model to ordinal outcome data</h2>
+
+<h3>Description</h3>
+
+<p>This function fits a modification of MI-SVM to ordinal outcome data based on
+the research method proposed by Kent and Yu.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## Default S3 method:
+omisvm(
+  x,
+  y,
+  bags,
+  cost = 1,
+  h = 1,
+  s = Inf,
+  method = c("qp-heuristic"),
+  weights = TRUE,
+  control = list(kernel = "linear", sigma = if (is.vector(x)) 1 else 1/ncol(x),
+    max_step = 500, type = "C-classification", scale = TRUE, verbose = FALSE, time_limit
+    = 60),
+  ...
+)
+
+## S3 method for class 'formula'
+omisvm(formula, data, ...)
+
+## S3 method for class 'mi_df'
+omisvm(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A data.frame, matrix, or similar object of covariates, where each
+row represents an instance. If a <code>mi_df</code> object is passed, <code style="white-space: pre;">⁠y, bags⁠</code> are
+automatically extracted, and all other columns will be used as predictors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>A numeric, character, or factor vector of bag labels for each
+instance.  Must satisfy <code>length(y) == nrow(x)</code>. Suggest that one of the
+levels is 1, '1', or TRUE, which becomes the positive class; otherwise, a
+positive class is chosen and a message will be supplied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bags</code></td>
+<td>
+<p>A vector specifying which instance belongs to each bag.  Can be a
+string, numeric, of factor.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cost</code></td>
+<td>
+<p>The cost parameter in SVM. If <code>method = 'heuristic'</code>, this will
+be fed to <code>kernlab::ksvm()</code>, otherwise it is similarly in internal
+functions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>h</code></td>
+<td>
+<p>A scalar that controls the trade-off between maximizing the margin
+and minimizing distance between hyperplanes.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>s</code></td>
+<td>
+<p>An integer for how many replication points to add to the dataset. If
+<code>k</code> represents the number of labels in y, must have <code style="white-space: pre;">⁠1 &lt;= s &lt;= k-1⁠</code>. The
+default, <code>Inf</code>, uses the maximum number of replication points, <code>k-1</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>The algorithm to use in fitting (default  <code>'heuristic'</code>).  When
+<code>method = 'heuristic'</code>, which employs an algorithm similar to Andrews et
+al. (2003). When <code>method = 'mip'</code>, the novel MIP method will be used.  When
+<code style="white-space: pre;">⁠method = 'qp-heuristic⁠</code>, the heuristic algorithm is computed using the
+dual SVM.  See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>named vector, or <code>TRUE</code>, to control the weight of the cost
+parameter for each possible y value.  Weights multiply against the cost
+vector. If <code>TRUE</code>, weights are calculated based on inverse counts of
+instances with given label, where we only count one positive instance per
+bag. Otherwise, names must match the levels of <code>y</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>list of additional parameters passed to the method that
+control computation with the following components:
+</p>
+
+<ul>
+<li> <p><code>kernel</code> either a character the describes the kernel ('linear' or
+'radial') or a kernel matrix at the instance level.
+</p>
+</li>
+<li> <p><code>sigma</code> argument needed for radial basis kernel.
+</p>
+</li>
+<li> <p><code>nystrom_args</code> a list of parameters to pass to <code>kfm_nystrom()</code>. This is
+used when <code>method = 'mip'</code> and <code>kernel = 'radial'</code> to generate a Nystrom
+approximation of the kernel features.
+</p>
+</li>
+<li> <p><code>max_step</code> argument used when <code>method = 'heuristic'</code>. Maximum steps of
+iteration for the heuristic algorithm.
+</p>
+</li>
+<li> <p><code>type</code>: argument used when <code>method = 'heuristic'</code>. The <code>type</code> argument is
+passed to <code>e1071::svm()</code>.
+</p>
+</li>
+<li> <p><code>scale</code> argument used for all methods. A logical for whether to rescale
+the input before fitting.
+</p>
+</li>
+<li> <p><code>verbose</code> argument used when <code>method = 'mip'</code>. Whether to message output
+to the console.
+</p>
+</li>
+<li> <p><code>time_limit</code> argument used when <code>method = 'mip'</code>. <code>FALSE</code>, or a time
+limit (in seconds) passed to <code>gurobi()</code> parameters.  If <code>FALSE</code>, no time
+limit is given.
+</p>
+</li>
+<li> <p><code>start</code> argument used when <code>method = 'mip'</code>.  If <code>TRUE</code>, the mip program
+will be warm_started with the solution from <code>method = 'qp-heuristic'</code> to
+potentially improve speed.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Arguments passed to or from other methods.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a formula with specification <code>mi(y, bags) ~ x</code> which uses the
+<code>mi</code> function to create the bag-instance structure. This argument is an
+alternative to the <code style="white-space: pre;">⁠x, y, bags⁠</code> arguments, but requires the <code>data</code>
+argument. See examples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>If <code>formula</code> is provided, a data.frame or similar from which
+formula elements will be extracted</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Currently, the only method available is a heuristic algorithm in linear SVM
+space. Additional methods should be available shortly.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>omisvm.</code>  The object contains at least the
+following components:
+</p>
+
+<ul>
+<li> <p><code style="white-space: pre;">⁠*_fit⁠</code>: A fit object depending on the <code>method</code> parameter.  If <code>method =   'qp-heuristic'</code> this will be <code>gurobi_fit</code> from a model optimization.
+</p>
+</li>
+<li> <p><code>call_type</code>: A character indicating which method <code>omisvm()</code> was called
+with.
+</p>
+</li>
+<li> <p><code>features</code>: The names of features used in training.
+</p>
+</li>
+<li> <p><code>levels</code>: The levels of <code>y</code> that are recorded for future prediction.
+</p>
+</li>
+<li> <p><code>cost</code>: The cost parameter from function inputs.
+</p>
+</li>
+<li> <p><code>weights</code>: The calculated weights on the <code>cost</code> parameter.
+</p>
+</li>
+<li> <p><code>repr_inst</code>: The instances from positive bags that are selected to be
+most representative of the positive instances.
+</p>
+</li>
+<li> <p><code>n_step</code>: If <code>method == 'qp-heuristic'</code>, the total steps used in the
+heuristic algorithm.
+</p>
+</li>
+<li> <p><code>x_scale</code>: If <code>scale = TRUE</code>, the scaling parameters for new predictions.
+</p>
+</li>
+</ul>
+<h3>Methods (by class)</h3>
+
+
+<ul>
+<li> <p><code>default</code>: Method for data.frame-like objects
+</p>
+</li>
+<li> <p><code>formula</code>: Method for passing formula
+</p>
+</li>
+<li> <p><code>mi_df</code>: Method for <code>mi_df</code> objects, automatically handling bag
+names, labels, and all covariates.
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Sean Kent
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>predict.omisvm()</code> for prediction on new data.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">if (require(gurobi)) {
+  data("ordmvnorm")
+  x &lt;- ordmvnorm[, 3:7]
+  y &lt;- ordmvnorm$bag_label
+  bags &lt;- ordmvnorm$bag_name
+
+  mdl1 &lt;- omisvm(x, y, bags, weights = NULL)
+  predict(mdl1, x, new_bags = bags)
+}
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,370 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>trans_norm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Feature abundance normalization/transformation.</h2>
+
+<h3>Description</h3>
+
+<p>Feature abundance normalization/transformation for a microtable object or data.frame object.
+</p>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-trans_norm-new"><code>trans_norm$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_norm-norm"><code>trans_norm$norm()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-trans_norm-clone"><code>trans_norm$clone()</code></a>
+</p>
+</li>
+</ul>
+<hr>
+<a id="method-trans_norm-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Get a transposed abundance table if the input is microtable object. In the table, rows are samples, and columns are features. 
+This can make the further operations same with the traditional ecological methods.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_norm$new(dataset = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>dataset</code></dt>
+<dd>
+<p>the <code>microtable</code> object or <code>data.frame</code> object. 
+If it is <code>data.frame</code> object, please make sure that rows are samples, and columns are features.</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>data_table, stored in the object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>library(microeco)
+data(dataset)
+t1 &lt;- trans_norm$new(dataset = dataset)
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_norm-norm"></a>
+
+
+
+<h4>Method <code>norm()</code>
+</h4>
+
+<p>Normalization/transformation methods.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_norm$norm(
+  method = "rarefy",
+  sample.size = NULL,
+  rngseed = 123,
+  replace = TRUE,
+  pseudocount = 1,
+  intersect.no = 10,
+  ct.min = 1,
+  condition = NULL,
+  MARGIN = NULL,
+  logbase = 2,
+  ...
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>method</code></dt>
+<dd>
+<p>default "rarefy"; See the following available options. <br><br> 
+Methods for normalization:
+</p>
+
+<ul>
+<li> <p><code>"rarefy"</code>: classic rarefaction based on R sample function.
+</p>
+</li>
+<li> <p><code>"SRS"</code>: scaling with ranked subsampling method based on the SRS package provided by Lukas Beule and Petr Karlovsky (2020) &lt;doi:10.7717/peerj.9593&gt;.
+</p>
+</li>
+<li> <p><code>"clr"</code>: Centered log-ratio normalization &lt;ISBN:978-0-412-28060-3&gt; &lt;doi: 10.3389/fmicb.2017.02224&gt;. 
+It is defined:  </p>
+<p style="text-align: center;"><code class="reqn">clr_{ki} = \log\frac{x_{ki}}{g(x_i)}</code>
+</p>
+
+<p>where <code class="reqn">x_{ki}</code> is the abundance of <code class="reqn">k</code>th feature in sample <code class="reqn">i</code>, <code class="reqn">g(x_i)</code> is the geometric mean of abundances for sample <code class="reqn">i</code>.
+A pseudocount need to be added to deal with the zero. For more information, please see the 'clr' method in <code>decostand</code> function of vegan package.
+</p>
+</li>
+<li> <p><code>"rclr"</code>: Robust centered log-ratio normalization &lt;doi:10.1128/msystems.00016-19&gt;.
+It is defined:  </p>
+<p style="text-align: center;"><code class="reqn">rclr_{ki} = \log\frac{x_{ki}}{g(x_i &gt; 0)}</code>
+</p>
+
+<p>where <code class="reqn">x_{ki}</code> is the abundance of <code class="reqn">k</code>th feature in sample <code class="reqn">i</code>, <code class="reqn">g(x_i &gt; 0)</code> is the geometric mean of abundances (&gt; 0) for sample <code class="reqn">i</code>.
+In rclr, zero values are kept as zeroes, and not taken into account.
+</p>
+</li>
+<li> <p><code>"GMPR"</code>: Geometric mean of pairwise ratios &lt;doi: 10.7717/peerj.4600&gt;. 
+For a given sample <code class="reqn">i</code>, the size factor <code class="reqn">s_i</code> is defined:
+</p>
+<p style="text-align: center;"><code class="reqn">s_i =  \biggl( {\displaystyle\prod_{j=1}^{n} Median_{k|c_{ki}c_{kj} \ne 0} \lbrace \dfrac{c_{ki}}{c_{kj}} \rbrace} \biggr) ^{1/n}</code>
+</p>
+
+<p>where <code class="reqn">k</code> denotes all the features, and <code class="reqn">n</code> denotes all the samples. 
+For sample <code class="reqn">i</code>, <code class="reqn">GMPR = \frac{x_{i}}{s_i}</code>, where <code class="reqn">x_i</code> is the feature abundances of sample <code class="reqn">i</code>.
+</p>
+</li>
+<li> <p><code>"CSS"</code>: Cumulative sum scaling normalization based on the <code>metagenomeSeq</code> package &lt;doi:10.1038/nmeth.2658&gt;.
+For a given sample <code class="reqn">j</code>, the scaling factor <code class="reqn">s_{j}^{l}</code> is defined:
+</p>
+<p style="text-align: center;"><code class="reqn">s_{j}^{l} = {\displaystyle\sum_{i|c_{ij} \leqslant q_{j}^{l}} c_{ij}}</code>
+</p>
+
+<p>where <code class="reqn">q_{j}^{l}</code> is the <code class="reqn">l</code>th quantile of sample <code class="reqn">j</code>, that is, in sample <code class="reqn">j</code> there are <code class="reqn">l</code> features with counts smaller than <code class="reqn">q_{j}^{l}</code>.
+<code class="reqn">c_{ij}</code> denotes the count (abundance) of feature i in sample <code class="reqn">j</code>.
+For <code class="reqn">l</code> = 0.95<code class="reqn">m</code> (feature number), <code class="reqn">q_{j}^{l}</code> corresponds to the 95th percentile of the count distribution for sample <code class="reqn">j</code>.
+Normalized counts <code class="reqn">\tilde{c_{ij}} = (\frac{c_{ij}}{s_{j}^{l}})(N)</code>, where <code class="reqn">N</code> is an appropriately chosen normalization constant.
+</p>
+</li>
+<li> <p><code>"TSS"</code>: Total sum scaling. Abundance is divided by the sequencing depth.
+For a given sample <code class="reqn">j</code>, normalized counts is defined:
+</p>
+<p style="text-align: center;"><code class="reqn">\tilde{c_{ij}} = \frac{c_{ij}}{\sum_{i=1}^{N_{j}} c_{ij}}</code>
+</p>
+
+<p>where <code class="reqn">c_{ij}</code> is the counts of feature <code class="reqn">i</code> in sample <code class="reqn">j</code>, and <code class="reqn">N_{j}</code> is the feature number of sample <code class="reqn">j</code>.
+</p>
+</li>
+<li> <p><code>"eBay"</code>: Empirical Bayes approach to normalization &lt;10.1186/s12859-020-03552-z&gt;. 
+The implemented method is not tree-related. In the output, the sum of each sample is 1.
+</p>
+</li>
+<li> <p><code>"TMM"</code>: Trimmed mean of M-values method based on the <code>normLibSizes</code> function of <code>edgeR</code> package &lt;doi: 10.1186/gb-2010-11-3-r25&gt;.
+</p>
+</li>
+<li> <p><code>"DESeq2"</code>: Median ratio of gene counts relative to geometric mean per gene based on the DESeq function of <code>DESeq2</code> package &lt;doi: 10.1186/s13059-014-0550-8&gt;.
+This option can invoke the <code>trans_diff</code> class and extract the normalized data from the original result.
+Note that either <code>group</code> or <code>formula</code> should be provided.
+The scaling factor is defined:
+</p>
+<p style="text-align: center;"><code class="reqn">s_{j} = Median_{i} \frac{c_{ij}}{\bigl( {\prod_{j=1}^{n} c_{ij}} \bigr) ^{1/n}}</code>
+</p>
+
+<p>where <code class="reqn">c_{ij}</code> is the counts of feature <code class="reqn">i</code> in sample <code class="reqn">j</code>, and <code class="reqn">n</code> is the total sample number.
+</p>
+</li>
+<li> <p><code>"Wrench"</code>: Group-wise and sample-wise compositional bias factor &lt;doi: 10.1186/s12864-018-5160-5&gt;.
+Note that condition parameter is necesary to be passed to <code>condition</code> parameter in <code>wrench</code> function of Wrench package.
+As the input data must be microtable object, so the input condition parameter can be a column name of <code>sample_table</code>.
+The scaling factor is defined:
+</p>
+<p style="text-align: center;"><code class="reqn">s_{j} = \frac{1}{p} \sum_{ij} W_{ij} \frac{X_{ij}}{\overline{X_{i}}}</code>
+</p>
+
+<p>where <code class="reqn">X_{ij}</code> represents the relative abundance (proportion) for feature <code class="reqn">i</code> in sample <code class="reqn">j</code>,
+<code class="reqn">\overline{X_{i}}</code> is the average proportion of feature <code class="reqn">i</code> across the dataset,
+<code class="reqn">W_{ij}</code> represents a weight specific to each technique, and <code class="reqn">p</code> is the feature number in sample.
+</p>
+</li>
+<li> <p><code>"RLE"</code>: Relative log expression. 
+</p>
+</li>
+</ul>
+<p>Methods based on <code>decostand</code> function of vegan package:
+</p>
+
+<ul>
+<li> <p><code>"total"</code>: divide by margin total (default MARGIN = 1, i.e. rows - samples).
+</p>
+</li>
+<li> <p><code>"max"</code>: divide by margin maximum (default MARGIN = 2, i.e. columns - features).
+</p>
+</li>
+<li> <p><code>"normalize"</code>:  make margin sum of squares equal to one (default MARGIN = 1).
+</p>
+</li>
+<li> <p><code>"range"</code>: standardize values into range 0...1 (default MARGIN = 2). If all values are constant, they will be transformed to 0.
+</p>
+</li>
+<li> <p><code>"standardize"</code>: scale x to zero mean and unit variance (default MARGIN = 2).
+</p>
+</li>
+<li> <p><code>"pa"</code>: scale x to presence/absence scale (0/1).
+</p>
+</li>
+<li> <p><code>"log"</code>: logarithmic transformation.
+</p>
+</li>
+</ul>
+<p>Other methods for transformation:
+</p>
+
+<ul><li> <p><code>"AST"</code>: Arc sine square root transformation.
+</p>
+</li></ul>
+</dd>
+<dt><code>sample.size</code></dt>
+<dd>
+<p>default NULL; libray size for rarefaction when method = "rarefy" or "SRS". If not provided, use the minimum number across all samples. 
+For "SRS" method, this parameter is passed to <code>Cmin</code> parameter of <code>SRS</code> function of SRS package.</p>
+</dd>
+<dt><code>rngseed</code></dt>
+<dd>
+<p>default 123; random seed. Available when method = "rarefy" or "SRS".</p>
+</dd>
+<dt><code>replace</code></dt>
+<dd>
+<p>default TRUE; see <code>sample</code> for the random sampling; Available when <code>method = "rarefy"</code>.</p>
+</dd>
+<dt><code>pseudocount</code></dt>
+<dd>
+<p>default 1; add pseudocount for those features with 0 abundance when <code>method = "clr"</code>.</p>
+</dd>
+<dt><code>intersect.no</code></dt>
+<dd>
+<p>default 10; the intersecting taxa number between paired sample for <code>method = "GMPR"</code>.</p>
+</dd>
+<dt><code>ct.min</code></dt>
+<dd>
+<p>default 1; the minimum number of counts required to calculate ratios for <code>method = "GMPR"</code>.</p>
+</dd>
+<dt><code>condition</code></dt>
+<dd>
+<p>default NULL; Only available when <code>method = "Wrench"</code>. 
+This parameter is passed to the <code>condition</code> parameter of <code>wrench</code> function in Wrench package
+It must be a column name of <code>sample_table</code> or a vector with same length of samples.</p>
+</dd>
+<dt><code>MARGIN</code></dt>
+<dd>
+<p>default NULL; 1 = samples, and 2 = features of abundance table; only available when method comes from <code>decostand</code> function of vegan package.
+If MARGIN is NULL, use the default value in decostand function.</p>
+</dd>
+<dt><code>logbase</code></dt>
+<dd>
+<p>default 2; The logarithm base.</p>
+</dd>
+<dt><code>...</code></dt>
+<dd>
+<p>parameters pass to <code>vegan::decostand</code>, or <code>metagenomeSeq::cumNorm</code> when method = "CSS", 
+or <code>edgeR::normLibSizes</code> when method = "TMM" or "RLE", 
+or <code>trans_diff</code> class when method = "DESeq2",
+or <code>wrench</code> function of Wrench package when method = "Wrench".</p>
+</dd>
+</dl>
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p>new microtable object or data.frame object.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>newdataset &lt;- t1$norm(method = "clr")
+newdataset &lt;- t1$norm(method = "log")
+</pre>
+</div>
+
+
+<hr>
+<a id="method-trans_norm-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>trans_norm$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## ------------------------------------------------
+## Method `trans_norm$new`
+## ------------------------------------------------
+
+library(microeco)
+data(dataset)
+t1 &lt;- trans_norm$new(dataset = dataset)
+
+## ------------------------------------------------
+## Method `trans_norm$norm`
+## ------------------------------------------------
+
+newdataset &lt;- t1$norm(method = "clr")
+newdataset &lt;- t1$norm(method = "log")
+</code></pre>
+
+
+</div>

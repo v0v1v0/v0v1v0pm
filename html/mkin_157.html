@@ -1,0 +1,211 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>summary.nlme.mmkin</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Summary method for class "nlme.mmkin"</h2>
+
+<h3>Description</h3>
+
+<p>Lists model equations, initial parameter values, optimised parameters
+for fixed effects (population), random effects (deviations from the
+population mean) and residual error model, as well as the resulting
+endpoints such as formation fractions and DT50 values. Optionally
+(default is FALSE), the data are listed in full.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'nlme.mmkin'
+summary(
+  object,
+  data = FALSE,
+  verbose = FALSE,
+  distimes = TRUE,
+  alpha = 0.05,
+  ...
+)
+
+## S3 method for class 'summary.nlme.mmkin'
+print(x, digits = max(3, getOption("digits") - 3), verbose = x$verbose, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>an object of class nlme.mmkin</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>logical, indicating whether the full data should be included in
+the summary.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Should the summary be verbose?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distimes</code></td>
+<td>
+<p>logical, indicating whether DT50 and DT90 values should be
+included.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>error level for confidence interval estimation from the t
+distribution</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>optional arguments passed to methods like <code>print</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>an object of class summary.nlme.mmkin</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>Number of digits to use for printing</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The summary function returns a list based on the nlme object
+obtained in the fit, with at least the following additional components
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>nlmeversion, mkinversion, Rversion</code></td>
+<td>
+<p>The nlme, mkin and R versions used</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>date.fit, date.summary</code></td>
+<td>
+<p>The dates where the fit and the summary were
+produced</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>diffs</code></td>
+<td>
+<p>The differential equations used in the degradation model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_of_ff</code></td>
+<td>
+<p>Was maximum or minimum use made of formation fractions</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>The data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>confint_trans</code></td>
+<td>
+<p>Transformed parameters as used in the optimisation, with confidence intervals</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>confint_back</code></td>
+<td>
+<p>Backtransformed parameters, with confidence intervals if available</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ff</code></td>
+<td>
+<p>The estimated formation fractions derived from the fitted
+model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distimes</code></td>
+<td>
+<p>The DT50 and DT90 values for each observed variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SFORB</code></td>
+<td>
+<p>If applicable, eigenvalues of SFORB components of the model.</p>
+</td>
+</tr>
+</table>
+<p>The print method is called for its side effect, i.e. printing the summary.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Johannes Ranke for the mkin specific parts
+José Pinheiro and Douglas Bates for the components inherited from nlme
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Generate five datasets following SFO kinetics
+sampling_times = c(0, 1, 3, 7, 14, 28, 60, 90, 120)
+dt50_sfo_in_pop &lt;- 50
+k_in_pop &lt;- log(2) / dt50_sfo_in_pop
+set.seed(1234)
+k_in &lt;- rlnorm(5, log(k_in_pop), 0.5)
+SFO &lt;- mkinmod(parent = mkinsub("SFO"))
+
+pred_sfo &lt;- function(k) {
+  mkinpredict(SFO,
+    c(k_parent = k),
+    c(parent = 100),
+    sampling_times)
+}
+
+ds_sfo_mean &lt;- lapply(k_in, pred_sfo)
+names(ds_sfo_mean) &lt;- paste("ds", 1:5)
+
+set.seed(12345)
+ds_sfo_syn &lt;- lapply(ds_sfo_mean, function(ds) {
+  add_err(ds,
+    sdfunc = function(value) sqrt(1^2 + value^2 * 0.07^2),
+    n = 1)[[1]]
+})
+
+## Not run: 
+# Evaluate using mmkin and nlme
+library(nlme)
+f_mmkin &lt;- mmkin("SFO", ds_sfo_syn, quiet = TRUE, error_model = "tc", cores = 1)
+f_nlme &lt;- nlme(f_mmkin)
+summary(f_nlme, data = TRUE)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

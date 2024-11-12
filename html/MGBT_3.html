@@ -1,0 +1,120 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>BLlo</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Barnett and Lewis Test Adjusted for Low Outliers </h2>
+
+<h3>Description</h3>
+
+<p>The Barnett and Lewis (1995, p. 224; <code class="reqn">T_{\mathrm{N}3}</code>) so-labeled “N3 method” with TAC adjustment to look for low outliers. The essence of the method, given the order statistics <code class="reqn">x_{[1:n]} \le x_{[2:n]} \le \cdots \le x_{[(n-1):n]} \le x_{[n:n]}</code>, is the statistic
+</p>
+<p style="text-align: center;"><code class="reqn">BL_r = T_{\mathrm{N}3} =
+\frac{ \sum_{i=1}^r x_{[i:n]} - r \times \mathrm{mean}\{x_{[1:n]}\} }
+     {\sqrt{\mathrm{var}\{x_{[1:n]}\}}}\mbox{,}</code>
+</p>
+
+<p>for the mean and variance of the observations.  Barnett and Lewis (1995, p. 218) brand this statistic as a test of the “<code class="reqn">k \ge 2</code> upper outliers” but for the <span class="pkg">MGBT</span> package “lower” applies in TAC reformulation. Barnett and Lewis (1995, p. 218) show an example of a modification for two low outliers as <code class="reqn">(2\overline{x} - x_{[2:n]} - x_{[1:n]})/s</code> for the mean <code class="reqn">\mu</code> and standard deviation <code class="reqn">s</code>. TAC reformulation thus differs by a sign. The <code class="reqn">BL_r</code> is a sum of internally studentized deviations from the mean:
+</p>
+<p style="text-align: center;"><code class="reqn">SP(t) \le {n \choose k} P\biggl(\bm{t}(n-2) &gt; \biggr[\frac{n(n-2)t^2}{r(n-r)(n-1)-nt^2}\biggl]^{1/2}\biggr)\mbox{,}</code>
+</p>
+
+<p>where <code class="reqn">\bm{t}(df)</code> is the t-distribution for <code class="reqn">df</code> degrees of freedom, and this is an inequality when
+</p>
+<p style="text-align: center;"><code class="reqn">t \ge \sqrt{r^2(n-1)(n-r-1)/(nr+n)}\mbox{,}</code>
+</p>
+
+<p>where <code class="reqn">SP(t)</code> is the probability that <code class="reqn">T_{\mathrm{N}3} &gt; t</code> when the inequality holds. For reference, Barnett and Lewis (1995, p. 491) example tables of critical values for <code class="reqn">n=10</code> for <code class="reqn">k \in 2,3,4</code> at 5-percent significant level are <code class="reqn">3.18</code>, <code class="reqn">3.82</code>, and <code class="reqn">4.17</code>, respectively. One of these is evaluated in the <b>Examples</b>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">BLlo(x, r, n=length(x))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>The data values and note that base-10 logarithms of these are not computed internally;</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>r</code></td>
+<td>
+<p>The number of truncated observations; and</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>The number of observations.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The value for <code class="reqn">BL_r</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Regarding <code>n=length(x)</code>, it is not clear that TAC intended <code>n</code> to be not equal to the sample size. TAC chose to not determine the length of <code>x</code> internally to the function but to have it available as an argument. Also <code>MGBTcohn2011</code> and <code>RSlo</code> were designed similarly.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p> W.H. Asquith consulting T.A. Cohn sources </p>
+
+
+<h3>Source</h3>
+
+<p><code>LowOutliers_jfe(R).txt</code> and <code>LowOutliers_wha(R).txt</code>—Named <code>BL_N3</code>
+</p>
+
+
+<h3>References</h3>
+
+<p>Barnett, Vic, and Lewis, Toby, 1995, Outliers in statistical data: Chichester, John Wiley and Sons, ISBN~0–471–93094–6.
+</p>
+<p>Cohn, T.A., 2013–2016, Personal communication of original R source code: U.S. Geological Survey, Reston, Va.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MGBTcohn2011</code>, <code>RSlo</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># See Examples under RSlo()
+
+ # WHA experiments with BL_r()
+n &lt;- 10; r &lt;- 3; nsim &lt;- 10000; alpha &lt;- 0.05; Tcrit &lt;- 3.82
+BLs &lt;- Ho &lt;- RHS &lt;- SPt &lt;- rep(NA, nsim)
+EQ &lt;- sqrt(r^2*(n-1)*(n-r-1)/(n*r+n))
+for(i in 1:nsim) { # some simulation results shown below
+   BLs[i] &lt;- abs(BLlo(rnorm(n), r)) # abs() correcting TAC sign convention
+   t  &lt;- sqrt( (n*(n-2)*BLs[i]^2) / (r*(n-r)*(n-1)-n*BLs[i]^2) )
+   RHS[i] &lt;- choose(n,r)*pt(t, n-2, lower.tail=FALSE)
+   ifelse(t &gt;= EQ, SPt[i] &lt;- RHS[i], SPt[i] &lt;- 1) # set SP(t) to unity?
+   Ho[i]  &lt;- BLs[i] &gt; Tcrit
+}
+results &lt;- c(quantile(BLs, prob=1-alpha), sum(Ho /nsim), sum(SPt &lt; alpha)/nsim)
+names(results) &lt;- c("Critical_value", "Ho_rejected", "Coverage_SP(t)")
+print(results) # minor differences are because of random number seeding
+# Critical_value    Ho_rejected Coverage_SP(t)
+#      3.817236       0.048200       0.050100 
+</code></pre>
+
+
+</div>

@@ -1,0 +1,773 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>copas</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Copas selection model analysis</h2>
+
+<h3>Description</h3>
+
+<p>Perform a Copas selection model analysis for selection bias in
+meta-analysis.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">copas(
+  x,
+  level.ma = x$level.ma,
+  gamma0.range = NULL,
+  gamma1.range = NULL,
+  ngrid = 20,
+  nlevels = 10,
+  levels = NULL,
+  slope = NULL,
+  left = NULL,
+  rho.bound = 0.9999,
+  sign.rsb = 0.1,
+  backtransf = x$backtransf,
+  title = x$title,
+  complab = x$complab,
+  outclab = x$outclab,
+  silent = TRUE,
+  warn = options()$warn
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>An object of class <code>meta</code>, obtained from one of the
+functions <code>metabin</code>, <code>metacont</code> and <code>metagen</code> in
+the package meta.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>level.ma</code></td>
+<td>
+<p>The level used to calculate confidence intervals
+for pooled estimates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma0.range</code></td>
+<td>
+<p>(Advanced users only) A numerical vector of
+length two specifying the range of gamma0 values the program will
+explore.
+</p>
+<p>The parameter gamma0 is the constant in the probit selection model
+for study publication. Thus, the cumulative normal of gamma0 is
+approximately the probability that a small study is published (in
+non-technical terms gamma0 relates to the probability of publishing
+a small study, although its values are not restricted to the range
+[0,1]; larger values correspond to higher probabilities of
+publishing a small study). Most users will not need to specify a
+range for this parameter. When no argument is specified, the
+program uses an algorithm to determine a suitable range. This is
+based on the range of treatment effect standard errors in the
+meta-analysis, and is described in more detail below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma1.range</code></td>
+<td>
+<p>(Advanced users only) A numerical vector of
+length two specifying the range of gamma1 values the program will
+explore.
+</p>
+<p>The parameter gamma1 is the coefficient of study precision
+(1/standard error) in the probit selection model for study
+publication (in non-technical terms gamma1 relates to the rate at
+which the probability of publishing a study increases as the
+standard error of the treatment effect it reports decreases; larger
+values correspond to higher probabilities of publishing a small
+study). Most users will not need to specify a range for this
+parameter. When no argument is specified, the program uses an
+algorithm to determine a suitable range.  This is based on the
+range of treatment effect standard errors in the meta-analysis, and
+is described in more detail below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ngrid</code></td>
+<td>
+<p>The program fits the Copas selection model over a grid
+defined by the range of values of gamma0 and gamma1 specified in
+the previous two arguments. This parameter fixes the square-root
+of the number of points in the grid.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nlevels</code></td>
+<td>
+<p>(Advanced users only). Fitting the Copas model over
+the grid specified by the previous three arguments results in a
+treatment estimate at every point in the grid. These can then be
+displayed on a contour plot where contours of treatment effect
+(z-axis) are shown by gamma0 (x-axis) and gamma1 (y-axis). This
+argument specifies the number of contour lines that will be
+drawn.
+</p>
+<p><b>Note</b>
+</p>
+<p>(i) Calculations for the contour plot are performed by the function
+<code>copas</code>, so this argument has no effect in the <code>plot</code>
+function.
+</p>
+<p>(ii) If a large number of contour lines are desired, then you may
+wish to consider increasing the grid size (argument <code>ngrid</code>
+above).
+</p>
+<p>Leave this option unspecified if you are using the option
+<code>levels</code> below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>levels</code></td>
+<td>
+<p>A numerical vector of treatment values for which
+contour lines will be drawn. In more detail, fitting the Copas
+model over the grid specified by the arguments
+<code>gamma0.range</code>, <code>gamma1.range</code> and <code>ngrid</code> results
+in a treatment estimate at every point in the grid.  These are
+then displayed on a contour plot where contours of treatment
+effect (z-axis) are shown by gamma0 (x-axis) and gamma1
+(y-axis). This argument is a numerical vector which specifies the
+treatment effects for which contour lines will be drawn.
+</p>
+<p>It is usually not a good idea to set this argument for initial
+runs, as one does not know the range of treatment values that the
+contour plot will cover, and treatment values which do not
+correspond to values in the contour plot (defined by the range of
+gamma0 and gamma1) will not be plotted.
+</p>
+<p><b>Note</b>
+</p>
+<p>(i) Calculations for the contour plot are performed by the function
+<code>copas</code>, so this argument has no effect in the <code>plot</code>
+function.
+</p>
+<p>(ii) Contours will not be drawn if a large number of contour lines
+are desired, then you may wish to consider increasing the grid size
+(argument <code>ngrid</code> above).
+</p>
+<p>Leave this option unspecified if you are using the option
+<code>nlevels</code> above.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>slope</code></td>
+<td>
+<p>A numeric providing the slope of the line
+approximately orthogonal to contours in the contour plot. If the
+argument <code>slope</code> is <code>NULL</code> (default) the program seeks
+to estimate the slope of the contours in the region of the
+maximum, which are usually approximately parallel. Most users
+will leave the argument <code>slope</code> unspecified, at least for
+the first analysis of a data set, but in certain cases setting it
+manually can improve the results.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>left</code></td>
+<td>
+<p>A logical indicating whether the cause of any selection
+bias is due to missing studies on the left or right of the funnel
+plot: left hand side if <code>left=TRUE</code>, right hand side if
+<code>left=FALSE</code>. This information is needed in order to be sure
+the test for presence of residual selection bias is calculated
+correctly. If not set, the linear regression test for funnel plot
+asymmetry (i.e., function <code>metabias(..., meth="linreg")</code>) is
+used to determine whether studies are missing on the left or
+right hand side. In the majority of cases this will work
+correctly.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho.bound</code></td>
+<td>
+<p>(Advanced users only) A number giving the upper
+bound for the correlation parameter <code>rho</code> (see details
+below). This must be &lt; 1, and usually &gt; 0.95. The lower bound is
+calculated as -(the upper bound).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sign.rsb</code></td>
+<td>
+<p>The significance level for the test of residual
+selection bias (between 0 and 1).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>backtransf</code></td>
+<td>
+<p>A logical indicating whether results should be
+back transformed in printouts and plots. If
+<code>backtransf=TRUE</code> (default), results for <code>sm="OR"</code> are
+printed as odds ratios rather than log odds ratio, for example.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>title</code></td>
+<td>
+<p>Title of meta-analysis / systematic review.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>complab</code></td>
+<td>
+<p>Comparison label.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outclab</code></td>
+<td>
+<p>Outcome label.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>silent</code></td>
+<td>
+<p>A logical indicating whether information on progress
+in fitting the Copas selection model should be printed:
+<code>silent=TRUE</code>, do not print information (the default);
+<code>silent=FALSE</code>, print information.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>warn</code></td>
+<td>
+<p>A number setting the handling of warning messages. It
+is not uncommon for numerical problems to be encountered during
+estimation over the grid of (gamma0, gamma1) values. Usually this
+does not indicate a serious problem. This option specifies what
+to do with warning messages.  <code>warn=-1</code>: ignore all
+warnings; <code>warn=0</code> (the default): store warnings till
+function finishes; if there are less than 10, print them,
+otherwise print a message saying warning messages were generated;
+<code>warn=1</code>: print warnings as they occur; <code>warn=2</code>: stop
+the function when the first warning is generated. For further
+details see <code>help(options)</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The program takes an object of class <code>meta</code>, which is most
+easily created by an analysis using one of the functions
+<code>metabin</code>, <code>metacont</code> and <code>metagen</code> in the package
+meta, performs a 'Copas selection model analysis' and presents a
+graphical and tabular summary of the results. An object of class
+<code>copas</code> is created and this can be used to recreate the
+results table and graphs subsequently, without re-running the
+analysis, using the <code>print</code>, <code>summary</code> and <code>plot</code>
+function.
+</p>
+<p>Conduct a Copas selection model analysis to investigate, and
+attempt to correct for, selection / publication bias in a
+meta-analysis.
+</p>
+<p>The Copas selection model consists of two models, which are fitted
+jointly.  The first is the usual random effects meta-analysis
+model, and the second is a selection model, where study i is
+selected for publication if Z&gt;0, where
+</p>
+<p>Z = gamma0 + gamma1 / (SE(i)) + delta(i)
+</p>
+<p>The error delta(i) is correlated with the error in the random
+effects meta-analysis, with correlation rho. If rho=0, the model
+corresponds to the usual random effects meta-analysis. As rho moves
+from 0 to 1, studies with larger treatment estimates are more
+likely to be selected/published.
+</p>
+<p>The software chooses a grid of gamma0 and gamma1 values,
+corresponding to a range of selection / publication probabilities
+for the study with the largest treatment effect standard error
+(often the smallest study). For each value in this grid, the
+treatment effect is estimated using the function <code>optim</code>. This
+information is used to produce the contour plot (top right panel of
+output from <code>plot.copas</code>).
+</p>
+<p>Contours of constant treatment effect are usually locally
+parallel. The software estimates the slope of these contours, and
+combines this information with other parameter estimates from the
+model to explore (i) how the treatment estimate, and its standard
+error, change with increasing selection (bottom left panel,
+<code>plot.copas</code>) and (ii) how much selection needs to be
+accounted for before any remaining asymmetry in the funnel plot is
+likely to have occurred by chance (bottom right panel,
+<code>plot.copas</code>).
+</p>
+<p>A table of results can be produced by the function
+<code>summary.copas</code>. A more detail output is provided by the
+function <code>print.copas</code>.
+</p>
+<p>For a fuller description of the model, our implementation and
+specifically our approach to estimating the locally parallel
+contours, see Carpenter et al. (2009) and Schwarzer et al. (2010).
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>copas</code> with corresponding
+<code>print</code>, <code>summary</code>, and <code>plot</code> function. The
+object is a list containing the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>TE</code></td>
+<td>
+<p>Vector of treatment effects plotted in treatment effect
+plot</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seTE</code></td>
+<td>
+<p>Vector of standard error of <code>TE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>TE.random</code></td>
+<td>
+<p>Usual random effects estimate of treatment effect</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seTE.random</code></td>
+<td>
+<p>Standard error of <code>TE.random</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower.random</code></td>
+<td>
+<p>Lower confidence limit of usual random effects
+estimate</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper.random</code></td>
+<td>
+<p>Upper confidence limit of usual random effects
+estimate</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>statistic.random</code></td>
+<td>
+<p>Test statistic of an overall effect (usual
+random effects model)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pval.random</code></td>
+<td>
+<p>P-value of test of overall effect (usual random
+effects model)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>TE.adjust</code></td>
+<td>
+<p>Adjusted random effects estimate from Copas
+selection model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seTE.adjust</code></td>
+<td>
+<p>Standard error of <code>TE.adjust</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower.adjust</code></td>
+<td>
+<p>Lower confidence limit of adjusted treatment
+estimate</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper.adjust</code></td>
+<td>
+<p>Upper confidence limit of adjusted treatment
+estimate</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>statistic.adjust</code></td>
+<td>
+<p>Test statistic of an overall effect (Copas
+selection model)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pval.adjust</code></td>
+<td>
+<p>P-value of test of overall effect (Copas
+selection model)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>left</code></td>
+<td>
+<p>Whether selection bias expected on left or right</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho.bound</code></td>
+<td>
+<p>Bound on <code>rho</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma0.range</code></td>
+<td>
+<p>Range of gamma0 (see help on <code>copas</code>
+arguments above)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma1.range</code></td>
+<td>
+<p>Range of gamma1 (see help on <code>copas</code>
+arguments above)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>slope</code></td>
+<td>
+<p>Slope of line approximately orthogonal to contours in
+contour plot</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regr</code></td>
+<td>
+<p>A list containing information on regression lines
+fitted to contours in contour plot</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ngrid</code></td>
+<td>
+<p>Square root of grid size</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nlevels</code></td>
+<td>
+<p>Number of contour lines</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma0</code></td>
+<td>
+<p>Vector of gamma0 values at which model fitted
+(determined by gamma0.range and grid). x-axis values for contour
+plot</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma1</code></td>
+<td>
+<p>vector of gamma1 values at which model fitted
+(determined by gamma1.range and grid). y-axis values for contour
+plot</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>TE.contour</code></td>
+<td>
+<p>Treatment values (ie z-axis values) used to draw
+contour plot.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x.slope</code></td>
+<td>
+<p>x coordinates for 'orthogonal line' in contour plot</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y.slope</code></td>
+<td>
+<p>y coordinates for 'orthogonal line' in contour plot</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>TE.slope</code></td>
+<td>
+<p>Vector of treatment values plotted in treatment
+effect plot</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seTE.slope</code></td>
+<td>
+<p>Standard error of <code>TE.slope</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rho.slope</code></td>
+<td>
+<p>Vector of estimated rho values corresponding to
+treatment estimates in <code>TE.slope</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tau.slope</code></td>
+<td>
+<p>Vector of estimated heterogeneity values
+corresponding to treatment estimates in <code>TE.slope</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loglik1</code></td>
+<td>
+<p>Vector of log-likelihood values corresponding to
+treatment estimates in <code>TE.slope</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conv1</code></td>
+<td>
+<p>Numerical vector indicating convergence status for
+each treatment estimate in <code>TE.slope</code> - see parameter
+<code>convergence</code> in function <code>optim</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>message1</code></td>
+<td>
+<p>Character vector - translation of <code>conv1</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>loglik2</code></td>
+<td>
+<p>Vector of log-likelihoods from fitting model to
+evaluate presence of residual selection bias</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conv2</code></td>
+<td>
+<p>Numerical vector indicating convergence status for
+models to evaluate presence of residual selection bias - see
+parameter <code>convergence</code> in function <code>optim</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>message2</code></td>
+<td>
+<p>Character vector - translation of <code>conv2</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>publprob</code></td>
+<td>
+<p>Vector of probabilities of publishing the smallest
+study, used in x-axis of bottom two panels in function
+<code>plot.copas</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pval.rsb</code></td>
+<td>
+<p>P-values for tests on presence of residual
+selection bias, plotted in bottom right panel in
+<code>plot.copas</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sign.rsb</code></td>
+<td>
+<p>The significance level for the test of residual
+selection bias</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N.unpubl</code></td>
+<td>
+<p>Approximate number of studies the model suggests
+remain unpublished</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sm</code></td>
+<td>
+<p>Effect measure (e.g., for binary data, OR - odds ratio,
+RR - risk ratio, RD - risk difference, AS - arcsin difference)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>title</code></td>
+<td>
+<p>Title of meta-analysis / systematic review.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>complab</code></td>
+<td>
+<p>Comparison label.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outclab</code></td>
+<td>
+<p>Outcome label.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>Call to <code>copas</code>
+function</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>version</code></td>
+<td>
+<p>Version of R package metasens used to create
+object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Details of meta-analysis object used as input into
+<code>copas</code> function</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>James Carpenter <a href="mailto:James.Carpenter@lshtm.ac.uk">James.Carpenter@lshtm.ac.uk</a>, Guido
+Schwarzer <a href="mailto:guido.schwarzer@uniklinik-freiburg.de">guido.schwarzer@uniklinik-freiburg.de</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Carpenter JR, Schwarzer G, Rücker G, Künstler R (2009):
+Empirical evaluation showed that the Copas selection model provided
+a useful summary in 80% of meta-analyses.
+<em>Journal of Clinical Epidemiology</em>,
+<b>62</b>, 624–31
+</p>
+<p>Copas J (1999):
+What works?: Selectivity models and meta-analysis.
+<em>Journal of the Royal Statistical Society, Series A</em>,
+<b>162</b>, 95–109
+</p>
+<p>Copas J, Shi JQ (2000):
+Meta-analysis, funnel plots and sensitivity analysis.
+<em>Biostatistics</em>, <b>1</b>, 247–62
+</p>
+<p>Copas JB, Shi JQ (2001):
+A sensitivity analysis for publication bias in systematic reviews.
+<em>Statistical Methods in Medical Research</em>,
+<b>10</b>, 251–65
+</p>
+<p>Schwarzer G, Carpenter J, Rücker G (2010):
+Empirical evaluation suggests Copas selection model preferable to
+trim-and-fill method for selection bias in meta-analysis.
+<em>Journal of Clinical Epidemiology</em>,
+<b>63</b>, 282–8
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>plot.copas</code>, <code>summary.copas</code>,
+<code>metabias</code>, <code>metagen</code>,
+<code>funnel</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(Fleiss1993bin, package = "meta")
+
+# Perform meta-analysis
+#  (Note d.asp indicates deaths, n.asp total in aspirin group;
+#        d.plac indicates deaths, n.plac total in placebo group)
+#
+m1 &lt;- metabin(d.asp, n.asp, d.plac, n.plac, data = Fleiss1993bin, sm = "OR")
+m1
+
+# Perform a basic Copas selection model analysis
+#
+cop1 &lt;- copas(m1)
+plot(cop1)
+cop1
+#
+# Interpretation: 
+#
+# a. The initial meta-analysis shows the common and random effects
+#    pooled ORs differ; consistent with asymmetry in the funnel
+#    plot and possible selection bias. Both common effect and random
+#    effects model show a significant treatment effect in this
+#    dataset.
+#
+# b. Plotting the copas analysis shows
+#
+# (i) funnel plot: asymmetry indicates possible selection bias.
+#
+# (ii) contour plot treatment effect declines steadily as selection
+#      increases (no selection, top right, log OR &lt; -0.12;
+#      increasing selection as move to left of plot, log OR rises
+#      to -0.03.
+#
+
+# (iii) Treatment effect plot suggests that even with no selection,
+#       p-value for treatment effect is larger than 0.05 which is
+#       different from the result of the usual random effects model
+#       (see output of summary(cop1). This difference is due to the
+#       use of different methods to estimate the between-study
+#       variance: maximum-likelihood in Copas analysis compared to
+#       method-of-moments in usual random effects model.  The
+#       p-value for treatment effect is increasing with increasing
+#       selection.
+#
+# (iv) P-value for residual selection bias plot: this shows that
+#      even with no selection bias, the p-value for residual
+#      selection bias is non-significant at the 10% level. As
+#      expected, as selection increases the p-value for residual
+#      selection bias increases too.
+
+
+# Repeat the same example, setting several arguments of the copas
+# function:
+#
+cop2 &lt;- copas(m1,
+   gamma0.range = c(-0.5, 2.1), # range of gamma0 parameter
+   gamma1.range = c(0, 0.08),   # range of gamma1 parameter
+   ngrid = 20,                  # specify a 20x20 grid (finer than default)
+   levels = c(-0.13, -0.12, -0.1, -0.09,
+              -0.07, -0.05, -0.03), # specify contour lines
+   slope = 0.2,       # specify slope of 'orthogonal' line in contour plot
+   left = FALSE,      # as any selection bias due to missing studies on right
+   rho.bound = 0.998, # constrain rho between [-0.998, 0.998]
+   silent = FALSE,    # update user on progress
+   warn = -1          # suppress warning messages
+  )
+plot(cop2)
+#
+# Print table of results used to draw treatment effect plot:
+#
+cop2
+</code></pre>
+
+
+</div>

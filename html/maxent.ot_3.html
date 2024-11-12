@@ -1,0 +1,200 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>monte_carlo_weights</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create simulated data and learn weights for these data</h2>
+
+<h3>Description</h3>
+
+<p>Creates a simulated data set by picking an output for each instance of an
+input.
+The probability of picking a particular output is guided by its conditional
+probability given the input.
+Learns constraint weights for each simulated data set.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">monte_carlo_weights(
+  pred_prob,
+  num_simul,
+  bias_file = NA,
+  mu = NA,
+  sigma = NA,
+  output_path = NA,
+  out_sep = ",",
+  control_params = NA,
+  upper_bound = DEFAULT_UPPER_BOUND,
+  allow_negative_weights = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>pred_prob</code></td>
+<td>
+<p>A data frame with a column for predicted probabilities.
+This object should be in the same format as the <code>predictions</code> attribute of
+the object returned by the <code>predict_probabilities</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>num_simul</code></td>
+<td>
+<p>The number of simulations to run.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bias_file</code></td>
+<td>
+<p>(optional) The path to the file containing mus and sigma
+for constraint biases. If this argument is provided, the scalar and vector
+mu and sigma arguments will be ignored. Each row in this file should be
+the name of the constraint, followed by the mu, followed by the sigma
+(separated by whatever the relevant separator is; default is commas).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu</code></td>
+<td>
+<p>(optional) A scalar or vector that will serve as the mu for each
+constraint in the bias term. Constraint weights will also be initialized to
+this value. If a vector, its length must equal the number of constraints in
+the input file. This value will not be used if <code>bias_file</code> is provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma</code></td>
+<td>
+<p>(optional) A scalar or vector that will serve as the sigma for
+each constraint in the bias term. If a vector, its length must equal the
+number of constraints in the input file. This value will not be used if
+<code>bias_file</code> is provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output_path</code></td>
+<td>
+<p>(optional) A string specifying the path to a file to
+which the output will be saved. If the file exists it will be overwritten.
+If this argument isn't provided, the output will not be written to a file.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>out_sep</code></td>
+<td>
+<p>(optional) The delimiter used in the output files.
+Defaults to commas.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control_params</code></td>
+<td>
+<p>(optional) A named list of control parameters that
+will be passed to the optim function. See the documentation
+of that function for details. Note that some parameter settings may
+interfere with optimization. The parameter <code>fnscale</code> will be overwritten
+with <code>-1</code> if specified, since this must be treated as a maximization
+problem.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper_bound</code></td>
+<td>
+<p>(optional) The maximum value for constraint weights.
+Defaults to 100.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allow_negative_weights</code></td>
+<td>
+<p>(optional) Whether the optimizer should allow
+negative weights. Defaults to FALSE.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function creates multiple simulated data sets, and learns a set of
+weights that maximizes the likelihood of data for each simulated data set.
+</p>
+<p>To create a simulated data set, one output is randomly chosen for each
+instance of an input.
+The probability of picking a particular output, <code class="reqn">O_i</code>, which arises from
+input <code class="reqn">I_j</code> depends on <code class="reqn">Pr(O_i|I_j)</code>.
+</p>
+<p>The function <code>optimize_weights()</code> is called to find a set of weights that
+maximize the likelihood of the simulated data.
+All optional arguments of <code>optimize_weights()</code> that were available for the
+user to specify biases and bounds are likewise available in this function,
+<code>monte_carlo_weights()</code>.
+</p>
+<p>The process of simulating a data set and learning weights that optimize the
+likelihood of the simulated data is repeated as per the number of specified
+simulations.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A data frame with the following structure:
+</p>
+
+<ul>
+<li>
+<p> rows: As many rows as the number of simulations
+</p>
+</li>
+<li>
+<p> columns: As many columns as the number of constraints
+</p>
+</li>
+</ul>
+<h3>Why use this function?</h3>
+
+<p>This function gives us a way to estimate constraint weights via a Monte
+Carlo process.
+For example we might be interested in the effect of temperature on
+polarizing predicted probabilities, and the resulting constraint weights.
+This function can produce a distribution of constraint weights for the
+simulated polarized data, as well as a distribution of constraint weights
+for the simulated non-polarized ones, thereby allowing a comparison of the
+two.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">  # Get paths to toy data file
+  data_file &lt;- system.file(
+      "extdata", "sample_data_frame.csv", package = "maxent.ot"
+  )
+
+  tableaux_df &lt;- read.csv(data_file)
+
+  # Fit weights to data with no biases
+  fit_model &lt;- optimize_weights(tableaux_df)
+
+  # Predict probabilities for the same input with temperature = 2
+  pred_obj &lt;- predict_probabilities(
+      tableaux_df, fit_model$weights, temperature = 2
+  )
+
+ # Run 5 monte carlo simulations
+ # based on predicted probabilities when temperature = 2,
+ # and learn weights for these 5 simulated data sets
+ monte_carlo_weights(pred_obj$predictions, 5)
+
+ # Save learned weights to a file
+ tmp_output &lt;- tempfile()
+ monte_carlo_weights(pred_obj$predictions, 5, output_path=tmp_output)
+</code></pre>
+
+
+</div>

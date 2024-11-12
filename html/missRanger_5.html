@@ -1,0 +1,124 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict.missRanger</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Predict Method</h2>
+
+<h3>Description</h3>
+
+<p>Impute missing values on <code>newdata</code> based on an object of class "missRanger".
+</p>
+<p>For multivariate imputation, use <code>missRanger(..., keep_forests = TRUE)</code>.
+For univariate imputation, no forests are required.
+This can be enforced by <code>predict(..., iter = 0)</code> or via <code>missRanger(. ~ 1, ...)</code>.
+</p>
+<p>Note that out-of-sample imputation works best for rows in <code>newdata</code> with only one
+missing value (counting only missings in variables used as covariates
+in random forests). We call this the "easy case". In the "hard case",
+even multiple iterations (set by <code>iter</code>) can lead to unsatisfactory results.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'missRanger'
+predict(
+  object,
+  newdata,
+  pmm.k = object$pmm.k,
+  iter = 4L,
+  num.threads = NULL,
+  seed = NULL,
+  verbose = 1L,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>'missRanger' object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>A <code>data.frame</code> with missing values to impute.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pmm.k</code></td>
+<td>
+<p>Number of candidate predictions of the original dataset
+for predictive mean matching (PMM). By default the same value as during fitting.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>Number of iterations for "hard case" rows. 0 for univariate imputation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>num.threads</code></td>
+<td>
+<p>Number of threads used by ranger's predict function.
+The default <code>NULL</code> uses all threads.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>Integer seed used for initial univariate imputation and PMM.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Should info be printed? (1 = yes/default, 0 for no).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Passed to the predict function of ranger.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The out-of-sample algorithm works as follows:
+</p>
+
+<ol>
+<li>
+<p> Impute univariately all relevant columns by randomly drawing values
+from the original unimputed data. This step will only impact "hard case" rows.
+</p>
+</li>
+<li>
+<p> Replace univariate imputations by predictions of random forests. This is done
+sequentially over variables, where the variables are sorted to minimize the impact
+of univariate imputations. Optionally, this is followed by predictive mean matching (PMM).
+</p>
+</li>
+<li>
+<p> Repeat Step 2 for "hard case" rows multiple times.
+</p>
+</li>
+</ol>
+<h3>Examples</h3>
+
+<pre><code class="language-R">iris2 &lt;- generateNA(iris, seed = 20, p = c(Sepal.Length = 0.2, Species = 0.1))
+imp &lt;- missRanger(iris2, pmm.k = 5, num.trees = 100, keep_forests = TRUE, seed = 2)
+predict(imp, head(iris2), seed = 3)
+</code></pre>
+
+
+</div>

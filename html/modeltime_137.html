@@ -1,0 +1,293 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>recursive</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create a Recursive Time Series Model from a Parsnip or Workflow Regression Model</h2>
+
+<h3>Description</h3>
+
+<p>Create a Recursive Time Series Model from a Parsnip or Workflow Regression Model
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">recursive(object, transform, train_tail, id = NULL, chunk_size = 1, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>An object of <code>model_fit</code> or a fitted <code>workflow</code> class</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>transform</code></td>
+<td>
+<p>A transformation performed on <code>new_data</code> after
+each step of recursive algorithm.
+</p>
+
+<ul><li> <p><strong>Transformation Function:</strong> Must have one argument <code>data</code> (see examples)
+</p>
+</li></ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>train_tail</code></td>
+<td>
+<p>A tibble with tail of training data set.
+In most cases it'll be required to create some variables
+based on dependent variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>id</code></td>
+<td>
+<p>(Optional) An identifier that can be provided to perform a panel forecast.
+A single quoted column name (e.g. <code>id = "id"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chunk_size</code></td>
+<td>
+<p>The size of the smallest lag used in <code>transform</code>. If the
+smallest lag necessary is n, the forecasts can be computed in chunks of n,
+which can dramatically improve performance. Defaults to 1. Non-integers are
+coerced to integer, e.g. <code>chunk_size = 3.5</code> will be coerced to integer via
+<code>as.integer()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Not currently used.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><strong>What is a Recursive Model?</strong>
+</p>
+<p>A <em>recursive model</em> uses predictions to generate
+new values for independent features. These features are typically
+lags used in autoregressive models. It's important to understand that
+a recursive model is only needed when the <strong>Lag Size &lt; Forecast Horizon.</strong>
+</p>
+<p><strong>Why is Recursive needed for Autoregressive Models with Lag Size &lt; Forecast Horizon?</strong>
+</p>
+<p>When the lag length is less than the forecast horizon,
+a problem exists were missing values (<code>NA</code>) are
+generated in the future data. A solution that <code>recursive()</code> implements
+is to iteratively fill these missing values in with values generated
+from predictions.
+</p>
+<p><strong>Recursive Process</strong>
+</p>
+<p>When producing forecast, the following steps are performed:
+</p>
+
+<ol>
+<li>
+<p> Computing forecast for first row of new data.
+The first row cannot contain NA in any required column.
+</p>
+</li>
+<li>
+<p> Filling i-th place of the dependent variable column with
+already computed forecast.
+</p>
+</li>
+<li>
+<p> Computing missing features for next step, based on
+already calculated prediction. These features are computed
+with on a tibble object made from binded <code>train_tail</code> (i.e. tail of
+training data set) and <code>new_data</code> (which is an argument of predict function).
+</p>
+</li>
+<li>
+<p> Jumping into point 2., and repeating rest of steps till the for-loop is ended.
+</p>
+</li>
+</ol>
+<p><strong>Recursion for Panel Data</strong>
+</p>
+<p>Panel data is time series data with multiple groups identified by an ID column.
+The <code>recursive()</code> function can be used for Panel Data with the following modifications:
+</p>
+
+<ol>
+<li>
+<p> Supply an <code>id</code> column as a quoted column name
+</p>
+</li>
+<li>
+<p> Replace <code>tail()</code> with <code>panel_tail()</code> to use tails for each time series group.
+</p>
+</li>
+</ol>
+<h3>Value</h3>
+
+<p>An object with added <code>recursive</code> class
+</p>
+
+
+<h3>See Also</h3>
+
+
+<ul><li> <p><code>panel_tail()</code> - Used to generate tails for multiple time series groups.
+</p>
+</li></ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+# Libraries &amp; Setup ----
+library(tidymodels)
+library(dplyr)
+library(tidyr)
+library(timetk)
+library(slider)
+
+# ---- SINGLE TIME SERIES (NON-PANEL) -----
+
+m750
+
+FORECAST_HORIZON &lt;- 24
+
+m750_extended &lt;- m750 %&gt;%
+    group_by(id) %&gt;%
+    future_frame(
+        .length_out = FORECAST_HORIZON,
+        .bind_data  = TRUE
+    ) %&gt;%
+    ungroup()
+
+# TRANSFORM FUNCTION ----
+# - Function runs recursively that updates the forecasted dataset
+lag_roll_transformer &lt;- function(data){
+    data %&gt;%
+        # Lags
+        tk_augment_lags(value, .lags = 1:12) %&gt;%
+        # Rolling Features
+        mutate(rolling_mean_12 = lag(slide_dbl(
+            value, .f = mean, .before = 12, .complete = FALSE
+        ), 1))
+}
+
+# Data Preparation
+m750_rolling &lt;- m750_extended %&gt;%
+    lag_roll_transformer() %&gt;%
+    select(-id)
+
+train_data &lt;- m750_rolling %&gt;%
+    drop_na()
+
+future_data &lt;- m750_rolling %&gt;%
+    filter(is.na(value))
+
+# Modeling
+
+# Straight-Line Forecast
+model_fit_lm &lt;- linear_reg() %&gt;%
+    set_engine("lm") %&gt;%
+    # Use only date feature as regressor
+    fit(value ~ date, data = train_data)
+
+# Autoregressive Forecast
+model_fit_lm_recursive &lt;- linear_reg() %&gt;%
+    set_engine("lm") %&gt;%
+    # Use date plus all lagged features
+    fit(value ~ ., data = train_data) %&gt;%
+    # Add recursive() w/ transformer and train_tail
+    recursive(
+        transform  = lag_roll_transformer,
+        train_tail = tail(train_data, FORECAST_HORIZON)
+    )
+
+model_fit_lm_recursive
+
+# Forecasting
+modeltime_table(
+    model_fit_lm,
+    model_fit_lm_recursive
+) %&gt;%
+    update_model_description(2, "LM - Lag Roll") %&gt;%
+    modeltime_forecast(
+        new_data    = future_data,
+        actual_data = m750
+    ) %&gt;%
+    plot_modeltime_forecast(
+        .interactive        = FALSE,
+        .conf_interval_show = FALSE
+    )
+
+# MULTIPLE TIME SERIES (PANEL DATA) -----
+
+m4_monthly
+
+FORECAST_HORIZON &lt;- 24
+
+m4_extended &lt;- m4_monthly %&gt;%
+    group_by(id) %&gt;%
+    future_frame(
+        .length_out = FORECAST_HORIZON,
+        .bind_data  = TRUE
+    ) %&gt;%
+    ungroup()
+
+# TRANSFORM FUNCTION ----
+# - NOTE - We create lags by group
+lag_transformer_grouped &lt;- function(data){
+    data %&gt;%
+        group_by(id) %&gt;%
+        tk_augment_lags(value, .lags = 1:FORECAST_HORIZON) %&gt;%
+        ungroup()
+}
+
+m4_lags &lt;- m4_extended %&gt;%
+    lag_transformer_grouped()
+
+train_data &lt;- m4_lags %&gt;%
+    drop_na()
+
+future_data &lt;- m4_lags %&gt;%
+    filter(is.na(value))
+
+# Modeling Autoregressive Panel Data
+model_fit_lm_recursive &lt;- linear_reg() %&gt;%
+    set_engine("lm") %&gt;%
+    fit(value ~ ., data = train_data) %&gt;%
+    recursive(
+        id         = "id", # We add an id = "id" to specify the groups
+        transform  = lag_transformer_grouped,
+        # We use panel_tail() to grab tail by groups
+        train_tail = panel_tail(train_data, id, FORECAST_HORIZON)
+    )
+
+modeltime_table(
+    model_fit_lm_recursive
+) %&gt;%
+    modeltime_forecast(
+        new_data    = future_data,
+        actual_data = m4_monthly,
+        keep_data   = TRUE
+    ) %&gt;%
+    group_by(id) %&gt;%
+    plot_modeltime_forecast(
+        .interactive = FALSE,
+        .conf_interval_show = FALSE
+    )
+
+
+
+</code></pre>
+
+
+</div>

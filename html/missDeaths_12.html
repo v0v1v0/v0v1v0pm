@@ -1,0 +1,128 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>md.impute</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Correctly impute missing information of possible deaths using population mortality</h2>
+
+<h3>Description</h3>
+
+<p>An iterative approach is used in this method to estimate the conditional
+distribution required to correctly impute the times of deaths using
+population mortality tables.<br><br>
+Note, that simply imputing expected survival times may seem intuitive, 
+but does not give unbiased estimates, since the right censored individuals 
+are not a random subsample of the patients.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">md.impute(data, f, maxtime, D, ratetable, iterations = 4)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a data.frame in which to interpret the variables named in the
+formula.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>f</code></td>
+<td>
+<p>a formula object, with the response on the left of a ~ operator,
+and the terms on the right. The response must be a survival object as
+returned by the <code>Surv</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxtime</code></td>
+<td>
+<p>maximum potential observation time (number of days).
+</p>
+<p>where <code>status</code>=0 equals <code>time</code>.
+</p>
+<p>where <code>status</code>=1 equals potential time of right censoring if no event
+would be observed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>D</code></td>
+<td>
+<p>demographic information compatible with <code>md.survcox</code>, <code>md.impute</code> 
+and <code>md.survnp</code>, see <code>md.D</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ratetable</code></td>
+<td>
+<p>a population mortality table, default is <code>slopop</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iterations</code></td>
+<td>
+<p>the number of iteration steps to be performed, default is
+4</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>an array of times with imputed times of death that can be used instead of the
+unavailable complete data set to get unbiased estimates, ie. in <code>coxph</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Stupnik T., Pohar Perme M. (2015) "Analysing disease recurrence
+with missing at risk information." Statistics in Medicine 35. p1130-43.
+<a href="https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.6766">https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.6766</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>md.survcox</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(missDeaths)
+data(slopop)
+
+data(observed)
+observed$time = observed$time*365.2425
+D = md.D(age=observed$age*365.2425, sex=observed$sex, year=(observed$year - 1970)*365.2425)
+newtimes = md.impute(observed, Surv(time, status) ~ age + sex + iq + elevation, 
+  observed$maxtime*365.2425, D, slopop, iterations=4)
+
+#Cumulative incidence function
+cif = survfit(Surv(observed$time, observed$status)~1)
+cif$surv = 1 - cif$surv
+cif$upper = 1 - cif$upper
+cif$lower = 1 - cif$lower
+plot(cif)
+
+#Net survival (NOTE: std error is slightly underestimated!)
+surv.net = survfit(Surv(newtimes, observed$status)~1)
+summary(surv.net, times=c(3,9)*365.2425)
+plot(surv.net)
+
+#Event free survival (NOTE: std error is slightly underestimated!)
+surv.efs = survfit(Surv(newtimes, 1 * (observed$status | (newtimes != observed$time)))~1)
+summary(surv.efs, times=c(3,9)*365.2425)
+plot(surv.efs)
+
+</code></pre>
+
+
+</div>

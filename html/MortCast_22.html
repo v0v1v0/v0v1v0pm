@@ -1,0 +1,259 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pmd</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Pattern of Mortality Decline Prediction</h2>
+
+<h3>Description</h3>
+
+<p>Predict age-specific mortality rates using the Pattern of mortality decline (PMD) method (Andreev et al. 2013).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pmd(
+  e0,
+  mx0,
+  sex = c("male", "female"),
+  nx = 5,
+  interp.rho = FALSE,
+  kranges = c(0, 25),
+  keep.lt = FALSE,
+  keep.rho = FALSE,
+  ...
+)
+
+modpmd(
+  e0,
+  mx0,
+  sex = c("male", "female"),
+  nx = 5,
+  interp.rho = FALSE,
+  kranges = c(0, 25),
+  ax.index = NULL,
+  ax.smooth = FALSE,
+  ax.smooth.df = NULL,
+  keep.lt = FALSE,
+  keep.rho = FALSE,
+  ...
+)
+
+copmd(
+  e0m,
+  e0f,
+  mxm0,
+  mxf0,
+  nx = 5,
+  interp.rho = FALSE,
+  keep.rho = FALSE,
+  use.modpmd = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>e0</code></td>
+<td>
+<p>A vector of target life expectancy, one element for each predicted time point.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mx0</code></td>
+<td>
+<p>A vector with starting age-specific mortality rates. In case of <code>modpmd</code> it can be 
+a matrix where rows correspond to age groups
+and columns correspond to time periods. Rownames define the starting ages of the age groups.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sex</code></td>
+<td>
+<p>Either "male" or "female".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nx</code></td>
+<td>
+<p>Size of age groups. Should be either 5 or 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>interp.rho</code></td>
+<td>
+<p>Logical controlling if the <code class="reqn">\rho</code> coefficients should be interpolated 
+(<code>TRUE</code>) or if the raw (binned) version should be used (<code>FALSE</code>), as stored in 
+the dataset <code>PMDrho</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kranges</code></td>
+<td>
+<p>A vector of size two, giving the min and max of the <code class="reqn">k</code> parameter which is 
+estimated to match the target <code>e0</code> using the bisection method.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep.lt</code></td>
+<td>
+<p>Logical. If <code>TRUE</code> additional life table columns are kept in the 
+resulting object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep.rho</code></td>
+<td>
+<p>Logical. If <code>TRUE</code> the <code class="reqn">\rho</code> coefficients are included in the resulting object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments passed to the underlying functions. For <code>copmd</code>, in addition to
+<code>kranges</code> and <code>keep.lt</code>, it can be <code>sexratio.adjust</code> which is 
+a logical controlling if a sex-ratio adjustment should be applied to prevent crossovers 
+between male and female mx. In such a case it uses coefficients from the <code>PMDadjcoef</code> dataset. 
+However, if the argument <code>adjust.with.mxf</code> is set to <code>TRUE</code> (in addition to <code>sexratio.adjust</code>),
+the adjustment is done using the 
+female mortality rates as the lower constraint for male mortality rates. 
+If the argument <code>adjust.sr.if.needed</code> is set to <code>TRUE</code>, a sex-ratio adjustment
+is performed dynamically, using the sex ratio in the previous time point. 
+In such a case, an adjustment in time t is applied only if there was a drop of sex ratio 
+below one at time t-1. Other arguments passed here in <code>copmd</code> can be <code>ax.index</code>, <code>ax.smooth</code> and
+<code>ax.smooth.df</code> which control the estimation of the initial mx if <code>use.modpmd</code> is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ax.index</code></td>
+<td>
+<p>A vector of column indices of <code>mx</code> to be used to estimate the <code class="reqn">a_x = E[log(mx(t_0))]</code> parameter.
+By default it is estimated as the average over all observed time periods, but this argument can restrict the time periods 
+to use.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ax.smooth</code></td>
+<td>
+<p>Logical allowing to smooth the <code class="reqn">a_x</code> over ages.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ax.smooth.df</code></td>
+<td>
+<p>Degree of freedom for smoothing if <code>ax.smooth</code> is <code>TRUE</code>. 
+Default is half the length of <code class="reqn">a_x</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>e0m</code></td>
+<td>
+<p>A time series of target male life expectancy.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>e0f</code></td>
+<td>
+<p>A time series of target female life expectancy.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mxm0, mxf0</code></td>
+<td>
+<p>A vector with starting age-specific male/female mortality rates. If <code>use.modpmd</code> is <code>TRUE</code>,
+this can be a matrix of historical mx (age x time) from which the starting values are estimated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use.modpmd</code></td>
+<td>
+<p>Logical determining if the modified version of PMD (<code>modpmd</code>) should be used. 
+In such a case the starting values of mortality rates are estimated similarly to <code class="reqn">a_x</code> in 
+<code>leecarter.estimate</code>, possibly from more than one time periods. In addition, a smoothing can be applied.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>These functions implements the PMD method introduced in Andreev et al. (2013) and its modifications. 
+It assumes that the future decline in age-specific mortality will follow a certain pattern 
+with the increase in life expectancy at birth (e0): 
+</p>
+<p style="text-align: center;"><code class="reqn">log[mx(t)] = log[mx(t-1)] - k(t) \rho_x(t)</code>
+</p>
+
+<p>Here, <code class="reqn">\rho_x(t)</code> is the age-specific pattern of mortality decline between <code class="reqn">t-1</code>
+and <code class="reqn">t</code>. Such patterns for each sex and various levels of e0 
+are stored in the dataset <code>PMDrho</code>. The <code>pmd</code> function can be instructed 
+to interpolate between neighboring levels of e0 by setting the argument <code>interp.rho</code> 
+to <code>TRUE</code>. The <code class="reqn">k</code> parameter is estimated to match the e0 level using the bisection 
+method.
+</p>
+<p>Function <code>pmd</code> evaluates the method for a single sex, while  <code>copmd</code> does it
+coherently for both sexes. In the latter case, the same <code class="reqn">\rho_x</code> 
+(namely the average over sex-specific <code class="reqn">\rho_x</code>) is used 
+for both, male and female.
+</p>
+<p>Function <code>modpmd</code> implements a modified version of <code>pmd</code> where the initial <code class="reqn">log[mx(t_0)]</code>
+is replaced by an <code class="reqn">a_x</code> estimated as in <code>leecarter.estimate</code>, i.e. using possibly 
+multiple years of historical <code>mx</code> and optionally smoothed. Arguments <code>ax.index</code>, <code>ax.smooth</code> and 
+<code>ax.smooth.df</code> determine the estimation years and parameters of the smoothing.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Function <code>pmd</code> and <code>modpmd</code> return a list with the following elements: a matrix <code>mx</code>
+with the predicted mortality rates. If <code>keep.lt</code> is <code>TRUE</code>, it also 
+contains matrices <code>sr</code> (survival rates), and life table quantities <code>Lx</code> and <code>lx</code>.
+If <code>keep.rho</code> is <code>TRUE</code>, it contains a matrix <code>rho</code> where columns correpond 
+to the values in the <code>e0</code> vector and rows correspond to age groups.
+</p>
+<p>Function <code>copmd</code> returns a list with one element for each sex 
+(<code>male</code> and <code>female</code>) where each of them is a list as described above.
+In addition if <code>keep.rho</code> is <code>TRUE</code>, element <code>rho.sex</code> 
+gives the sex-dependent (i.e. not averaged) <code class="reqn">\rho_x</code> coefficient.
+</p>
+
+
+<h3>References</h3>
+
+<p>Andreev, K., Gu, D., Gerland, P. (2013). Age Patterns of Mortality Improvement by Level of Life Expectancy at Birth with Applications to Mortality Projections. Paper presented at the Annual Meeting
+of the Population Association of America, New Orleans, LA. <a href="https://paa2013.princeton.edu/papers/132554">https://paa2013.princeton.edu/papers/132554</a>.
+</p>
+<p>Gu, D., Pelletier, F., Sawyer, C. (2017). Projecting Age-sex-specific Mortality: A Comparison of the Modified Lee-Carter and Pattern of Mortality Decline Methods, UN Population Division, 
+Technical Paper No. 6. New York: United Nations. <a href="https://population.un.org/wpp/Publications/Files/WPP2017_TechnicalPaperNo6.pdf">https://population.un.org/wpp/Publications/Files/WPP2017_TechnicalPaperNo6.pdf</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mortcast</code>, <code>mortcast.blend</code>, <code>PMDrho</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(mxF, e0Fproj, package = "wpp2017")
+country &lt;- "Hungary"
+# get initial mortality for the current year
+mxf &lt;- subset(mxF, name == country)[,"2010-2015"]
+names(mxf) &lt;- c(0,1, seq(5, 100, by=5))
+# get target e0
+e0f &lt;- subset(e0Fproj, name == country)[-(1:2)]
+# project into future
+pred &lt;- pmd(e0f, mxf, sex = "female")
+# plot first projection in black and the remaining ones in grey 
+plot(pred$mx[,1], type = "l", log = "y", ylim = range(pred$mx),
+    ylab = "female mx", xlab = "Age", main = country)
+for(i in 2:ncol(pred$mx)) lines(pred$mx[,i], col = "grey")
+
+</code></pre>
+
+
+</div>

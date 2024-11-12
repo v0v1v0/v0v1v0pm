@@ -1,0 +1,188 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mies_init_population</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Initialize MIES Optimization</h2>
+
+<h3>Description</h3>
+
+<p>Set up an <code>OptimInstance</code> for MIES optimization.
+This adds the <code>dob</code> and <code>eol</code> columns to the instance's archive, and makes sure there are at least <code>mu</code> survivors
+(i.e. entries with <code>eol</code> set to <code>NA</code>) present. If there are already <code style="white-space: pre;">⁠&gt;= mu⁠</code> prior evaluations present, then the last
+<code>mu</code> of these remain alive (the other's <code>eol</code> set to 0); otherwise, up to <code>mu</code> new randomly sampled configurations
+are evaluated and added to the archive and have <code>eol</code> set to <code>NA</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mies_init_population(
+  inst,
+  mu,
+  initializer = generate_design_random,
+  survival_selector = SelectorBest$new()$prime(inst$search_space),
+  budget_id = NULL,
+  fidelity = NULL,
+  fidelity_new_individuals_only = FALSE,
+  fidelity_monotonic = TRUE,
+  additional_component_sampler = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>inst</code></td>
+<td>
+<p>(<code>OptimInstance</code>)<br>
+Optimization instance to evaluate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu</code></td>
+<td>
+<p>(<code>integer(1)</code>)<br>
+Population target size, non-negative integer.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initializer</code></td>
+<td>
+<p>(<code>function</code>)<br>
+Function that generates a <code>Design</code> object, with arguments <code>param_set</code> and <code>n</code>, functioning like <code>paradox::generate_design_random</code>
+or <code>paradox::generate_design_lhs</code>. Note that <code>paradox::generate_design_grid</code> can not be used and must be wrapped with
+a custom function that ensures that only <code>n</code> individuals are produced. The generated design must correspond to the <code>inst</code>'s <code style="white-space: pre;">⁠$search_space⁠</code>; for
+components that are not in the objective's search space, the <code>additional_component_sampler</code> is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>survival_selector</code></td>
+<td>
+<p>(<code>Selector</code>)<br>
+Used when the given <code>OptimInstance</code> already contains more individuals than <code>mu</code>.<br><code>Selector</code> operator that selects surviving individuals depending on configuration values
+and objective results,  When <code>survival_selector$operate()</code> is called, then objectives that
+are being minimized are multiplied with -1 (through <code>mies_get_fitnesses</code>), since <code>Selector</code>s always try to maximize fitness.<br>
+The <code>Selector</code> must be primed on <code>inst$search_space</code>; this <em>includes</em> the "budget" component
+when performing multi-fidelity optimization. Default is <code>SelectorBest</code>.<br>
+The given <code>Selector</code> may <em>not</em> return duplicates.<br></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>budget_id</code></td>
+<td>
+<p>(<code>character(1)</code> | <code>NULL</code>)<br>
+Budget component when doing multi-fidelity optimization. This component of the search space is added
+to <code>individuals</code> according to <code>fidelity</code>. Should be <code>NULL</code> when no multi-fidelity optimization is performed (default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fidelity</code></td>
+<td>
+<p>(<code>atomic(1)</code> | <code>NULL</code>)<br>
+Atomic scalar indicating the value to be assigned to the <code>budget_id</code> component of offspring.
+This value must be <code>NULL</code> if no multi-fidelity optimization is performed (the default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fidelity_new_individuals_only</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+When <code>fidelity</code> is not <code>NULL</code>: Whether to re-evaluate individuals that are already present in <code>inst</code> should they have a smaller (if <code>fidelity_monotonic</code> is <code>TRUE</code>) or different
+(if <code>fidelity_monotonic</code> is <code>FALSE</code>) value from the one given to <code>fidelity</code>. Default <code>FALSE</code>. Ignored when <code>fidelity</code> is <code>NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fidelity_monotonic</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether to only re-evaluate configurations for which the fidelity would increase. Default <code>TRUE</code>.
+Ignored when <code>fidelity</code> is <code>NULL</code> or when <code>fidelity_new_individuals_only</code> is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>additional_component_sampler</code></td>
+<td>
+<p>(<code>Sampler</code> | <code>NULL</code>)<br><code>Sampler</code> for components of individuals that are not part of <code>inst</code>'s <code style="white-space: pre;">⁠$search_space⁠</code>. These components
+are never used for performance evaluation, but they may be useful for self-adaptive <code>OperatorCombination</code>s. See the description
+of <code>mies_prime_operators()</code> on how operators need to be primed to respect additional components.<br>
+It is possible that <code>additional_component_sampler</code> is used for <em>more</em> rows than <code>initializer</code>, which happens
+when the <code>inst</code>'s <code style="white-space: pre;">⁠$archive⁠</code> contains prior evaluations that are alive, but does not contain columns pertaining to additional columns,
+or contains <em>all</em> these columns but there are rows that are <code>NA</code> valued. If only <em>some</em> of the columns are present, or if all these columns
+are present but there are rows that are only <code>NA</code> valued for some columns, then an error is thrown.<br>
+Default is <code>NULL</code>: no additional components.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>invisible <code>OptimInstance</code>: the input
+instance, modified by-reference.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other mies building blocks: 
+<code>mies_evaluate_offspring()</code>,
+<code>mies_generate_offspring()</code>,
+<code>mies_get_fitnesses()</code>,
+<code>mies_select_from_archive()</code>,
+<code>mies_step_fidelity()</code>,
+<code>mies_survival_comma()</code>,
+<code>mies_survival_plus()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library("bbotk")
+lgr::threshold("warn")
+
+# Define the objective to optimize
+objective &lt;- ObjectiveRFun$new(
+  fun = function(xs) {
+    z &lt;- exp(-xs$x^2 - xs$y^2) + 2 * exp(-(2 - xs$x)^2 - (2 - xs$y)^2)
+    list(Obj = z)
+  },
+  domain = ps(x = p_dbl(-2, 4), y = p_dbl(-2, 4)),
+  codomain = ps(Obj = p_dbl(tags = "maximize"))
+)
+
+# Get a new OptimInstance
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 100)
+)
+
+mies_init_population(inst = oi, mu = 3)
+
+# 3 evaluations, archive contains 'dob' and 'eol'
+oi$archive
+
+###
+# Advanced demo, making use of additional components and fidelity
+##
+
+# Get a new OptimInstance
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 100)
+)
+
+mies_init_population(inst = oi, mu = 3, budget_id = "y", fidelity = 2,
+  additional_component_sampler = Sampler1DRfun$new(
+    param = ps(additional = p_dbl(-1, 1)), rfun = function(n) rep(-1, n)
+  )
+)
+
+# 3 evaluations. We also have 'additional', sampled from rfun (always -1),
+# which is ignored by the objective. Besides, we have "y", which is 2,
+# according to 'fidelity'.
+oi$archive
+
+</code></pre>
+
+
+</div>

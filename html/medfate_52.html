@@ -1,0 +1,301 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>fordyn</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Forest dynamics</h2>
+
+<h3>Description</h3>
+
+<p>Function <code>fordyn</code> implements a forest dynamics model that simulates 
+growth, mortality, recruitment and (optionally) management actions in a given forest stand 
+during a period specified in the input climatic data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">fordyn(
+  forest,
+  soil,
+  SpParams,
+  meteo,
+  control,
+  latitude,
+  elevation = NA,
+  slope = NA,
+  aspect = NA,
+  CO2ByYear = numeric(0),
+  management_function = NULL,
+  management_args = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>forest</code></td>
+<td>
+<p>An object of class <code>forest</code>. Alternatively, the output of a previous run, if continuing a previous simulation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>soil</code></td>
+<td>
+<p>An object of class <code>data.frame</code> or <code>soil</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SpParams</code></td>
+<td>
+<p>A data frame with species parameters (see <code>SpParamsMED</code> and <code>SpParamsDefinition</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meteo</code></td>
+<td>
+<p>A data frame with daily weather data series (see <code>spwb</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>A list with default control parameters (see <code>defaultControl</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>latitude</code></td>
+<td>
+<p>Latitude (in degrees).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>elevation, slope, aspect</code></td>
+<td>
+<p>Elevation above sea level (in m), slope (in degrees) and aspect (in degrees from North).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CO2ByYear</code></td>
+<td>
+<p>A named numeric vector with years as names and atmospheric CO2 concentration (in ppm) as values. Used to specify annual changes in CO2 concentration along the simulation (as an alternative to specifying daily values in <code>meteo</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>management_function</code></td>
+<td>
+<p>A function that implements forest management actions (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>management_args</code></td>
+<td>
+<p>A list of additional arguments to be passed to the <code>management_function</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Function <code>fordyn</code> simulates forest dynamics for annual time steps, building on other simulation functions. For each simulated year, the function performs the following steps:
+</p>
+
+<ol>
+<li>
+<p>Calls function <code>growth</code> to simulate daily water/carbon balance, growth and mortality processes and update the forest object.
+</p>
+</li>
+<li>
+<p>If required, calls function <code>management_function</code>, using as parameters the forest object and <code>management_args</code>, which may result in a density reduction for existing plant cohorts and/or a set of new planted cohorts.
+</p>
+</li>
+<li>
+<p>Simulate natural recruitment (for species present in the stand or given in a seed rain input).
+</p>
+</li>
+<li>
+<p>Prepares the input of function <code>growth</code> for the next annual time step.
+</p>
+</li>
+<li>
+<p>Store forest status, management arguments, and summaries.
+</p>
+</li>
+</ol>
+<p>To enable forest management, the user needs to provide a function that implements it, which is passed to <code>fordyn</code> via its argument <code>management_function</code>. Such function should have  the following arguments:
+</p>
+
+<ul>
+<li>
+<p><code>"x"</code>: the <code>forest</code> object representing the stand to be managed.
+</p>
+</li>
+<li>
+<p><code>"args"</code>: a list of parameters regulating the behavior of the management function. 
+</p>
+</li>
+<li>
+<p><code>"verbose"</code>: a logical flag to enable console output during the execution of the management function.
+</p>
+</li>
+</ul>
+<p>and return a list with the following elements:
+</p>
+
+<ul>
+<li>
+<p><code>"action"</code>: A string identifying the action performed (e.g. "thinning").
+</p>
+</li>
+<li>
+<p><code>"N_tree_cut"</code>: A vector with the density of trees removed.
+</p>
+</li>
+<li>
+<p><code>"Cover_shrub_cut"</code>: A vector with the cover of shrubs removed. 
+</p>
+</li>
+<li>
+<p><code>"planted_forest"</code>: An object of class <code>forest</code> with the new plant cohorts resulting from tree/shrub planting.
+</p>
+</li>
+<li>
+<p><code>"management_args"</code>: A list of management arguments to be used in the next call to the management function.
+</p>
+</li>
+</ul>
+<p>An example of management function is provided in <code>defaultManagementFunction</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of class 'fordyn' with the following elements:
+</p>
+
+<ul>
+<li>
+<p><code>"StandSummary"</code>: A data frame with stand-level summaries (tree basal area, tree density, shrub cover, etc.) at the beginning of the simulation and after each simulated year.
+</p>
+</li>
+<li>
+<p><code>"SpeciesSummary"</code>: A data frame with species-level summaries (tree basal area, tree density, shrub cover, etc.) at the beginning of the simulation and after each simulated year.
+</p>
+</li>
+<li>
+<p><code>"CohortSummary"</code>: A data frame with cohort-level summaries (tree basal area, tree density, shrub cover, etc.) at the beginning of the simulation and after each simulated year.
+</p>
+</li>
+<li>
+<p><code>"TreeTable"</code>: A data frame with tree-cohort data (species, density, diameter, height, etc.) at the beginning of the simulation (if any) and after each simulated year.
+</p>
+</li>
+<li>
+<p><code>"DeadTreeTable"</code>: A data frame with dead tree-cohort data (species, density, diameter, height, etc.) at the beginning of the simulation and after each simulated year.
+</p>
+</li>
+<li>
+<p><code>"CutTreeTable"</code>: A data frame with cut tree data (species, density, diameter, height, etc.) after each simulated year.
+</p>
+</li>
+<li>
+<p><code>"ShrubTable"</code>: A data frame with shrub-cohort data (species, density, cover, height, etc.) at the beginning of the simulation and after each simulated year.
+</p>
+</li>
+<li>
+<p><code>"DeadShrubTable"</code>: A data frame with dead shrub-cohort data (species, density, cover, height, etc.) at the beginning of the simulation (if any) and after each simulated year.
+</p>
+</li>
+<li>
+<p><code>"CutShrubTable"</code>: A data frame with cut shrub data (species, density, cover, height, etc.) after each simulated year.
+</p>
+</li>
+<li>
+<p><code>"ForestStructures"</code>: A list with the <code>forest</code> object of the stand at the beginning of the simulation and after each simulated year.
+</p>
+</li>
+<li>
+<p><code>"GrowthResults"</code>: A list with the results of calling function <code>growth</code> for each simulated year.
+</p>
+</li>
+<li>
+<p><code>"ManagementArgs"</code>: A list of management arguments to be used in another call to <code>fordyn</code>.
+</p>
+</li>
+<li>
+<p><code>"NextInputObject"</code>: An object of class <code>growthInput</code> to be used in a subsequent simulation.
+</p>
+</li>
+<li>
+<p><code>"NextForestObject"</code>: An object of class <code>forest</code> to be used in a subsequent simulation.
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Miquel De Cáceres Ainsa, CREAF
+</p>
+
+
+<h3>References</h3>
+
+<p>De Cáceres M, Molowny-Horas R, Cabon A, Martínez-Vilalta J, Mencuccini M, García-Valdés R, Nadal-Sala D, Sabaté S, 
+Martin-StPaul N, Morin X, D'Adamo F, Batllori E, Améztegui A (2023) MEDFATE 2.9.3: A trait-enabled model to simulate 
+Mediterranean forest function and dynamics at regional scales. 
+Geoscientific Model Development 16: 3165-3201 (https://doi.org/10.5194/gmd-16-3165-2023).
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>growth</code>, <code>regeneration</code>, <code>plot.growth</code>, <code>defaultManagementFunction</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+#Load example daily meteorological data
+data(examplemeteo)
+#Prepare a two-year meteorological data with half precipitation during 
+#the second year
+meteo2001 &lt;- examplemeteo
+meteo2002 &lt;- examplemeteo
+meteo2002$Precipitation &lt;- meteo2002$Precipitation/2
+meteo2002$dates &lt;- seq(as.Date("2002-01-01"), 
+                           as.Date("2002-12-31"), by="day")
+meteo_01_02 &lt;- rbind(meteo2001, meteo2002)
+
+#Load example plot plant data
+data(exampleforest)
+
+#Default species parameterization
+data(SpParamsMED)
+
+#Initialize control parameters
+control &lt;- defaultControl("Granier")
+
+#Define soil with default soil params (4 layers)
+examplesoil &lt;- defaultSoilParams(4)
+
+#Call simulation function
+fd&lt;-fordyn(exampleforest, examplesoil, 
+           SpParamsMED, meteo_01_02, control,
+           latitude = 41.82592, elevation = 100)
+
+#Stand-level summaries
+fd$StandSummary
+
+#Tree table by annual steps
+fd$TreeTable
+
+#Dead tree table by annual steps
+fd$DeadTreeTable
+
+
+</code></pre>
+
+
+</div>

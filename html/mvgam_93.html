@@ -1,0 +1,274 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvgam_families</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Supported mvgam families</h2>
+
+<h3>Description</h3>
+
+<p>Supported mvgam families
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">tweedie(link = "log")
+
+student_t(link = "identity")
+
+betar(...)
+
+nb(...)
+
+lognormal(...)
+
+student(...)
+
+bernoulli(...)
+
+beta_binomial(...)
+
+nmix(link = "log")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>link</code></td>
+<td>
+<p>a specification for the family link function. At present these cannot
+be changed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Arguments to be passed to the <span class="pkg">mgcv</span> version of the associated functions</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>mvgam</code> currently supports the following standard observation families:
+</p>
+
+<ul>
+<li> <p><code>gaussian</code> with identity link, for real-valued data
+</p>
+</li>
+<li> <p><code>poisson</code> with log-link, for count data
+</p>
+</li>
+<li> <p><code>Gamma</code> with log-link, for non-negative real-valued data
+</p>
+</li>
+<li> <p><code>binomial</code> with logit-link, for count data when the number
+of trials is known (and must be supplied)
+</p>
+</li>
+</ul>
+<p>In addition, the following extended families from the <code>mgcv</code> and <code>brms</code> packages are supported:
+</p>
+
+<ul>
+<li> <p><code>betar</code> with logit-link, for proportional data on <code style="white-space: pre;">⁠(0,1)⁠</code>
+</p>
+</li>
+<li> <p><code>nb</code> with log-link, for count data
+</p>
+</li>
+<li> <p><code>lognormal</code> with identity-link, for non-negative real-valued data
+</p>
+</li>
+<li> <p><code>bernoulli</code> with logit-link, for binary data
+</p>
+</li>
+<li> <p><code>beta_binomial</code> with logit-link, as for <code>binomial()</code> but allows
+for overdispersion
+</p>
+</li>
+</ul>
+<p>Finally, <code>mvgam</code> supports the three extended families described here:
+</p>
+
+<ul>
+<li> <p><code>tweedie</code> with log-link, for count data (power parameter <code>p</code> fixed at <code>1.5</code>)
+</p>
+</li>
+<li> <p><code>student_t()</code> (or <code>student</code>) with identity-link, for real-valued data
+</p>
+</li>
+<li> <p><code>nmix</code> for count data with imperfect detection modeled via a
+State-Space N-Mixture model. The latent states are Poisson (with log link), capturing the 'true' latent
+abundance, while the observation process is Binomial to account for imperfect detection. The
+observation <code>formula</code> in these models is used to set up a linear predictor for the detection
+probability (with logit link). See the example below for a more detailed worked explanation
+of the <code>nmix()</code> family
+</p>
+</li>
+</ul>
+<p>Only <code>poisson()</code>, <code>nb()</code>, and <code>tweedie()</code> are available if
+using <code>JAGS</code>. All families, apart from <code>tweedie()</code>, are supported if
+using <code>Stan</code>.
+</p>
+<p>Note that currently it is not possible to change the default link
+functions in <code>mvgam</code>, so any call to change these will be silently ignored
+</p>
+
+
+<h3>Value</h3>
+
+<p>Objects of class <code>family</code>
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nicholas J Clark
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Example showing how to set up N-mixture models
+set.seed(999)
+# Simulate observations for species 1, which shows a declining trend and 0.7 detection probability
+data.frame(site = 1,
+          # five replicates per year; six years
+          replicate = rep(1:5, 6),
+          time = sort(rep(1:6, 5)),
+          species = 'sp_1',
+          # true abundance declines nonlinearly
+          truth = c(rep(28, 5),
+                    rep(26, 5),
+                    rep(23, 5),
+                    rep(16, 5),
+                    rep(14, 5),
+                    rep(14, 5)),
+          # observations are taken with detection prob = 0.7
+          obs = c(rbinom(5, 28, 0.7),
+                  rbinom(5, 26, 0.7),
+                  rbinom(5, 23, 0.7),
+                  rbinom(5, 15, 0.7),
+                  rbinom(5, 14, 0.7),
+                  rbinom(5, 14, 0.7))) %&gt;%
+ # add 'series' information, which is an identifier of site, replicate and species
+ dplyr::mutate(series = paste0('site_', site,
+                               '_', species,
+                               '_rep_', replicate),
+               time = as.numeric(time),
+               # add a 'cap' variable that defines the maximum latent N to
+               # marginalize over when estimating latent abundance; in other words
+               # how large do we realistically think the true abundance could be?
+               cap = 80) %&gt;%
+ dplyr::select(- replicate) -&gt; testdat
+
+# Now add another species that has a different temporal trend and a smaller
+# detection probability (0.45 for this species)
+testdat = testdat %&gt;%
+ dplyr::bind_rows(data.frame(site = 1,
+                             replicate = rep(1:5, 6),
+                             time = sort(rep(1:6, 5)),
+                             species = 'sp_2',
+                             truth = c(rep(4, 5),
+                                       rep(7, 5),
+                                       rep(15, 5),
+                                       rep(16, 5),
+                                       rep(19, 5),
+                                       rep(18, 5)),
+                             obs = c(rbinom(5, 4, 0.45),
+                                     rbinom(5, 7, 0.45),
+                                     rbinom(5, 15, 0.45),
+                                     rbinom(5, 16, 0.45),
+                                     rbinom(5, 19, 0.45),
+                                     rbinom(5, 18, 0.45))) %&gt;%
+                    dplyr::mutate(series = paste0('site_', site,
+                                                  '_', species,
+                                                  '_rep_', replicate),
+                                  time = as.numeric(time),
+                                  cap = 50) %&gt;%
+                    dplyr::select(-replicate))
+
+# series identifiers
+testdat$species &lt;- factor(testdat$species,
+                          levels = unique(testdat$species))
+testdat$series &lt;- factor(testdat$series,
+                         levels = unique(testdat$series))
+
+# The trend_map to state how replicates are structured
+testdat %&gt;%
+# each unique combination of site*species is a separate process
+dplyr::mutate(trend = as.numeric(factor(paste0(site, species)))) %&gt;%
+ dplyr::select(trend, series) %&gt;%
+ dplyr::distinct() -&gt; trend_map
+trend_map
+
+# Fit a model
+mod &lt;- mvgam(
+            # the observation formula sets up linear predictors for
+            # detection probability on the logit scale
+            formula = obs ~ species - 1,
+
+            # the trend_formula sets up the linear predictors for
+            # the latent abundance processes on the log scale
+            trend_formula = ~ s(time, by = trend, k = 4) + species,
+
+            # the trend_map takes care of the mapping
+            trend_map = trend_map,
+
+            # nmix() family and data
+            family = nmix(),
+            data = testdat,
+
+            # priors can be set in the usual way
+            priors = c(prior(std_normal(), class = b),
+                       prior(normal(1, 1.5), class = Intercept_trend)),
+            chains = 2)
+
+# The usual diagnostics
+summary(mod)
+
+# Plotting conditional effects
+library(ggplot2); library(marginaleffects)
+plot_predictions(mod, condition = 'species',
+                 type = 'detection') +
+     ylab('Pr(detection)') +
+     ylim(c(0, 1)) +
+     theme_classic() +
+     theme(legend.position = 'none')
+
+# Example showcasing how cbind() is needed for Binomial observations
+# Simulate two time series of Binomial trials
+trials &lt;- sample(c(20:25), 50, replace = TRUE)
+x &lt;- rnorm(50)
+detprob1 &lt;- plogis(-0.5 + 0.9*x)
+detprob2 &lt;- plogis(-0.1 -0.7*x)
+dat &lt;- rbind(data.frame(y = rbinom(n = 50, size = trials, prob = detprob1),
+                        time = 1:50,
+                        series = 'series1',
+                        x = x,
+                        ntrials = trials),
+             data.frame(y = rbinom(n = 50, size = trials, prob = detprob2),
+                        time = 1:50,
+                        series = 'series2',
+                        x = x,
+                        ntrials = trials))
+dat &lt;- dplyr::mutate(dat, series = as.factor(series))
+dat &lt;- dplyr::arrange(dat, time, series)
+
+# Fit a model using the binomial() family; must specify observations
+# and number of trials in the cbind() wrapper
+mod &lt;- mvgam(cbind(y, ntrials) ~ series + s(x, by = series),
+             family = binomial(),
+             data = dat)
+summary(mod)
+
+</code></pre>
+
+
+</div>

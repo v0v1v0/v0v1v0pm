@@ -1,0 +1,326 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MP</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Moving Particles</h2>
+
+<h3>Description</h3>
+
+<p>This function runs the Moving Particles algorithm for estimating extreme probability
+and quantile.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MP(
+  dimension,
+  lsf,
+  N = 100,
+  N.batch = foreach::getDoParWorkers(),
+  p,
+  q,
+  lower.tail = TRUE,
+  Niter_1fold,
+  alpha = 0.05,
+  compute_confidence = FALSE,
+  verbose = 0,
+  chi2 = FALSE,
+  breaks = N.batch/5,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>dimension</code></td>
+<td>
+<p>the dimension of the input space.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lsf</code></td>
+<td>
+<p>the function defining the RV of interest Y = lsf(X).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N</code></td>
+<td>
+<p>the total number of particles,</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N.batch</code></td>
+<td>
+<p>the number of parallel batches for the algorithm. Each batch will then
+have <code>N/N.batch</code> particles. Typically this could be <code>detectCores()</code> or some
+other machine-derived parameters. Note that <code>N/N.batch</code> has to be an integer.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>a given probability to estimate the corresponding quantile (as in qxxxx functions).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>q</code></td>
+<td>
+<p>a given quantile to estimate the corresponding probability (as in pxxxx functions).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower.tail</code></td>
+<td>
+<p>as for pxxxx functions, TRUE for estimating P(lsf(X) &lt; q), FALSE
+for P(lsf(X) &gt; q).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Niter_1fold</code></td>
+<td>
+<p>a function = fun(N) giving the deterministic number of iterations
+for the first pass.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>when using default <code>Niter_1fold</code> function, this is the risk not to have
+simulated enough samples to produce a quantile estimator.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>compute_confidence</code></td>
+<td>
+<p>if <code>TRUE</code>, the algorithm runs a little bit longer to produces
+a 95% interval on the quantile estimator.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>to control level of print (either 0, or 1, or 2).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chi2</code></td>
+<td>
+<p>for a chi2 test on the number of events.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>breaks</code></td>
+<td>
+<p>for the final histogram is <code>chi2 == TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments past to <code>IRW</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>MP</code> is a wrap up of <code>IRW</code> for probability and quantile estimation.
+By construction, the several calls to <code>IRW</code> are parallel (<span class="pkg">foreach</span>)
+and so is the algorithm. Especially, with <code>N.batch=1</code>, this is the Last Particle
+Algorithm, which is a specific version of <code>SubsetSimulation</code> with <code>p_0 = 1-1/N</code>.
+However, note that this algorithm not only gives a quantile or a probability estimate
+but also an estimate of the whole cdf until the given threshold <code>q</code>.
+</p>
+<p>The probability estimator only requires to generate several random walks as it is the estimation
+of the parameter of a Poisson random variable. The quantile estimator is a little bit more complicated
+and requires a 2-passes algorithm. It is thus not exactly fully parallel as cluster/cores have to
+communicate after the first pass. During the first pass, particles are moved a given number of
+times, during the second pass particles are moved until the farthest event reach during the first
+pass. Hence, the random process is completely simulated until this given state.
+</p>
+<p>For an easy user experiment, all the parameters are defined by default with the optimised values
+as described in the reference paper (see References below) and a typical use will only specify
+<code>N</code> and <code>N.batch</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>list</code> containing the outputs described below:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>the estimated probability or the reference for the quantile estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>q</code></td>
+<td>
+<p>the estimated quantile or the reference for the probability estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv</code></td>
+<td>
+<p>the coefficient of variation of the probability estimator.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ecdf</code></td>
+<td>
+<p>the empirical cdf.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>L</code></td>
+<td>
+<p>the states of the random walk.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>L_max</code></td>
+<td>
+<p>the farthest state reached by the random process. Validity range
+for the <code>ecdf</code> is then (-Inf, L_max] or [L_max, Inf).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>times</code></td>
+<td>
+<p>the <em>times</em> of the random process.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Ncall</code></td>
+<td>
+<p>the total number of calls to the <code>lsf</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>the <code>N</code> particles in their final state.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>the value of the <code>lsf(X)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>moves</code></td>
+<td>
+<p>a vector containing the number of moves for each batch.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p_int</code></td>
+<td>
+<p>a 95% confidence intervalle on the probability estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cov</code></td>
+<td>
+<p>the coefficient of variation of the estimator</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>q_int</code></td>
+<td>
+<p>a 95% confidence intervall on the quantile estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chi2</code></td>
+<td>
+<p>the output of the chisq.test function.</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>The <code>alpha</code> parameter is set to 0.05 by default. Indeed it should not be
+set too small as it is defined approximating the Poisson distribution with the Gaussian one.
+However if no estimate is produce then the algorithm can be restarted for the few missing events.
+In any cases, setting <code>Niter_1fold = -N/N.batch*log(p)</code> gives 100% chances to produces
+a quantile estimator.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Clement WALTER <a href="mailto:clementwalter@icloud.com">clementwalter@icloud.com</a>
+</p>
+
+
+<h3>References</h3>
+
+
+<ul>
+<li>
+<p> A. Guyader, N. Hengartner and E. Matzner-Lober:<br><em>Simulation and estimation of extreme quantiles and extreme
+probabilities</em><br>
+Applied Mathematics and Optimization, 64(2), 171-196.<br></p>
+</li>
+<li>
+<p> C. Walter:<br><em>Moving Particles: a parallel optimal Multilevel Splitting
+method with application in quantiles estimation and meta-model
+based algorithms</em><br>
+Structural Safety, 55, 10-25.<br></p>
+</li>
+<li>
+<p> E. Simonnet:<br><em>Combinatorial analysis of the adaptive last particle method</em><br>
+Statistics and Computing, 1-20.<br></p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+<p><code>SubsetSimulation</code>
+<code>MonteCarlo</code>
+<code>IRW</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Estimate some probability and quantile with the parabolic lsf
+p.est &lt;- MP(2, kiureghian, N = 100, q = 0) # estimate P(lsf(X) &lt; 0)
+p.est &lt;- MP(2, kiureghian, N = 100, q = 7.8, lower.tail = FALSE) # estimate P(lsf(X) &gt; 7.8)
+
+q.est &lt;- MP(2, kiureghian, N = 100, p = 1e-3) # estimate q such that P(lsf(X) &lt; q) = 1e-3
+q.est &lt;- MP(2, kiureghian, N = 100, p = 1e-3, lower.tail = FALSE) # estimate q such
+# that P(lsf(X) &gt; q) = 1e-3
+
+
+# plot the empirical cdf
+plot(xplot &lt;- seq(-3, p.est$L_max, l = 100), sapply(xplot, p.est$ecdf_MP))
+
+# check validity range
+p.est$ecdf_MP(p.est$L_max - 1)
+# this example will fail because the quantile is greater than the limit
+tryCatch({
+   p.est$ecdf_MP(p.est$L_max + 0.1)},
+   error = function(cond) message(cond))
+
+# Run in parallel
+library(doParallel)
+registerDoParallel()
+p.est &lt;- MP(2, kiureghian, N = 100, q = 0, N.batch = getDoParWorkers())
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

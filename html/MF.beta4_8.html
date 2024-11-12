@@ -1,0 +1,155 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MFggplot</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>ggplot2 extension for a MF1_single or MF2_multiple object</h2>
+
+<h3>Description</h3>
+
+<p><code>MFggplot</code> provides graphical BEF relationships based on the output from the function <code>MF1_single</code> or <code>MF2_multiple</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MFggplot(output, model = "LMM.both", caption = "slope", by_group = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>output</code></td>
+<td>
+<p>the output obtained from <code>MF1_single</code> or <code>MF2_multiple</code>. <br>
+For output obtained from <code>MF1_single</code>, if BEF relationships are desired within each category specified <code>by_group</code>, the <code>by_group</code> column must be included in the input.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>specifying the fitting model, <code>model = "lm"</code> for linear model; <code>model = "LMM.intercept"</code>,
+<code>"LMM.slope"</code> and <code>"LMM.both"</code> for linear mixed models with random effects for intercepts, slopes, and both, respectively.
+Default is <code>model = "LMM.both"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>caption</code></td>
+<td>
+<p>caption that will be shown in the BEF plots; <code>caption = "slope"</code> to show the estimated slopes in each plot,
+or <code>caption = "R.squared"</code> to show the ordinary R-squared for linear models or estimated marginal and conditional R-squared for linear mixed models in each plot.
+Default is <code>caption = "slope"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>by_group</code></td>
+<td>
+<p>the column name of the stratifying variable that is used to group data for model fitting. For example, if <code>by_group = "country"</code>, then model will be fitted within each country. Default is <code>NULL</code>. <br>
+It is required if a linear mixed model is selected in the <code>model</code>. <br>
+If <code>output</code> is obtained from <code>MF2_multiple</code>, the <code>by_group</code> setting must be the same as that set in <code>MF2_multiple</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>For an <code>MF1_single</code> object, this function returns a figure that plots the BEF relationship between multifunctionality of
+order q (= 0, 1 and 2) and species diversity of the same order q for two cases (i) correlations between functions are not corrected for, and (ii) correlations between
+functions are corrected. The fitted lines for the chosen model are also shown in the figure. <br></p>
+<p>For an <code>MF2_multiple</code> object of given individual function weights, this function returns a list of two objects (<code>$corr_uncorrected</code> and <code>$corr_corrected</code>)
+that respectively for two cases: (i) correlations between functions are not corrected for, and (ii) correlations between functions are corrected for. <br></p>
+<p>Each object consists of four figures: "<code>$ALL</code>" returns a figure that depicts the BEF relationship between alpha/beta/gamma multifunctionality of
+order q (= 0, 1 and 2) and the corresponding species diversity of the same order q. The fitted lines for the chosen model are also shown in the figure.
+"<code>$Gamma</code>" returns only the gamma part of "<code>$ALL</code>", "<code>$Alpha</code>" returns only the alpha part of "<code>$ALL</code>", and "<code>$Beta</code>" returns only the beta part of "<code>$ALL</code>".
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(dplyr)
+
+### Use data from six countries
+
+
+## single ecosystem
+data("forest_function_data_normalized")
+data("forest_biodiversity_data")
+output1 &lt;- MF1_single(func_data = forest_function_data_normalized[,6:31], weight = 1,
+                      species_data = forest_biodiversity_data)
+  
+## Display fitted line of linear mixed model with random slopes and random intercepts  
+output1 &lt;- data.frame(output1, country=rep(forest_function_data_normalized$country, each = 6))
+MFggplot(output1, model = "LMM.both", by_group="country", caption = "slope")
+
+
+### Use data from five countries (data in Finland are excluded)
+ 
+## multiple ecosystems
+data("forest_function_data_normalized")
+data("forest_biodiversity_data")
+forest_function_data_normalized &lt;- filter(forest_function_data_normalized, country != "FIN")
+forest_biodiversity_data &lt;- forest_biodiversity_data[-(1:48),]
+output2 &lt;- MF2_multiple(func_data = forest_function_data_normalized[,6:32],
+                        species_data = forest_biodiversity_data,
+                        weight = 1,
+                        by_group = "country")
+
+## Display fitted line of linear mixed model with random slopes and random intercepts  
+figure_LMM &lt;- MFggplot(output2, model = "LMM.both", by_group = "country", 
+                       caption = "slope")
+figure_LMM$corr_uncorrected$ALL
+figure_LMM$corr_corrected$ALL
+
+
+### Use partial data to quickly obtain output  
+### (Take the first 18 plots in Germany and the last 18 plots in Italy)
+
+## single ecosystem
+data("forest_function_data_raw")
+data("forest_biodiversity_data")
+GER_ITA_forest_function_raw &lt;- filter(forest_function_data_raw, 
+                                      country=="GER"|country=="ITA")[c(1:18,57:74),]
+GER_ITA_forest_function_normalized &lt;- function_normalization(data = GER_ITA_forest_function_raw,
+                                                             fun_cols = 6:31, 
+                                                             negative = c("soil_cn_ff_10","wue"),
+                                                             by_group = "country")
+GER_ITA_forest_biodiversity &lt;- forest_biodiversity_data[c(49:82,181:229),]
+output3 &lt;- MF1_single(func_data = GER_ITA_forest_function_normalized[,6:31], weight = 1,
+                      species_data = GER_ITA_forest_biodiversity)
+
+
+## Display fitted line of linear mixed model with random slopes and random intercepts  
+output3 &lt;- data.frame(output3, country=rep(GER_ITA_forest_function_normalized$country, each = 6))
+MFggplot(output3, model = "LMM.both", by_group="country", caption = "slope")
+
+
+## multiple ecosystems
+data("forest_function_data_raw")
+data("forest_biodiversity_data")
+GER_ITA_forest_function_raw &lt;- filter(forest_function_data_raw, 
+                                      country=="GER"|country=="ITA")[c(1:18,57:74),]
+GER_ITA_forest_function_normalized &lt;- function_normalization(data = GER_ITA_forest_function_raw,
+                                                             fun_cols = 6:31, 
+                                                             negative = c("soil_cn_ff_10","wue"),
+                                                             by_group = "country")
+GER_ITA_forest_biodiversity &lt;- forest_biodiversity_data[c(49:82,181:229),]
+output4 &lt;- MF2_multiple(func_data = GER_ITA_forest_function_normalized[,6:32],
+                        species_data = GER_ITA_forest_biodiversity,
+                        weight = 1,
+                        by_group = "country")
+
+
+## Display fitted line of linear mixed model with random slopes and random intercepts  
+figure_LMM_GER_ITA &lt;- MFggplot(output4, model = "LMM.both", by_group = "country", 
+                               caption = "slope")
+figure_LMM_GER_ITA$corr_uncorrected$ALL
+figure_LMM_GER_ITA$corr_corrected$ALL
+
+
+</code></pre>
+
+
+</div>

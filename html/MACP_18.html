@@ -1,0 +1,438 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predPPI_MACP</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Predict Protein-Protein Interactions and Putative Complexes</h2>
+
+<h3>Description</h3>
+
+<p>This function first begins by executing several
+pre-processing steps to improve the quality of the raw data, followed
+by computing similarity between protein pairs using their co-elution
+profiles. Computed features and and class labels generated
+from reference complexes are then fed into an individual or
+ensemble of ML classifiers.These models then generate a weighted protein
+interaction network in which edge weights between protein nodes represent
+the ML model's probability estimate for interaction.
+High-confidence PPIs resulted from ROC-curve cutoff analysis is then
+denoised and finally are partitioned via two-stage clustering,
+first by ClusterONE,then by MCL clustering.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">predPPI_MACP(
+  data,
+  refcpx,
+  tpath = tempdir(),
+  data_processing = TRUE,
+  data_imputing = TRUE,
+  scaling = TRUE,
+  keepMT = FALSE,
+  pcc = TRUE,
+  PCCN = TRUE,
+  pcc_p = TRUE,
+  spearman = TRUE,
+  kendall = TRUE,
+  bicor = TRUE,
+  weighted_rank = TRUE,
+  cosine = TRUE,
+  jaccard = TRUE,
+  dice = TRUE,
+  apex = TRUE,
+  minfo = TRUE,
+  bayesian = TRUE,
+  wcc = TRUE,
+  euclidean = TRUE,
+  manhattan = TRUE,
+  canberra = TRUE,
+  avg.distance = TRUE,
+  rept = 10,
+  corr_removal = FALSE,
+  corr_cutoff = 0.5,
+  classifier = c("glm", "svmRadial", "ranger"),
+  verboseIter = TRUE,
+  cv_fold = 5,
+  plots = FALSE,
+  subcellular_mtPPI = FALSE,
+  organism = "mouse",
+  csize = 3,
+  d = 0.3,
+  p = 2,
+  max_overlap = 0.8,
+  inflation = 9
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A data matrix with rows including proteins and fractions
+along the columns. see <code>exampleData</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>refcpx</code></td>
+<td>
+<p>A list of known reference complexes.
+see <code>getCPX</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tpath</code></td>
+<td>
+<p>A character string indicating the path to the project
+directory. If the directory is
+missing, it will be stored in the Temp directory.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data_processing</code></td>
+<td>
+<p>If TRUE, removes proteins for which peptide only
+detected in one fraction (i.e., "one-hit-wonders") across the
+co-elution table, common contaminants (e.g., keratins) only for mouse
+and human organisms and frequent flyers. Defaults to TRUE.
+See <code>data_filtering</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data_imputing</code></td>
+<td>
+<p>if TRUE, imputes missing values in protein elution
+profile matrix via average of adjacent rows. This function is
+not applicable for missing values present in the first or last column.
+Defaults to TRUE. See <code>impute_MissingData</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scaling</code></td>
+<td>
+<p>If TRUE, performs column and row-wise normalization.
+Defaults to TRUE. See <code>scaling</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keepMT</code></td>
+<td>
+<p>if TRUE, removes all the non-mitochondrial proteins by
+mapping the co-eluted proteins from chromatography fractions to MitoCarta
+database. Note that this function is only applicable to
+mouse or human organisms.Defaults to FALSE. See <code>keepMT</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pcc</code></td>
+<td>
+<p>If TRUE, computes pairwise protein profile similarity
+using Pearson correlation metric. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>PCCN</code></td>
+<td>
+<p>If TRUE, computes pairwise protein profile similarity using
+Pearson correlation plus noise. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pcc_p</code></td>
+<td>
+<p>If TRUE, computes P-value of the Pearson correlation.
+Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spearman</code></td>
+<td>
+<p>if TRUE, computes pairwise protein profile similarity using
+spearman correlation. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kendall</code></td>
+<td>
+<p>if TRUE, computes pairwise protein profile similarity using
+kendall correlation. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bicor</code></td>
+<td>
+<p>if TRUE, computes pairwise protein profile similarity using
+biweight midcorrealtion (bicor) correlation. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weighted_rank</code></td>
+<td>
+<p>if TRUE, computes pairwise protein profile similarity
+using weighted rank measure. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cosine</code></td>
+<td>
+<p>If TRUE, computes pairwise protein profile similarity
+using cosine metric. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>jaccard</code></td>
+<td>
+<p>If TRUE, computes pairwise protein profile similarity
+using jaccard metric. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dice</code></td>
+<td>
+<p>if TRUE, computes pairwise protein profile similarity
+using dice measure. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>apex</code></td>
+<td>
+<p>If TRUE, computes pairwise protein profile similarity
+using apex. Defaults to TRUE. See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>minfo</code></td>
+<td>
+<p>If TRUE, computes pairwise protein profile similarity
+using mutual information. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bayesian</code></td>
+<td>
+<p>If TRUE, computes pairwise protein profile similarity using
+Bayes correlation based on zero-count distribution. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wcc</code></td>
+<td>
+<p>If TRUE, computes pairwise protein profile similarity
+using weighted cross correlation. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>euclidean</code></td>
+<td>
+<p>if TRUE, computes pairwise protein profile similarity
+using euclidean measure. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>manhattan</code></td>
+<td>
+<p>if TRUE, computes pairwise protein profile similarity
+using manhattan measure. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>canberra</code></td>
+<td>
+<p>if TRUE, computes pairwise protein profile similarity
+using canberra measure. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>avg.distance</code></td>
+<td>
+<p>if TRUE, computes pairwise protein profile similarity
+using avg.distance measure. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rept</code></td>
+<td>
+<p>Poisson iterations, defaults to 10. Defaults to TRUE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>corr_removal</code></td>
+<td>
+<p>If TRUE, removes protein pairs with
+correlation scores &lt; the user defined threshold; defaults to FALSE.
+See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>corr_cutoff</code></td>
+<td>
+<p>user defined threshold for correlation similarity
+scores. Defaults to 0.5.See <code>calculate_PPIscore</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>classifier</code></td>
+<td>
+<p>The type of classifier to use for ensemble or
+individual model. See <code>caret</code> for the available classifiers.
+Defaults to c("glm", "svmRadial", "ranger").
+See <code>ensemble_model</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verboseIter</code></td>
+<td>
+<p>Logical value, indicating whether to check the status
+of training process;defaults to FALSE. See <code>ensemble_model</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cv_fold</code></td>
+<td>
+<p>Number of partitions for cross-validation; defaults to 5.
+See <code>ensemble_model</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plots</code></td>
+<td>
+<p>Logical value, indicating whether to plot the performance
+of the learning algorithm using k-fold cross-validation;
+defaults to FALSE. These plots are :
+</p>
+ <ul>
+<li>
+<p>pr_plot - Precision-recall PLOT
+</p>
+</li>
+<li>
+<p>roc_plot - ROC plot
+</p>
+</li>
+<li>
+<p>point_plot - Point plot showing accuracy,
+F1-score , positive predictive value (PPV), sensitivity (SE) and MCC.</p>
+</li>
+</ul>
+<p>See <code>ensemble_model</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subcellular_mtPPI</code></td>
+<td>
+<p>if TRUE, removes PPIs occurring between outer mt
+membrane (OMM) and matrix, between intermembrane space (IMS) and matrix,
+as well as between any subcellular mt compartment (except OMM) and
+cytosolic proteins as they deemed to be erroneous. Defaults to FALSE.
+See <code>subcellular.mtPPI</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>organism</code></td>
+<td>
+<p>Organism under study (i.e., mouse or human).
+Defaults to mouse. See <code>subcellular.mtPPI</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>csize</code></td>
+<td>
+<p>An integer, the minimum size of the predicted complexes.
+Defaults to 2. See <code>get_clusters</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>d</code></td>
+<td>
+<p>A number, density of predicted complexes. Defaults to 0.3.
+See <code>get_clusters</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>An integer, penalty value for the inclusion of each node.
+Defaults to 2.
+See <code>get_clusters</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_overlap</code></td>
+<td>
+<p>A number, specifies the maximum allowed
+overlap between two clusters. Defaults to 0.8.
+See <code>get_clusters</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inflation</code></td>
+<td>
+<p>MCL inflation parameter. Defaults to 9.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>predPPI_MACP
+</p>
+
+
+<h3>Value</h3>
+
+<p>Return following data sets in the current directory including:
+</p>
+
+<ul>
+<li>
+<p>unfilteredPPIs - Unfiltered interactions
+</p>
+</li>
+<li>
+<p>filteredPPI - High-confidence interactions
+defined by ROC threshold.
+</p>
+</li>
+<li>
+<p>High_confidence interactions_with_mt_sublocalization - if
+subcellular.mtPPI is TRUE, it return high-confidene PPIs with mt
+sublocalization status.
+</p>
+</li>
+<li>
+<p>predicted_cpx_clusterONE - Putative complexes generated
+by clusterONE.
+</p>
+</li>
+<li>
+<p>predicted_cpx_clusterONE_MCL - Putative complexes generated
+by clusterONE and MCL.
+</p>
+</li>
+<li>
+<p>Best_roc_curve_cutoff - Best cutoff generated from ROC curve.</p>
+</li>
+</ul>
+</div>

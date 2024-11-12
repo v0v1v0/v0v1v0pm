@@ -1,0 +1,248 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>getRaster</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>NWP forecasts for a region</h2>
+
+<h3>Description</h3>
+
+<p>The <code>getRaster*</code> functions get outputs of the NWP models for a region.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">
+getRaster(var = "swflx", day = Sys.Date(), run = "00",
+          frames = 'complete', box, resolution = NULL,
+          names, remote = TRUE, service = mfService(),
+          dataDir = ".", use00H = FALSE, ...)
+
+getRasterDays(var = "swflx", start = Sys.Date(), end,
+              remote = TRUE, dataDir = ".", ...)
+
+getRasterDay(var = "swflx", day = Sys.Date(),
+              remote = TRUE, dataDir = ".", ...)
+
+checkDays(start, end, vars, remote = FALSE,
+          service = mfService(), dataDir = '.')
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>var, vars</code></td>
+<td>
+<p>Character. The name of the variable (or variables in <code>checkDays</code>) to retrieve. Use <code>grepVar</code> to know what variables are available in each service.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>day</code></td>
+<td>
+<p>Date or character. In <code>getRaster</code> it defines the day when the forecast was produced. In <code>getRasterDay</code> it defines the day to be forecast.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>run</code></td>
+<td>
+<p>Character. For example, the meteogalicia service executes the model at OOUTC and 12UTC. Therefore <code>run</code> can be '00' or '12'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p>Date or character. First day of the time period to retrieve.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>end</code></td>
+<td>
+<p>Date or character. Last day of the time period to retrieve.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>frames</code></td>
+<td>
+<p>Numeric. It defines the number of hourly forecasts (frames) to retrieve. If <code>frames = 'complete'</code>, the full set of frames is downloaded. For example, the meteogalicia service produces 96 hourly forecasts (frames) with <code>run='00'</code> and 84 frames with <code>run='12'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>box</code></td>
+<td>
+<p>The bounding box, defined using longitude and latitude values. A <code>Extent</code> or an object that can be coerced to that class with <code>extent</code>: a 2x2 matrix (first row: xmin, xmax; second row: ymin, ymax), vector (length=4; order= xmin, xmax, ymin, ymax) or list (with at least two elements, with names 'x' and 'y'). </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resolution</code></td>
+<td>
+<p>Numeric. Resolution in kilometers of the raster. Valid choices are 4, 12, and 36. It is only used with <code>service = 'meteogalicia'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>names</code></td>
+<td>
+<p>Character. Names of the layers of the resulting <code>RasterBrick</code>. If missing, a predefined vector is assigned the combination of day and hour.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>remote</code></td>
+<td>
+<p>Logical. If <code>TRUE</code> (default) data is downloaded from the remote service. If <code>FALSE</code> the <code>RasterBrick</code> is produced with the files available in the local folder.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>service</code></td>
+<td>
+<p>Character, which service to use, 'meteogalicia', 'gfs', 'nam' or 'rap'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use00H</code></td>
+<td>
+<p>Logical. Only used when <code>service</code> is 'gfs', 'nam', or 'rap'. If <code>FALSE</code> (default), the first frame of each run or 00H "forecast" is not considered. This first frame is only produced for some variables. Therefore, with <code>use00H = TRUE</code> fewer frames that the number defined with <code>frames</code> could be obtained for some variables.)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dataDir</code></td>
+<td>
+<p>Character, path of the folder where files are stored (if <code>remote = 'FALSE'</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments. Not used in <code>getRaster</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>getRaster</code> downloads data from the MeteoGalicia and NCDC (GFS,
+RAP, and NAM) servers using the NetCDF Subset Service. The result is returned as a <code>RasterBrick</code> object, with one or more NetCDF files stored in the temporary folder (as defined by <code>tempdir()</code>). Each frame or layer of the <code>RasterBrick</code> corresponds to a certain hour of the forecast.
+</p>
+<p><code>getRasterDay</code> uses <code>getRaster</code> to download the results corresponding to a certain <code>day</code>. If the <code>day</code> is in the future, the most recent forecast is downloaded with <code>getRaster</code>, and the corresponding frames are extracted. If the <code>day</code> is in the past, <code>getRaster</code> is used to download the corresponding frames of the forecast produced that day.
+</p>
+<p><code>getRasterDays</code> uses <code>getRaster</code> to download the results cast each day comprised between <code>start</code> and <code>end</code> using the 00UTC run. Then it subsets the first 24 frames of each result, and binds them together to produce a <code>RasterBrick</code>. Therefore, each frame of this <code>RasterBrick</code> is a forecast for an hour of the day when the forecast was cast.
+</p>
+<p><code>checkDays</code> explores a local folder looking for NetCDF files corresponding to a time sequence and a set of variables. It returns a <code>Date</code> vector comprising the days with files available for the requested variables. If <code>remote = TRUE</code> it only checks that <code>start</code> is after 2008-01-01 (first date of the archived forecasts of MeteoGalicia.)  </p>
+
+
+<h3>Value</h3>
+
+<p>The <code>getRaster*</code> functions return a <code>RasterBrick</code> with a layer for each hour of the NWP forecast.
+</p>
+<p>The time zone of the time index of this <code>RasterBrick</code>, stored in its <code>z</code> slot (accesible with <code>getZ</code>) is UTC.
+</p>
+<p>MeteoGalicia, NAM, and RAP use the Lambert Conic Conformal projection. GFS files use longitude-latitude coordinates.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Oscar Perpiñán with contributions from Marcelo Almeida.
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://mandeo.meteogalicia.es/thredds/catalogos/WRF_2D/catalog.html">https://mandeo.meteogalicia.es/thredds/catalogos/WRF_2D/catalog.html</a>
+</p>
+<p><a href="https://mandeo.meteogalicia.es/thredds/catalog/gfs_0p25/fmrc/catalog.html">https://mandeo.meteogalicia.es/thredds/catalog/gfs_0p25/fmrc/catalog.html</a>
+</p>
+<p><a href="https://www.ncei.noaa.gov/thredds/catalog/model-nam218/catalog.html">https://www.ncei.noaa.gov/thredds/catalog/model-nam218/catalog.html</a>
+</p>
+<p><a href="https://www.ncei.noaa.gov/thredds/catalog/model-rap130/catalog.html">https://www.ncei.noaa.gov/thredds/catalog/model-rap130/catalog.html</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+
+## If some of the next examples do not work, try using a different
+## date. Check availability for each service with the links included in
+## the references section.
+
+testDay &lt;- Sys.Date() - 1
+
+## Retrieve raster data
+wrf &lt;- getRaster('temp', day = testDay)
+
+## Display results with rasterVis
+library(rasterVis)
+
+levelplot(wrf, layers = 10:19)
+
+hovmoller(wrf)
+
+## Using box and frames specification
+mfExtent('gfs')
+
+cloudGFS &lt;- getRaster('Temperature_surface',
+                      day = testDay,
+                      box = c(-30, 30, 30, 50),
+                      service = 'gfs')
+
+levelplot(cloudGFS, layout = c(1, 1))
+
+mfExtent('nam')
+cloudNAM &lt;- getRaster('Temperature_surface',
+                      day = testDay,
+                      box = c(-100, -80, 30, 50),
+                      frames = 10,
+                      service = 'nam')
+mfExtent('rap')
+cloudRAP &lt;- getRaster('Temperature_surface',
+                      day = testDay,
+                      box = c(-100, -80, 30, 50),
+                      frames = 10,
+                      service = 'rap')
+
+
+## Day sequence of cloud cover
+wrfDays &lt;- getRasterDays('cft',
+                         start = testDay - 3,
+                         end = testDay + 2,
+                         box = c(-2, 35, 2, 40))
+
+levelplot(wrfDays, layers = 10:19)
+
+## animation
+levelplot(wrfDays, layout = c(1, 1), par.settings = BTCTheme)
+
+## Hövmoller graphic
+hovmoller(wrfDays, par.settings = BTCTheme, contour = TRUE, cuts = 10)
+
+NAMDays &lt;- getRasterDays('Temperature_surface',
+                         start = testDay - 3,
+                         end = testDay,
+                         box = c(-100, -80, 30, 50),
+                         service = 'nam')
+
+## Extract data at some locations
+
+st &lt;- data.frame(name=c('Almeria','Granada','Huelva','Malaga','Caceres'),
+               elev=c(42, 702, 38, 29, 448))
+
+coordinates(st) &lt;- cbind(c(-2.46, -3.60, -6.94, -4.42, -6.37),
+                         c(36.84, 37.18, 37.26, 36.63, 39.47)
+                         )
+proj4string(st) &lt;- '+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0'
+
+
+## Extract values for some locations
+vals &lt;- extract(wrf, st)
+vals &lt;- zoo(t(vals), getZ(wrf))
+names(vals) &lt;- st$name
+
+xyplot(vals)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

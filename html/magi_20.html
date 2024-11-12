@@ -1,0 +1,224 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MagiSolver</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MAnifold-constrained Gaussian process Inference (MAGI)</h2>
+
+<h3>Description</h3>
+
+<p>Core function of the MAGI method for inferring the parameters and trajectories of dynamic systems governed by ordinary differential equations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MagiSolver(y, odeModel, tvec, control = list())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>data matrix of observations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>odeModel</code></td>
+<td>
+<p>list of ODE functions and inputs. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tvec</code></td>
+<td>
+<p>vector of discretization time points corresponding to rows of <code>y</code>.  If missing, <code>MagiSolver</code> will use the column named 'time' in <code>y</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>list of control variables, which may include 'sigma', 'phi', 'theta', 'xInit', 'mu', 'dotmu', 'priorTemperature', 'niterHmc',
+'nstepsHmc', 'burninRatio', 'stepSizeFactor', 'bandSize', 'useFixedSigma', 'kerneltype', 'skipMissingComponentOptimization', 'positiveSystem', 'verbose'.  See details.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The data matrix <code>y</code> has a column for each system component, and optionally a column 'time' with the discretization time points. If the column 'time' is not provided in <code>y</code>, a vector of time points must be provided via the <code>tvec</code> argument. The rows of <code>y</code> correspond to the discretization set <code class="reqn">I</code> at which the GP is constrained to the derivatives of the ODE system. To set the desired discretization level for inference, use <code>setDiscretization</code> to prepare the data matrix for input into <code>MagiSolver</code>. Missing observations are indicated with <code>NA</code> or <code>NaN</code>.
+</p>
+<p>The list <code>odeModel</code> is used for specification of the ODE system and its parameters. It must include five elements:
+</p>
+
+<dl>
+<dt><code>fOde</code></dt>
+<dd>
+<p>function that computes the ODEs, specified with the form <code>f(theta, x, tvec)</code>. <code>fOde</code> should return a matrix where columns correspond to the system components of <code>x</code>, see examples.</p>
+</dd>
+<dt><code>fOdeDx</code></dt>
+<dd>
+<p>function that computes the gradients of the ODEs with respect to the system components. <code>fOdeDx</code> should return a 3-D array, where the slice <code>[, i, j]</code> is the partial derivative of the ODE for the j-th system component with respect to the i-th system component, see examples.</p>
+</dd>
+<dt><code>fOdeDtheta</code></dt>
+<dd>
+<p>function that computes the gradients of the ODEs with respect to the parameters <code class="reqn">\theta</code>. <code>fOdeDtheta</code> should return a 3-D array, where the slice <code>[, i, j]</code> is the partial derivative of the ODE for the j-th system component with respect to the i-th parameter in <code class="reqn">\theta</code>, see examples.</p>
+</dd>
+<dt><code>thetaLowerBound</code></dt>
+<dd>
+<p>a vector indicating the lower bounds of each parameter in <code class="reqn">\theta</code>.</p>
+</dd>
+<dt><code>thetaUpperBound</code></dt>
+<dd>
+<p>a vector indicating the upper bounds of each parameter in <code class="reqn">\theta</code>.</p>
+</dd>
+</dl>
+<p>Additional control variables can be supplied to <code>MagiSolver</code> via the optional list <code>control</code>, which may include the following:
+</p>
+
+<dl>
+<dt><code>sigma</code></dt>
+<dd>
+<p>a vector of noise levels (observation noise standard deviations) <code class="reqn">\sigma</code> for each component, at which to initialize MCMC sampling.  By default, <code>MagiSolver</code> computes starting values for <code>sigma</code> via Gaussian process (GP) smoothing. If the noise levels are known, specify <code>sigma</code> together with <code>useFixedSigma = TRUE</code>.</p>
+</dd>
+<dt><code>phi</code></dt>
+<dd>
+<p>a matrix of GP hyper-parameters for each component, with rows for the kernel hyper-parameters and columns for the system components. By default, <code>MagiSolver</code> estimates <code>phi</code> via an optimization routine.</p>
+</dd>
+<dt><code>theta</code></dt>
+<dd>
+<p>a vector of starting values for the parameters <code class="reqn">\theta</code>, at which to initialize MCMC sampling. By default, <code>MagiSolver</code> uses an optimization routine to obtain starting values.</p>
+</dd>
+<dt><code>xInit</code></dt>
+<dd>
+<p>a matrix of values for the system trajectories of the same dimension as <code>y</code>, at which to initialize MCMC sampling. Default is linear interpolation between the observed (non-missing) values of <code>y</code> and an optimization routine for entirely unobserved components of <code>y</code>.</p>
+</dd>
+<dt><code>mu</code></dt>
+<dd>
+<p>a matrix of values for the mean function of the GP prior, of the same dimension as <code>y</code>. Default is a zero mean function.</p>
+</dd>
+<dt><code>dotmu</code></dt>
+<dd>
+<p>a matrix of values for the derivatives of the GP prior mean function, of the same dimension as <code>y</code>. Default is zero.</p>
+</dd>
+<dt><code>priorTemperature</code></dt>
+<dd>
+<p>the tempering factor by which to divide the contribution of the GP prior, to control the influence of the GP prior relative to the likelihood. Default is the total number of observations divided by the total number of discretization points.</p>
+</dd>
+<dt><code>niterHmc</code></dt>
+<dd>
+<p>MCMC sampling from the posterior is carried out via the Hamiltonian Monte Carlo (HMC) algorithm. <code>niterHmc</code> specifies the number of HMC iterations to run.  Default is 20000 HMC iterations.</p>
+</dd>
+<dt><code>nstepsHmc</code></dt>
+<dd>
+<p>the number of leapfrog steps per HMC iteration. Default is 200.</p>
+</dd>
+<dt><code>burninRatio</code></dt>
+<dd>
+<p>the proportion of HMC iterations to be discarded as burn-in. Default is 0.5, which discards the first half of the MCMC samples.</p>
+</dd>
+<dt><code>stepSizeFactor</code></dt>
+<dd>
+<p>initial leapfrog step size factor for HMC. Can be a specified as a scalar (applied to all posterior dimensions) or a vector (with length corresponding to the dimension of the posterior). Default is 0.01, and the leapfrog step size is automatically tuned during burn-in to achieve an acceptance rate between 60-90%.</p>
+</dd>
+<dt><code>bandSize</code></dt>
+<dd>
+<p>a band matrix approximation is used to speed up matrix operations, with default band size 20. Can be increased if <code>MagiSolver</code> returns an error indicating numerical instability.</p>
+</dd>
+<dt><code>useFixedSigma</code></dt>
+<dd>
+<p>logical, set to <code>TRUE</code> if <code>sigma</code> is known.  If <code>useFixedSigma = TRUE</code>, the known values of <code class="reqn">\sigma</code> must be supplied via the <code>sigma</code> control variable. Default is <code>FALSE</code>.</p>
+</dd>
+<dt><code>kerneltype</code></dt>
+<dd>
+<p>the GP covariance kernel, <code>generalMatern</code> is the default and recommended choice. Other available choices are <code>matern</code>, <code>rbf</code>, <code>compact1</code>, <code>periodicMatern</code>. See <code>calCov</code> for their definitions.</p>
+</dd>
+<dt><code>skipMissingComponentOptimization</code></dt>
+<dd>
+<p>logical, set to <code>TRUE</code> to skip automatic optimization for missing components. If <code>skipMissingComponentOptimization = TRUE</code>, values for <code>xInit</code> and <code>phi</code> must be supplied for all system components. Default is <code>FALSE</code>.</p>
+</dd>
+<dt><code>positiveSystem</code></dt>
+<dd>
+<p>logical, set to <code>TRUE</code> if the system cannot be negative. Default is <code>FALSE</code>.</p>
+</dd>
+<dt><code>verbose</code></dt>
+<dd>
+<p>logical, set to <code>TRUE</code> to output diagnostic and progress messages to the console. Default is <code>FALSE</code>.</p>
+</dd>
+</dl>
+<h3>Value</h3>
+
+<p><code>MagiSolver</code> returns an object of class <code>magioutput</code> which contains the following elements:
+</p>
+
+<dl>
+<dt><code>theta</code></dt>
+<dd>
+<p>matrix of MCMC samples for the system parameters <code class="reqn">\theta</code>, after burn-in.</p>
+</dd>
+<dt><code>xsampled</code></dt>
+<dd>
+<p>array of MCMC samples for the system trajectories at each discretization time point, after burn-in.</p>
+</dd>
+<dt><code>sigma</code></dt>
+<dd>
+<p>matrix of MCMC samples for the observation noise SDs <code class="reqn">\sigma</code>, after burn-in.</p>
+</dd>
+<dt><code>phi</code></dt>
+<dd>
+<p>matrix of estimated GP hyper-parameters, one column for each system component.</p>
+</dd>
+<dt><code>lp</code></dt>
+<dd>
+<p>vector of log-posterior values at each MCMC iteration, after burn-in.</p>
+</dd>
+<dt><code>y, tvec, odeModel</code></dt>
+<dd>
+<p>from the inputs to <code>MagiSolver</code>.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Wong, S. W. K., Yang, S., &amp; Kou, S. C. (2024). 'magi': A Package for Inference of Dynamic Systems from Noisy and Sparse Data via Manifold-Constrained Gaussian Processes. *Journal of Statistical Software*, 109 (4), 1-47. <a href="https://doi.org/10.18637/jss.v109.i04">doi:10.18637/jss.v109.i04</a>
+</p>
+<p>Yang, S., Wong, S. W. K., &amp; Kou, S. C. (2021). Inference of Dynamic Systems from Noisy and 
+Sparse Data via Manifold-constrained Gaussian Processes. *Proceedings of the National Academy of Sciences*, 118 (15), e2020397118. <a href="https://doi.org/10.1073/pnas.2020397118">doi:10.1073/pnas.2020397118</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Set up odeModel list for the Fitzhugh-Nagumo equations
+fnmodel &lt;- list(
+  fOde = fnmodelODE,
+  fOdeDx = fnmodelDx,
+  fOdeDtheta = fnmodelDtheta,
+  thetaLowerBound = c(0, 0, 0),
+  thetaUpperBound = c(Inf, Inf, Inf)
+)
+
+# Example noisy data observed from the FN system
+data(FNdat)
+
+# Set discretization for a total of 81 equally-spaced time points from 0 to 20
+yinput &lt;- setDiscretization(FNdat, by = 0.25)
+
+# Run MagiSolver
+# Short sampler run for demo only, more iterations needed for convergence
+MagiSolver(yinput, fnmodel, control = list(nstepsHmc = 5, niterHmc = 101))
+
+# Use 3000 HMC iterations with 100 leapfrog steps per iteration
+FNres &lt;- MagiSolver(yinput, fnmodel, control = list(nstepsHmc = 100, niterHmc = 3000))
+# Summary of parameter estimates
+summary(FNres)
+# Plot of inferred trajectories
+plot(FNres, comp.names = c("V", "R"), xlab = "Time", ylab = "Level")
+
+
+</code></pre>
+
+
+</div>

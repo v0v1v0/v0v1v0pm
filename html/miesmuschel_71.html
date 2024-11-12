@@ -1,0 +1,114 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mies_get_fitnesses</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Get Fitness Values from OptimInstance</h2>
+
+<h3>Description</h3>
+
+<p>Get fitness values in the correct form as used by <code>Selector</code> operators from an
+<code>OptimInstance</code>.
+This works for both single-criterion and multi-criterion optimization, and entails multiplying
+objectives with -1 if they are being minimized, since <code>Selector</code> tries to maximize fitness.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mies_get_fitnesses(inst, rows)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>inst</code></td>
+<td>
+<p>(<code>OptimInstance</code>)<br>
+Optimization instance to evaluate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rows</code></td>
+<td>
+<p>optional (<code>integer</code>)<br>
+Indices of rows within <code>inst</code> to consider. If this is not given, then the entire archive is used.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>numeric</code> <code>matrix</code> with <code>length(rows)</code> (if <code>rows</code> is given, otherwise <code>nrow(inst$archive$data)</code>) rows
+and one column for each objective: fitnesses to be maximized.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other mies building blocks: 
+<code>mies_evaluate_offspring()</code>,
+<code>mies_generate_offspring()</code>,
+<code>mies_init_population()</code>,
+<code>mies_select_from_archive()</code>,
+<code>mies_step_fidelity()</code>,
+<code>mies_survival_comma()</code>,
+<code>mies_survival_plus()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(1)
+library("bbotk")
+lgr::threshold("warn")
+
+# Define the objective to optimize
+objective &lt;- ObjectiveRFun$new(
+  fun = function(xs) {
+    z &lt;- exp(-xs$x^2 - xs$y^2) + 2 * exp(-(2 - xs$x)^2 - (2 - xs$y)^2)
+    list(Obj = z)
+  },
+  domain = ps(x = p_dbl(-2, 4), y = p_dbl(-2, 4)),
+  codomain = ps(Obj = p_dbl(tags = "maximize"))
+)
+
+# Get a new OptimInstance
+oi &lt;- OptimInstanceSingleCrit$new(objective,
+  terminator = trm("evals", n_evals = 100)
+)
+
+mies_init_population(inst = oi, mu = 3)
+
+oi$archive
+
+mies_get_fitnesses(oi, c(2, 3))
+
+###
+# Multi-objective, and automatic maximization:
+objective2 &lt;- ObjectiveRFun$new(
+  fun = function(xs) list(Obj1 = xs$x^2, Obj2 = -xs$y^2),
+  domain = ps(x = p_dbl(-2, 4), y = p_dbl(-2, 4)),
+  codomain = ps(
+    Obj1 = p_dbl(tags = "minimize"),
+    Obj2 = p_dbl(tags = "maximize")
+  )
+)
+# Using MultiCrit!
+oi &lt;- OptimInstanceMultiCrit$new(objective2,
+  terminator = trm("evals", n_evals = 100)
+)
+
+mies_init_population(inst = oi, mu = 3)
+
+oi$archive
+
+# Note Obj1 has a different sign than in the archive.
+mies_get_fitnesses(oi, c(2, 3))
+
+</code></pre>
+
+
+</div>

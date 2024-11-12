@@ -1,0 +1,181 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mp_corpus</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Get documents from the Manifesto Corpus Database</h2>
+
+<h3>Description</h3>
+
+<p>Documents are downloaded from the Manifesto Project Corpus Database. If 
+CMP coding annotations are available, they are attached to the documents,
+otherwise raw texts are provided. The documents are cached in the working
+memory to ensure internal consistency, enable offline use and
+reduce online traffic.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mp_corpus(
+  ids,
+  apikey = NULL,
+  cache = TRUE,
+  codefilter = NULL,
+  codefilter_layer = "cmp_code",
+  translation = NULL,
+  as_tibble = FALSE,
+  tibble_metadata = "simplified"
+)
+
+mp_corpus_df(
+  ids,
+  apikey = NULL,
+  cache = TRUE,
+  codefilter = NULL,
+  codefilter_layer = "cmp_code",
+  translation = NULL,
+  tibble_metadata = "simplified"
+)
+
+mp_corpus_df_bilingual(
+  ids,
+  apikey = NULL,
+  cache = TRUE,
+  codefilter = NULL,
+  codefilter_layer = "cmp_code",
+  translation = "en",
+  tibble_metadata = "simplified"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>ids</code></td>
+<td>
+<p>Information on which documents to get. This can either be a
+list of partys (as ids) and dates of elections as given to
+<code>mp_metadata</code> or a <code>ManifestoMetadata</code> object
+(<code>data.frame</code>) as returned by <code>mp_metadata</code>.
+Alternatively, ids can be a logical expression specifying a subset of
+the Manifesto Project's main dataset. It will be evaluated within the
+data.frame returned by <code>mp_maindataset</code> such that all its
+variables and functions thereof can be used in the expression.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>apikey</code></td>
+<td>
+<p>API key to use. Defaults to <code>NULL</code>, resulting in using
+the API key set via <code>mp_setapikey</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cache</code></td>
+<td>
+<p>Boolean flag indicating whether to use locally cached data if
+available.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>codefilter</code></td>
+<td>
+<p>A vector of CMP codes to filter the documents: only quasi-sentences
+with the codes specified in <code>codefilter</code> are returned. If <code>NULL</code>,
+no filtering is applied</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>codefilter_layer</code></td>
+<td>
+<p>layer to which the codefilter should apply, defaults to cmp_code</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>translation</code></td>
+<td>
+<p>A string containing the two digit ISO code of a translation language
+that should be used for the text instead of the original document language.
+Defaults to <code>NULL</code>, resulting in the original language of a document. For
+documents that are already originally in the requested translation language, it
+returns the original text. English would be "en".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>as_tibble</code></td>
+<td>
+<p>Boolean flag indicating whether to return a tibble/data.frame object
+instead of a ManifestoCorpus object, for backward compatibility defaults to FALSE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tibble_metadata</code></td>
+<td>
+<p>A string specifing the handling of document-level metadata when
+using 'as_tibble' = TRUE. It can be one of the following values:
+"none" = no metadata,
+"simplified" = basic metadata ("manifesto_id", "party", "date", "language", "annotations", "translation_en"),
+"all" = all metadata,
+defaults to "simplified"</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>'mp_corpus_df' is a shorthand for getting the documents of the Manifesto Corpus
+as a tibble/data.frame object instead of a ManifestoCorpus object. It takes
+the same parameters as 'mp_corpus'
+(it is equivalent to <code>mp_corpus(..., as_tibble = TRUE)</code>).
+See <code>mp_save_cache</code> for ensuring reproducibility by
+saving cache and version identifier to the hard drive.
+See <code>mp_update_cache</code> for updating the locally saved content with
+the most recent version from the Manifesto Project Database API.
+</p>
+<p>'mp_corpus_df_bilingual' is a shorthand for getting the original text and the english
+translations (or in case further translation languages become available also other
+translation languages than english) from the Manifesto Corpus as a tibble/data.frame
+object. The original text ends up in the "text" column and the english translation in
+"text_en" (or more abstract in case of further translation languages in a column
+named "text_&lt;two digit ISO language code&gt;"). It accepts the same additional parameters
+as 'mp_corpus_df'.
+</p>
+
+
+<h3>Value</h3>
+
+<p>an object of <code>Corpus</code>'s subclass
+<code>ManifestoCorpus</code> holding the available of the requested documents
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+corpus &lt;- mp_corpus(party == 61620 &amp; rile &gt; 10)
+
+wanted &lt;- data.frame(party=c(41320, 41320), date=c(200909, 201309))
+mp_corpus(wanted)
+
+mp_corpus(subset(mp_maindataset(), countryname == "France"))
+
+partially_available &lt;- data.frame(party=c(41320, 41320), date=c(200909, 200509))
+mp_corpus(partially_available)
+
+corpus_df &lt;- mp_corpus(party == 61620 &amp; rile &gt; 10, as_tibble = TRUE)
+corpus_df &lt;- mp_corpus_df(party == 61620 &amp; rile &gt; 10)
+corpus_df &lt;- mp_corpus_df(party == 61620 &amp; rile &gt; 10, tibble_metadata = "all")
+
+mp_corpus(wanted, translation = "en")
+mp_corpus_df(wanted, translation = "en")
+
+mp_corpus_df_bilingual(wanted, translation = "en")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

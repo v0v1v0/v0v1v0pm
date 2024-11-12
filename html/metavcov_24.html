@@ -1,0 +1,154 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>rd.vcov</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Computing Variance-Covariance Matrices for Risk Differences</h2>
+
+<h3>Description</h3>
+
+<p>The function <code>lgOR.vcov</code> computes effect sizes and variance-covariance matrix for multivariate meta-analysis when the effect sizes of interest are all measured by risk difference. See <code>mix.vcov</code> for effect sizes of the same or different types.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">rd.vcov(r, nt, nc, st, sc, n_rt = NA, n_rc = NA)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>r</code></td>
+<td>
+<p> A <code class="reqn">N</code>-dimensional list of <code class="reqn">p \times p</code> correlation matrices for the <code class="reqn">p</code> outcomes from the <code class="reqn">N</code> studies. <code>r[[k]][i,j]</code> is the correlation coefficient between outcome <code class="reqn">i</code> and outcome <code class="reqn">j</code> from study <code class="reqn">k</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nt </code></td>
+<td>
+<p> A <code class="reqn">N \times p</code> matrix storing sample sizes in the treatment group reporting the  <code class="reqn">p</code> outcomes. <code>nt[i,j]</code> is the sample size from study <code class="reqn">i</code> reporting outcome <code class="reqn">j</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nc </code></td>
+<td>
+<p> A matrix defined in a similar way as <code>nt</code> for the control group.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>st </code></td>
+<td>
+<p> A <code class="reqn">N \times p</code> matrix recording number of participants with event for all outcomes (dichotomous) in treatment group. <code>st[i,j]</code> reports number of participants with event for outcome <code class="reqn">j</code> in treatment group for study <code class="reqn">i</code>. If outcome <code class="reqn">j</code> is not dichotomous, NA has to be imputed in column <code class="reqn">j</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sc </code></td>
+<td>
+<p> Defined in a similar way as <code>st</code> for the control group.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_rt </code></td>
+<td>
+<p>A <code class="reqn">N</code>-dimensional list of <code class="reqn">p \times p</code> matrices storing sample sizes in the treatment group reporting pairwise outcomes in the off-diagonal elements. <code>n_rt[[k]][i,j]</code> is the sample size reporting both outcome <code class="reqn">i</code> and outcome <code class="reqn">j</code> from study <code class="reqn">k</code>. Diagonal elements of these matrices are discarded. The default value is <code>NA</code>, which means that the smaller sample size reporting the corresponding two outcomes is imputed: i.e. <code>n_rt[[k]][i,j]=min(nt[k,i],nt[k,j])</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_rc </code></td>
+<td>
+<p> A list defined in a similar way as <code>n_rt</code> for the control group.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code> ef</code></td>
+<td>
+<p>A <code class="reqn">N \times p</code> data frame whose columns are computed risk differences.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>list.vcov </code></td>
+<td>
+<p> A <code class="reqn">N</code>-dimensional list of <code class="reqn">p(p+1)/2 \times p(p+1)/2</code> matrices of computed variance-covariance matrices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>matrix.vcov </code></td>
+<td>
+<p> A <code class="reqn">N \times p(p+1)/2</code> matrix whose rows are computed variance-covariance vectors.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Min Lu
+</p>
+
+
+<h3>References</h3>
+
+<p>Lu, M. (2023). Computing within-study covariances, data visualization, and missing data solutions for multivariate meta-analysis with metavcov. <em>Frontiers in Psychology</em>, 14:1185012.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">###########################################################################
+# Example: Geeganage2010 data
+# Preparing risk differences and covariances for multivariate meta-analysis
+###########################################################################
+data(Geeganage2010)
+## set the correlation coefficients list r
+r12 &lt;- 0.71
+r.Gee &lt;- lapply(1:nrow(Geeganage2010), function(i){matrix(c(1, r12, r12, 1), 2, 2)})
+
+
+computvcov &lt;- rd.vcov(nt = subset(Geeganage2010, select = c(nt_DD, nt_D)),
+                      nc = subset(Geeganage2010, select = c(nc_DD, nc_D)),
+                      st = subset(Geeganage2010, select = c(st_DD, st_D)),
+                      sc = subset(Geeganage2010, select = c(sc_DD, sc_D)),
+                      r = r.Gee)
+# name computed relative risk as y
+y &lt;- computvcov$ef
+colnames(y) &lt;- c("rd.DD", "rd.D")
+# name variance-covariance matrix of trnasformed z scores as covars
+S &lt;- computvcov$matrix.vcov
+## fixed-effect model
+MMA_FE &lt;- summary(metafixed(y = y, Slist = computvcov$list.vcov))
+#######################################################################
+# Running random-effects model using package "mixmeta" or "metaSEM"
+#######################################################################
+#library(mixmeta)
+#mvmeta_RE &lt;- summary(mixmeta(cbind(rd.DD, rd.D)~1,
+#                          S = S, data = as.data.frame(y),
+#                          method = "reml"))
+#mvmeta_RE
+
+# maximum likelihood estimators from the metaSEM package
+# library(metaSEM)
+# metaSEM_RE &lt;- summary(meta(y = y, v = S))
+# metaSEM_RE
+##############################################################
+# Plotting the result:
+##############################################################
+obj &lt;- MMA_FE
+# obj &lt;- mvmeta_RE
+# obj &lt;- metaSEM_RE
+# pdf("CI.pdf", width = 4, height = 7)
+plotCI(y = computvcov$ef, v = computvcov$list.vcov,
+        name.y = c("rd.DD", "rd.D"),
+        name.study = Geeganage2010$studyID,
+        y.all = obj$coefficients[,1],
+        y.all.se = obj$coefficients[,2])
+# dev.off()
+</code></pre>
+
+
+</div>

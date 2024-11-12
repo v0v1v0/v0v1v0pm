@@ -1,0 +1,208 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>wKModes</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Weighted K-Modes Clustering with Tie-Breaking</h2>
+
+<h3>Description</h3>
+
+<p>Perform k-modes clustering on categorical data with observation-specific sampling weights and tie-breaking adjustments.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">wKModes(data,
+        modes,
+        weights = NULL,
+        iter.max = .Machine$integer.max,
+        freq.weighted = FALSE,
+        fast = TRUE,
+        random = TRUE,
+        ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A matrix or data frame of categorical data. Objects have to be in rows, variables in columns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modes</code></td>
+<td>
+<p>Either the number of modes or a set of initial (distinct) cluster modes (where each mode is a row and <code>modes</code> has the same number of columns as <code>data</code>). If a number, a random set of (distinct) rows in <code>data</code> is chosen as the initial modes. Note, this randomness is always present, and is not governed by <code>random</code> below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>Optional numeric vector containing non-negative observation-specific case weights.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter.max</code></td>
+<td>
+<p>The maximum number of iterations allowed. Defaults to <code>.Machine$integer.max</code>. The algorithm terminates when <code>iter.max</code> is reached or when the partition ceases to change between iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>freq.weighted</code></td>
+<td>
+<p>A logical indicating whether the usual simple-matching (Hamming) distance between objects is used, or a frequency weighted version of this distance. Defaults to <code>FALSE</code>; when <code>TRUE</code>, the frequency weights are computed within the algorithm and are <em>not</em> user-specified. Distinct from the observation-level <code>weights</code> above, the frequency weights are assigned on a per-feature basis and derived from the categories represented in each column of <code>data</code>. For convenience, the function <code>dist_freqwH</code> is provided for calculating the corresponding pairwise dissimilarity matrix for subsequent use.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fast</code></td>
+<td>
+<p>A logical indicating whether a fast version of the algorithm should be applied. Defaults to <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random</code></td>
+<td>
+<p>A logical indicating whether ties for the modal values &amp;/or assignments are broken at random. Defaults to <code>TRUE</code>: the implied default had been <code>FALSE</code> prior to version <code>1.3.2</code> of this package, as per <code>klaR::kmodes</code> prior to version <code>1.7-1</code> (see Note). Note that when <code>modes</code> is specified as the number of modes, the algorithm is <em>always</em> randomly initialised, regardless of the specification of <code>random</code>.
+</p>
+<p>Regarding the modes, ties are broken at random when <code>TRUE</code> and the first candidate state is always chosen for the mode when <code>FALSE</code>. Regarding assignments, tie-breaking is always first biased in favour of the observation's most recent cluster: regarding ties thereafter, these are broken at random when <code>TRUE</code> or the first other candidate cluster is always chosen when <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Catches unused arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The k-modes algorithm (Huang, 1998) is an extension of the k-means algorithm by MacQueen (1967).
+</p>
+<p>The data given by <code>data</code> is clustered by the k-modes method (Huang, 1998) which aims to partition the objects into k groups such that the distance from objects to the assigned cluster modes is minimised. 
+</p>
+<p>By default, the simple-matching (Hamming) distance is used to determine the dissimilarity of two objects. It is computed by counting the number of mismatches in all variables. Alternatively, this distance can be weighted by the frequencies of the categories in data, using the <code>freq.weighted</code> argument (see Huang, 1998, for details). For convenience, the function <code>dist_freqwH</code> is provided for calculating the corresponding pairwise dissimilarity matrix for subsequent use.
+</p>
+<p>If an initial matrix of modes is supplied, it is possible that no object will be closest to one or more modes. In this case, fewer clusters than the number of supplied modes will be returned and a warning will be printed.
+</p>
+<p>If called using <code>fast = TRUE</code>, the reassignment of the data to clusters is done for the entire data set before recomputation of the modes is done. For computational reasons, this option should be chosen for all but the most moderate of data sizes.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>"wKModes"</code> which is a list with the following components:
+</p>
+
+<dl>
+<dt><code>cluster</code></dt>
+<dd>
+<p>A vector of integers indicating the cluster to which each object is allocated.</p>
+</dd>
+<dt><code>size</code></dt>
+<dd>
+<p>The number of objects in each cluster.</p>
+</dd>
+<dt><code>modes</code></dt>
+<dd>
+<p>A matrix of cluster modes.</p>
+</dd>
+<dt><code>withindiff</code></dt>
+<dd>
+<p>The within-cluster (weighted) simple-matching distance for each cluster.</p>
+</dd>
+<dt><code>tot.withindiff</code></dt>
+<dd>
+<p>The total within-cluster (weighted) distance over all clusters. <code>tot.withindiff</code> can be used to guide the choice of the number of clusters, but beware of inherent randomness in the algorithm, which is liable to yield a jagged elbow plot (see examples).</p>
+</dd>
+<dt><code>iterations</code></dt>
+<dd>
+<p>The number of iterations the algorithm reached.</p>
+</dd>
+<dt><code>weighted</code></dt>
+<dd>
+<p>A logical indicating whether observation-level <code>weights</code> were used or not throughout the algorithm.</p>
+</dd>
+<dt><code>freq.weighted</code></dt>
+<dd>
+<p>A logical indicating whether feature-level <code>freq.weights</code> were used or not in the computation of the distances. For convenience, the function <code>dist_freqwH</code> is provided for calculating the corresponding pairwise dissimilarity matrix for subsequent use.</p>
+</dd>
+<dt><code>random</code></dt>
+<dd>
+<p>A logical indicating whether ties were broken at random or not throughout the algorithm.</p>
+</dd>
+</dl>
+<h3>Note</h3>
+
+<p>This code is adapted from the <code>kmodes</code> function in the <span class="pkg">klaR</span> package. Specifically, modifications were made to allow for random tie-breaking for the modes and assignments (see <code>random</code> above) and the incorporation of observation-specific sampling <code>weights</code>, with a view to using this function as a means to initialise the allocations for MEDseq models (see the <code>MEDseq_control</code> argument <code>init.z</code> and the related options <code>"kmodes"</code> and <code>"kmodes2"</code>). 
+</p>
+<p>Notably, the <code>wKModes</code> function, when invoked inside <code>MEDseq_fit</code>, is used regardless of whether the weights are true sampling weights, or the weights are merely aggregation weights, or there are no weights at all. Furthermore, the <code>MEDseq_control</code> argument <code>random</code> is <em>also</em> passed to <code>wKModes</code> when it is invoked inside <code>MEDseq_fit</code>.
+</p>
+<p><strong>Update</strong>: as of version <code>1.7-1</code> of <span class="pkg">klaR</span>, <code>klaR::kmodes</code> now breaks assignment ties at random only when <code>fast=TRUE</code>. It still breaks assignment ties when <code>fast=FALSE</code> and all ties for modal values in the non-random manner described above. Thus, the old behaviour of <code>klaR::kmodes</code> can be recovered by specifying <code>random=FALSE</code> here, but <code>random=TRUE</code> allows random tie-breaking for both types of ties in all situations.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Keefe Murphy - &lt;<a href="mailto:keefe.murphy@mu.ie">keefe.murphy@mu.ie</a>&gt;
+(adapted from <code>klaR::kmodes</code>)
+</p>
+
+
+<h3>References</h3>
+
+<p>Huang, Z. (1998). Extensions to the k-means algorithm for clustering large data sets with categorical values. <em>Data Mining and Knowledge Discovery</em>, 2(3): 283-304.
+</p>
+<p>MacQueen, J. (1967). Some methods for classification and analysis of multivariate observations. In L. M. L. Cam and J. Neyman (Eds.), <em>Proceedings of the Fifth Berkeley Symposium on  Mathematical Statistics and Probability</em>, Volume 1, June 21-July 18, 1965 and December 27 1965-January 7, 1966, Statistical Laboratory of the University of California, Berkelely, CA, USA, pp. 281-297. University of California Press.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>MEDseq_control</code>, <code>MEDseq_fit</code>, <code>dist_freqwH</code>, <code>wcAggregateCases</code>, <code>seqformat</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">suppressMessages(require(WeightedCluster))
+set.seed(99)
+# Load the MVAD data &amp; aggregate the state sequences
+data(mvad)
+agg      &lt;- wcAggregateCases(mvad[,17:86], weights=mvad$weight)
+
+# Create a state sequence object without the first two (summer) time points
+states   &lt;- c("EM", "FE", "HE", "JL", "SC", "TR")
+labels   &lt;- c("Employment", "Further Education", "Higher Education", 
+              "Joblessness", "School", "Training")
+mvad.seq &lt;- seqdef(mvad[agg$aggIndex, 17:86], 
+                   states=states, labels=labels, 
+                   weights=agg$aggWeights)
+
+# Run k-modes without the weights
+resX     &lt;- wKModes(mvad.seq, 2)
+
+# Run k-modes with the weights
+resW     &lt;- wKModes(mvad.seq, 2, weights=agg$aggWeights)
+
+# Examine the modal sequences of both solutions
+seqformat(seqdef(resX$modes), from="STS", to="SPS", compress=TRUE)
+seqformat(seqdef(resW$modes), from="STS", to="SPS", compress=TRUE)
+
+# Using tot.withindiff to choose the number of clusters
+
+TWdiffs   &lt;- sapply(1:5, function(k) wKModes(mvad.seq, k, weights=agg$aggWeights)$tot.withindiff)
+plot(TWdiffs, type="b", xlab="K")
+
+# Use multiple random starts to account for inherent randomness
+TWDiff    &lt;- sapply(1:5, function(k) min(replicate(10, 
+                    wKModes(mvad.seq, k, weights=agg$aggWeights)$tot.withindiff)))
+plot(TWDiff, type="b", xlab="K")
+</code></pre>
+
+
+</div>

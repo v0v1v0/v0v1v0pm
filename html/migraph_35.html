@@ -1,0 +1,195 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>regression</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Linear and logistic regression for network data</h2>
+
+<h3>Description</h3>
+
+<p>This function provides an implementation of
+the multiple regression quadratic assignment procedure (MRQAP)
+for both one-mode and two-mode network linear models.
+It offers several advantages:
+</p>
+
+<ul>
+<li>
+<p> it works with combined graph/network objects such as igraph and network objects
+by constructing the various dependent and independent matrices for the user.
+</p>
+</li>
+<li>
+<p> it uses a more intuitive formula-based system for specifying the model,
+with several ways to specify how nodal attributes should be handled.
+</p>
+</li>
+<li>
+<p> it can handle categorical variables (factors/characters) and
+interactions intuitively, naming the reference variable where appropriate.
+</p>
+</li>
+<li>
+<p> it relies on <a href="https://furrr.futureverse.org"><code>{furrr}</code></a> for parallelising
+and <a href="https://progressr.futureverse.org"><code>{progressr}</code></a>
+for reporting progress to the user,
+which can be useful when many simulations are required.
+</p>
+</li>
+<li>
+<p> results are <a href="https://broom.tidymodels.org"><code>{broom}</code></a>-compatible,
+with <code>tidy()</code> and <code>glance()</code> reports to facilitate comparison
+with results from different models.
+Note that a <em>t</em>- or <em>z</em>-value is always used as the test statistic,
+and properties of the dependent network
+– modes, directedness, loops, etc –
+will always be respected in permutations and analysis.
+</p>
+</li>
+</ul>
+<h3>Usage</h3>
+
+<pre><code class="language-R">net_regression(
+  formula,
+  .data,
+  method = c("qap", "qapy"),
+  times = 1000,
+  strategy = "sequential",
+  verbose = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>A formula describing the relationship being tested.
+Several additional terms are available to assist users investigate
+the effects they are interested in. These include:
+</p>
+
+<ul>
+<li> <p><code>ego()</code> constructs a matrix where the cells reflect the value of
+a named nodal attribute for an edge's sending node
+</p>
+</li>
+<li> <p><code>alter()</code> constructs a matrix where the cells reflect the value of
+a named nodal attribute for an edge's receiving node
+</p>
+</li>
+<li> <p><code>same()</code> constructs a matrix where a 1 reflects
+if two nodes' attribute values are the same
+</p>
+</li>
+<li> <p><code>dist()</code> constructs a matrix where the cells reflect the
+absolute difference between the attribute's values
+for the sending and receiving nodes
+</p>
+</li>
+<li> <p><code>sim()</code> constructs a matrix where the cells reflect the
+proportional similarity between the attribute's values
+for the sending and receiving nodes
+</p>
+</li>
+<li> <p><code>tertius()</code> constructs a matrix where the cells reflect some
+aggregate of an attribute associated with a node's other ties.
+Currently "mean" and "sum" are available aggregating functions.
+'ego' is excluded from these calculations.
+See Haunss and Hollway (2023) for more on this effect.
+</p>
+</li>
+<li>
+<p> dyadic covariates (other networks) can just be named
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.data</code></td>
+<td>
+<p>A manynet-consistent network.
+See e.g. <code>manynet::as_tidygraph()</code> for more details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>A method for establishing the null hypothesis.
+Note that "qap" uses Dekker et al's (2007) double semi-partialling technique,
+whereas "qapy" permutes only the $y$ variable.
+"qap" is the default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>times</code></td>
+<td>
+<p>Integer indicating number of simulations used for quantile estimation.
+(Relevant to the null hypothesis test only -
+the analysis itself is unaffected by this parameter.)
+Note that, as for all Monte Carlo procedures, convergence is slower for more
+extreme quantiles.
+By default, <code>times=1000</code>.
+1,000 - 10,000 repetitions recommended for publication-ready results.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strategy</code></td>
+<td>
+<p>If <code>{furrr}</code> is installed,
+then multiple cores can be used to accelerate the function.
+By default <code>"sequential"</code>,
+but if multiple cores available,
+then <code>"multisession"</code> or <code>"multicore"</code> may be useful.
+Generally this is useful only when <code>times</code> &gt; 1000.
+See <a href="https://furrr.futureverse.org"><code>{furrr}</code></a> for more.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Whether the function should report on its progress.
+By default FALSE.
+See <a href="https://progressr.futureverse.org"><code>{progressr}</code></a> for more.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Krackhardt, David. 1988.
+“Predicting with Networks: Nonparametric Multiple Regression Analysis of Dyadic Data.”
+<em>Social Networks</em> 10(4):359–81.
+<a href="https://doi.org/10.1016/0378-8733%2888%2990004-4">doi:10.1016/0378-8733(88)90004-4</a>.
+</p>
+<p>Dekker, David, David Krackhard, and Tom A. B. Snijders. 2007.
+“Sensitivity of MRQAP tests to collinearity and autocorrelation conditions.”
+<em>Psychometrika</em> 72(4): 563-581.
+<a href="https://doi.org/10.1007/s11336-007-9016-1">doi:10.1007/s11336-007-9016-1</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other models: 
+<code>test_distributions</code>,
+<code>tests</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">networkers &lt;- ison_networkers %&gt;% to_subgraph(Discipline == "Sociology")
+model1 &lt;- net_regression(weight ~ ego(Citations) + alter(Citations) + sim(Citations), 
+                      networkers, times = 20)
+# Should be run many more `times` for publication-ready results
+tidy(model1)
+glance(model1)
+plot(model1)
+</code></pre>
+
+
+</div>

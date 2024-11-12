@@ -1,0 +1,199 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pat_status_tt</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Determine patient status at specific end of follow-up - tidytable version</h2>
+
+<h3>Description</h3>
+
+<p>Determine patient status at specific end of follow-up - tidytable version
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pat_status_tt(
+  wide_df,
+  fu_end,
+  dattype = NULL,
+  status_var = "p_status",
+  life_var = NULL,
+  spc_var = NULL,
+  birthdat_var = NULL,
+  lifedat_var = NULL,
+  lifedatmin_var = NULL,
+  fcdat_var = NULL,
+  spcdat_var = NULL,
+  life_stat_alive = NULL,
+  life_stat_dead = NULL,
+  spc_stat_yes = NULL,
+  spc_stat_no = NULL,
+  lifedat_fu_end = NULL,
+  use_lifedatmin = FALSE,
+  check = TRUE,
+  as_labelled_factor = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>wide_df</code></td>
+<td>
+<p>dataframe or data.table in wide format</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fu_end</code></td>
+<td>
+<p>end of follow-up in time format YYYY-MM-DD.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dattype</code></td>
+<td>
+<p>can be "zfkd" or "seer" or NULL. Will set default variable names if dattype is "seer" or "zfkd". Default is NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>status_var</code></td>
+<td>
+<p>Name of the newly calculated variable for patient status. Default is p_status.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>life_var</code></td>
+<td>
+<p>Name of variable containing life status. Will override dattype preset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spc_var</code></td>
+<td>
+<p>Name of variable containing SPC status. Will override dattype preset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>birthdat_var</code></td>
+<td>
+<p>Name of variable containing Date of Birth. Will override dattype preset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lifedat_var</code></td>
+<td>
+<p>Name of variable containing Date of Death. Will override dattype preset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lifedatmin_var</code></td>
+<td>
+<p>Name of variable containing the minimum Date of Death when true DoD is missing. Will override dattype preset. Will only  be used if use_lifedatmin = TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fcdat_var</code></td>
+<td>
+<p>Name of variable containing Date of Primary Cancer diagnosis. Will override dattype preset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spcdat_var</code></td>
+<td>
+<p>Name of variable containing Date of SPC diagnosis Will override dattype preset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>life_stat_alive</code></td>
+<td>
+<p>Value for alive status in life_var. Will override dattype preset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>life_stat_dead</code></td>
+<td>
+<p>Value for dead status in life_var. Will override dattype preset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spc_stat_yes</code></td>
+<td>
+<p>Value for SPC occurred in spc_var. Will override dattype preset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spc_stat_no</code></td>
+<td>
+<p>Value for no SPC in spc_var. Will override dattype preset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lifedat_fu_end</code></td>
+<td>
+<p>Date of last FU of alive status in registry data. Will override dattype preset (2017-03-31 for zfkd; 2018-12-31 for seer).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_lifedatmin</code></td>
+<td>
+<p>If TRUE, option to use Date of Death from lifedatmin_var when DOD is missing. Default is FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>check</code></td>
+<td>
+<p>Check newly calculated variable p_status. Default is TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>as_labelled_factor</code></td>
+<td>
+<p>If TRUE, output status_var as labelled factor variable. Default is FALSE.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>wide_df
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#load sample data
+data("us_second_cancer")
+
+#prep step - make wide data as this is the required format
+usdata_wide &lt;- us_second_cancer %&gt;%
+                    msSPChelpR::reshape_wide_tidyr(case_id_var = "fake_id", 
+                    time_id_var = "SEQ_NUM", timevar_max = 10)
+                    
+#prep step - calculate p_spc variable
+usdata_wide &lt;- usdata_wide %&gt;%
+                 dplyr::mutate(p_spc = dplyr::case_when(is.na(t_site_icd.2)   ~ "No SPC",
+                                                       !is.na(t_site_icd.2)   ~ "SPC developed",
+                                                       TRUE ~ NA_character_)) %&gt;%
+                 dplyr::mutate(count_spc = dplyr::case_when(is.na(t_site_icd.2)   ~ 1,
+                                                              TRUE ~ 0))
+                                                              
+#now we can run the function
+msSPChelpR::pat_status_tt(usdata_wide, 
+                       fu_end = "2017-12-31", 
+                       dattype = "seer", 
+                       status_var = "p_status", 
+                       life_var = "p_alive.1", 
+                       spc_var = NULL, 
+                       birthdat_var = "datebirth.1", 
+                       lifedat_var = "datedeath.1",
+                       use_lifedatmin = FALSE, 
+                       check = TRUE, 
+                       as_labelled_factor = FALSE)
+                       
+</code></pre>
+
+
+</div>

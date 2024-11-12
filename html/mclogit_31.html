@@ -1,0 +1,342 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mclogit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Conditional Logit Models and Mixed Conditional Logit Models</h2>
+
+<h3>Description</h3>
+
+<p><code>mclogit</code> fits conditional logit models and mixed conditional
+logit models to count data and individual choice data,
+where the choice set may vary across choice occasions.
+</p>
+<p>Conditional logit models without random effects are fitted by
+Fisher-scoring/IWLS. Models with random effects 
+(mixed conditional logit models) are estimated via maximum likelihood
+with a simple Laplace aproximation (aka PQL).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">
+mclogit(formula, data=parent.frame(), random=NULL,
+        subset, weights = NULL, offset=NULL, na.action = getOption("na.action"),
+        model = TRUE, x = FALSE, y = TRUE, contrasts=NULL,
+        method = NULL, estimator=c("ML","REML"),
+        dispersion = FALSE,
+        start=NULL,
+        control=if(length(random))
+                    mmclogit.control(...)
+                else mclogit.control(...), ...)
+
+## S3 method for class 'mclogit'
+update(object, formula., dispersion, ...)
+
+## S3 method for class 'mclogit'
+summary(object, dispersion = NULL, correlation = FALSE,
+        symbolic.cor = FALSE,  ...)    
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a model formula: a symbolic description of the
+model to be fitted. The left-hand side should result in
+a two-column matrix. The first column contains
+the choice counts or choice indicators (alternative is
+chosen=1, is not chosen=0). The second column contains
+unique numbers for each choice set.
+</p>
+<p>The left-hand side can either take the form <code>cbind(choice,set)</code>
+or (from version 0.9.1) <code>choice|set</code>
+</p>
+<p>If individual-level data is used, choice sets correspond
+to individuals, if aggregated data with choice counts are used,
+choice sets usually correspond to covariate classes.
+</p>
+<p>The right-hand of the formula contains choice predictors. It should be noted
+that constants are deleted from the formula as are predictors that do not vary
+within choice sets.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>an optional data frame, list or environment (or object
+coercible by <code>as.data.frame</code> to a data frame) containing
+the variables in the model.  If not found in <code>data</code>, the
+variables are taken from <code>environment(formula)</code>,
+typically the environment from which <code>glm</code> is called.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random</code></td>
+<td>
+<p>an optional formula or list of formulas that specify the
+random-effects structure or NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>an optional vector of weights to be used in the fitting
+process.  Should be <code>NULL</code> or a numeric vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>offset</code></td>
+<td>
+<p>an optional model offset. Currently only supported
+for models without random effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>an optional vector specifying a subset of observations
+to be used in the fitting process.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na.action</code></td>
+<td>
+<p>a function which indicates what should happen
+when the data contain <code>NA</code>s.  The default is set by
+the <code>na.action</code> setting of <code>options</code>, and is
+<code>na.fail</code> if that is unset.  The ‘factory-fresh’
+default is <code>na.omit</code>.  Another possible value is
+<code>NULL</code>, no action.  Value <code>na.exclude</code> can be useful.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start</code></td>
+<td>
+<p>an optional numerical vector of starting values for the
+conditional logit parameters.  If the model has random effects, the
+vector should have a "VarCov" attribute wtih starting values for the
+random effects (co-)variances. If the random effects model is
+estimated with the "PQL" method, the starting values matrix should
+also have a "random.effects" attribute, which should have the same
+structure as the "random.effects" component of an object returned by
+<code>mblogit()</code>.  </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>a logical value indicating whether <em>model frame</em>
+should be included as a component of the returned value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x, y</code></td>
+<td>
+
+<p>logical values indicating whether the response vector and model
+matrix used in the fitting process should be returned as components
+of the returned value.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>contrasts</code></td>
+<td>
+<p>an optional list. See the <code>contrasts.arg</code>
+of <code>model.matrix.default</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p><code>NULL</code> or a character string, either "PQL" or "MQL", specifies
+the type of the quasilikelihood approximation to be used if
+a random-effects model is to be estimated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimator</code></td>
+<td>
+<p>a character string; either "ML" or "REML",
+specifies which estimator is to be used/approximated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dispersion</code></td>
+<td>
+<p>a real number used as dispersion parameter;
+a character vector that specifies the method to compute the dispersion;
+a logical value – if <code>TRUE</code> the default method
+(<code>"Afroz"</code>) is used, if <code>FALSE</code>, the dispersion parameter
+is set to 1, that is, no dispersion. For details see <code>dispersion</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>a list of parameters for the fitting process.
+See <code>mclogit.control</code> </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>arguments to be passed to <code>mclogit.control</code> or <code>mmclogit.control</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>an object that inherits class <code>"mclogit"</code>.
+When passed to <code>dispersion()</code>, it 
+should be the result of a call of <code>mclogit()</code> of
+<code>mblogit()</code>, <em>without</em> random effects.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula.</code></td>
+<td>
+<p>a changes to the model formula,
+see <code>update.default</code> and
+<code>update.formula</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>correlation</code></td>
+<td>
+<p>logical; see <code>summary.lm</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>symbolic.cor</code></td>
+<td>
+<p>logical; see <code>summary.lm</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>mclogit</code> returns an object of class "mclogit", which has almost the
+same structure as an object of class "glm".
+</p>
+
+
+<h3>Note</h3>
+
+<p>Covariates that are constant within choice sets are automatically
+dropped from the model formula specified by the <code>formula</code>
+argument of <code>mclogit</code>.
+</p>
+<p>If the model contains random effects, these should
+</p>
+
+<ul>
+<li>
+<p> either vary within choice sets (e.g. the levels of a factor
+that defines the choice sets should not be nested within the levels
+of factor)
+</p>
+</li>
+<li>
+<p> or be random coefficients of covariates that vary within
+choice sets. 
+</p>
+</li>
+</ul>
+<p>In earlier versions of the package (prior to 0.6) it will lead to a
+failure of the model fitting algorithm if these conditions are not
+satisfied. Since version 0.6 of the package, the function
+<code>mclogit</code> will complain about such model a misspecification
+explicitely.
+</p>
+
+
+<h3>References</h3>
+
+<p>Agresti, Alan (2002).
+<em>Categorical Data Analysis.</em> 2nd ed, Hoboken, NJ: Wiley.
+<a href="https://doi.org/10.1002/0471249688">doi:10.1002/0471249688</a>
+</p>
+<p>Breslow, N.E. and D.G. Clayton (1993).
+"Approximate Inference in Generalized Linear Mixed Models".
+<em>Journal of the American Statistical Association</em> 88 (421): 9-25.
+<a href="https://doi.org/10.1080/01621459.1993.10594284">doi:10.1080/01621459.1993.10594284</a>
+</p>
+<p>Elff, Martin (2009).
+"Social Divisions, Party Positions, and Electoral Behaviour".
+<em>Electoral Studies</em> 28(2): 297-308.
+<a href="https://doi.org/10.1016/j.electstud.2009.02.002">doi:10.1016/j.electstud.2009.02.002</a>
+</p>
+<p>McFadden, D. (1973).
+"Conditionial Logit Analysis of Qualitative Choice Behavior".
+Pp. 105-135 in P. Zarembka (ed.).
+<em>Frontiers in Econometrics</em>.
+New York: Wiley.
+<a href="https://eml.berkeley.edu/reprints/mcfadden/zarembka.pdf">https://eml.berkeley.edu/reprints/mcfadden/zarembka.pdf</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Conditional logit models are also supported by <span class="pkg">gmnl</span>, <span class="pkg">mlogit</span>, and <span class="pkg">survival</span>.
+<span class="pkg">survival</span> supports conditional logit models for binary panel data and case-control studies.     
+<span class="pkg">mlogit</span> and <span class="pkg">gmnl</span> treat conditional logit models from an econometric perspective.
+Unlike the present package, they focus on the random utility interpretation of discrete choice models
+and support generalisations of conditional logit models, such as nested logit models, that are intended
+to overcome the IIA (indipendence from irrelevant alterantives) assumption. Mixed multinomial models are
+also supported and estimated using simulation-based techniques. Unlike the present package,
+mixed or random-effects extensions are mainly intended to fit repeated choices of the same individuals and not
+aggregated choices of many individuals facing identical alternatives.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(Transport)
+
+summary(mclogit(
+  cbind(resp,suburb)~distance+cost,
+  data=Transport
+  ))
+# New syntactic sugar:
+summary(mclogit(
+  resp|suburb~distance+cost,
+  data=Transport
+  ))
+
+
+## Not run:  # This takes a bit longer.
+data(electors)
+
+electors &lt;- within(electors,{
+    party.time &lt;-interaction(party,time)
+    time.class &lt;- interaction(time,class)
+})
+
+# Time points nested within parties
+summary(mclogit(
+  Freq|time.class~econ.left/class+welfare/class+auth/class,
+  random=~1|party/time,
+  data=electors))
+
+# Party-level random intercepts and random slopes varying over time points
+summary(mclogit(
+  Freq|time.class~econ.left/class+welfare/class+auth/class,
+  random=list(~1|party,~econ.left+0|time),
+  data=electors))
+
+## End(Not run)
+</code></pre>
+
+
+</div>

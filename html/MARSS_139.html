@@ -1,0 +1,244 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>tsSmooth.marssMLE</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Smoothed and filtered x and y time series </h2>
+
+<h3>Description</h3>
+
+<p><code>tsSmooth.marssMLE</code> returns the estimated state and observations conditioned on the data. This function will return either the smoothed values (conditioned on all the data) or the filtered values (conditioned on data 1 to <code class="reqn">t</code> or <code class="reqn">t-1</code>). This is output from the Kalman filter and smoother <code>MARSSkf()</code> for the <code class="reqn">\mathbf{x}</code> and from the corresponding function <code>MARSShatyt()</code> for the <code class="reqn">\mathbf{y}</code>. 
+</p>
+<p>These are the expected value of the full right side of the MARSS equations with the error terms (expected value of <code class="reqn">\mathbf{X}_t</code> and <code class="reqn">\mathbf{Y}_t</code>). Conditioning on data <code class="reqn">t=1</code> to <code class="reqn">t-1</code> (one-step ahead), <code class="reqn">t</code> (contemporaneous), or <code class="reqn">T</code> (smoothed) is provided. This is in contrast to <code>fitted()</code> which returns the expected value of the right side without the error term, aka model predictions.
+</p>
+<p>In the state-space literature, the <code class="reqn">\mathbf{y}</code> "estimates" would normally refer to the expected value of the right-side of the <code class="reqn">\mathbf{y}</code> equation without the error term (i.e. the expected value of <code class="reqn">\mathbf{Z} \mathbf{X}_t + \mathbf{a} + \mathbf{D}\mathbf{d}_t</code>). That is provided in <code>fitted()</code>. <code>tsSmooth.marssMLE()</code> provides the expected value with the error terms conditioned on the data from 1 to <code class="reqn">t-1</code>, <code class="reqn">t</code>, or <code class="reqn">T</code>. These estimates are used to estimate missing values in the data. If <code class="reqn">\mathbf{y}</code> is multivariate, some <code class="reqn">y</code> are missing at time <code class="reqn">t</code> and some not, and <code class="reqn">\mathbf{R}</code> is non-diagonal, then the expected value of <code class="reqn">\mathbf{Y}_t</code> from the right-side of the <code class="reqn">\mathbf{y}</code> without the error terms would be incorrect because it would not take into account the information in the observed data at time <code class="reqn">t</code> on the missing data at time <code class="reqn">t</code> (except as it influences <code class="reqn">\mathrm{E}[\mathbf{x}_t]</code>). 
+</p>
+<p>Note, if there are no missing values, the expected value of <code class="reqn">\mathbf{Y}_t</code> (with error terms) conditioned on the data from 1 to <code class="reqn">t</code> or <code class="reqn">T</code> is simply <code class="reqn">\mathbf{y}_t</code>. The expectation is only useful when there are missing values for which an estimate is needed. The expectation of the <code class="reqn">\mathbf{Y}</code> with the error terms is used in the EM algorithm for the general missing values case and the base function is <code>MARSShatyt()</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'marssMLE'
+tsSmooth(object, 
+    type = c("xtT", "xtt", "xtt1", "ytT", "ytt", "ytt1"),
+    interval = c("none", "confidence", "prediction"),
+    level = 0.95, fun.kf = c("MARSSkfas", "MARSSkfss"), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A <code>marssMLE</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p> Type of estimates to return. Smoothed states (<code>xtT</code>), one-step-ahead states (<code>xtt1</code>), contemporaneous states (<code>xtt</code>), the model <code>ytT</code> (<code>Z xtT + A + D d(t)</code>), the model <code>ytt</code> (<code>Z xtt + A + D d(t)</code>), the model <code>ytt1</code> (<code>Z xtt1 + A + D d(t)</code>), the expected value of <code class="reqn">\mathbf{Y}_t</code> conditioned on data 1 to <code class="reqn">t-1</code> (<code>ytt1</code>), the expected value of <code class="reqn">\mathbf{Y}_t</code> conditioned on data 1 to <code class="reqn">t</code> (<code>ytt</code>), or the expected value of <code class="reqn">\mathbf{Y}_t</code> conditioned on data 1 to <code class="reqn">T</code> (<code>ytT</code>). See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>interval</code></td>
+<td>
+<p> If <code>interval="confidence"</code>, then the standard error and confidence intervals are returned. There are no prediction intervals for estimated states and observations except for <code>ytT</code> (which is a unusual case.) If you are looking for prediction intervals, then you want <code>fitted()</code> or <code>predict()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>level</code></td>
+<td>
+<p> Confidence level. alpha=1-level </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun.kf</code></td>
+<td>
+<p> By default, <code>tsSmooth()</code> will use the Kalman filter/smoother function in <code>object$fun.kf</code> (either <code>MARSSkfas()</code> or <code>MARSSkfss()</code>). You can pass in <code>fun.kf</code> to force a particular Kalman filter/smoother function to be used. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Optional arguments.  If form="dfa", <code>rotate=TRUE</code> can be passed in to rotate the trends (only trends not the <code class="reqn">\mathbf{Z}</code> matrix).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Below, X and Y refers to the random variable and x and y refer to a specific realization from this random variable.
+</p>
+<p><strong>state estimates (x)</strong>
+</p>
+<p>For <code>type="xtT"</code>, <code>tsSmooth.marssMLE</code> returns the confidence intervals of the state at time <code class="reqn">t</code> conditioned on the data from 1 to <code class="reqn">T</code> using the estimated model parameters as true values. These are the standard intervals that are shown for the estimated states in state-space models. For example see, Shumway and Stoffer (2000), edition 4, Figure 6.4. As such, this is probably what you are looking for if you want to put intervals on the estimated states (the <code class="reqn">\mathbf{x}</code>). However, these intervals do not include parameter uncertainty. If you want state residuals (for residuals analysis), use <code>MARSSresiduals()</code> or <code>residuals()</code>.
+</p>
+<p><strong>Quantiles</strong> The state <code class="reqn">\mathbf{X}_t</code> in a MARSS model has a conditional multivariate normal distribution, that can be computed from the model parameters and data. In Holmes (2012, Equation 11) notation, its expected value conditioned on all the observed data and the model parameters <code class="reqn">\Theta</code> is denoted <code class="reqn">\tilde{\mathbf{x}}_t</code> or equivalently <code class="reqn">\mathbf{x}_t^T</code> (where the $T$ superscript is not a power but the upper extent of the time conditioning). In <code>MARSSkf</code>, this is <code>xtT[,t]</code>. The variance of <code class="reqn">\mathbf{X}_t</code> conditioned on all the observed data and <code class="reqn">\Theta</code> is <code class="reqn">\tilde{\mathbf{V}}_t</code> (<code>VtT[,,t]</code>). Note that <code>VtT[,,t] != B VtT[,,t-1] t(B) + Q</code>, which you might think by looking at the MARSS equations. That is because the variance of <code class="reqn">\mathbf{W}_t</code> conditioned on the data (past, current and FUTURE) is not equal to  <code class="reqn">\mathbf{Q}</code> (<code class="reqn">\mathbf{Q}</code> is the unconditional variance).
+</p>
+<p><code class="reqn">\mathbf{x}_t^T</code> (<code>xtT[,t]</code>) is an estimate of <code class="reqn">\mathbf{x}_t</code> and the standard error of that estimate is given by <code class="reqn">\mathbf{V}_t^T</code> (<code>VtT[,,t]</code>). Let <code>se.xt</code> denote the sqrt of the diagonal of <code>VtT</code>. The equation for the <code class="reqn">\alpha/2</code> confidence interval is (<code>qnorm(alpha/2)*se.xt + xtT</code>). <code class="reqn">\mathbf{x}_t</code> is multivariate and this interval is for one of the <code class="reqn">x</code>'s in isolation. You could compute the m-dimensional confidence region for the multivariate <code class="reqn">\mathbf{x}_t</code>, also, but <code>tsSmooth.marssMLE</code> returns the univariate confidence intervals. 
+</p>
+<p>The variance <code>VtT</code> gives information on the uncertainty of the true location of <code class="reqn">\mathbf{x}_t</code> conditioned on the observed data. As more data are collected (or added to the analysis), this variance will shrink since the data, especially data at time <code class="reqn">t</code>, increases the information about the locations of <code class="reqn">\mathbf{x}_t</code>. This does not affect the estimation of the model parameters, those are fixed (we are assuming), but rather our information about the states at time <code class="reqn">t</code>.
+</p>
+<p>If you have a DFA model (form='dfa'), you can pass in <code>rotate=TRUE</code> to return the rotated trends.  If you want the rotated loadings, you will need to compute those yourself:
+</p>
+<pre>
+dfa &lt;- MARSS(t(harborSealWA[,-1]), model=list(m=2), form="dfa")
+Z.est &lt;- coef(dfa, type="matrix")$Z
+H.inv &lt;- varimax(coef(dfa, type="matrix")$Z)$rotmat
+Z.rot &lt;- Z.est %*% H.inv
+</pre>
+<p>For <code>type="xtt"</code> and <code>type=="xtt1"</code>, the calculations and interpretations of the intervals are the same but the conditioning is for data <code class="reqn">t=1</code> to <code class="reqn">t</code> or <code class="reqn">t=1</code> to <code class="reqn">t-1</code>. 
+</p>
+<p><strong>observation estimates (y)</strong>
+</p>
+<p>For <code>type="ytT"</code>, this returns the expected value and standard error of <code class="reqn">\mathbf{Y}_t</code> (left-hand side of the <code class="reqn">\mathbf{y}</code> equation) conditioned on <code class="reqn">\mathbf{Y}_t=y_t</code>. If you have no missing data, this just returns your data set. But you have missing data, this what you want in order to estimate the values of missing data in your data set. The expected value of <code class="reqn">\mathbf{Y}_t|\mathbf{Y}=\mathbf{y}(1:T)</code> is in <code>ytT</code> in <code>MARSShatyt()</code> output and the variance is <code>OtT-tcrossprod(ytT)</code> from the <code>MARSShatyt()</code> output. 
+</p>
+<p>The intervals reported by <code>tsSmooth.marssMLE</code> for the missing values take into account all the information in the data, specifically the correlation with other data at time <code class="reqn">t</code> if <code class="reqn">\mathbf{R}</code> is not diagonal. This is what you want to use for interpolating missing data. You do not want to use <code>predict.marssMLE()</code> as those predictions are for entirely new data sets and thus will ignore relevant information if <code class="reqn">\mathbf{y}_t</code> is multivariate, not all <code class="reqn">\mathbf{y}_t</code> are missing, and the <code class="reqn">\mathbf{R}</code> matrix is not diagonal.
+</p>
+<p>The standard error and confidence interval for the expected value of the missing data along with the standard deviation and prediction interval for the missing data are reported. The former uses the variance of <code class="reqn">\textrm{E}[\mathbf{Y}_t]</code> conditioned on the data while the latter uses variance of <code class="reqn">\mathbf{Y}_t</code> conditioned on the data. <code>MARSShatyt()</code> returns these variances and expected values. See Holmes (2012) for a discussion of the derivation of expectation and variance of <code class="reqn">\mathbf{Y}_t</code> conditioned on the observed data (in the section 'Computing the expectations in the update equations').
+</p>
+<p>For <code>type="ytt"</code>, only the estimates are provided. <code>MARSShatyt()</code> does not return the necessary variances matrices for the standard errors for this cases.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A data frame with the following columns is returned. Values computed from the model are prefaced with ".".
+</p>
+<p>If <code>interval="none"</code>, the following are returned:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>.rownames</code></td>
+<td>
+<p> Names of the data or states. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t</code></td>
+<td>
+<p> Time step. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p> The data if <code>type</code> is <code>"ytT"</code>, <code>"ytt"</code> or <code>"ytt1"</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.estimate</code></td>
+<td>
+<p> The estimated values. See details. </p>
+</td>
+</tr>
+</table>
+<p>If <code>interval = "confidence"</code>, the following are also returned:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>.se</code></td>
+<td>
+<p> Standard errors of the estimates. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.conf.low</code></td>
+<td>
+<p> Lower confidence level at <code>alpha = 1-level</code>. The interval is approximated using qnorm(alpha/2)*se + estimate </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.conf.up</code></td>
+<td>
+<p> Upper confidence level. The interval is approximated using qnorm(1-alpha/2)*se + estimate </p>
+</td>
+</tr>
+</table>
+<p>If <code>interval = "prediction"</code>, the following are also returned:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>.sd</code></td>
+<td>
+<p> Standard deviation of new <code class="reqn">\mathbf{y}_t</code> values. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.lwr</code></td>
+<td>
+<p> Lower range at <code>alpha = 1-level</code>. The interval is approximated using qnorm(alpha/2)*sd + estimate </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>.upr</code></td>
+<td>
+<p> Upper range at <code>level</code>. The interval is approximated using qnorm(1-alpha/2)*sd + estimate </p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+ 
+<p>R. H. Shumway and D. S. Stoffer (2000).  Time series analysis and its applications. Edition 4. Springer-Verlag, New York.
+</p>
+<p>Holmes, E. E. (2012).  Derivation of the EM algorithm for constrained and unconstrained multivariate autoregressive state-space (MARSS) models.  Technical Report. arXiv:1302.3919 [stat.ME]
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">dat &lt;- t(harborSeal)
+dat &lt;- dat[c(2, 11, 12), ]
+fit &lt;- MARSS(dat)
+
+# Make a plot of the estimated states
+library(ggplot2)
+d &lt;- tsSmooth(fit, type = "xtT", interval="confidence")
+ggplot(data = d) +
+  geom_line(aes(t, .estimate)) +
+  geom_ribbon(aes(x = t, ymin = .conf.low, ymax = .conf.up), linetype = 2, alpha = 0.3) +
+  facet_grid(~.rownames) +
+  xlab("Time Step") + ylab("State estimate")
+
+# Make a plot of the estimates for the missing values
+library(ggplot2)
+d &lt;- tsSmooth(fit, type = "ytT", interval="confidence")
+d2 &lt;- tsSmooth(fit, type = "ytT", interval="prediction")
+d$.lwr &lt;- d2$.lwr
+d$.upr &lt;- d2$.upr
+ggplot(data = d) +
+  geom_point(aes(t, .estimate)) +
+  geom_line(aes(t, .estimate)) +
+  geom_point(aes(t, y), color = "blue", na.rm=TRUE) +
+  geom_ribbon(aes(x = t, ymin = .conf.low, ymax = .conf.up), alpha = 0.3) +
+  geom_line(aes(t, .lwr), linetype = 2) +
+  geom_line(aes(t, .upr), linetype = 2) +
+  facet_grid(~.rownames) +
+  xlab("Time Step") + ylab("Count") +
+  ggtitle("Blue=data, Black=estimate, grey=CI, dash=prediction interval")
+
+# Contrast this with the model prediction of y(t), i.e., put a line through the points
+# Intervals are for new data not the blue dots 
+# (which were used to fit the model so are not new)
+library(ggplot2)
+d &lt;- fitted(fit, type = "ytT", interval="confidence", level=0.95)
+d2 &lt;- fitted(fit, type = "ytT", interval="prediction", level=0.95)
+d$.lwr &lt;- d2$.lwr
+d$.upr &lt;- d2$.upr
+ggplot(data = d) +
+  geom_line(aes(t, .fitted), linewidth = 1) +
+  geom_point(aes(t, y), color = "blue", na.rm=TRUE) +
+  geom_ribbon(aes(x = t, ymin = .conf.low, ymax = .conf.up), alpha = 0.3) +
+  geom_line(aes(t, .lwr), linetype = 2) +
+  geom_line(aes(t, .upr), linetype = 2) +
+  facet_grid(~.rownames) +
+  xlab("Time Step") + ylab("Count") +
+  ggtitle("Blue=data, Black=estimate, grey=CI, dash=prediction interval")
+</code></pre>
+
+
+</div>

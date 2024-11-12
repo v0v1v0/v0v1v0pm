@@ -1,0 +1,268 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>S2MART</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Subset by Support vector Margin Algorithm for Reliability esTimation</h2>
+
+<h3>Description</h3>
+
+<p><code>S2MART</code> introduces a metamodeling step at each subset simulation
+threshold, making number of necessary samples lower and the probability estimation
+better according to subset simulation by itself.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">S2MART(
+  dimension,
+  lsf,
+  Nn = 100,
+  alpha_quantile = 0.1,
+  failure = 0,
+  lower.tail = TRUE,
+  ...,
+  plot = FALSE,
+  output_dir = NULL,
+  verbose = 0
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>dimension</code></td>
+<td>
+<p>the dimension of the input space</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lsf</code></td>
+<td>
+<p>the function defining the failure domain. Failure is lsf(X) &lt; <code>failure</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Nn</code></td>
+<td>
+<p>number of samples to evaluate the quantiles in the subset step</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha_quantile</code></td>
+<td>
+<p>cutoff probability for the subsets</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>failure</code></td>
+<td>
+<p>the failure threshold</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower.tail</code></td>
+<td>
+<p>as for pxxxx functions, TRUE for estimating P(lsf(X) &lt; failure), FALSE
+for P(lsf(X) &gt; failure)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>All others parameters of the metamodel based algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot</code></td>
+<td>
+<p>to produce a plot of the failure and safety domain. Note that this requires a lot of
+calls to the <code>lsf</code> and is thus only for training purpose</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output_dir</code></td>
+<td>
+<p>to save the plot into the given directory. This will be pasted with "_S2MART.pdf"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>either 0 for almost no output, 1 for medium size output and 2 for all outputs</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>S2MART algorithm is based on the idea that subset simulations conditional
+probabilities are estimated with a relatively poor precision as it
+requires calls to the expensive-to-evaluate limit state function and
+does not take benefit from its numerous calls to the limit state function
+in the Metropolis-Hastings algorithm. In this scope, the key concept is
+to reduce the subset simulation population to its minimum and use it only
+to estimate crudely the next quantile. Then the use of a metamodel-based
+algorithm lets refine the border and calculate an accurate estimation of
+the conditional probability by the mean of a crude Monte-Carlo.
+</p>
+<p>In this scope, a compromise has to be found between the two sources of
+calls to the limit state function as total number of calls = (<code>Nn</code> +
+number of calls to refine the metamodel) x (number of subsets) :
+</p>
+
+<ul>
+<li>
+<p><code>Nn</code> calls to find the next threshold value : the bigger <code>Nn</code>,
+the more accurate the ‘decreasing speed’ specified by the
+<code>alpha_quantile</code> value and so the smaller the number of subsets
+</p>
+</li>
+<li>
+<p>total number of calls to refine the metamodel at each threshold
+</p>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>An object of class <code>list</code> containing the failure probability
+and some more outputs as described below:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>The estimated failure probability.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cov</code></td>
+<td>
+<p>The coefficient of variation of the Monte-Carlo probability
+estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Ncall</code></td>
+<td>
+<p>The total number of calls to the <code>lsf</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>The final learning database, ie. all points where <code>lsf</code>
+has been calculated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>The value of the <code>lsf</code> on the learning database.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meta_model</code></td>
+<td>
+<p>The final metamodel. An object from <span class="pkg">e1071</span>.</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>Problem is supposed to be defined in the standard space. If not,
+use <code>UtoX</code> to do so. Furthermore, each time a set of vector
+is defined as a matrix, ‘nrow’ = <code>dimension</code> and
+‘ncol’ = number of vector to be consistent with <code>as.matrix</code>
+transformation of a vector.
+</p>
+<p>Algorithm calls lsf(X) (where X is a matrix as defined previously) and
+expects a vector in return. This allows the user to optimise the computation
+of a batch of points, either by vectorial computation, or by the use of
+external codes (optimised C or C++ codes for example) and/or parallel
+computation; see examples in MonteCarlo.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Clement WALTER <a href="mailto:clementwalter@icloud.com">clementwalter@icloud.com</a>
+</p>
+
+
+<h3>References</h3>
+
+
+<ul>
+<li>
+<p>J.-M. Bourinet, F. Deheeger, M. Lemaire:<br><em>Assessing small failure probabilities by combined Subset Simulation and Support Vector Machines</em><br>
+Structural Safety (2011)
+</p>
+</li>
+<li>
+<p>F. Deheeger:<br><em>Couplage m?cano-fiabiliste : 2SMART - m?thodologie d'apprentissage stochastique en fiabilit?</em><br>
+PhD. Thesis, Universit? Blaise Pascal - Clermont II, 2008
+</p>
+</li>
+<li>
+<p>S.-K. Au, J. L. Beck:<br><em>Estimation of small failure probabilities in high dimensions by Subset Simulation</em> <br>
+Probabilistic Engineering Mechanics (2001)
+</p>
+</li>
+<li>
+<p>A. Der Kiureghian, T. Dakessian:<br><em>Multiple design points in first and second-order reliability</em><br>
+Structural Safety, vol.20 (1998)
+</p>
+</li>
+<li>
+<p>P.-H. Waarts:<br><em>Structural reliability using finite element methods: an appraisal of DARS:<br> Directional Adaptive Response Surface Sampling</em><br>
+PhD. Thesis, Technical University of Delft, The Netherlands, 2000
+</p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+<p><code>SMART</code>
+<code>SubsetSimulation</code>
+<code>MonteCarlo</code>
+<code>km</code> (in package <span class="pkg">DiceKriging</span>)
+<code>svm</code> (in package <span class="pkg">e1071</span>)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+  res = S2MART(dimension = 2,
+               lsf = kiureghian,
+               N1 = 1000, N2 = 5000, N3 = 10000,
+               plot = TRUE)
+  
+  #Compare with crude Monte-Carlo reference value
+  reference = MonteCarlo(2, kiureghian, N_max = 500000)
+
+## End(Not run)
+
+#See impact of metamodel-based subset simulation with Waarts function :
+## Not run: 
+  res = list()
+  # SMART stands for the pure metamodel based algorithm targeting directly the
+  # failure domain. This is not recommended by its authors which for this purpose
+  # designed S2MART : Subset-SMART
+  res$SMART = mistral:::SMART(dimension  = 2, lsf = waarts, plot=TRUE)
+  res$S2MART = S2MART(dimension = 2,
+                      lsf = waarts,
+                      N1 = 1000, N2 = 5000, N3 = 10000,
+                      plot=TRUE)
+  res$SS = SubsetSimulation(dimension = 2, waarts, n_init_samples = 10000)
+ res$MC = MonteCarlo(2, waarts, N_max = 500000)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

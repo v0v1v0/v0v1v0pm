@@ -1,0 +1,256 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>generatePartialDependenceData</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Generate partial dependence.</h2>
+
+<h3>Description</h3>
+
+<p>Estimate how the learned prediction function is affected by one or more features.
+For a learned function f(x) where x is partitioned into x_s and x_c, the partial dependence of
+f on x_s can be summarized by averaging over x_c and setting x_s to a range of values of interest,
+estimating E_(x_c)(f(x_s, x_c)). The conditional expectation of f at observation i is estimated similarly.
+Additionally, partial derivatives of the marginalized function w.r.t. the features can be computed.
+</p>
+<p>This function requires the <code>mmpf</code> package to be installed. It is currently not on CRAN, but can
+be installed through GitHub using <code>devtools::install_github('zmjones/mmpf/pkg')</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">generatePartialDependenceData(
+  obj,
+  input,
+  features = NULL,
+  interaction = FALSE,
+  derivative = FALSE,
+  individual = FALSE,
+  fun = mean,
+  bounds = c(qnorm(0.025), qnorm(0.975)),
+  uniform = TRUE,
+  n = c(10, NA),
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obj</code></td>
+<td>
+<p>(WrappedModel)<br>
+Result of train.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>input</code></td>
+<td>
+<p>(data.frame | Task)<br>
+Input data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>features</code></td>
+<td>
+<p>character<br>
+A vector of feature names contained in the training data.
+If not specified all features in the <code>input</code> will be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>interaction</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether the <code>features</code> should be interacted or not. If <code>TRUE</code> then the Cartesian product of the
+prediction grid for each feature is taken, and the partial dependence at each unique combination of
+values of the features is estimated. Note that if the length of <code>features</code> is greater than two,
+plotPartialDependence cannot be used.
+If <code>FALSE</code> each feature is considered separately. In this case <code>features</code> can be much longer
+than two.
+Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>derivative</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether or not the partial derivative of the learned function with respect to the features should be
+estimated. If <code>TRUE</code> <code>interaction</code> must be <code>FALSE</code>. The partial derivative of individual
+observations may be estimated. Note that computation time increases as the learned prediction function
+is evaluated at <code>gridsize</code> points * the number of points required to estimate the partial derivative.
+Additional arguments may be passed to numDeriv::grad (for regression or survival tasks) or
+numDeriv::jacobian (for classification tasks). Note that functions which are not smooth may
+result in estimated derivatives of 0 (for points where the function does not change within +/- epsilon)
+or estimates trending towards +/- infinity (at discontinuities).
+Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>individual</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether to plot the individual conditional expectation curves rather than the aggregated curve, i.e.,
+rather than aggregating (using <code>fun</code>) the partial dependences of <code>features</code>, plot the
+partial dependences of all observations in <code>data</code> across all values of the <code>features</code>.
+The algorithm is developed in Goldstein, Kapelner, Bleich, and Pitkin (2015).
+Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun</code></td>
+<td>
+<p><code>function</code><br></p>
+<p>A function which operates on the output on the predictions made on the <code>input</code> data. For regression
+this means a numeric vector, and, e.g., for a multiclass classification problem, this migh instead be probabilities
+which are returned as a numeric matrix. This argument can return vectors of arbitrary length, however,
+if their length is greater than one, they must by named, e.g., <code>fun = mean</code> or
+<code>fun = function(x) c("mean" = mean(x), "variance" = var(x))</code>.
+The default is the mean, unless <code>obj</code> is classification with <code>predict.type = "response"</code>
+in which case the default is the proportion of observations predicted to be in each class.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bounds</code></td>
+<td>
+<p>(<code>numeric(2)</code>)<br>
+The value (lower, upper) the estimated standard error is multiplied by to estimate the bound on a
+confidence region for a partial dependence. Ignored if <code>predict.type != "se"</code> for the learner.
+Default is the 2.5 and 97.5 quantiles (-1.96, 1.96) of the Gaussian distribution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>uniform</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether or not the prediction grid for the <code>features</code> is a uniform grid of size <code>n[1]</code> or sampled with
+replacement from the <code>input</code>.
+Default is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>(<code>integer21</code>)<br>
+The first element of <code>n</code> gives the size of the prediction grid created for each feature.
+The second element of <code>n</code> gives the size of the sample to be drawn without replacement from the <code>input</code> data.
+Setting <code>n[2]</code> less than the number of rows in the <code>input</code> will decrease computation time.
+The default for <code>n[1]</code> is 10, and the default for <code>n[2]</code> is the number of rows in the <code>input</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments to be passed to <code>mmpf</code>'s <code>marginalPrediction</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>PartialDependenceData. A named list, which contains the partial dependence,
+input data, target, features, task description, and other arguments controlling the type of
+partial dependences made.
+</p>
+<p>Object members:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>data.frame<br>
+Has columns for the prediction: one column for regression and
+survival analysis, and a column for class and the predicted probability for classification as well
+as a a column for each element of <code>features</code>. If <code>individual = TRUE</code> then there is an
+additional column <code>idx</code> which gives the index of the <code>data</code> that each prediction corresponds to.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>task.desc</code></td>
+<td>
+<p>TaskDesc<br>
+Task description.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>target</code></td>
+<td>
+<p>Target feature for regression, target feature levels for classification,
+survival and event indicator for survival.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>features</code></td>
+<td>
+<p>character<br>
+Features argument input.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>interaction</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether or not the features were interacted (i.e. conditioning).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>derivative</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether or not the partial derivative was estimated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>individual</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether the partial dependences were aggregated or the individual curves are retained.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Goldstein, Alex, Adam Kapelner, Justin Bleich, and Emil Pitkin. “Peeking inside the black box: Visualizing statistical learning with plots of individual conditional expectation.” Journal of Computational and Graphical Statistics. Vol. 24, No. 1 (2015): 44-65.
+</p>
+<p>Friedman, Jerome. “Greedy Function Approximation: A Gradient Boosting Machine.” The Annals of Statistics. Vol. 29. No. 5 (2001): 1189-1232.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other partial_dependence: 
+<code>plotPartialDependence()</code>
+</p>
+<p>Other generate_plot_data: 
+<code>generateCalibrationData()</code>,
+<code>generateCritDifferencesData()</code>,
+<code>generateFeatureImportanceData()</code>,
+<code>generateFilterValuesData()</code>,
+<code>generateLearningCurveData()</code>,
+<code>generateThreshVsPerfData()</code>,
+<code>plotFilterValues()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+lrn = makeLearner("regr.svm")
+fit = train(lrn, bh.task)
+pd = generatePartialDependenceData(fit, bh.task, "lstat")
+plotPartialDependence(pd, data = getTaskData(bh.task))
+
+lrn = makeLearner("classif.rpart", predict.type = "prob")
+fit = train(lrn, iris.task)
+pd = generatePartialDependenceData(fit, iris.task, "Petal.Width")
+plotPartialDependence(pd, data = getTaskData(iris.task))
+
+
+</code></pre>
+
+
+</div>

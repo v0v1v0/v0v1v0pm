@@ -1,0 +1,100 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mmcif_start_values</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Finds Staring Values</h2>
+
+<h3>Description</h3>
+
+<p>Fast heuristic for finding starting values for the mixed cumulative incidence
+functions model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mmcif_start_values(object, n_threads = 1L, vcov_start = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>an object from <code>mmcif_data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_threads</code></td>
+<td>
+<p>the number of threads to use.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vcov_start</code></td>
+<td>
+<p>starting value for the covariance matrix of the random
+effects. <code>NULL</code> yields the identity matrix.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list with
+</p>
+
+<ul>
+<li>
+<p> an element called <code>"full"</code> with the starting value where the
+last components are the covariance matrix.
+</p>
+</li>
+<li>
+<p> an element called <code>"upper"</code> the staring values where the
+covariance matrix is stored as a log Cholesky decomposition. This is used
+e.g. for optimization with <code>mmcif_fit</code>.
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">if(require(mets)){
+  # prepare the data
+  data(prt)
+
+  # truncate the time
+  max_time &lt;- 90
+  prt &lt;- within(prt, {
+    status[time &gt;= max_time] &lt;- 0
+    time &lt;- pmin(time, max_time)
+  })
+
+  # select the DZ twins and re-code the status
+  prt_use &lt;- subset(prt, zyg == "DZ") |&gt;
+    transform(status = ifelse(status == 0, 3L, status))
+
+  # randomly sub-sample
+  set.seed(1)
+  prt_use &lt;- subset(
+    prt_use, id %in% sample(unique(id), length(unique(id)) %/% 10L))
+
+  n_threads &lt;- 2L
+  mmcif_obj &lt;- mmcif_data(
+    ~ country - 1, prt_use, status, time, id, max_time,
+    2L, strata = country)
+
+  # get the staring values
+  start_vals &lt;- mmcif_start_values(mmcif_obj, n_threads = n_threads)
+
+  # the starting values
+  print(start_vals)
+}
+
+</code></pre>
+
+
+</div>

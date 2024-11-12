@@ -1,0 +1,272 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>define_analyses</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Assess Analyses Definitions</h2>
+
+<h3>Description</h3>
+
+<p>Define analyses based on an MD-PMS device-event data frame and, optionally,
+an MD-PMS exposure data frame. See Details for how to use.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">define_analyses(
+  deviceevents,
+  device_level,
+  event_level = NULL,
+  exposure = NULL,
+  date_level = "months",
+  date_level_n = 1,
+  covariates = "_none_",
+  times_to_calc = NULL,
+  invivo = FALSE,
+  prior = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>deviceevents</code></td>
+<td>
+<p>A device-events object of class <code>mds_de</code>, created by
+a call to <code>deviceevent()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>device_level</code></td>
+<td>
+<p>String value indicating the source device variable name
+to analyze by. If <code>exposure</code> is specified, <code>exposure</code> data will be
+matched by <code>device_level</code>. If a hierarchy of 2 or more are present,
+see Details for important information.
+</p>
+<p>Example: If the <code>deviceevents</code> variable column is <code>device_1</code> where
+the source variable name for <code>device_1</code> is <code>'Device Code'</code>, specify
+<code>device_level='Device Code'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>event_level</code></td>
+<td>
+<p>String value indicating the source event variable name to
+analyze by. Note that <code>event_level</code> is not matched to <code>exposure</code>.
+If a hierarchy of 2 or more are present, see Details for important
+information.
+</p>
+<p>Example: If the <code>deviceevents</code> variable column is <code>event_1</code> where
+the source variable name for <code>event_1</code> is <code>'Event Code'</code>, specify
+<code>event_level='Event Code'</code>.
+</p>
+<p>Default: <code>NULL</code> will not analyze by event.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exposure</code></td>
+<td>
+<p>Optional exposure object of class <code>mds_e</code>. See details
+for how exposure analyses definitions are handled.
+</p>
+<p>Default: <code>NULL</code> will not consider inclusion of exposure.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>date_level</code></td>
+<td>
+<p>String value for the primary date unit to analyze by. Can
+be either <code>'months'</code> or <code>'days'</code>.
+</p>
+<p>Default: <code>'months'</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>date_level_n</code></td>
+<td>
+<p>Numeric value indicating the number of <code>date_level</code>s
+to analyze by.
+</p>
+<p>Example: <code>date_level='months'</code> and <code>date_level_n=3</code> indicates
+analysis on a quarterly level.
+</p>
+<p>Default: <code>1</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covariates</code></td>
+<td>
+<p>Character vector specifying names of covariates to also
+define analyses for. Acceptable names are covariate variables specified
+in <code>deviceevents</code>. If the covariate is a factor, additional subgroup
+analyses will be defined at each level of the factor. <code>"_none_"</code>
+specifies no covariates, while <code>"_all_"</code> are all covariates specified in
+<code>deviceevents</code>. See details for more.
+</p>
+<p>Example: <code>c("Country", "Region")</code>
+</p>
+<p>Default: <code>"_none_"</code> specifies no covariates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>times_to_calc</code></td>
+<td>
+<p>Integer value indicating the number of date units
+counting backwards from the latest date to define analyses for. If
+<code>prior</code> is specified, <code>times_to_calc</code> will be ignored.
+</p>
+<p>Example 1: <code>times_to_calc=12</code> with <code>date_level="months"</code> and
+<code>date_level_n=1</code> defines analyses for the last year by month.
+</p>
+<p>Example 2: <code>times_to_calc=8</code> with <code>date_level="months"</code> and
+<code>date_level_n=3</code> defines analyses for the 2 years by quarter.
+</p>
+<p>Default: <code>NULL</code> will define analyses across all available time.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>invivo</code></td>
+<td>
+<p>Logical value indicating whether to include <code>time_invivo</code>
+from <code>deviceevents</code> in the analysis definition. See details for more.
+</p>
+<p>Default: <code>FALSE</code> will not include <code>time_invivo</code> in the analysis
+definition.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>Future placeholder, currently not used.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>define_analyses()</code> is a prerequisite to calling
+<code>time_series()</code>. This function enumerates all possible analyses based
+on input device-event (<code>deviceevent()</code>) and, optionally,
+exposure (<code>exposure()</code>) data frames. An analysis is defined as a set of
+instructions specifying at minimum the device level, event level, the date
+range of analysis, and the date unit. Additional instructions include the
+covariate level, time in-vivo status, and exposure levels.
+</p>
+<p>By separating the analysis enumeration (<code>define_analyses()</code>) from the
+generation of the time series (<code>time_series()</code>), the user may rerun
+the analyses on different datasets and/or filter the analyses to only those
+of interest.
+</p>
+<p>The analyses definitions will always include rollup levels for each
+of <code>device_level</code>, <code>event_level</code> (if specified), and
+<code>covariates</code>. Rollups are analyses at all device, event, and/or
+covariate levels. These rollup analyses will be indicated by the keyword
+'All' in the analysis definition.
+</p>
+<p>When a hierarchy of 2 or more variables for either <code>device_level</code> or
+<code>event_level</code> are present in <code>deviceevents</code>,
+<code>define_analyses()</code> will enforce the 1-level-up parent level ONLY.
+Additional higher parent levels are not currently enforced, thus the user is
+advised to uniquely name the 1-level-up parent level. The parent level
+DOES NOT ROLLUP currently because the parent level is intended to separate
+disparate data and devices. This may change in the future.
+</p>
+<p>If <code>exposure</code> is specified, any available <code>match_levels</code> will be
+used to calculate the appropriate timeframe for analyses. The exception are
+the special rollup analyses (see prior paragraph).
+</p>
+<p>When <code>covariates</code> are specified, a special rollup analysis definition
+will always be defined that does not consider the covariates at all. This
+analysis can be identified by <code>covariate='Data'</code> and
+<code>covariate_level='All'</code> in the output <code>mds_da</code> object.
+</p>
+<p>When <code>covariates</code> are specified and there is no variation in the
+distribution of covariate values (e.g. all males, all 10, all missing) in the
+device- and event-specific dataset, these specific analyses will be dropped.
+</p>
+<p>When factor <code>covariates</code> are specified, covariate-level analyses may be
+defined two ways: 1) detect an overall covariate level effect,
+also known as a 3-dimensional analysis, and 2) subset the data by each
+level of the covariate, also known as a subgroup analysis. 1) will be
+denoted as <code>covariate_level='All'</code> in the output <code>mds_da</code> object,
+while 2) will specify the factor level in <code>covariate_level</code>.
+</p>
+<p>If <code>invivo=TRUE</code>, <code>define_analyses()</code> will first verify if data
+exists in the <code>time_invivo</code> variable for the given <code>device_level</code>,
+<code>event_level</code>, and, if applicable, <code>covariates</code> level. If no data
+exists, <code>invivo</code> will be implicitly assigned to <code>FALSE</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of defined analyses of class <code>mds_das</code>.
+Each list item, indexed by a numeric key, defines a set of analyses for a
+unique combination of device, event, and covariate level. Each list item is
+of the class <code>mds_da</code>.
+Attributes of class <code>mds_das</code> are as follows:
+</p>
+
+<dl>
+<dt>date_level</dt>
+<dd>
+<p>Defined value for <code>date_level</code></p>
+</dd>
+<dt>date_level_n</dt>
+<dd>
+<p>Defined value for <code>date_level_n</code></p>
+</dd>
+<dt>device_level</dt>
+<dd>
+<p>Defined value for <code>device_level</code></p>
+</dd>
+<dt>event_level</dt>
+<dd>
+<p>Defined value for <code>event_level</code></p>
+</dd>
+<dt>times_to_calc</dt>
+<dd>
+<p>Defined value for <code>times_to_calc</code></p>
+</dd>
+<dt>prior_used</dt>
+<dd>
+<p>Boolean for whether <code>prior</code> was specified.</p>
+</dd>
+<dt>timestamp</dt>
+<dd>
+<p>System time when the analyses were defined.</p>
+</dd>
+</dl>
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Device-Events
+de &lt;- deviceevent(
+  data_frame=maude,
+  time="date_received",
+  device_hierarchy=c("device_name", "device_class"),
+  event_hierarchy=c("event_type", "medical_specialty_description"),
+  key="report_number",
+  covariates=c("region"),
+  descriptors="_all_")
+# Exposures
+ex &lt;- exposure(
+  data_frame=sales,
+  time="sales_month",
+  device_hierarchy="device_name",
+  match_levels="region",
+  count="sales_volume")
+# Defined Analyses - Simple example
+da &lt;- define_analyses(de, "device_name")
+# Defined Analyses - Simple example with a quarterly analysis
+da &lt;- define_analyses(de, "device_name", date_level_n=3)
+# Defined Analyses - Example with event type, exposures, and covariates
+da &lt;- define_analyses(de, "device_name", "event_type", ex, covariates="region")
+
+</code></pre>
+
+
+</div>

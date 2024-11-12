@@ -1,0 +1,200 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>riPEERc</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Graph-constrained regression with addition of a small ridge term to handle the non-invertibility of a graph Laplacian matrix</h2>
+
+<h3>Description</h3>
+
+<p>Graph-constrained regression with addition of a diagonal matrix multiplied by a predefined (small)
+scalar to handle the non-invertibility of a graph Laplacian matrix (see: References).
+</p>
+<p>Bootstrap confidence intervals computation is available (not set as a default option).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">riPEERc(Q, y, Z, X = NULL, lambda.2 = 0.001, compute.boot.CI = FALSE,
+  boot.R = 1000, boot.conf = 0.95, boot.set.seed = TRUE,
+  boot.parallel = "multicore", boot.ncpus = 4, verbose = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Q</code></td>
+<td>
+<p>graph-originated penalty matrix <code class="reqn">(p \times p)</code>; typically: a graph Laplacian matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>response values matrix <code class="reqn">(n \times 1)</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Z</code></td>
+<td>
+<p>design matrix <code class="reqn">(n \times p)</code> modeled as random effects variables (to be penalized in regression modeling);
+<strong>assumed to be already standarized</strong></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>design matrix <code class="reqn">(n \times k)</code> modeled as fixed effects variables (not to be penalized in regression modeling);
+<strong>should contain colum of 1s if intercept is to be considered in a model</strong></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.2</code></td>
+<td>
+<p>(small) scalar value of regularization parameter for diagonal matrix by adding which the <code>Q</code> matrix is corrected
+(note: correction is done <em>before</em> <code class="reqn">\lambda_Q</code> regularization parameter value estimation;
+in other words: <code class="reqn">\lambda_Q</code> estimation is done for the corrected <code>Q</code> matrix)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>compute.boot.CI</code></td>
+<td>
+<p>logical whether or not compute bootstrap confidence intervals for <code class="reqn">b</code> regression coefficient estimates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.R</code></td>
+<td>
+<p>number of bootstrap replications used in bootstrap confidence intervals computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.conf</code></td>
+<td>
+<p>confidence level assumed in bootstrap confidence intervals computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.set.seed</code></td>
+<td>
+<p>logical whether or not set seed in bootstrap confidence intervals computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.parallel</code></td>
+<td>
+<p>value of <code>parallel</code> argument in <code>boot</code> function in bootstrap confidence intervals computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.ncpus</code></td>
+<td>
+<p>value of <code>ncpus</code> argument in <code>boot</code> function in bootstrap confidence intervals computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>logical whether or not set verbose mode (print out function execution messages)</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>b.est</code></td>
+<td>
+<p>vector of <code class="reqn">b</code> coefficient estimates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beta.est</code></td>
+<td>
+<p>vector of <code class="reqn">\beta</code> coefficient estimates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.Q</code></td>
+<td>
+<p><code class="reqn">\lambda_Q</code> regularization parameter value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.R</code></td>
+<td>
+<p><code>lambda.Q</code> * <code>lambda.2</code> value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda.2</code></td>
+<td>
+<p><code>lambda.2</code> supplied argument value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boot.CI</code></td>
+<td>
+<p>data frame with two columns, <code>lower</code> and <code>upper</code>, containing, respectively, values of lower and upper bootstrap confidence intervals for <code class="reqn">b</code> regression coefficient estimates</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Karas, M., Brzyski, D., Dzemidzic, M., J., Kareken, D.A., Randolph, T.W., Harezlak, J. (2017).
+Brain connectivity-informed regularization methods for regression. doi: https://doi.org/10.1101/117945
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(1234)
+n &lt;- 200
+p1 &lt;- 10
+p2 &lt;- 90
+p &lt;- p1 + p2
+# Define graph adjacency matrix
+A &lt;- matrix(rep(0, p*p), nrow = p, ncol = p)
+A[1:p1, 1:p1] &lt;- 1
+A[(p1+1):p, (p1+1):p] &lt;- 1
+L &lt;- Adj2Lap(A)
+# Define Q penalty matrix as graph Laplacian matrix normalized)
+Q &lt;- L2L.normalized(L)
+# Define Z,X design matrices and aoutcome y
+Z &lt;- matrix(rnorm(n*p), nrow = n, ncol = p)
+b.true &lt;- c(rep(1, p1), rep(0, p2))
+X &lt;- matrix(rnorm(n*3), nrow = n, ncol = 3)
+beta.true &lt;- runif(3)
+intercept &lt;- 0
+eta &lt;- intercept + Z %*% b.true + X %*% beta.true
+R2 &lt;- 0.5
+sd.eps &lt;- sqrt(var(eta) * (1 - R2) / R2)
+error &lt;- rnorm(n, sd = sd.eps)
+y &lt;- eta + error
+
+## Not run: 
+riPEERc.out &lt;- riPEERc(Q, y, Z, X)
+plt.df &lt;- data.frame(x = 1:p, y = riPEERc.out$b.est)
+ggplot(plt.df, aes(x = x, y = y, group = 1)) + geom_line() + labs("b estimates")
+
+## End(Not run)
+
+## Not run: 
+# riPEERc with 0.95 bootstrap confidence intervals computation
+riPEERc.out &lt;- riPEERc(Q, y, Z, X, compute.boot.CI = TRUE, boot.R = 500)
+plt.df &lt;- data.frame(x = 1:p, y = riPEERc.out$b.est, 
+                     lo = riPEERc.out$boot.CI[,1], 
+                     up =  riPEERc.out$boot.CI[,2])
+ggplot(plt.df, aes(x = x, y = y, group = 1)) + geom_line() +  
+  geom_ribbon(aes(ymin=lo, ymax=up), alpha = 0.3)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

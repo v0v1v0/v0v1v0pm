@@ -1,0 +1,221 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MRFcov</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Markov Random Fields with covariates</h2>
+
+<h3>Description</h3>
+
+<p>This function is the workhorse of the <code>MRFcov</code> package, running
+separate penalized regressions for each node to estimate parameters of
+Markov Random Fields (MRF) graphs. Covariates can be included
+(a class of models known as Conditional Random Fields; CRF), to estimate
+how interactions between nodes vary across covariate magnitudes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MRFcov(
+  data,
+  symmetrise,
+  prep_covariates,
+  n_nodes,
+  n_cores,
+  n_covariates,
+  family,
+  bootstrap = FALSE,
+  progress_bar = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A <code>dataframe</code>. The input data where the <code>n_nodes</code>
+left-most variables are variables that are to be represented by nodes in the graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>symmetrise</code></td>
+<td>
+<p>The method to use for symmetrising corresponding parameter estimates
+(which are taken from separate regressions). Options are <code>min</code> (take the coefficient with the
+smallest absolute value), <code>max</code> (take the coefficient with the largest absolute value)
+or <code>mean</code> (take the mean of the two coefficients). Default is <code>mean</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prep_covariates</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, covariate columns will be cross-multiplied
+with nodes to prep the dataset for MRF models. Note this is only useful when additional
+covariates are provided. Therefore, if <code>n_nodes &lt; NCOL(data)</code>,
+default is <code>TRUE</code>. Otherwise, default is <code>FALSE</code>. See
+<code>prep_MRF_covariates</code> for more information</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_nodes</code></td>
+<td>
+<p>Positive integer. The index of the last column in <code>data</code>
+which is represented by a node in the final graph. Columns with index
+greater than n_nodes are taken as covariates. Default is the number of
+columns in <code>data</code>, corresponding to no additional covariates</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_cores</code></td>
+<td>
+<p>Positive integer. The number of cores to spread the job across using
+<code>makePSOCKcluster</code>. Default is 1 (no parallelisation)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_covariates</code></td>
+<td>
+<p>Positive integer. The number of covariates in <code>data</code>, before cross-multiplication.
+Default is <code>NCOL(data) - n_nodes</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>The response type. Responses can be quantitative continuous (<code>family = "gaussian"</code>),
+non-negative counts (<code>family = "poisson"</code>) or binomial 1s and 0s (<code>family = "binomial"</code>).
+If using (<code>family = "binomial"</code>), please note that if nodes occur in less than 5 percent
+of observations this can make it generally difficult to
+estimate occurrence probabilities (on the extreme end, this can result in intercept-only
+models being fitted for the nodes in question). The function will issue a warning in this case.
+If nodes occur in more than 95 percent of observations, this will return an error as the cross-validation
+step will generally be unable to proceed. For <code>family = 'poisson'</code> models, all returned
+coefficients are estimated on the identity scale AFTER using a nonparanormal transformation.
+See <code>vignette("Gaussian_Poisson_CRFs")</code> for details of interpretation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bootstrap</code></td>
+<td>
+<p>Logical. Used by <code>bootstrap_MRF</code> to reduce memory usage</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress_bar</code></td>
+<td>
+<p>Logical. Progress bar in pbapply is used if <code>TRUE</code>, but this slows estimation.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Separate penalized regressions are used to approximate
+MRF parameters, where the regression for node <code>j</code> includes an
+intercept and coefficients for the abundance (families <code>gaussian</code> or <code>poisson</code>)
+or presence-absence (family <code>binomial</code>) of all other
+nodes (<code>/j</code>) in <code>data</code>. If covariates are included, coefficients
+are also estimated for the effect of the covariate on <code>j</code>, and for the
+effects of the covariate on interactions between <code>j</code> and all other nodes
+(<code>/j</code>). Note that interaction coefficients must be estimated between variables that
+are on roughly the same scale, as the resulting parameter estimates are
+unified into a Markov Random Field using the specified <code>symmetrise</code> function.
+Counts for <code>poisson</code> variables, which are often not on the same scale,
+will therefore be normalised with a nonparanormal transformation
+<code>x = qnorm(rank(log2(x + 0.01)) / (length(x) + 1))</code>. These transformed counts
+will be used in a <code>(family = "gaussian")</code>
+model and their respective raw distribution parameters returned so that coefficients
+can be back-transformed for interpretation (this back-transformation is
+performed automatatically by other functions including <code>predict_MRF</code>
+and <code>cv_MRF_diag</code>). Gaussian variables are not automatically transformed, so
+if they cover quite different ranges and scales, then it is recommended to scale them prior to fitting
+models. For more information on this process, use
+<code>vignette("Gaussian_Poisson_CRFs")</code>
+<br><br>
+Note that since the number of parameters to estimate in each node-wise regression
+quickly increases with increasing numbers of nodes and covariates,
+LASSO penalization is used to regularize
+regressions. This is done by minimising the cross-validated
+mean error for each node separately using <code>cv.glmnet</code>. In this way,
+we maximise the log-likelihood of each node
+separately before unifying the nodes into a graph.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>list</code> containing:
+</p>
+
+<ul>
+<li> <p><code>graph</code>: Estimated parameter <code>matrix</code> of pairwise interaction effects
+</p>
+</li>
+<li> <p><code>intercepts</code>: Estimated parameter <code>vector</code> of node intercepts
+</p>
+</li>
+<li> <p><code>indirect_coefs</code>: <code>list</code> containing matrices representing
+indirect effects of each covariate on pairwise node interactions
+</p>
+</li>
+<li> <p><code>direct_coefs</code>: <code>matrix</code> of direct effects of each parameter on
+each outcome node. For <code>family = 'binomial'</code> models, all coefficients are
+estimated on the logit scale.
+</p>
+</li>
+<li> <p><code>param_names</code>: Character string of covariate parameter names
+</p>
+</li>
+<li> <p><code>mod_type</code>: A character stating the type of model that was fit
+(used in other functions)
+</p>
+</li>
+<li> <p><code>mod_family</code>: A character stating the family of model that was fit
+(used in other functions)
+</p>
+</li>
+<li> <p><code>poiss_sc_factors</code>: A matrix of the estimated negative binomial or
+poisson parameters for each raw  node variable (only returned if <code>family = "poisson"</code>).
+These are needed for converting coefficients back to their original distribution, and are
+used for prediction purposes only
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>Ising, E. (1925). Beitrag zur Theorie des Ferromagnetismus.
+Zeitschrift für Physik A Hadrons and Nuclei, 31, 253-258.<br><br>
+Cheng, J., Levina, E., Wang, P. &amp; Zhu, J. (2014).
+A sparse Ising model with covariates. (2012). Biometrics, 70, 943-953.<br><br>
+Clark, NJ, Wells, K and Lindberg, O.
+Unravelling changing interspecific interactions across environmental gradients
+using Markov random fields. (2018). Ecology doi: 10.1002/ecy.2221
+<a href="https://www.researchgate.net/publication/325184442_Unravelling_changing_interspecific_interactions_across_environmental_gradients_using_Markov_random_fields">Full text here</a>.<br><br>
+Sutton C, McCallum A. An introduction to conditional random fields.
+Foundations and Trends in Machine Learning 4, 267-373.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Cheng et al. (2014), Sutton &amp; McCallum (2012) and Clark et al. (2018)
+for overviews of Conditional Random Fields. See <code>cv.glmnet</code> for
+details of cross-validated optimization using LASSO penalty. Worked examples to showcase
+this function can be found using <code>vignette("Bird_Parasite_CRF")</code> and
+<code>vignette("Gaussian_Poisson_CRFs")</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data("Bird.parasites")
+CRFmod &lt;- MRFcov(data = Bird.parasites, n_nodes = 4, family = 'binomial')
+
+</code></pre>
+
+
+</div>

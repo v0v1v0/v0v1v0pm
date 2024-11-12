@@ -1,0 +1,257 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>cluster.vcov</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multi-way standard error clustering</h2>
+
+<h3>Description</h3>
+
+<p>Return a multi-way cluster-robust variance-covariance matrix
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">cluster.vcov(model, cluster, parallel = FALSE, use_white = NULL,
+  df_correction = TRUE, leverage = FALSE, force_posdef = FALSE,
+  stata_fe_model_rank = FALSE, debug = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>The estimated model, usually an <code>lm</code> or <code>glm</code> class object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cluster</code></td>
+<td>
+<p>A <code>vector</code>, <code>matrix</code>, or <code>data.frame</code> of cluster variables,
+where each column is a separate variable.  If the vector <code>1:nrow(data)</code>
+is used, the function effectively produces a regular 
+heteroskedasticity-robust matrix.  Alternatively, a <code>formula</code> specifying the 
+cluster variables to be used (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>Scalar or list.  If a list, use the list as a list
+of connected processing cores/clusters.  A scalar indicates no
+parallelization.  See the <b>parallel</b> package.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_white</code></td>
+<td>
+<p>Logical or <code>NULL</code>.  See description below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df_correction</code></td>
+<td>
+<p>Logical or <code>numeric</code>.  <code>TRUE</code> computes degrees
+of freedom corrections, <code>FALSE</code> uses no corrections.  A vector of length
+<code class="reqn">2^D - 1</code> will directly set the degrees of freedom corrections.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>leverage</code></td>
+<td>
+<p>Integer. EXPERIMENTAL Uses Mackinnon-White HC3-style leverage
+adjustments.  Known to work in the non-clustering case, 
+e.g., it reproduces HC3 if <code>df_correction = FALSE</code>.  Set to 3 for HC3-style
+and 2 for HC2-style leverage adjustments.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>force_posdef</code></td>
+<td>
+<p>Logical.  Force the eigenvalues of the variance-covariance
+matrix to be positive.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stata_fe_model_rank</code></td>
+<td>
+<p>Logical.  If <code>TRUE</code>, add 1 to model rank <code class="reqn">K</code> 
+to emulate Stata's fixed effect model rank for degrees of freedom adjustments.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>debug</code></td>
+<td>
+<p>Logical.  Print internal values useful for debugging to 
+the console.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function implements multi-way clustering using the method 
+suggested by Cameron, Gelbach, &amp; Miller (2011), 
+which involves clustering on <code class="reqn">2^D - 1</code> dimensional combinations, e.g.,
+if we're cluster on firm and year, then we compute for firm,
+year, and firm-year.  Variance-covariance matrices with an odd
+number of cluster variables are added, and those with an even
+number are subtracted.
+</p>
+<p>The cluster variable(s) are specified by passing the entire variable(s)
+to cluster (<code>cbind()</code>'ed as necessary).  The cluster variables should
+be of the same number of rows as the original data set; observations
+omitted or excluded in the model estimation will be handled accordingly.
+</p>
+<p>Alternatively, you can use a formula to specify which variables from the
+original data frame to use as cluster variables, e.g., <code>~ firmid + year</code>.
+</p>
+<p>Ma (2014) suggests using the White (1980) 
+variance-covariance matrix as the final, subtracted matrix when the union 
+of the clustering dimensions U results in a single observation per group in U;
+e.g., if clustering by firm and year, there is only one observation
+per firm-year, we subtract the White (1980) HC0 variance-covariance
+from the sum of the firm and year vcov matrices.  This is detected
+automatically (if <code>use_white = NULL</code>), but you can force this one way 
+or the other by setting <code>use_white = TRUE</code> or <code>FALSE</code>.
+</p>
+<p>Some authors suggest avoiding degrees of freedom corrections with
+multi-way clustering.  By default, the function uses corrections
+identical to Petersen (2009) corrections.  Passing a numerical
+vector to <code>df_correction</code> (of length <code class="reqn">2^D - 1</code>) will override
+the default, and setting <code>df_correction = FALSE</code> will use no correction.
+</p>
+<p>Cameron, Gelbach, &amp; Miller (2011) 
+futher suggest a method for forcing
+the variance-covariance matrix to be positive semidefinite by correcting
+the eigenvalues of the matrix.  To use this method, set <code>force_posdef = TRUE</code>.
+Do not use this method unless absolutely necessary!  The eigen/spectral
+decomposition used is not ideal numerically, and may introduce small
+errors or deviations.  If <code>force_posdef = TRUE</code>, the correction is applied
+regardless of whether it's necessary.
+</p>
+<p>The defaults deliberately match the Stata default output for one-way and
+Mitchell Petersen's two-way Stata code results.  To match the
+SAS default output (obtained using the class &amp; repeated subject 
+statements, see Arellano, 1987) 
+simply turn off the degrees of freedom correction.
+</p>
+<p>Parallelization is available via the <b>parallel</b> package by passing
+the "cluster" list (usually called <code>cl</code>) to the parallel argument.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a <code class="reqn">K x K</code> variance-covariance matrix of type 'matrix'
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nathaniel Graham <a href="mailto:npgraham1@gmail.com">npgraham1@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Arellano, M. (1987). PRACTITIONERS' CORNER:
+Computing Robust Standard Errors for Within-groups Estimators. 
+Oxford Bulletin of Economics and Statistics, 49(4), 431–434.
+<a href="http://doi.org/10.1111/j.1468-0084.1987.mp49004006.x">doi: 10.1111/j.1468-0084.1987.mp49004006.x</a>
+</p>
+<p>Cameron, A. C., Gelbach, J. B., &amp; Miller, D. L. (2011). 
+Robust inference with multiway clustering. Journal of Business &amp; Economic Statistics, 29(2).
+<a href="http://doi.org/10.1198/jbes.2010.07136">doi: 10.1198/jbes.2010.07136</a>
+</p>
+<p>Ma, Mark (Shuai), Are We Really Doing What We Think We Are Doing? A Note on Finite-Sample 
+Estimates of Two-Way Cluster-Robust Standard Errors (April 9, 2014).
+</p>
+<p>MacKinnon, J. G., &amp; White, H. (1985). 
+Some heteroskedasticity-consistent covariance matrix estimators with improved finite 
+sample properties. Journal of Econometrics, 29(3), 305–325.
+<a href="http://doi.org/10.1016/0304-4076(85)90158-7">doi: 10.1016/0304-4076(85)90158-7</a>
+</p>
+<p>Petersen, M. A. (2009). Estimating standard errors 
+in finance panel data sets: Comparing approaches. Review of Financial Studies, 22(1), 435–480.
+<a href="http://doi.org/10.1093/rfs/hhn053">doi: 10.1093/rfs/hhn053</a>
+</p>
+<p>White, H. (1980). A heteroskedasticity-consistent covariance matrix estimator and a direct 
+test for heteroskedasticity. Econometrica: Journal of the Econometric Society, 817–838.
+<a href="http://doi.org/10.2307/1912934">doi: 10.2307/1912934</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>The <code>coeftest</code> and <code>waldtest</code> functions 
+from <a href="https://CRAN.R-project.org/package=lmtest"><span class="pkg">lmtest</span></a> provide hypothesis testing, <a href="https://CRAN.R-project.org/package=sandwich"><span class="pkg">sandwich</span></a> provides other
+variance-covariance matrices such as <code>vcovHC</code> and <code>vcovHAC</code>, 
+and the <code>felm</code> function from <a href="https://CRAN.R-project.org/package=lfe"><span class="pkg">lfe</span></a> also implements multi-way standard
+error clustering.  The <code>cluster.boot</code> function provides clustering using the bootstrap.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(lmtest)
+data(petersen)
+m1 &lt;- lm(y ~ x, data = petersen)
+
+# Cluster by firm
+vcov_firm &lt;- cluster.vcov(m1, petersen$firmid)
+coeftest(m1, vcov_firm)
+
+# Cluster by year
+vcov_year &lt;- cluster.vcov(m1, petersen$year)
+coeftest(m1, vcov_year)
+
+# Cluster by year using a formula
+vcov_year_formula &lt;- cluster.vcov(m1, ~ year)
+coeftest(m1, vcov_year_formula)
+
+# Double cluster by firm and year
+vcov_both &lt;- cluster.vcov(m1, cbind(petersen$firmid, petersen$year))
+coeftest(m1, vcov_both)
+
+# Double cluster by firm and year using a formula
+vcov_both_formula &lt;- cluster.vcov(m1, ~ firmid + year)
+coeftest(m1, vcov_both_formula)
+
+# Replicate Mahmood Arai's double cluster by firm and year
+vcov_both &lt;- cluster.vcov(m1, cbind(petersen$firmid, petersen$year), use_white = FALSE)
+coeftest(m1, vcov_both)
+
+# For comparison, produce White HC0 VCOV the hard way
+vcov_hc0 &lt;- cluster.vcov(m1, 1:nrow(petersen), df_correction = FALSE)
+coeftest(m1, vcov_hc0)
+
+# Produce White HC1 VCOV the hard way
+vcov_hc1 &lt;- cluster.vcov(m1, 1:nrow(petersen), df_correction = TRUE)
+coeftest(m1, vcov_hc1)
+
+# Produce White HC2 VCOV the hard way
+vcov_hc2 &lt;- cluster.vcov(m1, 1:nrow(petersen), df_correction = FALSE, leverage = 2)
+coeftest(m1, vcov_hc2)
+
+# Produce White HC3 VCOV the hard way
+vcov_hc3 &lt;- cluster.vcov(m1, 1:nrow(petersen), df_correction = FALSE, leverage = 3)
+coeftest(m1, vcov_hc3)
+
+# Go multicore using the parallel package
+## Not run: 
+library(parallel)
+cl &lt;- makeCluster(4)
+vcov_both &lt;- cluster.vcov(m1, cbind(petersen$firmid, petersen$year), parallel = cl)
+stopCluster(cl)
+coeftest(m1, vcov_both)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,300 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>wpl</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Weighted partial likelihood for nested case-control data 
+</h2>
+
+<h3>Description</h3>
+
+<p>Fits Cox proportional hazards models for nested case-control data 
+with a weigthed partial likelihood. Matching between cases and 
+controls is broken which enables the controls to be reused for other endpoints. It 
+handles competing risks (with simple survival data with one endpoint being a
+special case) and cases and controls from one endpoint are being used as 
+additional controls for another endpoint. There are four choices of weights; 
+Samuelsen (1997) <code>KM</code>, estimated with logistic regression (<code>glm</code>), logistic 
+genralized additive model (<code>gam</code>) and local averaging (Chen, 2001) 
+<code>(Chen)</code>. <code>KM</code>, <code>glm</code> and <code>gam</code> handle additional matching,
+while all of them handle left-truncation. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">  
+wpl(x, data, samplestat, m = 1, weight.method = "KM", no.intervals = 10, 
+variance = "robust", no.intervals.left = c(3, 4), match.var = 0, match.int = 0)
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+
+<p>A formula object, with the response on the left of a ~ operator, and the terms 
+on the right. The response must be a survival object as returned by the Surv 
+function. The status variable going in to Surv is not actually used but should 
+have 1 for cases and zero for controls and non-sampled subjetcs. All elements 
+going into the formula should have lenght equal to the number of subjects in the
+cohort. Generally some of the covariates are not known for all subjects in the 
+cohort (due to the NCC-sampling). The covariate values for those subjects should 
+just be given some value e.g. 0 (not NA). Which value choosen is not important 
+as the values are never used. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>data.frame in which to interpret the variables named in the formula.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>samplestat</code></td>
+<td>
+
+<p>A vector containing sampling and status information: 0 represents non-sampled 
+subjects in the cohort, 1: sampled controls, 2,3,... indicate different events. 
+Cohort dimension. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>m</code></td>
+<td>
+
+<p>Number of sampled controls. A scalar if equal number of controls for all cases. 
+If unequal number of controls per case: A vector of length number of cases. The 
+vector must be in the same order as the cases in the samplestat-vector.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weight.method</code></td>
+<td>
+
+<p>Which weigths should be used, possibilities <code>"KM"</code>, <code>"gam"</code>, 
+<code>"glm"</code>, <code>"Chen"</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>no.intervals</code></td>
+<td>
+
+<p>Number of intervals for censoring times for Chen-weights with only right 
+censoring
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>variance</code></td>
+<td>
+
+<p>Default is robust variances, but model based variance (only for KM-weights), 
+<code>"Modelbased"</code> and variance based on stratified case-cohort 
+<code>"Poststrat"</code> (only for Chen-weights) is also possible. 
+<code>Pseudo</code>-variance and <code>Strat</code>-variance will appear under 
+"est.se(coef)" in the output.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>no.intervals.left</code></td>
+<td>
+
+<p>Number of intervals for Chen-weights with left-truncation. A vector on the form 
+[number of intervals for left truncated time, number of intervals for survival time].
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>match.var</code></td>
+<td>
+
+<p>If the controls are matched to the cases (on other variables than time), 
+match.var is the vector or matrix of matching variables. Cohort dimension.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>match.int</code></td>
+<td>
+
+<p>A vector of length 2*number of matching variables. For caliper matching 
+(matched on value pluss/minus epsilon) match.int should consist of 
+c(-epsilon,epsilon). For exact matching match.int should consist of c(0,0). 
+</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object of class wpl representing the fit. Objects of this class have methods 
+for the functions <code>print</code> and <code>summary</code>.
+The wpl-object consists of the following elements which are repeated for each 
+endpoint. Unfortunately only the values for the first endpoint can be reached 
+by $-operator(ex. fit$coefficients only return the coefficients for the first 
+endpoint)
+
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>coefficients</code></td>
+<td>
+<p>The vector of coefficients.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>var</code></td>
+<td>
+<p>Robust or estimated variance</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weighted.loglik</code></td>
+<td>
+<p>A vector of length 2 containing the log-likelihood with 
+the initial values and with the final values of the coefficients.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>Number of iterations used</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>linear.predictors</code></td>
+<td>
+<p>The vector of linear predictors, one per subject. 
+Note that this vector has been centered, see predict.coxph for more details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>residuals</code></td>
+<td>
+<p>The martingale residuals</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>means</code></td>
+<td>
+<p>Vector of column means of the X matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>The computation method used</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>The number of observations used in the fit</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nevent</code></td>
+<td>
+<p>The number of events (usually deaths) used in the fit</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>naive.var</code></td>
+<td>
+<p>naive.var</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rscore</code></td>
+<td>
+<p>The robust log-rank statistic</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wald.test</code></td>
+<td>
+<p>The Wald test of whether the final coefficients differ from 
+the initial values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Inclusion time and event/censoring time</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+<p>The vector of weights, which are inverse sampling probabilities</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est.var</code></td>
+<td>
+<p>Estimated variance (T) or robust variance (F)</p>
+</td>
+</tr>
+</table>
+<p>.<br>
+.<br>
+.<br></p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nathalie C. Stoer
+</p>
+
+
+<h3>References</h3>
+
+<p>Samuelsen SO. A pseudolikelihood approach to analysis of nested case-control studies.
+Biometrika, 84(2):379-394, 1997. <br>
+Stoer NC and Samuelsen SO (2013): Inverse probability weighting in nested case-control
+studies with additional matching - a simulation study. Statistics in Medicine, 
+32(30), 5328-5339.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>coxph</code>, <code>Chenprob</code>, <code>GLMprob</code>, <code>GAMprob</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(CVD_Accidents)
+wpl(Surv(agestart,agestop,dead24)~factor(smoking3gr)+bmi+factor(sex),data=CVD_Accidents,
+samplestat=CVD_Accidents$samplestat,weight.method="gam")
+
+wpl(Surv(agestart,agestop,dead24)~factor(smoking3gr)+bmi+factor(sex),data=CVD_Accidents,
+samplestat=CVD_Accidents$samplestat,m=1,match.var=cbind(CVD_Accidents$sex,
+CVD_Accidents$bmi),match.int=c(0,0,-2,2),weight.method="glm")
+
+
+## The function is currently defined as
+function (x, data, samplestat, m = 1, weight.method = "KM", no.intervals = 10, 
+    variance = "robust", no.intervals.left = c(3, 4), match.var = 0, 
+    match.int = 0) 
+{
+    UseMethod("wpl")
+  }
+</code></pre>
+
+
+</div>

@@ -1,0 +1,162 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>plot.gamViz</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Basic GAM plotting</h2>
+
+<h3>Description</h3>
+
+<p>This function is the <code>mgcViz</code> equivalent of plot.gam. It is the workhorse of the
+<code>mgcViz</code> package, and allows plotting (almost) any type of smooth,
+parametric or random effects. It is basically a wrapper around plotting
+methods that are specific to individual smooth effect classes (such as
+plot.mgcv.smooth.1D and plot.random.effect).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'gamViz'
+plot(x, n = 100, n2 = 40, select = NULL, allTerms = FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>an object of class <code>gamViz</code>, the output of a getViz call.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>number of points used for each 1-d plot. For a nice smooth plot
+this needs to be several times the estimated degrees of freedom for the smooth.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n2</code></td>
+<td>
+<p>square root of number of grid points used for plotting 2D functions effects
+using contours or heatmaps.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>select</code></td>
+<td>
+<p>allows plotting a subset of model terms. For instance, if you just want the plot
+for the second smooth term, set <code>select = 2</code>. Parametric effects always come
+after smooth or random effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allTerms</code></td>
+<td>
+<p>if <code>TRUE</code> also the parametric effects will be plotted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other parameters, such as <code>maxpo</code> or <code>trans</code>, to be passed to the specific
+plotting methods for each effect (e.g. to plot.mgcv.smooth.1D).</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object of class <code>c("plotGam", "gg")</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(mgcViz)
+
+######## Basic example
+# Simulate some data and fit model
+set.seed(2)  
+dat &lt;- gamSim(1,n=1e3,dist="normal",scale=2)
+b &lt;- bam(y~s(x0)+s(x1, x2)+s(x3), data=dat)
+b &lt;- getViz(b)
+
+# Default smooth effect plotting
+print(plot(b), ask = FALSE)
+
+# Now on one page and with out title on the second plot
+print(plot(b) + labs(title = NULL), pages = 1) 
+
+# So far we used default layers, added in the printing phase, but
+# we might want to specify our own layers. Here we is how to do it
+pl &lt;- plot(b) + l_points() + l_fitLine(linetype = 3) + l_fitContour() + 
+  l_ciLine(colour = 2) + theme_get() + labs(title = NULL)
+print(pl, pages = 1)
+
+# We might want to plot only the first smooth
+plot(b, select = 1) + l_dens(type = "cond") + l_fitLine() + l_ciLine()
+
+## Not run: 
+######## Example with "by variable" smooth effect
+# Simulate data and fit model
+dat &lt;- gamSim(4)
+b &lt;- gam(y ~ fac+s(x2,by=fac)+s(x0),data=dat)
+b &lt;- getViz(b)
+# print() only needed because we want to plot on a single page
+print(plot(b), pages = 1) 
+print(plot(b, allTerms = TRUE), pages = 1) # Including also parametric effect
+
+######## Example with 3D smooth effect which cannot be plotted
+# Simulate data and fit model
+n &lt;- 5e3
+x &lt;- rnorm(n); y &lt;- rnorm(n); z &lt;- rnorm(n); z2 &lt;- rnorm(n)
+
+ob &lt;- (x-z)^2 + (y-z)^2 + z2^3 + rnorm(n)
+b1 &lt;- bam(ob ~ s(x, y, z) + s(z2), discrete = TRUE)
+b1 &lt;- getViz(b1)
+
+# Only second effect get plotted
+plot(b1)
+# In fact this does not plot anything
+plot(b1, select = 1)
+# For plotting effects with more than 2D, one we need specific method. 
+# See ?plot.mgcv.smooth.MD
+
+######## Examples about plotting parametric effects
+# 1 Gaussian GAM
+set.seed(3)
+dat &lt;- gamSim(1,n=2500,dist="normal",scale=20)
+dat$fac &lt;- as.factor( sample(c("A1", "A2", "A3"), nrow(dat), replace = TRUE) ) 
+dat$logi &lt;- as.logical( sample(c(TRUE, FALSE), nrow(dat), replace = TRUE) ) 
+bs &lt;- "cr"; k &lt;- 12
+b &lt;- bam(y ~ x0 + x1 + I(x1^2) + s(x2,bs=bs,k=k) + fac + x3:fac + I(x1*x2) + logi +
+            s(x3, bs=bs),data=dat, discrete = TRUE)
+b &lt;- getViz(b)
+
+# All effects in one page. Notably 'x3:fac' is missing: we have no methods
+# for plotting second order effects.
+print(plot(b, allTerms = TRUE), pages = 1)
+
+# Plotting only parametric effects
+print(plot(b, select = 3:9), pages = 1)
+
+# 2 GAMLSS Gaussian model
+library(mgcv);library(MASS)
+mcycle$fac &lt;- as.factor( sample(c("z", "k", "a", "f"), nrow(mcycle), replace = TRUE) ) 
+b &lt;- gam(list(accel~times + I(times^2) + s(times,k=10), ~ times + fac + s(times)),
+          data=mcycle,family=gaulss())
+b &lt;- getViz(b)
+
+# All effects on one page: effect of second linear predictor end with '.1'
+print(plot(b, allTerms = TRUE), pages = 1)
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

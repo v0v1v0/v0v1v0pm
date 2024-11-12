@@ -1,0 +1,146 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>processdataSCR</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Generate model inputs for fitting spatial 'multimark' models</h2>
+
+<h3>Description</h3>
+
+<p>This function generates an object of class <code>multimarkSCRsetup</code> that is required to fit spatial ‘multimark’ models.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">processdataSCR(
+  Enc.Mat,
+  trapCoords,
+  studyArea = NULL,
+  buffer = NULL,
+  ncells = NULL,
+  data.type = "never",
+  covs = data.frame(),
+  known = integer(),
+  scalemax = 10
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Enc.Mat</code></td>
+<td>
+<p>A matrix containing the observed encounter histories with rows corresponding to individuals and (<code>ntraps</code>*<code>noccas</code>) columns corresponding to traps and sampling occasions.  The first <code>noccas</code> columns correspond to trap 1, the second <code>noccas</code> columns corresopond to trap 2, etc. Ignored unless <code>mms=NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trapCoords</code></td>
+<td>
+<p>A matrix of dimension <code>ntraps</code> x (2 + <code>noccas</code>) indicating the Cartesian coordinates and operating occasions for the traps, where rows correspond to trap, the first column the x-coordinate, and the second column the y-coordinate. The last <code>noccas</code> columns indicate whether or not the trap was operating on each of the occasions, where ‘1’ indciates the trap was operating and ‘0’ indicates the trap was not operating.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>studyArea</code></td>
+<td>
+<p>is a 3-column matrix containing the coordinates for the centroids of a contiguous grid of cells that define the study area and available habitat. Each row corresponds to a grid cell. The first 2 columns indicate the Cartesian x- and y-coordinate for the centroid of each grid cell, and the third column indicates whether the cell is available habitat (=1) or not (=0). All cells must be square and have the same resolution. If <code>studyArea=NULL</code> (the default), then a square study area grid composed of <code>ncells</code> cells of available habitat is drawn around the bounding box of <code>trapCoords</code> based on <code>buffer</code>.
+Note that rows should be ordered in raster cell order (raster cell numbers start at 1 in the upper left corner, and increase from left to right, and then from top to bottom).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>buffer</code></td>
+<td>
+<p>A scaler in same units as <code>trapCoords</code> indicating the buffer around the bounding box of <code>trapCoords</code> for defining the study area when <code>studyArea=NULL</code>.  Ignored unless <code>studyArea=NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncells</code></td>
+<td>
+<p>The number of grid cells in the study area when <code>studyArea=NULL</code>. The square root of <code>ncells</code> must be a whole number. Default is <code>ncells=1024</code>. Ignored unless <code>studyArea=NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data.type</code></td>
+<td>
+<p>Specifies the encounter history data type. All data types include non-detections (type 0 encounter), type 1 encounter (e.g., left-side), and type 2 encounters (e.g., right-side). When both type 1 and type 2 encounters occur for the same individual within a sampling occasion, these can either be "non-simultaneous" (type 3 encounter) or "simultaneous" (type 4 encounter). Three data types are currently permitted:
+</p>
+<p><code>data.type="never"</code> indicates both type 1 and type 2 encounters are never observed for the same individual within a sampling occasion, and observed encounter histories therefore include only type 1 or type 2 encounters (e.g., only left- and right-sided photographs were collected). Observed encounter histories can consist of non-detections (0), type 1 encounters (1), and type 2 encounters (2). See <code>bobcat</code>. Latent encounter histories consist of non-detections (0), type 1 encounters (1), type 2 encounters (2), and type 3 encounters (3).
+</p>
+<p><code>data.type="sometimes"</code> indicates both type 1 and type 2 encounters are sometimes observed (e.g., both-sided photographs are sometimes obtained, but not necessarily for all individuals). Observed encounter histories can consist of non-detections (0), type 1 encounters (1), type 2 encounters (2), type 3 encounters (3), and type 4 encounters (4). Type 3 encounters can only be observed when an individual has at least one type 4 encounter. Latent encounter histories consist of non-detections (0), type 1 encounters (1), type 2 encounters (2), type 3 encounters (3), and type 4 encounters (4). 
+</p>
+<p><code>data.type="always"</code> indicates both type 1 and type 2 encounters are always observed, but some encounter histories may still include only type 1 or type 2 encounters. Observed encounter histories can consist of non-detections (0), type 1 encounters (1), type 2 encounters (2), and type 4 encounters (4). Latent encounter histories consist of non-detections (0), type 1 encounters (1), type 2 encounters (2), and type 4 encounters (4).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covs</code></td>
+<td>
+<p>A data frame of time- and/or trap-dependent covariates for detection probabilities (ignored unless <code>mms=NULL</code>). The number of rows in the data frame must equal the number of traps times the number of sampling occasions (<code>ntraps*noccas</code>), where the first <code>noccas</code> rows correspond to trap 1, the second <code>noccas</code> rows correspond to trap 2, etc. Covariate names cannot be "time", "age", or "h"; these names are reserved for temporal, behavioral, and individual effects when specifying <code>mod.p</code> and <code>mod.phi</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>known</code></td>
+<td>
+<p>Optional integer vector indicating whether the encounter history of an individual is known with certainty (i.e., the observed encounter history is the true encounter history). Encounter histories with at least one type 4 encounter are automatically assumed to be known, and <code>known</code> does not need to be specified unless there exist encounter histories that do not contain a type 4 encounter that happen to be known with certainty (e.g., from independent telemetry studies). If specified, <code>known = c(v_1,v_2,...,v_M)</code> must be a vector of length <code>M = nrow(Enc.Mat)</code> where <code>v_i = 1</code> if the encounter history for individual <code>i</code> is known (<code>v_i = 0</code> otherwise). Note that known all-zero encounter histories (e.g., ‘000’) are ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scalemax</code></td>
+<td>
+<p>Upper bound for internal re-scaling of grid cell centroid coordinates. Default is <code>scalemax=10</code>, which re-scales the centroids to be between 0 and 10.  Re-scaling is done internally to avoid numerical overflows during model fitting.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object of class <code>multimarkSCRsetup</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Brett T. McClintock
+</p>
+
+
+<h3>References</h3>
+
+<p>Bonner, S. J., and Holmberg J. 2013. Mark-recapture with multiple, non-invasive marks. <em>Biometrics</em> 69: 766-775.
+</p>
+<p>Gopalaswamy, A.M., Royle, J.A., Hines, J.E., Singh, P., Jathanna, D., Kumar, N. and Karanth, K.U. 2012. Program SPACECAP: software for estimating animal density using spatially explicit capture-recapture models. <em>Methods in Ecology and Evolution</em> 3:1067-1072.
+</p>
+<p>McClintock, B. T., Conn, P. B., Alonso, R. S., and Crooks, K. R. 2013. Integrated modeling of bilateral photo-identification data in mark-recapture analyses. <em>Ecology</em> 94: 1464-1471.
+</p>
+<p>Royle, J.A., Karanth, K.U., Gopalaswamy, A.M. and Kumar, N.S. 2009. Bayesian inference in camera trapping studies for a class of spatial capture-recapture models.  <em>Ecology</em> 90: 3233-3244.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>multimarkSCRsetup-class</code>, <code>multimarkClosedSCR</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+# This example is excluded from testing to reduce package check time
+# Example uses unrealistically low values for nchain, iter, and burnin
+
+#Generate object of class "multimarksetup" from simulated data
+sim.data&lt;-simdataClosedSCR()
+Enc.Mat &lt;- sim.data$Enc.Mat
+trapCoords &lt;- sim.data$spatialInputs$trapCoords
+studyArea &lt;- sim.data$spatialInputs$studyArea
+setup &lt;- processdataSCR(Enc.Mat,trapCoords,studyArea)
+
+#Run single chain using the default model for simulated data
+example.dot&lt;-multimarkClosedSCR(mms=setup)
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,169 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bf_nonlinear</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Bayes Factor for Nonlinear Inequality Constraints</h2>
+
+<h3>Description</h3>
+
+<p>Computes the encompassing Bayes factor for a user-specified, nonlinear inequality
+constraint. Restrictions are defined via an indicator function of the free parameters
+<code>c(p11,p12,p13,  p21,p22,...)</code> (i.e., the multinomial probabilities).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bf_nonlinear(
+  k,
+  options,
+  inside,
+  prior = rep(1, sum(options)),
+  log = FALSE,
+  ...
+)
+
+count_nonlinear(
+  k = 0,
+  options,
+  inside,
+  prior = rep(1, sum(options)),
+  M = 5000,
+  progress = TRUE,
+  cpu = 1
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>vector of observed response frequencies.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>options</code></td>
+<td>
+<p>number of observable categories/probabilities for each item
+type/multinomial distribution, e.g., <code>c(3,2)</code> for a ternary and binary item.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inside</code></td>
+<td>
+<p>an indicator function that takes a vector with probabilities
+<code>p=c(p11,p12,  p21,p22,...)</code> (where the last probability for each
+multinomial is dropped) as input and returns <code>1</code> or <code>TRUE</code>
+if the order constraints are satisfied and <code>0</code> or <code>FALSE</code> otherwise
+(see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>a vector with two positive numbers defining the shape parameters
+of the beta prior distributions for each binomial rate parameter.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>log</code></td>
+<td>
+<p>whether to return the log-Bayes factor instead of the Bayes factor</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments passed to <code>count_binom</code> or
+<code>count_multinom</code> (e.g., <code>M</code>, <code>steps</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M</code></td>
+<td>
+<p>number of posterior samples drawn from the encompassing model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>whether a progress bar should be shown (if <code>cpu=1</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpu</code></td>
+<td>
+<p>either the number of CPUs used for parallel sampling, or a parallel
+cluster  (e.g., <code>cl &lt;- parallel::makeCluster(3)</code>).
+All arguments of the function call are passed directly to each core,
+and thus the total number of samples is <code>M*number_cpu</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Inequality constraints are defined via an indicator function <code>inside</code>
+which returns <code>inside(x)=1</code> (or <code>0</code>) if the vector of free parameters
+<code>x</code> is inside (or outside) the model space. Since the vector <code>x</code>
+must include only free (!) parameters, the last probability for each
+multinomial must not be used in the function <code>inside(x)</code>!
+</p>
+<p>Efficiency can be improved greatly if the indicator function is defined as C++
+code via the function cppXPtr in the package RcppXPtrUtils
+(see below for examples). In this case, please keep in mind that indexing in C++
+starts with 0,1,2... (not with 1,2,3,... as in R)!
+</p>
+
+
+<h3>References</h3>
+
+<p>Klugkist, I., &amp; Hoijtink, H. (2007). The Bayes factor for inequality and about equality constrained models. Computational Statistics &amp; Data Analysis, 51(12), 6367-6379. <a href="https://doi.org/10.1016/j.csda.2007.01.024">doi:10.1016/j.csda.2007.01.024</a>
+</p>
+<p>Klugkist, I., Laudy, O., &amp; Hoijtink, H. (2010). Bayesian evaluation of inequality and equality constrained hypotheses for contingency tables. Psychological Methods, 15(3), 281-299. <a href="https://doi.org/10.1037/a0020137">doi:10.1037/a0020137</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">##### 2x2x2 continceny table (Klugkist &amp; Hojtink, 2007)
+#
+# (defendant's race) x (victim's race) x (death penalty)
+# indexing: 0 = white/white/yes  ; 1 = black/black/no
+# probabilities: (p000,p001,  p010,p011,  p100,p101,  p110,p111)
+# Model2:
+# p000*p101 &lt; p100*p001  &amp;   p010*p111 &lt; p110*p011
+
+# observed frequencies:
+k &lt;- c(19, 132, 0, 9, 11, 52, 6, 97)
+
+model &lt;- function(x) {
+  x[1] * x[6] &lt; x[5] * x[2] &amp; x[3] * (1 - sum(x)) &lt; x[7] * x[4]
+}
+# NOTE: "1-sum(x)"  must be used instead of "x[8]"!
+
+# compute Bayes factor (Klugkist 2007: bf_0u=1.62)
+bf_nonlinear(k, 8, model, M = 50000)
+
+
+##### Using a C++ indicator function (much faster)
+cpp_code &lt;- "SEXP model(NumericVector x){
+  return wrap(x[0]*x[5] &lt; x[4]*x[1] &amp; x[2]*(1-sum(x)) &lt; x[6]*x[3]);}"
+# NOTE: C++ indexing starts at 0!
+
+# define C++ pointer to indicator function:
+model_cpp &lt;- RcppXPtrUtils::cppXPtr(cpp_code)
+
+bf_nonlinear(
+  k = c(19, 132, 0, 9, 11, 52, 6, 97), M = 100000,
+  options = 8, inside = model_cpp
+)
+
+</code></pre>
+
+
+</div>

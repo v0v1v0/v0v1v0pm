@@ -1,0 +1,336 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>EdgeOrientation</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Perform edge orientation under the MRPC algorithm
+</h2>
+
+<h3>Description</h3>
+
+<p>This function performs the second step of the MRPC algorithm where it determines the edge direction in the graph skeleton inferred by the function ModiSkeleton. If the data contain genetic variants, this function first determines the edges between genetic variants and phenotype nodes based on the principle of Mendelian randomization. Next it identifies potential v-structures and orients the edges in them. For the remaining edges, it examines triplets in turn to see whether a triplet is compatible with one of the basic models. See the references for details.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">EdgeOrientation(gInput, GV, suffStat, FDR, alpha, indepTest, 
+                FDRcontrol = c("LOND", "ADDIS", "NONE"), 
+                tau = 0.5, lambda = 0.25, verbose = FALSE)
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>gInput</code></td>
+<td>
+<p>Object containing the skeleton and marginal and conditional independence information.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>GV</code></td>
+<td>
+<p>The number of genetic variants (SNPs/indels/CNV/eQTL) in the input data matrix. For example, if the data has one genetic variant, first column, then GV = 1, if 2, 1st and 2nd Column, then GV = 2, and so on.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>suffStat</code></td>
+<td>
+<p>A list of sufficient statistics. When the data is continuous or can be viewed as continuous, this list contains the correlation matrix of the data and the sample size, which are the necessary elements for the conditional independence tests in gaussCItest. When the data is discrete, this list contains the entire dataset.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>FDR</code></td>
+<td>
+
+<p>False discovery rate (number between 0 and 1). If FDR = 0.05, this ensures that the FDR remains below 0.05.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>Significance level (number in (0,1) for the individual tests.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>indepTest</code></td>
+<td>
+<p>A function for testing conditional independence. It is used to test the conditional independence of x and y given S, called as indepTest(x, y, S, suffStat). Where, x and y are variables, and S is a vector, possibly empty, of variables. suffStat is a list, see the argument above. The return value of indepTest is the p-value of the test for conditional independence. There are three options for different data types, for example, Gaussian data = gaussCItest, discrete data = disCItest and Binary data = binCItest. See help(gaussCItest)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>FDRcontrol</code></td>
+<td>
+<p>A character string specifying whether online FDR control should be applied, and if so, what method to use. The two FDR control options are "LOND" (Javanmard and Montanari, 2015) or "ADDIS" (Tian and Ramdas, 2019). If "NONE" is specified, the type I error rate "alpha" will be used for each test.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tau</code></td>
+<td>
+<p>A number between 0 and 1. This value is used to determine if a p-value will be considered for testing. For example, if a p-value is greater than tau then it is discarded and no test will be performed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>A number between 0 and tau. This value is used to determine if a p-value is a candidate for rejection. For example, if a p-value is smaller than lambda then it can be rejected when testing the hypothesis (if the p-value is smaller than alphai).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>(optional) 1: detailed output is provided; 0: No output is provided</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The orientation of the edge directions based on the principle of Mendelian randomization involves four cases, which are four of the five basic models in Badsha and Fu (2019) and Badsha et al.(2021). For example, we consider x to be a genetic variant, y and z the phenotype nodes.
+</p>
+<p>The four cases are as follows:
+</p>
+<p><b>Case-1</b>: Relation between x, genetic variant, and the other nodes. Then genetic variant will regulate the other node, genes, and direction will be genetic variant –&gt; other node. Note that if the data has more than one genetic variant and there is an edge between two genetic variants, then direction will be genetic variant &lt;–&gt; genetic variant, which indicates that there is evidence that the two genetic variants are not independent, but we do not have enough information to determine which genetic variant is the regulator and which is the target.
+</p>
+<p><b>Case-2</b>: If y and z are adjacent and, x and z are conditionally independent given y, then gene y will regulate the expression of gene z and the edge direction will be y –&gt; z.
+</p>
+<p><b>Case-3</b>: If y and z are adjacent and, x and z are conditionally dependent given y, then gene z will regulate the expression of gene y and the edge direction will be z –&gt; y.
+</p>
+<p><b>Case-4</b>: If y and z are adjacent and x and y are conditionally dependent given z and x and z are conditionally dependent given y, then the edge direction will be y &lt;–&gt; z.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object that contains an estimate of the equivalence class of the underlying DAG.
+</p>
+
+<dl>
+<dt>
+<code>call</code>:</dt>
+<dd>
+<p>A call object: the original function call.</p>
+</dd>
+<dt>
+<code>n</code>:</dt>
+<dd>
+<p>The sample 
+size used to estimate the graph.</p>
+</dd>
+<dt>
+<code>max.ord</code>:</dt>
+<dd>
+<p>The 
+maximum size of the conditioning set used 
+in the conditional independence tests of   
+the first part of the algorithm.</p>
+</dd>
+<dt>
+<code>n.edgetests</code>:</dt>
+<dd>
+<p>The number of 
+conditional independence tests performed by
+the first part of the algorithm.</p>
+</dd>
+<dt>
+<code>sepset</code>:</dt>
+<dd>
+<p>Separation sets.</p>
+</dd>
+<dt>
+<code>pMax</code>:</dt>
+<dd>
+<p>A square matrix
+, where the (i, j)th entry contains the 
+maximal p-value of all conditional
+independence tests for edge i–j.</p>
+</dd>
+<dt>
+<code>graph</code>:</dt>
+<dd>
+<p>An object of class <code>"graph"</code>:
+The undirected or partially directed graph that was estimated.</p>
+</dd>
+<dt>
+<code>zMin</code>:</dt>
+<dd>
+<p>Deprecated.</p>
+</dd>
+<dt>
+<code>test</code>:</dt>
+<dd>
+<p>The number of tests that have been performed.</p>
+</dd>
+<dt>
+<code>alpha</code>:</dt>
+<dd>
+<p>The level of significance 
+for the current test.</p>
+</dd>
+<dt>
+<code>R</code>:</dt>
+<dd>
+<p>All of the decisions made from tests that have been performed. A 1 indicates a rejected null hypothesis and 0 represents a null hypothesis that was not rejected.</p>
+</dd>
+<dt>
+<code>K</code>:</dt>
+<dd>
+<p>The total number of rejections.</p>
+</dd>
+<dt>
+<code>pval</code>:</dt>
+<dd>
+<p>A vector of p-values calculated for each test.</p>
+</dd>
+<dt>
+<code>normalizer</code>:</dt>
+<dd>
+<p>The value that ensures the vector gammai sums to one.</p>
+</dd>
+<dt>
+<code>exponent</code>:</dt>
+<dd>
+<p>The exponent of the p-series used to calculate each value of the gammai vector.</p>
+</dd>
+<dt>
+<code>alphai</code>:</dt>
+<dd>
+<p>A vector containing the alpha value calculated for each test.</p>
+</dd>
+<dt>
+<code>kappai</code>:</dt>
+<dd>
+<p>A vector containing the iteration at which each rejected test occurs.</p>
+</dd>
+<dt>
+<code>kappai_star</code>:</dt>
+<dd>
+<p>Each element of this vector is the sum of the Si vector up to the iteration at which each rejection occurs.</p>
+</dd>
+<dt>
+<code>Ci</code>:</dt>
+<dd>
+<p>A vector indicating whether or not a p-value is a candidate for being rejected.</p>
+</dd>
+<dt>
+<code>Si</code>:</dt>
+<dd>
+<p>A vector indicating whether or not a p-value was discarded.</p>
+</dd>
+<dt>
+<code>Ci_plus</code>:</dt>
+<dd>
+<p>Each element of this vector represents the number of times each kappai value was counted when calculating each alphai value.</p>
+</dd>
+<dt>
+<code>gammai</code>:</dt>
+<dd>
+<p>The elements of this vector are the values of the p-series 0.4374901658/(m^(1.6)), where m is the iteration at which each test is performed.</p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>Md Bahadur Badsha (mbbadshar@gmail.com)
+</p>
+
+
+<h3>References</h3>
+
+<p>1. Badsha MB and Fu AQ (2019). Learning causal biological networks with the principle of Mendelian randomization. Frontiers in Genetics, 10:460.
+</p>
+<p>2. Badsha MB, Martin EA and Fu AQ (2021). MRPC: An R Package for inference of causal graphs. Frontiers in Genetics, 10:651812.
+</p>
+<p>3. Javanmard A and Montanari A (2015). On Online Control of False Discovery Rate. arXiv:150206197 [statME].
+</p>
+<p>4. Tian J and Ramdas A (2019). ADDIS: an adaptive discarding algorithm for online FDR control with conservative nulls. In Advances in Neural Information Processing Systems (pp. 9388-9396).
+</p>
+
+
+<h3>See Also</h3>
+
+<p>MRPC; ModiSkeleton; SimulateData.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Model 1 (mediation)
+Truth &lt;- MRPCtruth$M1   # Truth for model 1
+
+# The 1st column of the data matrix is a genetic variant
+# and the remaining columns are gene expression nodes.
+data &lt;- simu_data_M1 # load data for model 1
+n &lt;- nrow (data)        # Number of row
+V &lt;- colnames(data)     # Column names
+
+# Calculate Pearson correlation
+suffStat_C &lt;- list(C = cor(data),
+                   n = n)
+
+# Infer a graph skeleton
+Skel.fit &lt;- ModiSkeleton(data, 
+                         suffStat = suffStat_C, 
+                         FDR = 0.05, 
+                         indepTest = 'gaussCItest',
+                         labels = V,
+                         FDRcontrol = 'LOND', 
+                         verbose = FALSE)
+
+# Edge Orientation
+Edge_orientation &lt;- EdgeOrientation(Skel.fit, 
+                                    suffStat = suffStat_C, 
+                                    GV = 1,
+                                    FDR = 0.05,
+                                    indepTest = 'gaussCItest', 
+                                    FDRcontrol = 'LOND',
+                                    verbose = FALSE)
+# Plot the results
+par(mfrow = c(1, 2))
+plot(Truth,
+     main = "(A) Truth")
+plot(Edge_orientation,
+     main = "(B) MRPC ")
+
+# Other models are available and may be called as follows:
+# Model 0
+# Truth &lt;- MRPCtruth$M0
+# data &lt;- simu.data_M0
+
+# Model 2
+# Truth &lt;- MRPCtruth$M2
+# data &lt;- simu_data_M2
+
+# Model 3
+# Truth &lt;- MRPCtruth$M3
+# data &lt;- simu_data_M3
+
+# Model 4
+# Truth &lt;- MRPCtruth$M4
+# data &lt;- simu_data_M4
+
+# Model Multiparent
+# Truth &lt;- MRPCtruth$Multiparent
+# data &lt;- simu_data_multiparent
+
+# Model Star
+# Truth &lt;- MRPCtruth$Star
+# data &lt;- simu_data_starshaped
+
+# Model Layered
+# Truth &lt;- MRPCtruth$Layered
+# data &lt;- simu_data_layered
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,111 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bcg</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Efficacy of BCG Vaccine in the Prevention of Tuberculosis </h2>
+
+<h3>Description</h3>
+
+<p>The dataset contains the data on 13 prospective clinical trials that compared the rates of tubercolosis in groups vaccinated with the Bacillus Calmette-Guerin (BCG) vaccine and non-vaccinated control populations. The outcome here is reported as both relative risk (RR) and odds ratio (OR), with associated uncertanty.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bcg</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 13 observations on the following 13 variables:
+</p>
+
+<ul>
+<li>
+<p><code>trial</code>: sequence identifying the trial.
+</p>
+</li>
+<li>
+<p><code>author</code>: label identifying the author(s).
+</p>
+</li>
+<li>
+<p><code>year</code>: year of publication.
+</p>
+</li>
+<li>
+<p><code>tpos, tneg</code>: number of positive and negative TB cases in the treated (vaccinated) group.
+</p>
+</li>
+<li>
+<p><code>cpos, cneg</code>: number of positive and negative TB cases in the control (non-vaccinated) group.
+</p>
+</li>
+<li>
+<p><code>ablat</code>: absolute latitude of the study location (in degrees).
+</p>
+</li>
+<li>
+<p><code>alloc</code>: method of treatment allocation (random, alternate, or systematic assignment).
+</p>
+</li>
+</ul>
+<h3>Note</h3>
+
+<p>The data provide an example of application of standard univariate meta-analysis and meta-regression, with independent studies providing a single estimate of a single effect size. Interestingly, the data can be analyzed also as a multivariate meta-analysis, using a bivariate outcome where risks or odds of TB can be measured separaterly in treatment and control groups. Results can be compared with those reported van Houwelingen, Arends, and Stijnen (2002).
+</p>
+<p>The dataset is also available in the same format in the dataframe <code>dat.colditz1994</code> of the package <span class="pkg">metafor</span>.
+</p>
+
+
+<h3>Source</h3>
+
+<p>van Houwelingen HC, Arends LR, Stijnen T (2002). Advanced methods in meta-analysis: multivariate approach and meta-regression. <em>Statistics in Medicine</em>. <b>21</b>(4):589–624.
+</p>
+<p>Sera F, Armstrong B, Blangiardo M, Gasparrini A (2019). An extended mixed-effects framework for meta-analysis.<em>Statistics in Medicine</em>. 2019;38(29):5429-5444. [Freely available <a href="http://www.ag-myresearch.com/2019_sera_statmed.html"><b>here</b></a>].
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">### REPRODUCE THE RESULTS IN VAN HOUWELINGEN ET AL (2002)
+
+# FIXED-EFFECTS META-ANALYSIS (SECTION 3.1.1)
+unifix &lt;- mixmeta(logor, logorvar, data=bcg, method="fixed")
+print(summary(unifix), digits=3)
+
+# RANDOM-EFFECTS META-ANALYSIS WITH MAXIMUM LIKELIHOOD (SECTION 3.1.2)
+uniran &lt;- mixmeta(logor, logorvar, data=bcg, method="ml")
+print(summary(uniran), digits=3, report="var")
+
+# ORIGINAL ESTIMATES AND BEST-LINEAR UNBIASED PREDICTIONS (FIGURE 3)
+pred &lt;- with(bcg, cbind(logor, logor-1.96*sqrt(logorvar),
+  logor+1.96*sqrt(logorvar)))
+blup &lt;- blup(uniran, pi=TRUE)
+plot(pred[,1], rev(bcg$trial)+0.2, xlim=c(-3,3), ylim=c(0,14), pch=18,
+  axes=FALSE, xlab="Log odds ratio", ylab="Trial", main="Forest plot")
+axis(1)
+axis(2, at=bcg$trial, labels=rev(bcg$trial), lty=0, las=1)
+abline(v=coef(uniran))
+segments(pred[,2], rev(bcg$trial)+0.2, pred[,3], rev(bcg$trial)+0.2, lty=5)
+points(blup[,1], rev(bcg$trial)-0.2, pch=19)
+segments(blup[,2], rev(bcg$trial)-0.2, blup[,3], rev(bcg$trial)-0.2)
+
+# COMPUTE THE OUTCOME SEPARATELY FOR TREATMENT AND CONTROL GROUPS
+y &lt;- with(bcg, log(cbind(tpos/tneg, cpos/cneg)))
+S &lt;- with(bcg, cbind(1/tpos+1/tneg, 1/cpos+1/cneg))
+
+# BIVARIATE RANDOM-EFFECTS META-ANALYSIS (SECTION 4)
+mvran &lt;- mixmeta(y, S, method="ml")
+print(summary(mvran), digits=3, report="var")
+
+# META-REGRESSION (SECTION 5)
+uniranlat &lt;- update(uniran, .~. + ablat)
+print(summary(uniranlat), digits=3, report="var")
+drop1(uniranlat, test="Chisq")
+</code></pre>
+
+
+</div>

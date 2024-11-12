@@ -1,0 +1,171 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bayesProbability</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Full Bayesian inferencing for determining the probability or
+relative likelihood of a given value.</h2>
+
+<h3>Description</h3>
+
+<p>Uses the full extended theorem of Bayes, taking all selected features
+into account. Expands Bayes' theorem to accomodate all dependent
+features, then calculates each conditional probability (or relative
+likelihood) and returns a single result reflecting the probability or
+relative likelihood of the target feature assuming its given value,
+given that all the other dependent features assume their given value.
+The target feature (designated by 'labelCol') may be discrete or continuous.
+If at least one of the depending features or the the target feature
+is continuous and the PDF ('doEcdf' = FALSE) is built, the result of this
+function is a relative likelihood of the target feature's value. If
+all of the features are discrete or the empirical CDF is used instead
+of the PDF, the result of this function is a probability.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bayesProbability(
+  df,
+  features,
+  targetCol,
+  selectedFeatureNames = c(),
+  shiftAmount = 0.1,
+  retainMinValues = 1,
+  doEcdf = FALSE,
+  useParallel = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>df</code></td>
+<td>
+<p>data.frame that contains all the feature's data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>features</code></td>
+<td>
+<p>data.frame with bayes-features. One of the features needs
+to be the label-column.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetCol</code></td>
+<td>
+<p>string with the name of the feature that represents the
+label.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>selectedFeatureNames</code></td>
+<td>
+<p>vector default <code>c()</code>. Vector of strings
+that are the names of the features the to-predict label depends on. If an
+empty vector is given, then all of the features are used (except for the
+label). The order then depends on the features' order.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>shiftAmount</code></td>
+<td>
+<p>numeric an offset value used to increase any one
+probability (factor) in the full built equation. In scenarios with many
+dependencies, it is more likely that a single conditional probability
+becomes zero, which would result in the entire probability being zero.
+Since this is often useless, the 'shiftAmount' can be added to each
+factor, resulting in a non-zero probability that can at least be used
+to order samples by likelihood. Note that, with a positive 'shiftAmount',
+the result of this function cannot be said to be a probability any
+longer, but rather results in a comparable likelihood (a 'probability
+score').</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>retainMinValues</code></td>
+<td>
+<p>integer to require a minimum amount of data points
+when segmenting the data feature by feature.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>doEcdf</code></td>
+<td>
+<p>default FALSE a boolean to indicate whether to use the
+empirical CDF to return a probability when inferencing a continuous
+feature. If false, uses the empirical PDF to return the rel. likelihood.
+This parameter does not have any effect if all of the variables are
+discrete or when doing a regression. Otherwise, for each continuous
+variable, the probability to find a value less then or equal - given
+the conditions - is returned. Note that the interpretation of probability
+using the ECDF much deviates and must be used with care, especially
+since it affects each factor in Bayes equation that is continuous. This
+is especially true for the case where <code>shiftAmount &gt; 0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>useParallel</code></td>
+<td>
+<p>default NULL a boolean to indicate whether to use a
+previously registered parallel backend. If no explicit value was given,
+calls <code>foreach::getDoParRegistered()</code> to check for a parallel
+backend. When using parallelism, this function calculates each factor
+in the numerator and denominator of the final equation in parallel.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>numeric probability (inferring discrete labels) or relative
+likelihood (regression, inferring likelihood of continuous value) or most
+likely value given the conditional features. If using a positive
+<code>shiftAmount</code>, the result is a 'probability score'.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sebastian Hönel <a href="mailto:sebastian.honel@lnu.se">sebastian.honel@lnu.se</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Bayes T (1763).
+“LII. An essay towards solving a problem in the doctrine of chances. By the late Rev. Mr. Bayes, FRS communicated by Mr. Price, in a letter to John Canton, AMFR S.”
+<em>Philosophical transactions of the Royal Society of London</em>, 370–418.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>test-case "a zero denominator can happen"
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">feat1 &lt;- mmb::createFeatureForBayes(
+  name = "Petal.Length", value = mean(iris$Petal.Length))
+feat2 &lt;- mmb::createFeatureForBayes(
+  name = "Petal.Width", value = mean(iris$Petal.Width))
+featT &lt;- mmb::createFeatureForBayes(
+  name = "Species", iris[1,]$Species, isLabel = TRUE)
+
+# Check the probability of Species=setosa, given the other 2 features:
+mmb::bayesProbability(
+  df = iris, features = rbind(feat1, feat2, featT), targetCol = "Species")
+
+# Now check the probability of Species=versicolor:
+featT$valueChar &lt;- "versicolor"
+mmb::bayesProbability(
+  df = iris, features = rbind(feat1, feat2, featT), targetCol = "Species")
+</code></pre>
+
+
+</div>

@@ -1,0 +1,158 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MIFAMD</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Multiple Imputation with FAMD
+</h2>
+
+<h3>Description</h3>
+
+<p>MIFAMD performs multiple imputations for mixed data (continuous and categorical) using Factorial Analysis of Mixed Data.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MIFAMD(X, ncp = 2, method = c("Regularized", "EM"), coeff.ridge = 1, threshold = 1e-06, 
+    seed = NULL, maxiter = 1000, nboot = 20, verbose = T)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>a data.frame with continuous AND categorical variables containing missing values</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncp</code></td>
+<td>
+<p>integer corresponding to the number of components used to reconstruct data with the FAMD reconstruction formulae</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>"Regularized" by default or "EM"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coeff.ridge</code></td>
+<td>
+<p>1 by default to perform the regularized imputeFAMD algorithm. Other regularization terms can be implemented by setting the value to less than 1 in order to regularized less (to get closer to the results of an EM method) or more than 1 to regularized more (to get closer to the results of the proportion imputation)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+<p>the threshold for the criterion convergence</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>integer, by default seed = NULL implies that missing values are initially imputed by the mean of each variable for the continuous variables and by the proportion of the category for the categorical variables coded with indicator matrices of dummy variables. Other values leads to a random initialization</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>integer, maximum number of iterations for the algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nboot</code></td>
+<td>
+<p>the number of imputed datasets</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>use verbose=TRUE for screen printing of iteration numbers</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>MIFAMD generates nboot imputed data sets using FAMD. The observed values are the same from one dataset to the others, whereas the imputed values change. The algorithm is as follows: first, nboot weightings are defined for the individuals (equivalent to a non-parametric bootstrap). Then, the iterative regularized FAMD algorithm (Audigier et al., 2016) is applied according to each weighting, leading to nboot imputed tables. Dummy variables (coding for categorial variables) of these imputed tables are scaled to verify the constraint that the sum is equal to one per variable and per individual. Lastly, missing categories are drawn from the probabilities given by the imputed tables, and gaussian noise is added to the prediction of continuous variables. Thus, nboot imputed mixed data sets are obtained. The variation among the imputed values reflects the variability with which missing values can be predicted.
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>res.MI</code></td>
+<td>
+<p>A list of data frames corresponding to the nboot imputed mixed data sets</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>res.imputeFAMD</code></td>
+<td>
+<p>A list corresponding to the output obtained with the function imputeFAMD (single imputation)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>The matched call</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Vincent Audigier <a href="mailto:vincent.audigier@lecnam.net">vincent.audigier@lecnam.net</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Audigier, V., Husson, F. &amp; Josse, J. (2015). A principal components method to impute mixed data. Advances in Data Analysis and Classification, 10(1), 5-26. &lt;doi:10.1007/s11634-014-0195-1&gt;
+</p>
+<p>Audigier, V., Husson, F., Josse, J. (2017). MIMCA: Multiple imputation for categorical variables with multiple correspondence analysis. &lt;doi:10.1007/s11222-016-9635-4&gt;
+</p>
+<p>Little R.J.A., Rubin D.B. (2002) Statistical Analysis with Missing Data. Wiley series in probability and statistics, New-York
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>imputeFAMD</code>,<code>MIPCA</code>,<code>MIMCA</code>,<code>estim_ncpFAMD</code>,<code>with.mids</code>,<code>pool</code>,<code>summary.mira</code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+data(ozone)
+
+## First the number of components has to be chosen 
+##   (for the reconstruction step)
+ nb &lt;- estim_ncpFAMD(ozone) ## Time-consuming, nb = 2
+
+
+## Multiple Imputation
+res.mi&lt;-MIFAMD(ozone,ncp = 2,nboot=50)
+
+
+## First completed data matrix
+head(res.mi$res.MI[[1]])
+
+## Analysis and pooling with mice
+require(mice)
+imp&lt;-prelim(res.mi,ozone)
+fit &lt;- with(data=imp,exp=lm(maxO3~T9+T12+T15+Ne9+Ne12+Ne15+Vx9+Vx12+Vx15+maxO3v+vent+pluie))
+res.pool&lt;-pool(fit)
+summary(res.pool)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

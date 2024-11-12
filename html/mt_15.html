@@ -1,0 +1,226 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>classifier</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Wrapper Function for Classifiers
+</h2>
+
+<h3>Description</h3>
+
+<p>Wrapper function for classifiers. The classification model is built up on the 
+training data and error estimation is performed on the test data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">classifier(dat.tr, cl.tr, dat.te=NULL, cl.te=NULL, method,
+           pred.func=predict,...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>dat.tr</code></td>
+<td>
+
+<p>A data frame or matrix of training data. The classification model are built 
+on it.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl.tr</code></td>
+<td>
+
+<p>A factor or vector of training class.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dat.te</code></td>
+<td>
+
+<p>A data frame or matrix of test data. Error rates are calculated on this data set.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl.te</code></td>
+<td>
+
+<p>A factor or vector of test class.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>Classification method to be used. Any classification methods can be employed 
+if they have method <code>predict</code> (except <code>knn</code>) with output of predicted class
+label or one component with name of <code>class</code> in the returned list, such as 
+<code>randomForest</code>, <code>svm</code>, <code>knn</code> and <code>lda</code>. 
+Either a function or a character string naming the function to be called
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pred.func</code></td>
+<td>
+
+<p>Predict method (default is <code>predict</code>). Either a function or a character 
+string naming the function to be called. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional parameters to <code>method</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A list including components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>err</code></td>
+<td>
+<p>Error rate of test data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cl</code></td>
+<td>
+<p>The original class of test data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pred</code></td>
+<td>
+<p>The predicted class of test data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>posterior</code></td>
+<td>
+
+<p>Posterior probabilities for the classes if <code>method</code> provides posterior 
+output.    
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>acc</code></td>
+<td>
+<p> Accuracy rate of classification.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>margin</code></td>
+<td>
+
+<p>The margin of predictions from classifier <code>method</code> if it provides posterior 
+output. 
+</p>
+<p>The margin of a data point is defined as the proportion of probability for the 
+correct class minus maximum proportion of probabilities for the other classes. 
+Positive margin means correct classification, and vice versa. This idea come
+from package <span class="pkg">randomForest</span>. For more details, see 
+<code>margin</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>auc</code></td>
+<td>
+
+<p>The area under receiver operating curve (AUC) if classifier <code>method</code> 
+produces posterior probabilities and the classification is for two-class 
+problem. 
+</p>
+</td>
+</tr>
+</table>
+<h3>Note</h3>
+
+<p>The definition of margin is based on the posterior probabilities. Classifiers,
+such as <code>randomForest</code>, <code>svm</code>,
+<code>lda</code>, <code>qda</code>, <code>pcalda</code> and
+<code>plslda</code>, do output posterior probabilities. But 
+<code>knn</code> does not.   
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Wanchang Lin 
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>accest</code>, <code>maccest</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(abr1)
+dat &lt;- preproc(abr1$pos[,110:500], method="log10")  
+cls &lt;- factor(abr1$fact$class)        
+
+## tmp &lt;- dat.sel(dat, cls, choices=c("1","2"))
+## dat &lt;- tmp[[1]]$dat
+## cls &lt;- tmp[[1]]$cls
+
+idx &lt;- sample(1:nrow(dat), round((2/3)*nrow(dat)), replace = FALSE) 
+## constrcuct train and test data 
+train.dat  &lt;- dat[idx,]
+train.cl   &lt;- cls[idx]
+test.dat   &lt;- dat[-idx,]       
+test.cl    &lt;- cls[-idx] 
+
+## estimates accuracy
+res &lt;- classifier(train.dat, train.cl, test.dat, test.cl, 
+                  method="randomForest")
+res
+## get confusion matrix
+cl.rate(obs=res$cl, res$pred)   ## same as: cl.rate(obs=test.cl, res$pred)
+
+## Measurements of Forensic Glass Fragments
+data(fgl, package = "MASS")    # in MASS package
+dat &lt;- subset(fgl, grepl("WinF|WinNF",type))
+## dat &lt;- subset(fgl, type %in% c("WinF", "WinNF"))
+x   &lt;- subset(dat, select = -type)
+y   &lt;- factor(dat$type)
+
+## construct train and test data 
+idx   &lt;- sample(1:nrow(x), round((2/3)*nrow(x)), replace = FALSE) 
+tr.x  &lt;- x[idx,]
+tr.y  &lt;- y[idx]
+te.x  &lt;- x[-idx,]        
+te.y  &lt;- y[-idx] 
+
+res.1 &lt;- classifier(tr.x, tr.y, te.x, te.y, method="svm")
+res.1
+cl.rate(obs=res.1$cl, res.1$pred) 
+
+## classification performance for the two-class case.
+pos &lt;- "WinF"                              ## select positive level
+cl.perf(obs=res.1$cl, pre=res.1$pred, pos=pos)
+## ROC and AUC
+cl.roc(stat=res.1$posterior[,pos],label=res.1$cl, pos=pos)
+
+</code></pre>
+
+
+</div>

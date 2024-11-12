@@ -1,0 +1,356 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>fordyn_scenario</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Scenario of forest dynamics</h2>
+
+<h3>Description</h3>
+
+<p>Evaluates forest dynamics over a landscape including climate and management scenarios
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">fordyn_scenario(
+  sf,
+  SpParams,
+  meteo = NULL,
+  management_scenario,
+  volume_function = NULL,
+  volume_arguments = NULL,
+  local_control = defaultControl(),
+  dispersal_control = default_dispersal_control(),
+  dates = NULL,
+  CO2ByYear = numeric(0),
+  fire_regime = NULL,
+  summary_function = NULL,
+  summary_arguments = NULL,
+  parallelize = FALSE,
+  num_cores = detectCores() - 1,
+  chunk_size = NULL,
+  progress = TRUE,
+  verbose = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>sf</code></td>
+<td>
+<p>An object of class <code>sf</code> with the following columns:
+</p>
+
+<ul>
+<li>
+<p><code>geometry</code>: Spatial geometry.
+</p>
+</li>
+<li>
+<p><code>id</code>: Stand identifiers.
+</p>
+</li>
+<li>
+<p><code>elevation</code>: Elevation above sea level (in m).
+</p>
+</li>
+<li>
+<p><code>slope</code>: Slope (in degrees).
+</p>
+</li>
+<li>
+<p><code>aspect</code>: Aspect (in degrees).
+</p>
+</li>
+<li>
+<p><code>forest</code>: Objects of class <code>forest</code>.
+</p>
+</li>
+<li>
+<p><code>soil</code>: Objects of class <code>soil</code>.
+</p>
+</li>
+<li>
+<p><code>state</code>: Objects of class <code>spwbInput</code> or <code>growthInput</code> (optional).
+</p>
+</li>
+<li>
+<p><code>meteo</code>: Data frames with weather data (required if parameter <code>meteo = NULL</code>).
+</p>
+</li>
+<li>
+<p><code>management_unit</code>: Management unit corresponding to each stand.
+</p>
+</li>
+<li>
+<p><code>represented_area_ha</code>: Area represented by each stand in hectares.
+</p>
+</li>
+<li>
+<p><code>ignition_weights</code>: Relative weights to determine stands to be burned. Optional, relevant when
+<code>fire_regime</code> is supplied only).
+</p>
+</li>
+<li>
+<p><code>local_control</code>: A list of control parameters (optional). Used to override function parameter <code>local_control</code> for specific stands (values can be <code>NULL</code> for the remaining ones).
+</p>
+</li>
+</ul>
+<p>Alternatively, the user may supply the result of a previous call to <code>fordyn_scenario</code>, where
+to continue simulations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SpParams</code></td>
+<td>
+<p>A data frame with species parameters (see <code>SpParamsMED</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meteo</code></td>
+<td>
+<p>Meteorology data (see <code>fordyn_spatial</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>management_scenario</code></td>
+<td>
+<p>A list defining the management scenario (see <code>create_management_scenario</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>volume_function</code></td>
+<td>
+<p>A function accepting a forest object or a tree data table, and a species parameter table, as input and
+returning the wood volume (m3/ha) corresponding to each tree cohort. The function may accept additional arguments.
+If NULL, the default volume function is used (not recommended!).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>volume_arguments</code></td>
+<td>
+<p>List with additional arguments for the volume function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>local_control</code></td>
+<td>
+<p>A list of local model control parameters (see <code>defaultControl</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dispersal_control</code></td>
+<td>
+<p>A list of dispersal control parameters (see <code>default_dispersal_control</code>). If NULL, then dispersal is not simulated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dates</code></td>
+<td>
+<p>A <code>Date</code> object with the days of the period to be simulated. If <code>NULL</code>, then the whole period of <code>meteo</code> is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CO2ByYear</code></td>
+<td>
+<p>A named numeric vector with years as names and atmospheric CO2 concentration (in ppm) as values. Used to specify annual changes in CO2 concentration along the simulation (as an alternative to specifying daily values in <code>meteo</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fire_regime</code></td>
+<td>
+<p>A list of parameters defining the fire regime (see <code>create_fire_regime</code>) or
+a matrix representing a fire regime instance (see <code>fire_regime_instance</code>).
+If NULL, wildfires are not simulated. Details are given in <code>fordyn_spatial</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary_function</code></td>
+<td>
+<p>An appropriate function to calculate summaries from an object of class 'fordyn' (e.g., <code>summary.fordyn</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>summary_arguments</code></td>
+<td>
+<p>List with additional arguments for the summary function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallelize</code></td>
+<td>
+<p>Boolean flag to try parallelization (will use all clusters minus one).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>num_cores</code></td>
+<td>
+<p>Integer with the number of cores to be used for parallel computation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chunk_size</code></td>
+<td>
+<p>Integer indicating the size of chunks to be sent to different processes (by default, the number of spatial elements divided by the number of cores).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>Boolean flag to display progress information for simulations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Boolean flag to display additional console output.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function allows coordinating the dynamics of simulated forest stands via a management scenario
+defined at the landscape/regional level (see different kinds of scenarios and how to specify them in <code>create_management_scenario</code>).
+</p>
+<p>The input 'sf' object has to be in a Universal Transverse Mercator (UTM) coordinate system (or any other projection using meters as length unit)
+for appropriate behavior of dispersal sub-model.
+</p>
+<p>For each year to be simulated, the function determines which forest stands will be managed, possibly depending on the demand,
+and then calls function <code>fordyn_spatial</code> for one year (normally including parallelization).
+If the simulation of some stands results in an error, the function will try to restore
+the previous state of the forest stand for the next year steps. Finally, the function evaluates how much of the specified demand
+has been fulfilled and stores the results, including demand offsets to be applied the year after.
+</p>
+<p>Management is implemented using the <code>defaultManagementFunction</code> in medfate,
+meaning that management parameters need to follow the structure of <code>defaultManagementArguments</code>
+</p>
+<p>Details about the inclusion of fire regimes in simulations are explained in <code>fordyn_spatial</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An list of class 'fordyn_scenario' with the following elements:
+</p>
+
+<ul>
+<li>
+<p><code>result_sf</code>: An object of class 'sf' using a UTM projection and containing four elements:
+</p>
+
+<ul>
+<li>
+<p><code>geometry</code>: Spatial geometry.
+</p>
+</li>
+<li>
+<p><code>id</code>: Stand id, taken from the input.
+</p>
+</li>
+<li>
+<p><code>tree_table</code>: A list of data frames for each simulated stand, containing the living trees at each time step.
+</p>
+</li>
+<li>
+<p><code>shrub_table</code>: A list of data frames for each simulated stand, containing the living shrub at each time step.
+</p>
+</li>
+<li>
+<p><code>dead_tree_table</code>: A list of data frames for each simulated stand, containing the dead trees at each time step.
+</p>
+</li>
+<li>
+<p><code>dead_shrub_table</code>: A list of data frames for each simulated stand, containing the dead shrub at each time step.
+</p>
+</li>
+<li>
+<p><code>cut_tree_table</code>: A list of data frames for each simulated stand, containing the cut trees at each time step.
+</p>
+</li>
+<li>
+<p><code>cut_shrub_table</code>: A list of data frames for each simulated stand, containing the cut shrub at each time step.
+</p>
+</li>
+<li>
+<p><code>summary</code>: A list of model output summaries for each simulated stand (if <code>summary_function</code> was not <code>NULL</code>).
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p><code>result_volumes</code>: A data frame with initial, growth, extracted and final volumes (m3) by year. In demand-based scenarios volumes corresponding to species with demand are also included.
+</p>
+</li>
+<li>
+<p><code>result_volumes_spp</code>: A data frame with growth and extracted volumes (m3) by species and year.
+</p>
+</li>
+<li>
+<p><code>result_volumes_demand</code>: In demand-based scenarios target volumes are also included, a data frame with growth, target and extracted volumes (m3) by demand entity and year. .
+</p>
+</li>
+<li>
+<p><code>next_sf</code>: An object of class 'sf' to continue simulations in subsequent calls to <code>fordyn_scenario</code>.
+</p>
+</li>
+<li>
+<p><code>next_demand</code>: In demand-based scenarios, a list with information (i.e. demand offset by species and last volume growth)
+to modify demand in subsequent calls to <code>fordyn_scenario</code>.
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Miquel De Cáceres Ainsa, CREAF
+</p>
+<p>Aitor Améztegui, UdL
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>fordyn_spatial</code>, <code>create_management_scenario</code>, <code>dispersal</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Load example landscape data
+data("example_ifn")
+  
+# Load example meteo data frame from package meteoland
+data("examplemeteo")
+  
+# Load default medfate parameters
+data("SpParamsMED")
+
+# Creates scenario with one management unit and annual demand for P. nigra 
+scen &lt;- create_management_scenario(1, c("Pinus nigra/Pinus sylvestris" = 2300))
+
+# Assign management unit to all stands
+example_ifn$management_unit &lt;- 1 
+
+# Assume that each stand represents 1km2 = 100 ha
+example_ifn$represented_area_ha &lt;- 100
+
+# Transform to UTM31 (necessary for dispersal)
+example_ifn_utm31 &lt;- sf::st_transform(example_ifn, crs = 32631)
+
+# Subset three plots to speed-up calculations
+example_subset &lt;- example_ifn_utm31[31:33, ]
+
+# Launch simulation scenario
+fs_12 &lt;- fordyn_scenario(example_subset, SpParamsMED, meteo = examplemeteo, 
+                         volume_function = NULL, management_scenario = scen,
+                         parallelize = FALSE)
+
+</code></pre>
+
+
+</div>

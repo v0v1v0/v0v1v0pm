@@ -1,0 +1,322 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mop</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Analysis of extrapolation risks using the MOP metric</h2>
+
+<h3>Description</h3>
+
+<p>Analysis to calculate the mobility-oriented parity metric and other
+sub-products to represent dissimilarities and non-analogous conditions
+when comparing a set of reference conditions (M; <code>m</code>) against another
+set of conditions of interest (G; <code>g</code>).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mop(m, g, type = "basic",  calculate_distance = FALSE,
+    where_distance = "in_range", distance = "euclidean",
+    scale = FALSE, center = FALSE, fix_NA = TRUE, percentage = 1,
+    comp_each = 2000, tol = NULL, rescale_distance = FALSE,
+    parallel = FALSE, n_cores = NULL, progress_bar = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>m</code></td>
+<td>
+<p>a <code>SpatRaster</code> or matrix of variables representing a set of
+conditions of reference (e.g., the set of conditions in which a model was
+calibrated). If a matrix is used, each column represents a variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>g</code></td>
+<td>
+<p>a <code>SpatRaster</code> or matrix of variables representing a set of
+conditions of interest for which dissimilarity values and non-analogous
+conditions will be detected (e.g., conditions in which a model is projected).
+Variable names must match between <code>m</code> and <code>g</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p><code>character</code>, type of MOP analysis to be performed. See <code>Details</code>
+for options.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>calculate_distance</code></td>
+<td>
+<p><code>logical</code>, whether to calculate distances
+(dissimilarities) between <code>m</code> and <code>g</code>. The default, FALSE, runs
+rapidly and does not assess dissimilarity levels.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>where_distance</code></td>
+<td>
+<p><code>character</code>, where to calculate distances, considering
+how conditions in <code>g</code> are positioned in comparison to the range of
+conditions in <code>m</code>. See <code>Details</code> for options.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distance</code></td>
+<td>
+<p><code>character</code>, which distances are calculated, <code>euclidean</code> or
+<code>mahalanobis</code>. Valid if <code>calculate_distance = TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p>scaling options, <code>logical</code> or <code>numeric-alike</code> as in
+<code>scale</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>center</code></td>
+<td>
+<p><code>logical</code> or <code>numeric-alike</code> center options as in
+<code>scale</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fix_NA</code></td>
+<td>
+<p><code>logical</code>, whether to fix layers so cells with NA values
+are the same in all layers. Setting to FALSE may save time if the
+rasters are big and have no NA matching problems.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>percentage</code></td>
+<td>
+<p><code>numeric</code>, percentage of <code>m</code> closest conditions used
+to derive mean environmental distances to each combination of conditions in
+<code>g</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>comp_each</code></td>
+<td>
+<p><code>numeric</code>, number of combinations in <code>g</code> to be used for
+distance calculations at a time. Increasing this number requires more RAM.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>tolerance to detect linear dependencies when calculating
+Mahalanobis distances. The default, NULL, uses <code>.Machine$double.eps</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rescale_distance</code></td>
+<td>
+<p><code>logical</code>, whether or not to re-scale distances 0-1.
+Re-scaling prevents comparisons of dissimilarity values obtained from runs
+with different values of <code>percentage</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p><code>logical</code>, whether calculations should be performed in
+parallel using <code>n_cores</code> of the computer. Using this option will speed
+up the analysis but will demand more RAM.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_cores</code></td>
+<td>
+<p><code>numeric</code>, number of cores to be used in parallel processing.
+If <code>parallel = TRUE</code> and <code>n_cores = NULL</code> (all CPU cores on current host - 1)
+will be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress_bar</code></td>
+<td>
+<p><code>logical</code>, whether to show a progress bar.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>type</code> options return results that differ in the detail of how non-analogous
+conditions are identified.
+</p>
+
+<ul>
+<li> <p><strong>basic</strong> - makes calculation as proposed by Owens et al. (2013)
+<a href="doi:10.1016/j.ecolmodel.2013.04.011">doi:10.1016/j.ecolmodel.2013.04.011</a>.
+</p>
+</li>
+<li> <p><strong>simple</strong> - calculates how many variables in the set of interest are
+non-analogous to those in the reference set.
+</p>
+</li>
+<li> <p><strong>detailed</strong> - calculates five additional extrapolation metrics. See
+<code>mop_detailed</code> under <code>Value</code> below for full details.
+</p>
+</li>
+</ul>
+<p><code>where_distance</code> options determine what values should be used to calculate
+dissimilarity
+</p>
+
+<ul>
+<li> <p><strong>in_range</strong> - only conditions inside <code>m</code> ranges
+</p>
+</li>
+<li> <p><strong>out_range</strong> - only conditions outside <code>m</code> ranges
+</p>
+</li>
+<li> <p><strong>all</strong> - all conditions
+</p>
+</li>
+</ul>
+<p>When the variables used to represent conditions have different units,
+scaling and centering are recommended. This step is only valid when Euclidean
+distances are used.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A object of class <code>mop_results</code> containing:
+</p>
+
+<ul>
+<li> <p><strong>summary</strong> - a list with details of the data used in the analysis:
+</p>
+
+<ul>
+<li> <p><em>variables</em> - names of variables considered.
+</p>
+</li>
+<li> <p><em>type</em> - type of MOP analysis performed.
+</p>
+</li>
+<li> <p><em>scale</em> - value according to the argument <code>scale</code>.
+</p>
+</li>
+<li> <p><em>center</em> - value according to the argument <code>center</code>.
+</p>
+</li>
+<li> <p><em>calculate_distance</em> - value according to the argument
+<code>calculate_distance</code>.
+</p>
+</li>
+<li> <p><em>distance</em> - option regarding distance used.
+</p>
+</li>
+<li> <p><em>percentage</em> - percentage of <code>m</code> used as reference for
+distance calculation.
+</p>
+</li>
+<li> <p><em>rescale_distance</em> - value according to the argument
+<code>rescale_distance</code>.
+</p>
+</li>
+<li> <p><em>fix_NA</em> - value according to the argument <code>fix_NA</code>.
+</p>
+</li>
+<li> <p><em>N_m</em> - total number of elements (cells with values or valid
+rows) in <code>m</code>.
+</p>
+</li>
+<li> <p><em>N_g</em> - total number of elements (cells with values or valid
+rows) in <code>g</code>.
+</p>
+</li>
+<li> <p><em>m_ranges</em> - matrix with ranges of variables in reference conditions
+(<code>m</code>).
+</p>
+</li>
+</ul>
+</li>
+<li> <p><strong>mop_distances</strong> - if <code>calculate_distance</code> = TRUE, a SpatRaster or
+vector with distance values for the set of interest (<code>g</code>). Higher values
+represent greater dissimilarity compared to the set of reference (<code>m</code>).
+</p>
+</li>
+<li> <p><strong>mop_basic</strong> - a SpatRaster or vector, for the set of interest,
+representing conditions in which at least one of the variables is
+non-analogous to the set of reference. Values should be: 1 for non-analogous
+conditions, and NA for conditions inside the ranges of the reference set.
+</p>
+</li>
+<li> <p><strong>mop_simple</strong> - a SpatRaster or vector, for the set of interest,
+representing how many variables in the set of interest are non-analogous to
+those in the reference set. NA is used for conditions inside the ranges of
+the reference set.
+</p>
+</li>
+<li> <p><strong>mop_detailed</strong> - a list containing:
+</p>
+
+<ul>
+<li> <p><em>interpretation_combined</em> - a data.frame to help identify combinations
+of variables in <em>towards_low_combined</em> and <em>towards_high_combined</em> that
+are non-analogous to <code>m</code>.
+</p>
+</li>
+<li> <p><em>towards_low_end</em> - a SpatRaster or matrix for all variables
+representing where non-analogous conditions were found towards low values
+of each variable.
+</p>
+</li>
+<li> <p><em>towards_high_end</em> - a SpatRaster or matrix for all variables
+representing where non-analogous conditions were found towards high
+values of each variable.
+</p>
+</li>
+<li> <p><em>towards_low_combined</em> - a SpatRaster or vector with values
+representing the identity of the variables found to have non-analogous
+conditions towards low values. If vector, interpretation requires the use
+of the data.frame <em>interpretation_combined</em>.
+</p>
+</li>
+<li> <p><em>towards_high_combined</em> - a SpatRaster or vector with values
+representing the identity of the variables found to have non-analogous
+conditions towards high values. If vector, interpretation requires the
+use of the data.frame <em>interpretation_combined</em>.
+</p>
+</li>
+</ul>
+</li>
+</ul>
+<h3>See Also</h3>
+
+<p><code>mop_distance</code>, <code>out_range</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># data
+reference_layers &lt;- terra::rast(system.file("extdata", "reference_layers.tif",
+                                            package = "mop"))
+
+layers_of_interest &lt;- terra::rast(system.file("extdata",
+                                              "layers_of_interest.tif",
+                                              package = "mop"))
+
+# analysis
+mop_res &lt;- mop(m = reference_layers, g = layers_of_interest)
+
+summary(mop_res)
+</code></pre>
+
+
+</div>

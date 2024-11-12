@@ -1,0 +1,127 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>model_response</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Model Responser</h2>
+
+<h3>Description</h3>
+
+<p>It calculates the model response and parameters of interest for a given distribution.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">model_response(doses, distr, model.true, models.candidate)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>doses</code></td>
+<td>
+<p>a numeric vector indicating the doses that will be considered in the clinical trial.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distr</code></td>
+<td>
+<p>a character value indicating the distribution of the response variable. Currently, the only option available is 'weibull'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.true</code></td>
+<td>
+<p>a character value indicating the functional form of the true dose-response curve. Options are "constant", "linear", "linlog",
+"quadratic", "exponential", "emax", "sigmaEmax", "betaMod", "logistic",  "linInt".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>models.candidate</code></td>
+<td>
+<p>an object of class Mods. See more details in <code>Mods</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a data frame with dimension length(doses) <code class="reqn">\times</code> 3 with the following columns: (1) model response (2) model parameter and (3) doses
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Diniz, M.A., Gallardo D.I., Magalhaes, T.M.
+</p>
+
+
+<h3>References</h3>
+
+<p>Diniz, Márcio A. and Gallardo, Diego I. and Magalhães, Tiago M. (2023). Improved inference 
+for MCP-Mod approach for time-to-event endpoints with small sample sizes. arXiv 
+&lt;doi.org/10.48550/arXiv.2301.00325&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(DoseFinding)
+library(MCPModBC)
+
+## doses scenarios 
+doses &lt;- c(0, 5, 25, 50, 100)
+nd &lt;- length(doses)
+
+# median survival time for placebo dose
+mst.control &lt;- 4 
+
+# shape parameter
+sigma.true &lt;- 0.5
+
+# maximum hazard ratio between active dose and placebo dose 
+hr.ratio &lt;- 4  
+# minimum hazard ratio between active dose and placebo dose
+hr.Delta &lt;- 2 
+
+# hazard rate for placebo dose
+placEff &lt;- log(mst.control/(log(2)^sigma.true)) 
+
+# maximum hazard rate for active dose
+maxEff &lt;- log((mst.control*(hr.ratio^sigma.true))/(log(2)^sigma.true))
+
+# minimum hazard rate for active dose
+minEff.Delta &lt;- log((mst.control*(hr.Delta^sigma.true))/(log(2)^sigma.true))
+Delta &lt;- (minEff.Delta - placEff)
+
+## MCP Parameters  
+emax &lt;- guesst(d = doses[4], p = 0.5, model="emax")
+exp &lt;- guesst(d = doses[4], p = 0.1, model="exponential", Maxd = doses[nd])
+logit &lt;- guesst(d = c(doses[3], doses[4]), p = c(0.1,0.8), "logistic",  Maxd= doses[nd])
+betam &lt;- guesst(d = doses[2], p = 0.3, "betaMod", scal=120, dMax=50, Maxd= doses[nd])
+
+models.candidate &lt;- Mods(emax = emax, linear = NULL,
+                         exponential = exp, logistic = logit,
+                         betaMod = betam, doses = doses,
+                         placEff = placEff, maxEff = (maxEff- placEff))
+plot(models.candidate)
+
+## True Model
+model.true &lt;- "emax"
+response &lt;- model_response(doses = doses,
+                           distr = "weibull", 
+                           model.true = model.true, 
+                           models.candidate = models.candidate) 
+response
+
+lambda.true &lt;- response$lambda
+parm &lt;- list(lambda = lambda.true, sigma = sigma.true)
+
+</code></pre>
+
+
+</div>

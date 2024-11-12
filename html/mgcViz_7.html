@@ -1,0 +1,153 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>check2D</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Checking GAM residuals along two covariates</h2>
+
+<h3>Description</h3>
+
+<p>This function extracts the residuals of a fitted GAM model, and plots them
+according to the values of two covariates. Then several visual residuals diagnostics
+can be plotted by adding layers.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">check2D(
+  o,
+  x1,
+  x2,
+  type = "auto",
+  maxpo = 10000,
+  na.rm = TRUE,
+  trans = NULL,
+  useSim = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>o</code></td>
+<td>
+<p>an object of class <code>gamViz</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x1</code></td>
+<td>
+<p>it can be either a) a single character, b) a numeric vector or c) a list of characters.
+In case a) it should be the name of one of the variables in the dataframe used to fit <code>o</code>.
+In case b) its length should be equal to the length of <code>o$y</code>.
+In case c) it should be a list of names of variables in the dataframe used to fit <code>o</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x2</code></td>
+<td>
+<p>same as <code>x2</code>, but this will appear on the y-axis.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>the type of residuals to be used. See residuals.gamViz.
+If <code>"type == y"</code> then the raw observations will be used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxpo</code></td>
+<td>
+<p>maximum number of residuals points that will be used by layers such as
+<code>l_rug()</code>. If number of datapoints &gt; <code>maxpo</code>,
+then a subsample of <code>maxpo</code> points will be taken.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>na.rm</code></td>
+<td>
+<p>if <code>TRUE</code> missing cases in <code>x</code> or <code>y</code> will be dropped out</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trans</code></td>
+<td>
+<p>function used to transform the observed and simulated residuals or responses. It must take a vector of
+as input, and must return a vector of the same length.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>useSim</code></td>
+<td>
+<p>if <code>FALSE</code> then the simulated responses contained in object <code>o</code> will not be used
+by this function or by any of the layers that can be used with its output.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The function will return an object of class <code>c("plotSmooth", "gg")</code>, unless arguments <code>x1</code> and/or
+<code>x2</code> are lists. If they are lists of the same length, then the function will return an object of class
+<code>c("plotGam", "gg")</code> containing a checking plot for each pair of variables. If <code>x1</code> is a list
+and <code>x2</code> is not specified, the function will return an object of class <code>c("plotGam", "gg")</code> containing
+a plot for each unique combination of the variables in <code>x1</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+library(mgcViz);
+#### Example 1: Rosenbrock function
+# Simulate data
+n &lt;- 1e4
+X &lt;- data.frame("x1"=rnorm(n, 0.5, 0.5), "x2"=rnorm(n, 1.5, 1))
+X$y &lt;- (1-X$x1)^2 + 100*(X$x2 - X$x1^2)^2 + rnorm(n, 0, 2)
+b &lt;- bam(y ~ te(x1, x2, k = 5), data = X, discrete = TRUE)
+b &lt;- getViz(b, nsim = 50)
+
+# Plot joint density of observed covariate x1 and x2
+check2D(b, x1 = "x1", x2 = "x2") + l_rug() + l_dens(type="joint", alpha=0.6) + l_points()
+
+# Look at how mean of residuals varies across x1 and x2
+check2D(b, x1 = "x1", x2 = "x2") + l_gridCheck2D() + l_points()
+
+# Can't see much in previous plot, let's zoom in central area, where most
+# data is. Here we can clearly see that the mean model is mispecified
+check2D(b, x1 = "x1", x2 = "x2") + l_gridCheck2D(bw = c(0.05, 0.1)) +
+                                   xlim(-1, 1) + ylim(0, 3)
+# Fit can be improved by increasing k in the bam() call
+
+#### Example 2: checking along factor variables
+# Simulate data where variance changes along factor variable "fac"
+n &lt;- 1e4
+X &lt;- data.frame("x1"=rnorm(n, 0.5, 0.5), "x2"=rnorm(n, 1.5, 1))
+X$fac &lt;- as.factor( sample(letters, n, replace = TRUE) )
+X$fac2 &lt;- as.factor( sample(c("F1", "F2", "F3", "F4", "F5"), n, replace = TRUE) )
+X$y &lt;- (1-X$x1)^2 + 5*(X$x2 - X$x1^2)^2 + 0.1*as.numeric(X$fac) * rnorm(n, 0, 2)
+b &lt;- bam(y ~ te(x1, x2, k = 5) + fac + fac2, data = X, discrete = TRUE)
+b &lt;- getViz(b, nsim = 50)
+
+# Check standard deviation of residuals along covariates "x1" and "fac"
+a &lt;- check2D(b, x1 = "x2", x2 = "fac")
+a + l_gridCheck2D(gridFun = sd) + l_rug() + l_points() 
+
+# Points and rug are jittered by default, but we can over-ride this
+a + l_rug(position = position_jitter(width = 0, height = 0)) + 
+  l_points(position = position_jitter(width = 0, height = 0)) 
+
+# Check standard deviation of residuals along the two factor variables
+a &lt;- check2D(b, x1 = "fac", x2 = "fac2")
+a + l_gridCheck2D(gridFun = sd, bw = c(1, 4)) + l_rug() + l_points() 
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

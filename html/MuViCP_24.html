@@ -1,0 +1,225 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bel.builder</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Building Belief Functions</h2>
+
+<h3>Description</h3>
+
+<p>These are a set of functions that can be used to build belief
+functions (hence the name <code>*.builder</code>). Each of these returns a
+function that can be used to classify points in two dimensions.
+</p>
+<p>The algorithm used can be judged from the first three letters. Thus
+the <code>kde_bel</code> function uses the kernel density estimate (kde), the
+<code>knn_bel</code> function uses the kernel density estimate together with
+information on the Nearest Neighbours, the <code>jit_bel</code> function
+uses jittering of the point in the neighbourhood. Finally, the
+<code>cor_bel</code> function uses the kde but includes a factor for
+self-correction.
+</p>
+<p>These generated functions (return values) are meant to be passed to
+the <code>ensemble</code> function to build an ensemble.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">kde_bel.builder(labs, test, train, options = list(coef = 0.90))
+knn_bel.builder(labs, test, train, options = list(k = 3, p = FALSE,
+dist.type = c('euclidean', 'absolute', 'mahal'), out = c('var', 'cv'),
+coef = 0.90))
+jit_bel.builder(labs, test, train, options = list(k = 3, p = FALSE, s =
+5, dist.type = c('euclidean', 'absolute', 'mahal'), out = c('var',
+'cv'), coef = 0.90))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>labs</code></td>
+<td>
+<p>The possible labels for the points. Can be strings. Must
+be of the same length as <code>train</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>test</code></td>
+<td>
+<p>The indices of the test data in <code>P</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>train</code></td>
+<td>
+<p>The indices of the training data in <code>P</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>options</code></td>
+<td>
+<p>A list of arguments that determine the behaviour of the
+constructed belief function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>The number of nearest neighbours to consider, specified as a
+definite integer</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>The number of nearest neighbours to consider, specified as a
+fraction of the test set</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>s</code></td>
+<td>
+<p>For the jitter belief function : how many times should each
+point be jittered in the neighbourhood? Usually, 2 or 3 works.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dist.type</code></td>
+<td>
+<p>The type of distance to use when computing nearest
+neighbours. Can be one of "euclidean", "absolute", or "mahal"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>out</code></td>
+<td>
+<p>Should beliefs be built from the variance (<code>var</code>) or
+the coefficient of variation(<code>cv</code>)? Also see the Details section below.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coef</code></td>
+<td>
+<p>The classifier only assigns the class labels that actually
+occur, that is, ignorance is, by default not accounted for. This
+argument specifies what amount of belief should be allocated to
+ignorance; the beliefs to the other classes are correspondingly
+adjusted. Note that for the 'corrected' classifier, the actual belief
+assigned to ignorance may be higher than this for some
+projections. See Details.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Each of these functions uses a different algorithm for classification.
+</p>
+<p>The <code>kde_bel.builder</code> returns a classifier that simply evaluates
+the kernel density estimate of each class on each point, and
+classifies that point to that class which has the maximum density on
+it.
+</p>
+<p>The <code>knn_bel.builder</code> returns a classifier that tries to locate
+<code>k</code> (or <code>p*length(train)</code>) nearest neighbours of each of the
+points in the test set. It then evaluates the kernel density estimate
+of each class in the training set on each of these nearest neighbours,
+and at each of the testing points. With argument <code>var</code>, the
+variance of the set of density values, centered at the density value
+at the testing point itself, is taken as a measure of that point
+belonging to this class. With argument <code>cv</code>, the coefficient of
+variation is used instead, and for the mean, one uses the density
+value on the point itself. Generally, the <code>var</code> classifier has
+higher accuracy.
+</p>
+<p>The <code>jit_bel.builder</code> works very similar to the
+<code>knn_bel.builder</code> classifier, but instead uses the nearest
+neighbour information to determine a point "neighbourhood". The test
+points are then jittered in this neighbourhood, and on these fake
+points the kernel density is evaluated. The <code>var</code> and <code>cv</code>
+work here as they work in the <code>knn_bel.builder</code> classifier.  
+</p>
+
+
+<h3>Value</h3>
+
+<p>A Classifier function that can be passed on to the
+<code>ensemble</code> function.
+</p>
+<p>Alternately, 2-D projected data may directly be passed to the
+classifier function returned, in which case, a matrix of dimensions
+(Number of Classes) x (length(test)) is returned. Each column sums to
+1, and represents the partial assignment of that point to each of the
+classes. The rows are named after the class names, while the columns
+are named after the test points. Ignorance is represented by the
+special symbol 'Inf' and is the last class in the matrix.</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Mohit Dayal</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">##Setting Up
+data(cancer)
+table(cancer$V2)
+colnames(cancer)[1:2] &lt;- c('id', 'type')
+cancer.d &lt;- as.matrix(cancer[,3:32])
+labs &lt;- cancer$type
+test_size &lt;- floor(0.15*nrow(cancer.d))
+train &lt;- sample(1:nrow(cancer.d), size = nrow(cancer.d) - test_size)
+test &lt;- which(!(1:569 %in% train))
+truelabs = labs[test]
+
+projectron &lt;- function(A) cancer.d %*% A
+
+seed &lt;- .Random.seed
+F &lt;- projectron(basis_random(30))
+
+##Simple Density Classification
+kdebel &lt;- kde_bel.builder(labs = labs[train], test = test, train = train)
+x1 &lt;- kdebel(F)
+predicted1 &lt;- apply(x1, MARGIN = 2, FUN = function(x) names(which.max(x)))
+table(truelabs, predicted1)
+
+##Density Classification Using Nearest Neighbor Information
+knnbel &lt;- knn_bel.builder(labs = labs[train], test = test, train =
+train, options = list(k = 3, p = FALSE, dist.type = 'euclidean', out = 'var', coef
+= 0.90))
+x2 &lt;- knnbel(F)
+predicted2 &lt;- apply(x2, MARGIN = 2, FUN = function(x) names(which.max(x)))
+table(truelabs, predicted2)
+
+##Same as above but now using the Coefficient of Variation for Classification
+knnbel2 &lt;- knn_bel.builder(labs = labs[train], test = test, train =
+train, options = list(k = 3, p = FALSE, dist.type = 'euclidean', out = 'cv', coef =
+0.90))
+x3 &lt;- knnbel2(F)
+predicted3 &lt;- apply(x3, MARGIN = 2, FUN = function(x) names(which.max(x)))
+table(truelabs, predicted3)
+
+##Density Classification Using Jitter &amp; NN Information
+jitbel &lt;- jit_bel.builder(labs = labs[train], test = test, train =
+train, options = list(k = 3, s = 2, p = FALSE, dist.type = 'euclidean', out =
+'var', coef = 0.90))
+x4 &lt;- jitbel(F)
+predicted4 &lt;- apply(x4, MARGIN = 2, FUN = function(x) names(which.max(x)))
+table(truelabs, predicted4)
+
+##Same as above but now using the Coefficient of Variation for Classification
+jitbel2 &lt;- jit_bel.builder(labs = labs[train], test = test, train =
+train, options = list(k = 3, p = FALSE, dist.type = 'euclidean', out =
+'cv', s = 2, coef = 0.90))
+x5 &lt;- jitbel2(F)
+predicted5 &lt;- apply(x5, MARGIN = 2, FUN = function(x) names(which.max(x)))
+table(truelabs, predicted5)
+
+</code></pre>
+
+
+</div>

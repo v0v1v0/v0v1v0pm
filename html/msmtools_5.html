@@ -1,0 +1,152 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>prevplot</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Plot observed and expected prevalences for a multi-state model</h2>
+
+<h3>Description</h3>
+
+<p>Provides a graphical indication of goodness of fit of a multi-state model
+computed by <code>msm</code> using observed and expected prevalences.
+It also computes a rough indicator of where the data depart from the estimated
+Markov model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">prevplot(x, prev.obj, exacttimes = TRUE, M = FALSE, ci = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A <code>msm</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prev.obj</code></td>
+<td>
+<p>A list computed by <code>prevalence.msm</code>.
+It can be with or without confidence intervals. <code>prevplot</code> will behaves
+accordingly.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exacttimes</code></td>
+<td>
+<p>If <code>TRUE</code> (default) then transition times are known
+and exact. This is inherited from <code>msm</code> and should be set the same way.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M</code></td>
+<td>
+<p>If <code>TRUE</code>, then a rough indicator of deviance from the model is
+computed (see 'Details'). Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ci</code></td>
+<td>
+<p>If <code>TRUE</code>, then confidence intervals, if they exist, are plotted.
+Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>When <code>M = TRUE</code>, a rough indicator of the deviance from the
+Markov model is computed according to Titman and Sharples (2008).
+A comparison at a given time <code class="reqn">t_i</code> of a patient <em>k</em> in the state
+<em>s</em> between observed counts <code class="reqn">O_{is}</code> with expected ones <code class="reqn">E_{is}</code>
+is build as follows:
+</p>
+<p style="text-align: center;"><code class="reqn">M_{is} = \frac{(O_{is} - E_{is})^2}{E_{is}}</code>
+</p>
+
+<p>The plot of the deviance M is returned together with the standard prevalence plot in the second
+row. This is not editable by the user.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Francesco Grossetti <a href="mailto:francesco.grossetti@unibocconi.it">francesco.grossetti@unibocconi.it</a>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Titman, A. and Sharples, L.D. (2010). Model diagnostics for
+multi-state models, <em>Statistical Methods in Medical Research</em>, 19,
+621-651.<br></p>
+<p>Titman, A. and Sharples, L.D. (2008). A general goodness-of-fit test for
+Markov and hidden Markov models, <em>Statistics in Medicine</em>, 27,
+2177-2195. <br></p>
+<p>Gentleman RC, Lawless JF, Lindsey JC, Yan P. (1994). Multi-state Markov
+models for analysing incomplete disease data with illustrations for HIV
+disease. <em>Statistics in Medicine</em>, 13:805-821. <br></p>
+<p>Jackson, C.H. (2011). Multi-State Models for Panel Data:<br>
+The <em>msm</em> Package for R. Journal of Statistical Software, 38(8), 1-29.<br>
+URL <a href="https://www.jstatsoft.org/v38/i08/">https://www.jstatsoft.org/v38/i08/</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>plot.prevalence.msm</code> <code>msm</code>
+<code>prevalence.msm</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+data( hosp )
+
+# augmenting the data
+hosp_augmented = augment( data = hosp, data_key = subj, n_events = adm_number,
+                          pattern = label_3, t_start = dateIN, t_end = dateOUT,
+                          t_cens = dateCENS )
+
+# let's define the initial transition matrix for our model
+Qmat = matrix( data = 0, nrow = 3, ncol = 3, byrow = TRUE )
+Qmat[ 1, 1:3 ] = 1
+Qmat[ 2, 1:3 ] = 1
+colnames( Qmat ) = c( 'IN', 'OUT', 'DEAD' )
+rownames( Qmat ) = c( 'IN', 'OUT', 'DEAD' )
+
+# attaching the msm package and running the model using
+# gender and age as covariates
+library( msm )
+msm_model = msm( status_num ~ augmented_int, subject = subj,
+                 data = hosp_augmented, covariates = ~ gender + age,
+                 exacttimes = TRUE, gen.inits = TRUE, qmatrix = Qmat,
+                 method = 'BFGS', control = list( fnscale = 6e+05, trace = 0,
+                 REPORT = 1, maxit = 10000 ) )
+
+# defining the times at which compute the prevalences
+t_min = min( hosp_augmented$augmented_int )
+t_max = max( hosp_augmented$augmented_int )
+steps = 100L
+
+# computing prevalences
+prev = prevalence.msm( msm_model, covariates = 'mean', ci = 'normal',
+                       times = seq( t_min, t_max, steps ) )
+
+# and plotting them using prevplot()
+gof = prevplot( x = msm_model, prev.obj = prev, ci = TRUE, M = TRUE )
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

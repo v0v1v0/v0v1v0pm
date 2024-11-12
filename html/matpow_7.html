@@ -1,0 +1,170 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>matpow</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Matrix Powers</h2>
+
+<h3>Description</h3>
+
+<p>Computes matrix powers, with optional application-specific callbacks.
+Accommodates (external) parallel multiplication mechanisms.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">  matpow(m,k=NULL,squaring=FALSE,genmulcmd=NULL,dup=NULL,callback=NULL,...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>m</code></td>
+<td>
+<p>input matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>desired power.  If NULL, it is expected that the
+initialization portion of the user's callback function will set
+<code>k</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>squaring</code></td>
+<td>
+<p>if TRUE, saves time by first squaring <code>m</code>, then
+squaring the result and so on, until a power is reached of <code>k</code> 
+or more.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>genmulcmd</code></td>
+<td>
+<p>function to generate multiplication commands, in
+quoted string form.  For the ordinary R <code>"matrix"</code> class this
+is <code>function(a,b,c) paste(c," &lt;- ",a," %*% ",b)</code>, supplied as
+<code>genmulcmd.vanilla</code> with the package.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dup</code></td>
+<td>
+<p>function to make a deep copy of a  matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>callback</code></td>
+<td>
+<p>application-specific callback function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>application-specific arguments</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p> Multiplication is iterated until the desired power <code>k</code> is
+reached, with these exceptions:  (a) If <code>squaring</code> is TRUE,
+<code>k</code> may be exceeded.  (b) The callback function can set <code>stop</code>
+in <code>ev</code>, halting iterations; this is useful, for instance, if some
+convergence criterion has been reached.
+</p>
+<p>One key advantage of using <code>matpow</code> rather than direct iteration
+is that parallel computation can be accommodated, by specifying
+<code>genmulcmd</code>.  (The word "accommodated" here means the user must
+have available a mechanism for parallel computation; <code>matpow</code>
+itself contains no parallel code.)
+</p>
+<p>For instance, if one is using GPU with <code>gputools</code>, one sets
+<code>genmulcmd</code> to <code>genmulcmd.gputools</code>, which calls
+<code>gpuMatMult()</code> instead of the usual <code>%*%</code>.  So, one can
+switch from serial to parallel by merely changing this one argument.
+If <code>genmulcmd</code> is not specified, the code attempts to sense the
+proper function by inspecting <code>class(m)</code>, in the cases of
+classes <code>"matrix"</code> and <code>"big.matrix"</code>.  
+</p>
+<p>Of course, if the user's R is configured to use a parallel BLAS, such
+as OpenBLAS, this is automatically handled via the ordinary R
+<code>"matrix"</code> class.
+</p>
+<p>Another important advantage of <code>matpow</code> is the ability to write
+a callback function, which enables much flexibility.  The callback,
+if present, is called by <code>matpow</code> after each iteration, allowing
+application-specific operations to be applied.  For instance,
+<code>cgraph</code> determines the connectivity of a graph, by
+checking whether the current power has all of its entries nonzero.
+</p>
+<p>The call form is <code>callbackname(ev,init,...)</code> where <code>ev</code> is
+the R environment described above, and <code>init</code> must be set to
+TRUE on the first call, and FALSE afterward.
+</p>
+<p>Since some types of matrix multiplication do not allow the product to
+be in the same physical location as either multiplicand, a
+"red and black" approach is taken to the iteration process:  Storage
+space for powers in <code>ev</code> alternatives between <code>prod1</code> and
+<code>prod2</code>, for odd-numbered and even-numbered iterations,
+respectively.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An R environment <code>ev</code>, including the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>prod1</code></td>
+<td>
+<p>matrix, the final power.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stop</code></td>
+<td>
+<p>boolean value, indicating whether the iterations were
+stopped before the final power was to be computed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>i</code></td>
+<td>
+<p>number of the last iteration performed.</p>
+</td>
+</tr>
+</table>
+<p>Application-specific data, maintained by the callback function, can
+be stored here as well.  </p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+m &lt;- rbind(1:2,3:4)
+ev &lt;- matpow(m,16)
+ev$prod1
+# prints
+#              [,1]        [,2]
+# [1,] 115007491351 1.67615e+11
+# [2,] 251422553235 3.66430e+11
+
+ev$i  # prints 15
+matpow(m,16,squaring=TRUE)$i  # prints 4, same prod1
+
+## End(Not run)
+
+# see further examples in the callbacks
+</code></pre>
+
+
+</div>

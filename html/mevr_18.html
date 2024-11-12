@@ -1,0 +1,174 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>weibull_tail_test</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Weibull tail test</h2>
+
+<h3>Description</h3>
+
+<p>This functions provides a way to test if observed rainfall maxima from a data series are 
+likely samples from a parent distribution with a Weibull tail. The concept and the 
+code is based on the paper Marra F, W Amponsah, SM Papalexiou, 2023. Non-asymptotic Weibull tails 
+explain the statistics of extreme daily precipitation. Adv. Water Resour., 173, 104388, 
+https://doi.org/10.1016/j.advwatres.2023.104388. They also provide the corresponding Matlab code 
+(https://zenodo.org/records/7234708).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">weibull_tail_test(
+  data,
+  threshold = 0,
+  mon = 1,
+  cens_quant = 0.9,
+  p_test = 0.1,
+  R = 500
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A data.frame</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+<p>A numeric that is used to define wet days as values &gt; threshold.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mon</code></td>
+<td>
+<p>This month defines the block whose maxima 
+will be tested. The block goes from month-YYYY-1 to month-YYYY.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cens_quant</code></td>
+<td>
+<p>The quantile at which the tail test should be performed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p_test</code></td>
+<td>
+<p>A numeric defining the 1 - p_test confidence band. This function 
+tests the ratio of observed block maxima below p_test and above 1 - p_test. See details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>R</code></td>
+<td>
+<p>The number of synthetic samples.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Null-Hyothesis: block maxima are samples from a parent distribution with
+Weibull tail (tail defined by a given left-censoring threshold). If the fraction 
+of observed block maxima outside of the interval defined by 
+p_test is larger than p_test the null hypothesis is rejected.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A tibble with the test outcome and other useful results:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>is_rejected</code></td>
+<td>
+<p> outcome of the test (TRUE means that the assumption of
+Weibull tails for the given left-censoring threshold is rejected).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p_out</code></td>
+<td>
+<p> fraction of block maxima outside of the Y = 1 - p_out confidence interval</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p_hi</code></td>
+<td>
+<p> fraction of block maxima above the Y = 1 - p_out confidence interval</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p_lo</code></td>
+<td>
+<p> fraction of block maxima below the Y = 1 - p_out confidence interval</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p> scale parameter of the Weibull distribution describing the non-censored samples</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>shape</code></td>
+<td>
+<p> shape parameter of the Weibull distribution describing the non-censored samples</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quant</code></td>
+<td>
+<p> the quantile used as left-censoring threshold</p>
+</td>
+</tr>
+</table>
+<h3>Examples</h3>
+
+<pre><code class="language-R">data("dailyrainfall")
+weibull_tail_test(dailyrainfall)
+
+# generate data
+set.seed(123)
+sample_dates &lt;- seq.Date(from = as.Date("2000-01-01"), to = as.Date("2010-12-31"), by = 1)
+sample_data &lt;- data.frame(dates = sample_dates, val = sample(rnorm(length(sample_dates))))
+d &lt;- sample_data |&gt;
+  filter(val &gt;= 0 &amp; !is.na(val))
+fit_uncensored &lt;- fsmev(d)
+
+# censor the data
+thresholds &lt;- c(seq(0.1, 0.9, 0.1), 0.95)
+p_test &lt;- 0.1
+res &lt;- lapply(thresholds, function(x) {
+  weibull_tail_test(d, cens_quant = x, p_test = p_test, R = 200)
+})
+res &lt;- do.call(rbind, res)
+
+# find the optimal left-censoring threshold
+cens &lt;- censored_weibull_fit(res, thresholds)
+cens$optimal_threshold
+cens$quantile
+
+# plot return levels censored vs uncensored
+rp &lt;- c(2:100)
+rl_uncensored &lt;- return.levels.mev(fit_uncensored, return.periods = rp)$rl 
+rl_censored &lt;- qmev(1 - 1/rp, cens$shape, cens$scale, fit_uncensored$n)
+plot(rp, rl_uncensored, type = "l", log = "x", ylim = c(0, max(rl_censored, rl_uncensored)), 
+     ylab = "return level", xlab = "return period (a)")
+points(pp.weibull(fit_uncensored$maxima), sort(fit_uncensored$maxima))
+lines(rp, rl_censored, type = "l", col = "red")
+legend("bottomright", legend = c("uncensored", 
+        paste0("censored at ", round(cens$optimal_threshold, 1), "mm")), 
+        col = c("black", "red"), lty = c(1, 1))
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,154 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>logquad</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Log-Quadratic Mortality Model</h2>
+
+<h3>Description</h3>
+
+<p>Predict age-specific mortality rates using the Log-Quadratic Mortality Model (Wilmoth et al. 2012).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">logquad(
+  e0,
+  sex = c("male", "female", "total"),
+  my.coefs = NULL,
+  q5ranges = c(1e-04, 0.9),
+  k = 0,
+  keep.lt = FALSE,
+  ...
+)
+
+logquadj(e0m, e0f, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>e0</code></td>
+<td>
+<p>Vector of target life expectancies.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sex</code></td>
+<td>
+<p>Which sex does the give <code>e0</code> corresponds to.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>my.coefs</code></td>
+<td>
+<p>Data frame with columns “sex”, “age”, “ax”, “bx”, “cx”, “vx”.
+The “sex” column should contain values “female”, “male” and/or “total”.
+The “age” column must be sorted so that it assures that rows correspond to ages in increasing order.
+Any <code>NA</code>s are internally converted to zeros. If not given, the dataset <code>LQcoef</code> is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>q5ranges</code></td>
+<td>
+<p>A vector of size two, giving the min and max of 5q0 used in the bisection method.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>Value of the <code class="reqn">k</code> parameter.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep.lt</code></td>
+<td>
+<p>Logical. If <code>TRUE</code> additional life table columns are kept in the 
+resulting object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments passed to the underlying function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>e0m</code></td>
+<td>
+<p>A time series of target male life expectancy.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>e0f</code></td>
+<td>
+<p>A time series of target female life expectancy.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The LogQuad method in this implementation projects mortality rates using the equation
+</p>
+<p style="text-align: center;"><code class="reqn">\log(m_x) = a_x + b_x h + c_x h^2 + v_x k</code>
+</p>
+
+<p>where <code class="reqn">a_x</code>, <code class="reqn">b_x</code>, <code class="reqn">c_x</code> and <code class="reqn">v_x</code> are age-specific coefficients, <code class="reqn">h = \log( 5q0 )</code> 
+(i.e. reflects child mortality), 
+and <code class="reqn">k</code> should be chosen to match 45q15 (adult mortality) or set to 0 (default). The coefficients
+can be passed as inputs, or taken from the package default dataset <code>LQcoef</code> which 
+are taken from <a href="https://u.demog.berkeley.edu/~jrw/LogQuad/">https://u.demog.berkeley.edu/~jrw/LogQuad/</a>.
+</p>
+<p>For the given inputs and values of life expectancy e0, the function finds values of <code class="reqn">h</code> that 
+best match e0, using life tables and the bisection method. It returns the corresponding mortality schedule
+for each value of e0.
+</p>
+<p>Function <code>logquad</code> is for one sex, while <code>logquadj</code> can be used for both sexes.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Function <code>logquad</code> returns a list with the following elements: a matrix <code>mx</code>
+with the predicted mortality rates. If <code>keep.lt</code> is <code>TRUE</code>, it also 
+contains matrices <code>sr</code> (survival rates), and life table quantities <code>Lx</code> and <code>lx</code>.
+Function <code>logquadj</code> returns a list of objects, one for each sex.
+</p>
+
+
+<h3>References</h3>
+
+<p>Wilmoth, J., Zureick, S., Canudas-Romo, V., Inoue, M., Sawyer, C. (2012). 
+A Flexible Two-Dimensional Mortality Model for Use in Indirect Estimation. 
+Population studies, 66(1), 1-28. doi: <a href="https://doi.org/10.1080/00324728.2011.611411">10.1080/00324728.2011.611411</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>LQcoef</code>, <code>mortcast.blend</code>, <code>mortcast</code>, <code>pmd</code>, <code>mlt</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(e0Mproj, package = "wpp2017")
+country &lt;- "Brazil"
+# get target e0
+e0m &lt;- as.numeric(subset(e0Mproj, name == country)[-(1:2)])
+# project into future
+pred &lt;- logquad(e0m, sex = "male")
+# plot first projection in black and the remaining ones in heat colors 
+plot(pred$mx[,1], type = "l", log = "y", ylim = range(pred$mx),
+    ylab = "male mx", xlab = "Age", main = country)
+for(i in 2:ncol(pred$mx)) lines(pred$mx[,i], 
+    col = heat.colors(20)[i])
+    
+</code></pre>
+
+
+</div>

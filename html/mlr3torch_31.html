@@ -1,0 +1,121 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>materialize</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Materialize Lazy Tensor Columns</h2>
+
+<h3>Description</h3>
+
+<p>This will materialize a <code>lazy_tensor()</code> or a <code>data.frame()</code> / <code>list()</code> containing – among other things –
+<code>lazy_tensor()</code> columns.
+I.e. the data described in the underlying <code>DataDescriptor</code>s is loaded for the indices in the <code>lazy_tensor()</code>,
+is preprocessed and then put unto the specified device.
+Because not all elements in a lazy tensor must have the same shape, a list of tensors is returned by default.
+If all elements have the same shape, these tensors can also be rbinded into a single tensor (parameter <code>rbind</code>).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">materialize(x, device = "cpu", rbind = FALSE, ...)
+
+## S3 method for class 'list'
+materialize(x, device = "cpu", rbind = FALSE, cache = "auto", ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>(any)<br>
+The object to materialize.
+Either a <code>lazy_tensor</code> or a <code>list()</code> / <code>data.frame()</code> containing <code>lazy_tensor</code> columns.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>device</code></td>
+<td>
+<p>(<code>character(1)</code>)<br>
+The torch device.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rbind</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether to rbind the lazy tensor columns (<code>TRUE</code>) or return them as a list of tensors (<code>FALSE</code>).
+In the second case, there is no batch dimension.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>(any)<br>
+Additional arguments.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cache</code></td>
+<td>
+<p>(<code>character(1)</code> or <code>environment()</code> or <code>NULL</code>)<br>
+Optional cache for (intermediate) materialization results.
+Per default, caching will be enabled when the same dataset or data descriptor (with different output pointer)
+is used for more than one lazy tensor column.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Materializing a lazy tensor consists of:
+</p>
+
+<ol>
+<li>
+<p> Loading the data from the internal dataset of the <code>DataDescriptor</code>.
+</p>
+</li>
+<li>
+<p> Processing these batches in the preprocessing <code>Graph</code>s.
+</p>
+</li>
+<li>
+<p> Returning the result of the <code>PipeOp</code> pointed to by the <code>DataDescriptor</code> (<code>pointer</code>).
+</p>
+</li>
+</ol>
+<p>With multiple <code>lazy_tensor</code> columns we can benefit from caching because:
+a) Output(s) from the dataset might be input to multiple graphs.
+b) Different lazy tensors might be outputs from the same graph.
+</p>
+<p>For this reason it is possible to provide a cache environment.
+The hash key for a) is the hash of the indices and the dataset.
+The hash key for b) is the hash of the indices, dataset and preprocessing graph.
+</p>
+
+
+<h3>Value</h3>
+
+<p>(<code>list()</code> of <code>lazy_tensor</code>s or a <code>lazy_tensor</code>)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+lt1 = as_lazy_tensor(torch_randn(10, 3))
+materialize(lt1, rbind = TRUE)
+materialize(lt1, rbind = FALSE)
+lt2 = as_lazy_tensor(torch_randn(10, 4))
+d = data.table::data.table(lt1 = lt1, lt2 = lt2)
+materialize(d, rbind = TRUE)
+materialize(d, rbind = FALSE)
+
+</code></pre>
+
+
+</div>

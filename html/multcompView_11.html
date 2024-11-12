@@ -1,0 +1,183 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>multcompTs</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>"T" depiction of undifferentiated classes</h2>
+
+<h3>Description</h3>
+
+<p>Convert a logical vector or a vector of p-values or a correlation or
+distance matrix into a matrix with an associated visual display to show
+whether the differences between items exceed a threshold.  Designed for use
+with the output of functions like TukeyHSD, diststats, simint, simtest,
+csimint, csimtestmultcomp, friedmanmc, kruskalmcpgirmess.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">multcompTs(x, compare = "&lt;", threshold = 0.05, sep = ".")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>One of the following: (1) A square, symmetric matrix with row
+names.  (2) A vector with hyphenated names, which identify individual items
+or factor levels after "strsplit(..., '-')".  (3) An object of class "dist".
+</p>
+<p>If x (or x[1]) is not already of class "logical", it is replaced with
+do.call(compare, list(x, threshold)), which by default converts numbers
+(typically p-values) less than 0.05 to TRUE and everything else to FALSE.
+If x is a matrix, its diagonal must be or must convert to FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>compare</code></td>
+<td>
+<p>function or binary operator; not used if class(x) is
+"logical".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+<p>Second (reference) argument to "compare".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sep</code></td>
+<td>
+<p>Concatenation character for names of objects with identical
+similarity / dissimilarity patterns.  The output of multcompTs is matrix for
+which the number of rows = (number of columns + number of uses of the "sep"
+character).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Produces a matrix of class "multcompTs", describing the "undifferentiated
+classes" that identify the other factor levels or items that are not
+distinct or not significantly different from the "base" of the "T"; if two
+or more levels have the same pattern of significant differences, the two are
+combined into one "T" with two "bases".  The resulting T's are similar to
+the "undifferentiated classes" discussed by Donaghue (2004).
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class "multcompTs", which is a matrix of values -1, 0,
+1, with one row for each level compared and one column for each "T", read as
+follows: 1 = base of the "T" represented by that column, 0 = level(s) not
+significantly different, and (-1) = levels(s) significantly different.  If
+two or more levels have the same pattern of significant and insignificant
+differences, they are combined into a single column that can be represented
+by a "T" with multiple bases.  The column name will be a character string
+concatenating all row names with "1" in that column separated by the "sep"
+character.  Thus, the matrix should have as many 1's as it has rows.  Also,
+the lower triangular portion should have as many "-1's" as there are "TRUE"
+(e.g., significant) differences among the comparisons.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Spencer Graves and Hans-Peter Piepho
+</p>
+
+
+<h3>References</h3>
+
+<p>John R. Donaghue (2004) "Implementing Shaffer's multiple
+comparison procedure for a large number of groups", pp. 1-23 in Benjamini,
+Bretz and Sarkar (eds) Recent Developments in Multiple Comparison Procedures
+(Institute of Mathematical Statistics Lecture Notes-Monograph Series vol.
+47)
+</p>
+<p>Spencer Graves and Hans-Peter Piepho (2006) "Simple Visualizations of Paired
+Comparisons", <a href="../doc/VisualizingPairedComparisons.pdf"><code>vignette("VisualizingPairedComparisons", package = "multcompView")</code></a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>multcompBoxplot</code> <code>multcompLetters</code>
+<code>plot.multcompTs</code> <code>vec2mat</code> <code>dist</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+##
+## 0.  Conference presentation comparing Ts and Letters
+##
+dir(system.file('doc', package='multcompView'),
+    pattern='\\.pdf$', full.name=TRUE)
+
+##
+## 1.  logical vector indicating different pairs
+##
+dif3 &lt;- c(FALSE, FALSE, TRUE)
+names(dif3) &lt;- c("a-b", "a-c", "b-c")
+multcompTs(dif3)
+
+##
+## 2.  numeric vector indicating statistical significance
+##
+dif4 &lt;- c(.01, .02, .03, 1)
+names(dif4) &lt;- c("a-b", "a-c", "b-d", "a-d")
+(diff4.T &lt;- multcompTs(dif4))
+plot(diff4.T)
+
+##
+## 3.  Distance matrix
+##
+dJudge &lt;- dist(USJudgeRatings)
+dJt &lt;- multcompTs(dJudge, compare='&gt;', threshold = median(dJudge))
+# comparison of 43 judges;  compact but undecipherable:
+plot(dJt, cex.axis=.5)
+
+x &lt;- array(1:9, dim=c(3,3),
+   dimnames=list(LETTERS[1:3], NULL) )
+d3 &lt;- dist(x)
+dxTs &lt;- multcompTs(d3, compare="&gt;", threshold=2)
+plot(dxTs)
+
+d3d &lt;- dist(x, diag=TRUE)
+dxdTs &lt;- multcompTs(d3d, compare="&gt;", threshold=2)
+
+
+all.equal(dxTs, dxdTs)
+
+
+d3u &lt;- dist(x, upper=TRUE)
+dxuTs &lt;- multcompTs(d3d, compare="&gt;", threshold=2)
+
+
+all.equal(dxTs, dxuTs)
+
+
+##
+## 4.  cor matrix
+##
+set.seed(4)
+x100 &lt;- matrix(rnorm(100), ncol=5,
+               dimnames=list(NULL, LETTERS[1:5]) )
+cx &lt;- cor(x100)
+cxTs &lt;- multcompTs(abs(cx), threshold=.3)
+plot(cxTs)
+
+
+</code></pre>
+
+
+</div>

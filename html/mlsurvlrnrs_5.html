@@ -1,0 +1,235 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>LearnerSurvRpartCox</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>LearnerSurvRpartCox R6 class</h2>
+
+<h3>Description</h3>
+
+<p>This learner is a wrapper around <code>rpart::rpart()</code> in order to fit recursive
+partitioning and regression trees with survival data.
+</p>
+
+
+<h3>Details</h3>
+
+<p>Optimization metric: C-index
+*
+Can be used with
+</p>
+
+<ul>
+<li> <p>mlexperiments::MLTuneParameters
+</p>
+</li>
+<li> <p>mlexperiments::MLCrossValidation
+</p>
+</li>
+<li> <p>mlexperiments::MLNestedCV
+</p>
+</li>
+</ul>
+<p>Implemented methods:
+</p>
+
+<ul>
+<li> <p><code style="white-space: pre;">⁠$fit⁠</code> To fit the model.
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠$predict⁠</code> To predict new data with the model.
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠$cross_validation⁠</code> To perform a grid search (hyperparameter
+optimization).
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠$bayesian_scoring_function⁠</code> To perform a Bayesian hyperparameter
+optimization.
+</p>
+</li>
+</ul>
+<p>Parameters that are specified with <code>parameter_grid</code> and / or <code>learner_args</code>
+are forwarded to <code>rpart</code>'s argument <code>control</code> (see
+<code>rpart::rpart.control()</code> for further details).
+</p>
+
+
+<h3>Super class</h3>
+
+<p><code>mlexperiments::MLLearnerBase</code> -&gt; <code>LearnerSurvRpartCox</code>
+</p>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-LearnerSurvRpartCox-new"><code>LearnerSurvRpartCox$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-LearnerSurvRpartCox-clone"><code>LearnerSurvRpartCox$clone()</code></a>
+</p>
+</li>
+</ul>
+<details open><summary>Inherited methods</summary><ul>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="bayesian_scoring_function"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-bayesian_scoring_function"><code>mlexperiments::MLLearnerBase$bayesian_scoring_function()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="cross_validation"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-cross_validation"><code>mlexperiments::MLLearnerBase$cross_validation()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="fit"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-fit"><code>mlexperiments::MLLearnerBase$fit()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="mlexperiments" data-topic="MLLearnerBase" data-id="predict"><a href="../../mlexperiments/html/MLLearnerBase.html#method-MLLearnerBase-predict"><code>mlexperiments::MLLearnerBase$predict()</code></a></span></li>
+</ul></details><hr>
+<a id="method-LearnerSurvRpartCox-new"></a>
+
+
+
+<h4>Method <code>new()</code>
+</h4>
+
+<p>Create a new <code>LearnerSurvRpartCox</code> object.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerSurvRpartCox$new()</pre></div>
+
+
+
+<h5>Details</h5>
+
+<p>This learner is a wrapper around <code>rpart::rpart()</code> in order to fit
+recursive partitioning and regression trees with survival data.
+</p>
+
+
+
+<h5>Examples</h5>
+
+<div class="r example copy">
+<pre>LearnerSurvRpartCox$new()
+
+</pre>
+</div>
+
+
+<hr>
+<a id="method-LearnerSurvRpartCox-clone"></a>
+
+
+
+<h4>Method <code>clone()</code>
+</h4>
+
+<p>The objects of this class are cloneable with this method.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>LearnerSurvRpartCox$clone(deep = FALSE)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>deep</code></dt>
+<dd>
+<p>Whether to make a deep clone.</p>
+</dd>
+</dl>
+</div>
+
+
+
+
+<h3>See Also</h3>
+
+<p><code>rpart::rpart()</code>, <code>c_index()</code>,
+<code>rpart::rpart.control()</code>
+</p>
+<p><code>rpart::rpart()</code>, <code>c_index()</code>,
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># survival analysis
+
+dataset &lt;- survival::colon |&gt;
+  data.table::as.data.table() |&gt;
+  na.omit()
+dataset &lt;- dataset[get("etype") == 2, ]
+
+seed &lt;- 123
+surv_cols &lt;- c("status", "time", "rx")
+
+feature_cols &lt;- colnames(dataset)[3:(ncol(dataset) - 1)]
+
+ncores &lt;- 2L
+
+split_vector &lt;- splitTools::multi_strata(
+  df = dataset[, .SD, .SDcols = surv_cols],
+  strategy = "kmeans",
+  k = 4
+)
+
+train_x &lt;- model.matrix(
+  ~ -1 + .,
+  dataset[, .SD, .SDcols = setdiff(feature_cols, surv_cols[1:2])]
+)
+train_y &lt;- survival::Surv(
+  event = (dataset[, get("status")] |&gt;
+             as.character() |&gt;
+             as.integer()),
+  time = dataset[, get("time")],
+  type = "right"
+)
+
+fold_list &lt;- splitTools::create_folds(
+  y = split_vector,
+  k = 3,
+  type = "stratified",
+  seed = seed
+)
+
+surv_rpart_optimizer &lt;- mlexperiments::MLCrossValidation$new(
+  learner = LearnerSurvRpartCox$new(),
+  fold_list = fold_list,
+  ncores = ncores,
+  seed = seed
+)
+surv_rpart_optimizer$learner_args &lt;- list(
+  minsplit = 10L,
+  maxdepth = 20L,
+  cp = 0.03,
+  method = "exp"
+)
+surv_rpart_optimizer$performance_metric &lt;- c_index
+
+# set data
+surv_rpart_optimizer$set_data(
+  x = train_x,
+  y = train_y
+)
+
+surv_rpart_optimizer$execute()
+
+
+## ------------------------------------------------
+## Method `LearnerSurvRpartCox$new`
+## ------------------------------------------------
+
+LearnerSurvRpartCox$new()
+
+</code></pre>
+
+
+</div>

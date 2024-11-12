@@ -1,0 +1,198 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MAPI_RunOnGrid</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Function MAPI_RunOnGrid</h2>
+
+<h3>Description</h3>
+
+<p>Launch a MAPI analysis for a given grid computed with <code>MAPI_GridAuto</code>
+or <code>MAPI_GridHexagonal</code> or provided by users.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MAPI_RunOnGrid(
+  samples,
+  metric,
+  grid,
+  isMatrix = FALSE,
+  ecc = 0.975,
+  errRad = 10,
+  nbPermuts = 0,
+  dMin = 0,
+  dMax = Inf,
+  nbCores = ifelse(base::requireNamespace("parallel", quietly = TRUE),
+    parallel::detectCores() - 1, 1),
+  N = 8
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>samples</code></td>
+<td>
+<p>a data.frame with names and geographical coordinates of samples.
+Column names must be: 'ind', 'x', 'y'.  Optional column 'errRad' with an error radius for sample locations (eg. GPS uncertainty).
+Coordinates must be projected (not latitude/longitude).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>metric</code></td>
+<td>
+<p>a data.frame or a square matrix with the pairwise metric computed for all pairs of samples.
+If data.frame, column names must be: 'ind1', 'ind2', 'value'.
+If matrix, sample names must be the row- and column names.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>grid</code></td>
+<td>
+<p>a spatial object of class 'sf' with the geometry of each cell.
+When using your own grid, please check that the object structure is the same as returned by
+<code>MAPI_GridAuto</code> or <code>MAPI_GridHexagonal</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>isMatrix</code></td>
+<td>
+<p>Boolean. Depends on the 'metric' data:<br>
+TRUE if 'metric' is a square matrix with column names = row names and standing for sample names.<br>
+FALSE if 'metric is a three columns data.frame ('ind1', 'ind2', 'value'). <br>
+The default value is determined using a "matrix" class detection for metric as well as identity between row and column number.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ecc</code></td>
+<td>
+<p>ellipse eccentricity value (0.975 by default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>errRad</code></td>
+<td>
+<p>global error radius for sample locations (same radius for all samples, 10 by default).
+Units are in the same reference system as the sample geographical coordinates.
+To use different error radius values for sample locations, add a column 'errRad' in the 'sample' data (see <code>mapi</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nbPermuts</code></td>
+<td>
+<p>number of permutations of sample locations (0 by default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dMin</code></td>
+<td>
+<p>minimum distance between individuals. 0 by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dMax</code></td>
+<td>
+<p>maximal distance between individuals. +Inf by default.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nbCores</code></td>
+<td>
+<p>number of CPU cores you want to use during parallel computation.
+The default value is estimated as the number of available cores minus 1, suitable for a personal computer.
+On a cluster you might have to set it to a reasonable value (eg. 8) in order to keep resources for other tasks.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N</code></td>
+<td>
+<p>number of points used per quarter of ellipse, 8 by default.
+Don't change it unless you really know what you are doing.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>To test whether the pairwise metric values associated with the ellipses are independent of the sample locations, those are permuted 'nbPermuts' times.
+At each permutation, new cell values are computed and stored to build a cumulative null distribution for each cell of the grid.
+Each cell value from the observed data set is then ranked against its null distribution.
+For each cell, the proportion of permuted values that are smaller or greater
+than the observed value provides a lower-tailed (ltP) and upper-tailed (utP) test p-value.
+</p>
+<p>A false discovery rate (FDR) procedure (Benjamini and Yekutieli, 2001) is applied to account for multiple
+testing (number of cells) under positive dependency conditions (spatial autocorrelation).  An adjusted
+p-value is computed for each cell using the function <code>p.adjust</code> from the 'stats' package with the method 'BY'.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a spatial object of class 'sf' providing for each cell: <br></p>
+
+<ul>
+<li>
+<p> gid: Cell ID <br></p>
+</li>
+<li>
+<p> x and y coordinates of cell center <br></p>
+</li>
+<li>
+<p> nb_ell: number of ellipses used to compute the weighted mean <br></p>
+</li>
+<li>
+<p> avg_value: weighted mean of the pairwise metric <br></p>
+</li>
+<li>
+<p> sum_wgts: sum of weights of ellipses used to compute the weighted mean <br></p>
+</li>
+<li>
+<p> w_stdev: weighted standard deviation of the pairwise metric <br></p>
+</li>
+<li>
+<p> swQ: percentile of the sum of weights <br></p>
+</li>
+<li>
+<p> geometry <br>
+When permutations are performed: <br></p>
+</li>
+<li>
+<p> proba: proportion of the permuted weighted means below the observed weighted mean <br></p>
+</li>
+<li>
+<p> ltP: lower-tail p-value adjusted using the FDR procedure of Benjamini and Yekutieli <br></p>
+</li>
+<li>
+<p> utP: upper-tail p-value adjusted using the FDR procedure of Benjamini and Yekutieli <br></p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>Benjamini, Y. and Yekutieli, D. (2001). The control of the false discovery rate in multiple testing under dependency. Annals of Statistics 29, 1165–1188.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+data(metric)
+data(samples)
+my.grid &lt;- MAPI_GridHexagonal(samples, crs=3857, 500) # 500m halfwidth
+
+# Note: 10 permutations is only for test purpose, increase to &gt;=1000 in real life!
+my.results &lt;- MAPI_RunOnGrid(samples, metric, grid=my.grid, nbPermuts=10, nbCores=1)
+
+# eg. Export results to shapefile "myFirstMapiResult" in current directory
+library(sf)
+st_write(my.results, dsn=".", layer="myFirstMapiResult", driver="ESRI Shapefile")
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

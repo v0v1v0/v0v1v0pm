@@ -1,0 +1,552 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modelSelection</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Bayesian variable selection for linear models via non-local priors. </h2>
+
+<h3>Description</h3>
+
+<p>Bayesian model selection for linear, asymmetric linear,
+median and quantile regression under
+non-local or Zellner priors. p&gt;&gt;n can be handled.
+</p>
+<p>modelSelection enumerates all models when feasible
+and uses a Gibbs scheme otherwise.
+See <code>coef</code> and <code>coefByModel</code> for estimates and posterior
+intervals of regression coefficients, and <code>rnlp</code> for posterior samples.
+</p>
+<p>modelsearchBlockDiag seeks the highest posterior
+probability model using an iterative block search.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modelSelection(y, x, data, smoothterms, nknots=9,
+groups=1:ncol(x), constraints, center=TRUE, scale=TRUE,
+enumerate, includevars=rep(FALSE,ncol(x)), models,
+maxvars, niter=5000, thinning=1,
+burnin=round(niter/10), family='normal', priorCoef,
+priorGroup, priorDelta=modelbbprior(1,1),
+priorConstraints,
+priorVar=igprior(.01,.01),
+priorSkew=momprior(tau=0.348), phi, deltaini=rep(FALSE,ncol(x)),
+initSearch='greedy', method='auto', adj.overdisp='intercept',
+hess='asymp', optimMethod, optim_maxit, initpar='none', B=10^5,
+XtXprecomp= ifelse(ncol(x)&lt;10^4,TRUE,FALSE), verbose=TRUE)
+
+modelsearchBlockDiag(y, x, priorCoef=momprior(tau=0.348),
+priorDelta=modelbbprior(1,1), priorVar=igprior(0.01,0.01),
+blocksize=10, maxiter=10, maxvars=100, maxlogmargdrop=20,
+maxenum=10, verbose=TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Either a formula with the regression equation or a vector with
+observed responses. The response can be either continuous or of class
+<code>Surv</code> (survival outcome). If <code>y</code> is a formula then <code>x</code>,
+<code>groups</code> and <code>constraints</code> are automatically created</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Design matrix with linear covariates for which we want to
+assess if they have a linear effect on the response. Ignored if
+<code>y</code> is a formula</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>If <code>y</code> is a formula then <code>data</code> should be a data
+frame containing the variables in the model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>smoothterms</code></td>
+<td>
+<p>Formula for non-linear covariates (cubic splines),
+modelSelection assesses if the variable has no effect, linear or
+non-linear effect. <code>smoothterms</code> can also be a design matrix or
+data.frame containing linear terms, for each column modelSelection
+creates a spline basis and tests no/linear/non-linear effects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nknots</code></td>
+<td>
+<p>Number of spline knots. For cubic splines the non-linear
+basis adds knots-4 coefficients for each linear term, we recommend
+setting <code>nknots</code> to a small/moderate value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>groups</code></td>
+<td>
+<p>If variables in <code>x</code> such be added/dropped in groups,
+<code>groups</code> indicates the group that each variable corresponds to
+(by default each variable goes in a separate group)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>constraints</code></td>
+<td>
+<p>Constraints on the model space. List with length
+equal to the number of groups;
+if group[[i]]=c(j,k) then group i can only be in the model if groups j and k are also in the model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>center</code></td>
+<td>
+<p>If <code>TRUE</code>, <code>y</code> and <code>x</code> are centered to have
+zero mean. Dummy variables corresponding to factors are NOT centered</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p>If <code>TRUE</code>, <code>y</code> and columns in <code>x</code> are
+scaled to have variance=1. Dummy variables corresponding to factors are NOT scaled</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>enumerate</code></td>
+<td>
+<p>Default is <code>TRUE</code> if there's less than 15 variable
+groups. If <code>TRUE</code> all models with up to <code>maxvars</code> are
+enumerated, else Gibbs sampling is used to explore the model space</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>includevars</code></td>
+<td>
+<p>Logical vector of length ncol(x) indicating variables
+that should always be included in the model, i.e. variable selection is
+not performed for these variables</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>models</code></td>
+<td>
+<p>Optional logical matrix indicating the models to be
+enumerated with rows equal to the number of desired models and columns
+to the number of variables in <code>x</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxvars</code></td>
+<td>
+<p>When <code>enumerate==TRUE</code> only models with up to maxvars variables
+enumerated (defaults to all variables). In <code>modelsearchBlockDiag</code> a sequence of models
+is defined from 1 up to <code>maxvars</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>niter</code></td>
+<td>
+<p>Number of Gibbs sampling iterations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thinning</code></td>
+<td>
+<p>MCMC thinning factor, i.e. only one out of each <code>thinning</code> iterations are reported. Defaults to thinning=1, i.e. no thinning</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p>Number of burn-in MCMC iterations. Defaults to
+<code>.1*niter</code>. Set to 0 for no burn-in</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p>Family of parametric distribution. Use
+'normal' for Normal errors, 'binomial' for logistic regression,
+'poisson' for Poisson regression.
+'twopiecenormal' for two-piece Normal,
+'laplace' for Laplace errors and 'twopiecelaplace' for double
+exponential.
+For 'auto' the errors are assumed continuous and their distribution
+is inferred from the data among
+'normal', 'laplace', 'twopiecenormal' and 'twopiecelaplace'.
+'laplace' corresponds to median regression and 'twopiecelaplace'
+to quantile regression. See argument <code>priorSkew</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priorCoef</code></td>
+<td>
+<p>Prior on coefficients, created
+by <code>momprior</code>, <code>imomprior</code>, <code>emomprior</code> or
+<code>zellnerprior</code>.
+Prior dispersion is on coefficients/sqrt(scale) for Normal and
+two-piece Normal, and on coefficients/sqrt(2*scale) for Laplace
+and two-piece Laplace.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priorGroup</code></td>
+<td>
+<p>Prior on grouped coefficients (e.g. categorical
+predictors with &gt;2 categories, splines). Created by
+<code>groupmomprior</code>, <code>groupemomprior</code>,
+<code>groupimomprior</code> or <code>groupzellnerprior</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priorDelta</code></td>
+<td>
+<p>Prior on model space. Use <code>modelbbprior()</code>
+for Beta-Binomial prior, <code>modelbinomprior(p)</code> for Binomial
+prior with prior inclusion probability <code>p</code>,
+<code>modelcomplexprior</code> for Complexity prior,
+or <code>modelunifprior()</code> for Uniform prior</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priorConstraints</code></td>
+<td>
+<p>Prior distribution on the number of terms
+subject to hierarchical constrains that are included in the model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priorVar</code></td>
+<td>
+<p>Inverse gamma prior on scale parameter.
+For Normal outcomes variance=scale, for Laplace outcomes
+variance=2*scale</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priorSkew</code></td>
+<td>
+<p>Either a fixed value for tanh(alpha) where alpha is
+the asymmetry parameter or a prior on tanh(alpha).
+For <code>family=='twopiecelaplace'</code> setting alpha=a is equivalent
+to performing quantile regression for the quantile (1+a)/2.
+Ignored if <code>family</code> is 'normal' or 'laplace'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>phi</code></td>
+<td>
+<p>The error variance in Gaussian models, typically this is
+unknown and is left missing</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>deltaini</code></td>
+<td>
+<p>Logical vector of length <code>ncol(x)</code> indicating which
+coefficients should be initialized to be non-zero.
+Defaults to all variables being excluded from the model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initSearch</code></td>
+<td>
+<p>Algorithm to refine
+<code>deltaini</code>. <code>initSearch=='greedy'</code> uses a greedy Gibbs
+sampling search. <code>initSearch=='SCAD'</code> sets <code>deltaini</code> to the
+non-zero elements in a SCAD fit with cross-validated regularization
+parameter. <code>initSearch=='none'</code> leaves <code>deltaini</code> unmodified</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>Method to compute marginal likelihood.
+<code>method=='Laplace'</code> for Laplace approx, <code>method=='ALA'</code>
+for approximate Laplace approximation.
+<code>method=='MC'</code> for Importance Sampling, <code>method=='Hybrid'</code>
+for Hybrid Laplace-IS (only available for piMOM prior). See Details.</p>
+</td>
+</tr>
+</table>
+<p><code>method=='auto'</code> attempts to use exact calculations when
+possible, otherwise ALA if available, otherwise Laplace approx.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>adj.overdisp</code></td>
+<td>
+<p>Only used when method=='ALA'. Over-dispersion
+adjustment in models with fixed dispersion parameter, as in logistic
+and Poisson regression. adj.overdisp='none' for no adjustment (not
+recommended, particularly for Poisson
+models). adj.overdisp='intercept' to estimate over-dispersion from the
+intercept-only model, and adj.overdisp='residuals' from the Pearson
+residuals of each model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hess</code></td>
+<td>
+<p>Method to estimat the hessian in the Laplace approximation to the integrated
+likelihood under Laplace or asymmetric Laplace errors. When
+hess=='asymp' the asymptotic hessian is used, hess=='asympDiagAdj' a
+diagonal adjustment is applied (see Rossell and Rubio for details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optimMethod</code></td>
+<td>
+<p>Algorithm to maximize objective function when
+method=='Laplace'. Leave unspecified or set optimMethod=='auto' for an
+automatic choice. optimMethod=='LMA' uses modified
+Newton-Raphson algorithm, 'CDA' coordinate descent algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optim_maxit</code></td>
+<td>
+<p>Maximum number of iterations when method=='Laplace'</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initpar</code></td>
+<td>
+<p>Initial regression parameter values when finding the
+posterior mode to approximate the integrated likelihood. 'none', 'MLE',
+'L1', or a numeric vector with initial
+values. 'auto': if p&lt;n/2 MLE is used, else L1 (regularization parameter set
+via BIC)</p>
+</td>
+</tr>
+</table>
+<table>
+<tr style="vertical-align: top;">
+<td><code>B</code></td>
+<td>
+<p>Number of samples to use in Importance Sampling scheme. Ignored
+if <code>method=='Laplace'</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>XtXprecomp</code></td>
+<td>
+<p>Set to <code>TRUE</code> to pre-compute the Gram matrix x'x
+upfront (saves time), to <code>FALSE</code> to compute and store elements
+only as needed (saves memory)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Set <code>verbose==TRUE</code> to print iteration progress</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>blocksize</code></td>
+<td>
+<p>Maximum number of variables in a block. Careful, the
+cost of the algorithm is of order <code>2^blocksize</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>Maximum number of iterations, each iteration includes a
+screening pass to add and subtract variables</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxlogmargdrop</code></td>
+<td>
+<p>Stop the sequence of models when the drop in log
+p(y|model) is greater than <code>maxlogmargdrop</code>. This option avoids
+spending unnecessary time exploring overly large models</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxenum</code></td>
+<td>
+<p>If the posterior mode found has less than <code>maxenum</code>
+variables then do a full enumeration of all its submodels</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Let delta be the vector indicating inclusion/exclusion of each
+column of x in the model. The Gibbs algorithm sequentially samples from the
+posterior of each element in delta conditional on all the remaining
+elements in delta and the data.
+To do this it is necessary to evaluate the marginal likelihood for any
+given model. These have closed-form expression for the MOM prior, but
+for models with &gt;15 variables these are expensive to compute and
+Laplace approximations are used instead (for the residual variance a
+log change of variables is used, which improves the approximation).
+For other priors closed forms
+are not available, so by default Laplace approximations are used.
+For the iMOM prior we also implement a Hybrid Laplace-IS
+which uses a Laplace approximation to evaluate the integral wrt beta
+and integrates wrt phi (residual variance) numerically.
+</p>
+<p>It should be noted that Laplace approximations tend to under-estimate
+the marginal densities when the MLE for some parameter is very close
+to 0. That is, it tends to be conservative in the sense of excluding
+more variables from the model than an exact calculation would.
+</p>
+<p>Finally, method=='plugin' provides a BIC-type approximation that is
+faster than exact or Laplace methods, at the expense of some
+accuracy. In non-sparse situations where models with many variables
+have large posterior probability method=='plugin' can be substantially
+faster.
+</p>
+<p>For more details on the methods used to compute marginal densities see
+Johnson &amp; Rossell (2012).
+</p>
+<p><code>modelsearchBlockDiag</code> uses the block search method described in
+Papaspiliopoulos &amp; Rossell. Briefly, spectral clustering is run on
+X'X to cluster variables into blocks of <code>blocksize</code> and
+subsequently the Coolblock algorithm is used to define a sequence
+of models of increasing size. The exact integrated likelihood
+is evaluated for all models in this path, the best model chosen,
+and the scheme iteratively repeated to add and drop variables
+until convergence.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Object of class <code>msfit</code>, which extends a list with elements
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>postSample</code></td>
+<td>
+<p><code>matrix</code> with posterior samples for the model
+indicator. <code>postSample[i,j]==1</code>
+indicates that variable j was included in the model in the MCMC
+iteration i</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>postOther</code></td>
+<td>
+<p><code>postOther</code>
+returns posterior samples for parameters other than the model
+indicator, i.e. basically hyper-parameters.
+If hyper-parameters were fixed in the model specification, <code>postOther</code> will be empty.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>margpp</code></td>
+<td>
+<p>Marginal posterior probability for inclusion of each
+covariate. This is computed by averaging marginal post prob for
+inclusion in each Gibbs iteration, which is much more accurate than
+simply taking <code>colMeans(postSample)</code></p>
+</td>
+</tr>
+</table>
+<p>.
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>postMode</code></td>
+<td>
+<p>Model with highest posterior probability amongst all those visited</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>postModeProb</code></td>
+<td>
+<p>Unnormalized posterior prob of posterior mode (log scale)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>postProb</code></td>
+<td>
+<p>Unnormalized posterior prob of each visited model (log
+scale)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priors</code></td>
+<td>
+<p>List with priors specified when calling <code>modelSelection</code></p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p> David Rossell </p>
+
+
+<h3>References</h3>
+
+<p>Johnson V.E., Rossell D. Non-Local Prior Densities for Default
+Bayesian Hypothesis Tests. Journal of the Royal Statistical Society B,
+2010, 72, 143-170.
+</p>
+<p>Johnson V.E., Rossell D. Bayesian model selection in high-dimensional
+settings. Journal of the American Statistical Association, 2012, 107,
+649-660.
+</p>
+<p>Papaspiliopoulos O., Rossell, D. Scalable Bayesian variable selection
+and model averaging under block orthogonal design. 2016
+</p>
+<p>Rossell D., Rubio F.J. Tractable Bayesian variable selection: beyond
+normality. 2016
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>msfit-class</code> for details on the output.
+<code>postProb</code> to obtain posterior model probabilities.
+<code>coef.msfit</code> for Bayesian model averaging estimates and
+intervals. <code>predict.msfit</code> for BMA estimates and intervals
+for user-supplied covariate values.
+<code>plot.msfit</code> for an MCMC diagnostic plot showing estimated
+marginal posterior inclusion probabilities vs. iteration number.
+<code>rnlp</code> to obtain posterior samples for the coefficients.
+<code>nlpMarginal</code> to compute marginal densities for a given model.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#Simulate data
+x &lt;- matrix(rnorm(100*3),nrow=100,ncol=3)
+theta &lt;- matrix(c(1,1,0),ncol=1)
+y &lt;- x %*% theta + rnorm(100)
+
+#Specify prior parameters
+priorCoef &lt;- momprior(tau=0.348)
+priorDelta &lt;- modelunifprior()
+
+#Alternative model space prior: 0.5 prior prob for including any covariate
+priorDelta &lt;- modelbinomprior(p=0.5)
+
+#Alternative: Beta-Binomial prior for model space
+priorDelta &lt;- modelbbprior(alpha.p=1,beta.p=1)
+
+#Model selection
+fit1 &lt;- modelSelection(y=y, x=x, center=FALSE, scale=FALSE,
+priorCoef=priorCoef, priorDelta=priorDelta)
+postProb(fit1) #posterior model probabilities
+
+fit1$margpp #posterior marginal inclusion prob
+
+coef(fit1) #BMA estimates, 95% intervals, marginal post prob
+</code></pre>
+
+
+</div>

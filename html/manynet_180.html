@@ -1,0 +1,310 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>measure_central_eigen</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Measures of eigenvector-like centrality and centralisation</h2>
+
+<h3>Description</h3>
+
+<p>These functions calculate common eigenvector-related centrality
+measures, or walk-based eigenmeasures, for one- and two-mode networks:
+</p>
+
+<ul>
+<li> <p><code>node_eigenvector()</code> measures the eigenvector centrality of nodes
+in a network.
+</p>
+</li>
+<li> <p><code>node_power()</code> measures the Bonacich, beta, or power centrality of
+nodes in a network.
+</p>
+</li>
+<li> <p><code>node_alpha()</code> measures the alpha or Katz centrality of nodes in a
+network.
+</p>
+</li>
+<li> <p><code>node_pagerank()</code> measures the pagerank centrality of nodes in a network.
+</p>
+</li>
+<li> <p><code>node_hub()</code> measures how well nodes in a network serve as hubs pointing
+to many authorities.
+</p>
+</li>
+<li> <p><code>node_authority()</code> measures how well nodes in a network serve as
+authorities from many hubs.
+</p>
+</li>
+<li> <p><code>tie_eigenvector()</code> measures the eigenvector centrality of ties in a
+network.
+</p>
+</li>
+<li> <p><code>net_eigenvector()</code> measures the eigenvector centralization for a
+network.
+</p>
+</li>
+</ul>
+<p>All measures attempt to use as much information as they are offered,
+including whether the networks are directed, weighted, or multimodal.
+If this would produce unintended results,
+first transform the salient properties using e.g. <code>to_undirected()</code> functions.
+All centrality and centralization measures return normalized measures
+by default, including for two-mode networks.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">node_eigenvector(.data, normalized = TRUE, scale = FALSE)
+
+node_power(.data, normalized = TRUE, scale = FALSE, exponent = 1)
+
+node_alpha(.data, alpha = 0.85)
+
+node_pagerank(.data)
+
+node_authority(.data)
+
+node_hub(.data)
+
+tie_eigenvector(.data, normalized = TRUE)
+
+net_eigenvector(.data, normalized = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>.data</code></td>
+<td>
+<p>An object of a manynet-consistent class:
+</p>
+
+<ul>
+<li>
+<p> matrix (adjacency or incidence) from <code>{base}</code> R
+</p>
+</li>
+<li>
+<p> edgelist, a data frame from <code>{base}</code> R or tibble from <code>{tibble}</code>
+</p>
+</li>
+<li>
+<p> igraph, from the <code>{igraph}</code> package
+</p>
+</li>
+<li>
+<p> network, from the <code>{network}</code> package
+</p>
+</li>
+<li>
+<p> tbl_graph, from the <code>{tidygraph}</code> package
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>normalized</code></td>
+<td>
+<p>Logical scalar, whether the centrality scores are normalized.
+Different denominators are used depending on whether the object is one-mode or two-mode,
+the type of centrality, and other arguments.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p>Logical scalar, whether to rescale the vector so the maximum score is 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exponent</code></td>
+<td>
+<p>Decay rate or attentuation factor for
+the Bonacich power centrality score.
+Can be positive or negative.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>A constant that trades off the importance of external influence against the importance of connection.
+When <code class="reqn">\alpha = 0</code>, only the external influence matters.
+As <code class="reqn">\alpha</code> gets larger, only the connectivity matters and we reduce to eigenvector centrality.
+By default <code class="reqn">\alpha = 0.85</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>We use <code>{igraph}</code> routines behind the scenes here for consistency and because they are often faster.
+For example, <code>igraph::eigencentrality()</code> is approximately 25% faster than <code>sna::evcent()</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A numeric vector giving the eigenvector centrality measure of each node.
+</p>
+<p>A numeric vector giving each node's power centrality measure.
+</p>
+
+
+<h3>Eigenvector centrality</h3>
+
+<p>Eigenvector centrality operates as a measure of a node's influence in a network.
+The idea is that being connected to well-connected others results in a higher score.
+Each node's eigenvector centrality can be defined as:
+</p>
+<p style="text-align: center;"><code class="reqn">x_i = \frac{1}{\lambda} \sum_{j \in N} a_{i,j} x_j</code>
+</p>
+
+<p>where <code class="reqn">a_{i,j} = 1</code> if <code class="reqn">i</code> is linked to <code class="reqn">j</code> and 0 otherwise,
+and <code class="reqn">\lambda</code> is a constant representing the principal eigenvalue.
+Rather than performing this iteration,
+most routines solve the eigenvector equation <code class="reqn">Ax = \lambda x</code>.
+</p>
+
+
+<h3>Power or beta (or Bonacich) centrality</h3>
+
+<p>Power centrality includes an exponent that weights contributions to a node's
+centrality based on how far away those other nodes are.
+</p>
+<p style="text-align: center;"><code class="reqn">c_b(i) = \sum A(i,j) (\alpha = \beta c(j))</code>
+</p>
+
+<p>Where <code class="reqn">\beta</code> is positive, this means being connected to central people
+increases centrality.
+Where <code class="reqn">\beta</code> is negative, this means being connected to central people
+decreases centrality
+(and being connected to more peripheral actors increases centrality).
+When <code class="reqn">\beta = 0</code>, this is the outdegree.
+<code class="reqn">\alpha</code> is calculated to make sure the root mean square equals
+the network size.
+</p>
+
+
+<h3>Alpha centrality</h3>
+
+<p>Alpha or Katz (or Katz-Bonacich) centrality operates better than eigenvector centrality
+for directed networks.
+Eigenvector centrality will return 0s for all nodes not in the main strongly-connected component.
+Each node's alpha centrality can be defined as:
+</p>
+<p style="text-align: center;"><code class="reqn">x_i = \frac{1}{\lambda} \sum_{j \in N} a_{i,j} x_j + e_i</code>
+</p>
+
+<p>where <code class="reqn">a_{i,j} = 1</code> if <code class="reqn">i</code> is linked to <code class="reqn">j</code> and 0 otherwise,
+<code class="reqn">\lambda</code> is a constant representing the principal eigenvalue,
+and <code class="reqn">e_i</code> is some external influence used to ensure that even nodes beyond the main
+strongly connected component begin with some basic influence.
+Note that many equations replace <code class="reqn">\frac{1}{\lambda}</code> with <code class="reqn">\alpha</code>,
+hence the name.
+</p>
+<p>For example, if <code class="reqn">\alpha = 0.5</code>, then each direct connection (or alter) would be worth <code class="reqn">(0.5)^1 = 0.5</code>,
+each secondary connection (or tertius) would be worth <code class="reqn">(0.5)^2 = 0.25</code>,
+each tertiary connection would be worth <code class="reqn">(0.5)^3 = 0.125</code>, and so on.
+</p>
+<p>Rather than performing this iteration though,
+most routines solve the equation <code class="reqn">x = (I - \frac{1}{\lambda} A^T)^{-1} e</code>.
+</p>
+
+
+<h3>References</h3>
+
+
+
+<h4>On eigenvector centrality</h4>
+
+<p>Bonacich, Phillip. 1991.
+“Simultaneous Group and Individual Centralities.”
+<em>Social Networks</em> 13(2):155–68.
+<a href="https://doi.org/10.1016/0378-8733%2891%2990018-O">doi:10.1016/0378-8733(91)90018-O</a>
+</p>
+
+
+
+<h4>On power centrality</h4>
+
+<p>Bonacich, Phillip. 1987.
+“Power and Centrality: A Family of Measures.”
+<em>The American Journal of Sociology</em>, 92(5): 1170–82.
+<a href="https://doi.org/10.1086/228631">doi:10.1086/228631</a>.
+</p>
+
+
+
+<h4>On alpha centrality</h4>
+
+<p>Katz, Leo 1953.
+"A new status index derived from sociometric analysis".
+<em>Psychometrika</em>. 18(1): 39–43.
+</p>
+<p>Bonacich, P. and Lloyd, P. 2001.
+“Eigenvector-like measures of centrality for asymmetric relations”
+<em>Social Networks</em>. 23(3):191-201.
+</p>
+
+
+
+<h4>On pagerank centrality</h4>
+
+<p>Brin, Sergey and Page, Larry. 1998.
+"The anatomy of a large-scale hypertextual web search engine".
+<em>Proceedings of the 7th World-Wide Web Conference</em>. Brisbane, Australia.
+</p>
+
+
+
+<h4>On hub and authority centrality</h4>
+
+<p>Kleinberg, Jon. 1999.
+"Authoritative sources in a hyperlinked environment".
+<em>Journal of the ACM</em> 46(5): 604–632.
+<a href="https://doi.org/10.1145/324133.324140">doi:10.1145/324133.324140</a>
+</p>
+
+
+
+<h3>See Also</h3>
+
+<p>Other centrality: 
+<code>measure_central_between</code>,
+<code>measure_central_close</code>,
+<code>measure_central_degree</code>
+</p>
+<p>Other measures: 
+<code>measure_attributes</code>,
+<code>measure_central_between</code>,
+<code>measure_central_close</code>,
+<code>measure_central_degree</code>,
+<code>measure_closure</code>,
+<code>measure_cohesion</code>,
+<code>measure_diffusion_infection</code>,
+<code>measure_diffusion_net</code>,
+<code>measure_diffusion_node</code>,
+<code>measure_features</code>,
+<code>measure_heterogeneity</code>,
+<code>measure_hierarchy</code>,
+<code>measure_holes</code>,
+<code>measure_periods</code>,
+<code>measure_properties</code>,
+<code>member_diffusion</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">node_eigenvector(ison_southern_women)
+node_power(ison_southern_women, exponent = 0.5)
+tie_eigenvector(ison_adolescents)
+net_eigenvector(ison_southern_women)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,186 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Match</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Match Value Against Multiple Values</h2>
+
+<h3>Description</h3>
+
+<p>Functional programming style matching using <code>-&gt;</code> to separate
+conditions from associated return values.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">Match(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>object to match</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>conditions used for matching, separated from the returned
+value by <code>-&gt;</code>. Multiple conditions can be associated with the
+same return value using <code>|</code>. Each matching statement must be
+separated by a comma. See "Details" below. Use <code>.</code> to represent
+the default *(else ...)* condition.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Unlike <code>switch</code>, <code>Match</code> accepts a variety of
+different condition statements. These can character, numeric,
+or logical values, functions, symbols, language objects, enums,
+etc. For example, <code>"hello" -&gt; 1</code> tests whether the object is
+equal to <code>"hello"</code>. If so, the function returns <code>1</code>,
+otherwise the next condition is tested. <code>&lt;-</code> can also be used.
+If so, the condition &amp; return expression are reversed: <code>1 &lt;- "hello"</code>
+also tests <code>"hello"</code> and returns <code>1</code>.
+</p>
+<p>Each condition is tested sequentially by calling the appropriate method
+of <code>match_cond</code>. If the condition is a character value, then
+<code>match_cond.character</code> is called, and so on. If a match is
+confirmed, the right-hand side is evaluated and returned.
+</p>
+<p>For atomic vectors - numeric, logical, or character - <code>Match</code> will
+check for equality. All resulting values must be <code>TRUE</code> to match.
+Lists and environments are checked using <code>identical</code>. If a
+function is placed within the condition, then the function will be evaluated
+on object <code>x</code>. If the result is logical and <code>TRUE</code>, then it is
+considered a match. A non-logical result will be checked again using
+<code>match_cond</code>. Failed function calls with an error are treated
+as a non-match rather than stopping <code>Match</code>. Expressions are evaluated
+similar to functions.
+</p>
+<p>The period <code>.</code> is a special condition in <code>Match</code>. When alone,
+it is treated as the "default" condition that always matches. When used
+as a call, though, it matches values within object <code>x</code> and/or attaches
+the individual items within <code>x</code> for use in the return expression.
+For example, <code>x = c(1, 2)</code> will be matched with the condition
+<code>.(1, second)</code>. This is because the first values are identical
+<code>(1 == 1)</code>. Furthermore, <code>second = 2</code> for use in the return
+expression. Preface a symbol with <code>..</code> to evaluate it and check
+for equality. <code>...</code> can be used to denote any number of unspecified
+objects.
+</p>
+<p>The period call <code>.()</code> can also be used to test named member of <code>x</code>,
+though all objects in <code>.()</code> must be named to do so. For example, the
+condition <code>.(a = 5, b=)</code> tests whether <code>x</code> contains <code>"a"</code>
+with a value of <code>5</code> and <code>"b"</code> with any value.
+</p>
+<p>If <code>function(...)</code> is used on the left hand side, then it may
+need to be surrounded by parentheses for the parser to properly recognize
+it. The <code>%fn%</code> infix function has be provided as syntactic sugar
+for developing functions for matching.
+</p>
+<p>Similar to many functional languages, <code>(first:rest)</code> can be used
+as a condition to extract the first element and the rest from any
+vector as long as the vector is sufficiently long. Variables used on the
+left hand side can be called on the right hand side expression.
+</p>
+<p>Matching an <code>Enum</code> causes symbols to represent possible
+variants. For example, <code>None -&gt; "none"</code> would try to match the
+variant of <code>x</code> with <code>None</code>. If it succeeds, then <code>Match</code>
+will return <code>"none"</code>. A function call on the left-hand side for an
+Enum is treated as a variant and its inside arguments, which are made
+available in the result expression. So, <code>Some(var) -&gt; sqrt(var)</code> would
+attempt to match on the variant <code>Some</code>. If it matches, then the
+inside is exposed as the variable <code>var</code> for the right-hand side to
+use. The number of objects in the variant on the left-hand side must
+match the number of objects inside of <code>x</code> or else an error will
+populate.
+</p>
+<p>Regex conditions can be used when matching strings by surrounding the
+expression in braces. For example, the condition "[ab]*" is equivalent
+to using <code>grepl("\[ab\]*", ...)</code>. The braces must be the first and
+last characters to trigger a regex match.
+</p>
+<p>Call <code>fallthrough</code> within a return expression to stop evaluating
+the expression and return to matching. This can be convenient for complex
+matching conditions or to execute code for side-effects, such as printing.
+</p>
+
+
+<h3>Value</h3>
+
+<p>an object based on the matched clause. An Error is produced if no
+match is found.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Matching to functions, characters, regex, and default
+Match(
+ "abc",
+ is.numeric       -&gt; "Not a character!",
+ is.character     -&gt; {
+   print("Found a character!")
+   fallthrough()
+ },
+ "a" | "b" | "c"  -&gt; "It's a letter!",
+ "{bc}"           -&gt; "Contains 'bc'!",
+ .                -&gt; "Can be anything!"
+)
+
+
+## Unwrapping a Result enum
+val &lt;- Result$Ok("hello world!")
+
+Match(
+  val,
+  Ok(w)  -&gt; w,
+  Err(s) -&gt; s
+)
+
+## Using functions
+# If 'function' is used on the lhs, surround in '()'
+# Alternatively, use %fn% notation
+Match(
+  1:10,
+  (function(i) mean(i) &lt; 5)  -&gt; TRUE,
+  i %fn% (mean(i) &gt;= 5) -&gt; FALSE
+)
+
+## Extracting parts
+x &lt;- list(a = 5, b = 6, c = 7)
+Match(
+  x,
+  .(a=, d=2)  -&gt; "won't match, no 'd'",
+  .(a=5, b=)  -&gt; "will match, a == '5'",
+  (x:xs)      -&gt; {
+    print(x)  # 5
+    print(xs) # list(b=6, c=7)
+    "will match, since not empty"
+  },
+  .           -&gt; "this matches anything!"
+)
+
+z     &lt;- c(1,2,3,4)
+first &lt;- 1
+Match(
+  z,
+  .(0, ...) -&gt; "no match, first is 1 not 0",
+  .(1, 2)   -&gt; "no match, z has 4 elements",
+  .(x, 2, ...) -&gt; paste("match, x = ", x),
+  .(..first, ...) -&gt; "match, since 'first' == 1"
+)
+
+
+</code></pre>
+
+
+</div>

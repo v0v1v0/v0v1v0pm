@@ -1,0 +1,393 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>multiness_fit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit the MultiNeSS model</h2>
+
+<h3>Description</h3>
+
+<p><code>multiness_fit</code> fits the Gaussian or logistic MultiNeSS model
+with various options for parameter tuning.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">multiness_fit(A,model,self_loops,refit,tuning,tuning_opts,optim_opts)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>A</code></td>
+<td>
+<p>An <code class="reqn">n \times n \times m</code> array containing edge entries for
+an undirected multiplex network on <code class="reqn">n</code> nodes and <code class="reqn">m</code> layers.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>A string which provides choice of model,
+either <code>'gaussian'</code> or <code>'logistic'</code>. Defaults to <code>'gaussian'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>self_loops</code></td>
+<td>
+<p>A Boolean, if <code>FALSE</code>, all diagonal entries are ignored in
+optimization. Defaults to <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>refit</code></td>
+<td>
+<p>A Boolean, if <code>TRUE</code>, a refitting step is performed to
+debias the eigenvalues of the estimates. Defaults to <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tuning</code></td>
+<td>
+<p>A string which provides the tuning method, valid options are
+<code>'fixed'</code>, <code>'adaptive'</code>, or <code>'cv'</code>. Defaults to <code>'adaptive'</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tuning_opts</code></td>
+<td>
+<p>A list, containing additional optional arguments controlling
+parameter tuning. The arguments used depends on the choice of tuning method.
+If <code>tuning='fixed'</code>, <code>multiness_fit</code> will utilize the following
+arguments:
+</p>
+
+<dl>
+<dt>lambda</dt>
+<dd>
+<p>A positive scalar,
+the <code class="reqn">\lambda</code> parameter in the nuclear norm penalty, see Details.
+Defaults to <code>2.309 * sqrt(n*m)</code>.</p>
+</dd>
+<dt>alpha</dt>
+<dd>
+<p>A positive scalar or numeric vector of length <code>m</code>, the parameters <code class="reqn">\alpha_k</code> in the
+nuclear norm penalty, see Details. If a scalar is provided all <code class="reqn">\alpha_k</code> parameters are set to that
+value. Defaults to <code>1/sqrt(m)</code></p>
+</dd>
+</dl>
+<p>If <code>tuning='adaptive'</code>, <code>multiness_fit</code> will utilize the following
+arguments:
+</p>
+
+<dl>
+<dt>layer_wise</dt>
+<dd>
+<p>A Boolean, if <code>TRUE</code>, the entry-wise variance
+is estimated individually for each layer. Otherwise the estimates are
+pooled. Defaults to <code>TRUE</code>.</p>
+</dd>
+<dt>penalty_const</dt>
+<dd>
+<p>A positive scalar <code class="reqn">C</code> which scales the
+penalty parameters (see Details).
+Defaults to <code>2.309</code>.</p>
+</dd>
+<dt>penalty_const_lambda</dt>
+<dd>
+<p>A positive scalar <code class="reqn">c</code> which scales only the <code class="reqn">\lambda</code>
+penalty parameter (see Details).
+Defaults to <code>1</code>.</p>
+</dd>
+</dl>
+<p>If <code>tuning='cv'</code>, <code>multiness_fit</code> will utilize the following
+arguments:
+</p>
+
+<dl>
+<dt>layer_wise</dt>
+<dd>
+<p>A Boolean, if <code>TRUE</code>, the entry-wise variance
+is estimated individually for each layer. Otherwise the estimates are
+pooled. Defaults to <code>TRUE</code>.</p>
+</dd>
+<dt>N_cv</dt>
+<dd>
+<p>A positive integer, the number of repetitions of edge
+cross-validation performed for each parameter setting. Defaults to <code>3</code>.</p>
+</dd>
+<dt>p_cv</dt>
+<dd>
+<p>A positive scalar in the interval (0,1), the proportion
+of edge entries held out in edge cross-validation. Defaults to <code class="reqn">0.1</code>.</p>
+</dd>
+<dt>penalty_const_lambda</dt>
+<dd>
+<p>A positive scalar <code class="reqn">c</code> which scales only the <code class="reqn">\lambda</code>
+penalty parameter (see Details).
+Defaults to <code>1</code>.</p>
+</dd>
+<dt>penalty_const_vec</dt>
+<dd>
+<p>A numeric vector with positive entries, the candidate
+values of constant <code class="reqn">C</code> to scale the penalty parameters (see Details).
+An optimal constant is chosen by edge cross-validation. Defaults to
+<code>c(1,1.5,...,3.5,4)</code>.</p>
+</dd>
+<dt>refit_cv</dt>
+<dd>
+<p>A Boolean, if <code>TRUE</code>, a refitting step is
+performed when fitting the model for edge cross-validation. Defaults
+to <code>TRUE</code></p>
+</dd>
+<dt>verbose_cv</dt>
+<dd>
+<p>A Boolean, if <code>TRUE</code>, console output will
+provide updates on the progress of edge cross-validation. Defaults
+to <code>FALSE</code>.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>optim_opts</code></td>
+<td>
+<p>A list, containing additional optional arguments controlling
+the proximal gradient descent algorithm.
+</p>
+
+<dl>
+<dt>check_obj</dt>
+<dd>
+<p>A Boolean, if <code>TRUE</code>, convergence is determined
+by checking the decrease in the objective. Otherwise it is determined by
+checking the average entry-wise difference in consecutive values of <code class="reqn">F</code>.
+Defaults to <code>TRUE</code>.</p>
+</dd>
+<dt>eig_maxitr</dt>
+<dd>
+<p>A positive integer, maximum iterations for internal
+eigenvalue solver. Defaults to <code>1000</code>.</p>
+</dd>
+<dt>eig_prec</dt>
+<dd>
+<p>A positive scalar, estimated eigenvalues below this
+threshold are set to zero. Defaults to <code>1e-2</code>.</p>
+</dd>
+<dt>eps</dt>
+<dd>
+<p>A positive scalar, convergence threshold for proximal gradient
+descent. Defaults to <code>1e-6</code>.</p>
+</dd>
+<dt>eta</dt>
+<dd>
+<p>A positive scalar, step size for proximal gradient descent.
+Defaults to <code>1</code> for the Gaussian model, <code>5</code> for the logistic
+model.</p>
+</dd>
+<dt>init</dt>
+<dd>
+<p>A string, initialization method. Valid options are
+<code>'fix'</code> (using initializers <code>optim_opts$V_init</code> and
+<code>optim_opts$U_init</code>), <code>'zero'</code> (initialize all parameters at zero),
+or <code>'svd'</code> (initialize with a truncated SVD with rank <code>optim_opts$init_rank</code>).
+Defaults to <code>'zero'</code>.</p>
+</dd>
+<dt>K_max</dt>
+<dd>
+<p>A positive integer, maximum iterations for proximal gradient
+descent. Defaults to <code>100</code>.</p>
+</dd>
+<dt>max_rank</dt>
+<dd>
+<p>A positive integer, maximum rank for internal eigenvalue
+solver. Defaults to <code>sqrt(n)</code>.</p>
+</dd>
+<dt>missing_pattern</dt>
+<dd>
+<p>An <code class="reqn">n \times n \times m</code> Boolean array with <code>TRUE</code>
+for each observed entry and <code>FALSE</code> for missing entries. If unspecified, it
+is set to <code>!is.na(A)</code>.</p>
+</dd>
+<dt>positive</dt>
+<dd>
+<p>A Boolean, if <code>TRUE</code>, singular value thresholding only retains
+positive eigenvalues. Defaults to <code>FALSE</code>.</p>
+</dd>
+<dt>return_posns</dt>
+<dd>
+<p>A Boolean, if <code>TRUE</code>, returns estimates
+of the latent positions based on ASE. Defaults to <code>FALSE</code>.</p>
+</dd>
+<dt>verbose</dt>
+<dd>
+<p>A Boolean, if <code>TRUE</code>, console output will provide
+updates on the progress of proximal gradient descent. Defaults to
+<code>FALSE</code>.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>A MultiNeSS model is fit to an <code class="reqn">n \times n \times m</code> array <code class="reqn">A</code> of
+symmetric adjacency matrices on a common set of nodes. Fitting
+proceeds by convex proximal gradient descent on the entries of
+<code class="reqn">F = VV^{T}</code> and <code class="reqn">G_k = U_kU_k^{T}</code>, see
+<a href="https://arxiv.org/abs/2012.14409">MacDonald et al., (2020)</a>,
+Section 3.2. Additional optional arguments for
+the gradient descent routine can be provided in <code>optim_opts</code>.
+<code>refit</code> provides an option
+to perform an additional refitting step to debias the eigenvalues
+of the estimates, see
+<a href="https://arxiv.org/abs/2012.14409">MacDonald et al., (2020)</a>, Section 3.3.
+</p>
+<p>By default, <code>multiness_fit</code> will return estimates of the matrices
+<code class="reqn">F</code> and <code class="reqn">G_k</code>. <code>optim_opts$return_posns</code> provides an option
+to instead return estimates of latent positions <code class="reqn">V</code> and <code class="reqn">U_k</code>
+based on the adjacency spectral embedding (if such a factorization exists).
+</p>
+<p>Tuning parameters <code class="reqn">\lambda</code> and <code class="reqn">\alpha_k</code> in the nuclear norm penalty
+</p>
+<p style="text-align: center;"><code class="reqn">\lambda ||F||_* + \sum_k \lambda \alpha_k ||G_k||_*</code>
+</p>
+
+<p>are either set by the
+user (<code>tuning='fixed'</code>), selected adaptively using a
+robust estimator of the
+entry-wise variance (<code>tuning='adaptive'</code>), or
+selected using edge cross-validation (<code>tuning='cv'</code>). For more details
+see <a href="https://arxiv.org/abs/2012.14409">MacDonald et al., (2020)</a>,
+Section 3.4. Additional optional arguments for parameter tuning
+can be provided in <code>tuning_opts</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list is returned with the MultiNeSS model estimates, dimensions of
+the common and individual latent spaces, and some additional optimization
+output:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>F_hat</code></td>
+<td>
+<p>An <code class="reqn">n \times n</code> matrix estimating the common part of the expected
+adjacency matrix, <code class="reqn">F = VV^{T}</code>. If <code>optim_opts$return_posns</code>
+is <code>TRUE</code>, this is not returned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>G_hat</code></td>
+<td>
+<p>A list of length <code class="reqn">m</code>, the collection of <code class="reqn">n \times n</code> matrices
+estimating the individual part of each adjacency matrix, <code class="reqn">G_k = U_kU_k^{T}</code>.
+If <code>optim_opts$return_posns</code>
+is <code>TRUE</code>, this is not returned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>V_hat</code></td>
+<td>
+<p>A matrix estimating the common latent positions.
+Returned if <code>optim_opts$return_posns</code> is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>U_hat</code></td>
+<td>
+<p>A list of length <code class="reqn">m</code>, the collection of matrices
+estimating the individual latent positions.
+Returned if <code>optim_opts$return_posns</code> is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>d1</code></td>
+<td>
+<p>A non-negative integer, the estimated common dimension of the
+latent space.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>d2</code></td>
+<td>
+<p>An integer vector of length <code class="reqn">m</code>, the estimated individual
+dimension of the latent space for each layer.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>K</code></td>
+<td>
+<p>A positive integer, the number of iterations run in proximal
+gradient descent.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>convergence</code></td>
+<td>
+<p>An integer convergence code, <code>0</code> if proximal
+gradient descent converged in fewer than <code>optim_opts$K_max</code> iterations,
+<code>1</code> otherwise.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>A positive scalar, the tuned <code class="reqn">\lambda</code>
+penalty parameter (see Details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>A numeric vector of length <code class="reqn">m</code>, the tuned <code class="reqn">\alpha</code> penalty parameters
+(see Details).</p>
+</td>
+</tr>
+</table>
+<h3>Examples</h3>
+
+<pre><code class="language-R"># gaussian model data
+data1 &lt;- multiness_sim(n=100,m=4,d1=2,d2=2,
+                     model="gaussian")
+
+# multiness_fit with fixed tuning
+fit1 &lt;- multiness_fit(A=data1$A,
+                      model="gaussian",
+                      self_loops=TRUE,
+                      refit=FALSE,
+                      tuning="fixed",
+                      tuning_opts=list(lambda=40,alpha=1/2),
+                      optim_opts=list(max_rank=20,verbose=TRUE))
+
+# multiness_fit with adaptive tuning
+fit2 &lt;- multiness_fit(A=data1$A,
+                      refit=TRUE,
+                      tuning="adaptive",
+                      tuning_opts=list(layer_wise=FALSE),
+                      optim_opts=list(return_posns=TRUE))
+
+# logistic model data
+data2 &lt;- multiness_sim(n=100,m=4,d1=2,d2=2,
+                       model="logistic",
+                       self_loops=FALSE)
+
+# multiness_fit with cv tuning
+fit3 &lt;- multiness_fit(A=data2$A,
+                      model="logistic",
+                      self_loops=FALSE,
+                      tuning="cv",
+                      tuning_opts=list(N_cv=2,
+                                       penalty_const_vec=c(1,2,2.309,3),
+                                       verbose_cv=TRUE))
+
+</code></pre>
+
+
+</div>

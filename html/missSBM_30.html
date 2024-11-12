@@ -1,0 +1,224 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>observeNetwork</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Observe a network partially according to a given sampling design</h2>
+
+<h3>Description</h3>
+
+<p>This function draws observations in an adjacency matrix according to a given network sampling design.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">observeNetwork(
+  adjacencyMatrix,
+  sampling,
+  parameters,
+  clusters = NULL,
+  covariates = list(),
+  similarity = l1_similarity,
+  intercept = 0
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>adjacencyMatrix</code></td>
+<td>
+<p>The N x N adjacency matrix of the network to sample.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sampling</code></td>
+<td>
+<p>The sampling design used to observe the adjacency matrix, see details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parameters</code></td>
+<td>
+<p>The sampling parameters (adapted to each sampling, see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>clusters</code></td>
+<td>
+<p>An optional clustering membership vector of the nodes. Only necessary for block samplings.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covariates</code></td>
+<td>
+<p>An optional list with M entries (the M covariates). If the covariates are node-centered,
+each entry of <code>covariates</code>. must be a size-N vector;  if the covariates are dyad-centered, each entry
+of <code>covariates</code> must be N x N matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>similarity</code></td>
+<td>
+<p>An optional function to compute similarities between node covariates. Default is
+<code>l1_similarity</code>, that is, -abs(x-y). Only relevant when the covariates are node-centered.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intercept</code></td>
+<td>
+<p>An optional intercept term to be added in case of the presence of covariates. Default is 0.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Internal functions use <code>future_lapply</code>, so set your plan to <code>'multisession'</code> or
+<code>'multicore'</code> to use several cores/workers.
+The list of parameters <code>control</code> tunes more advanced features, such as the
+initialization, how covariates are handled in the model, and the variational EM algorithm:
+</p>
+
+<ul>
+<li>
+<p> useCov logical. If <code>covariates</code> is not null, should they be used for the
+for the SBM inference (or just for the sampling)? Default is TRUE.
+</p>
+</li>
+<li>
+<p> clusterInit Initial method for clustering: either a character ("spectral")
+or a list with <code>length(vBlocks)</code> vectors, each with size  <code>ncol(adjacencyMatrix)</code>,
+providing a user-defined clustering. Default is "spectral".
+similarity An R x R -&gt; R function to compute similarities between node covariates. Default is
+<code>l1_similarity</code>, that is, -abs(x-y). Only relevant when the covariates are node-centered
+(i.e. <code>covariates</code> is a list of size-N vectors).
+</p>
+</li>
+<li>
+<p> threshold V-EM algorithm stops stop when an optimization step changes the objective function or the parameters
+by less than threshold. Default is 1e-2.
+</p>
+</li>
+<li>
+<p> maxIter V-EM algorithm stops when the number of iteration exceeds maxIter.
+Default is 50.
+</p>
+</li>
+<li>
+<p> fixPointIter number of fix-point iterations in the V-E step. Default is 3.
+</p>
+</li>
+<li>
+<p> exploration character indicating the kind of exploration used among "forward", "backward", "both" or "none". Default is "both".
+</p>
+</li>
+<li>
+<p> iterates integer for the number of iterations during exploration. Only relevant when <code>exploration</code> is different from "none". Default is 1.
+</p>
+</li>
+<li>
+<p> trace logical for verbosity. Default is TRUE.
+</p>
+</li>
+</ul>
+<p>The different sampling designs are split into two families in which we find dyad-centered and
+node-centered samplings. See <a href="https://doi.org/10.1080/01621459.2018.1562934">doi:10.1080/01621459.2018.1562934</a> for a complete description.
+</p>
+
+<ul>
+<li>
+<p> Missing at Random (MAR)
+</p>
+
+<ul>
+<li>
+<p> dyad parameter = p = Prob(Dyad(i,j) is observed)
+</p>
+</li>
+<li>
+<p> node parameter = p = Prob(Node i is observed)
+</p>
+</li>
+<li>
+<p> covar-dyad": parameter = beta in R^M, such that Prob(Dyad (i,j) is observed) = logistic(parameter' covarArray (i,j, .))
+</p>
+</li>
+<li>
+<p> covar-node": parameter = nu in R^M such that Prob(Node i is observed)  = logistic(parameter' covarMatrix (i,)
+</p>
+</li>
+<li>
+<p> snowball": parameter = number of waves with Prob(Node i is observed in the 1st wave)
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p> Missing Not At Random (MNAR)
+</p>
+
+<ul>
+<li>
+<p> double-standard parameter = (p0,p1) with p0 = Prob(Dyad (i,j) is observed | the dyad is equal to 0), p1 = Prob(Dyad (i,j) is observed | the dyad is equal to 1)
+</p>
+</li>
+<li>
+<p> block-node parameter = c(p(1),...,p(Q)) and p(q) = Prob(Node i is observed | node i is in cluster q)
+</p>
+</li>
+<li>
+<p> block-dyad parameter = c(p(1,1),...,p(Q,Q)) and p(q,l) = Prob(Edge (i,j) is observed | node i is in cluster q and node j is in cluster l)
+</p>
+</li>
+</ul>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>an adjacency matrix with the same dimension as the input, yet with additional NAs.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## SBM parameters
+N &lt;- 300 # number of nodes
+Q &lt;- 3   # number of clusters
+pi &lt;- rep(1,Q)/Q     # block proportion
+theta &lt;- list(mean = diag(.45,Q) + .05 ) # connectivity matrix
+
+## simulate an unidrected binary SBM without covariate
+sbm &lt;- sbm::sampleSimpleSBM(N, pi, theta)
+
+## Sample network data
+
+# some sampling design and their associated parameters
+sampling_parameters &lt;- list(
+   "dyad" = .3,
+   "node" = .3,
+   "double-standard" = c(0.4, 0.8),
+   "block-node" = c(.3, .8, .5),
+   "block-dyad" = theta$mean,
+   "degree" = c(.01, .01),
+   "snowball" = c(2,.1)
+ )
+
+observed_networks &lt;- list()
+
+for (sampling in names(sampling_parameters)) {
+  observed_networks[[sampling]] &lt;-
+     missSBM::observeNetwork(
+       adjacencyMatrix = sbm$networkData,
+       sampling        = sampling,
+       parameters      = sampling_parameters[[sampling]],
+       cluster         = sbm$memberships
+     )
+}
+</code></pre>
+
+
+</div>

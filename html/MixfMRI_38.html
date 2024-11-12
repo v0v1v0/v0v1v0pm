@@ -1,0 +1,347 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Main functions</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Main MixfMRI function</h2>
+
+<h3>Description</h3>
+
+<p>Main MixfMRI functions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">  fclust(X.gbd, PV.gbd, K = 2,
+    PARAM.init = NULL,
+    min.1st.prop = .FC.CT$INIT$min.1st.prop,
+    max.PV = .FC.CT$INIT$max.PV,
+    class.method = .FC.CT$INIT$class.method[1],
+    RndEM.iter = .FC.CT$CONTROL$RndEM.iter,
+    algorithm = .FC.CT$algorithm[1],
+    model.X = .FC.CT$model.X[1],
+    ignore.X = .FC.CT$ignore.X,
+    stop.unstable = TRUE,
+    MPI.gbd = .FC.CT$MPI.gbd, common.gbd = .FC.CT$common.gbd)
+
+  set.global(X.gbd, PV.gbd, K = 2,
+    min.1st.prop = .FC.CT$INIT$min.1st.prop,
+    max.PV = .FC.CT$INIT$max.PV,
+    class.method = .FC.CT$INIT$class.method[1],
+    RndEM.iter = .FC.CT$CONTROL$RndEM.iter,
+    algorithm = .FC.CT$algorithm[1],
+    model.X = .FC.CT$model.X[1],
+    ignore.X = .FC.CT$ignore.X,
+    check.X.unit = .FC.CT$check.X.unit,
+    MPI.gbd = .FC.CT$MPI.gbd, common.gbd = .FC.CT$common.gbd)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X.gbd</code></td>
+<td>
+<p>a data matrix of <code>N</code> voxel locations.
+<code>dim(X.gbd) = N x 3</code> for 3D data and
+<code>N x 2</code> for 2D data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>PV.gbd</code></td>
+<td>
+<p>a p-value vector of signals associated with voxels.
+<code>length(PV.gbd) = N</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>K</code></td>
+<td>
+<p>number of clusters to be estimated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>PARAM.init</code></td>
+<td>
+<p>initial parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min.1st.prop</code></td>
+<td>
+<p>lower bound of mixing proportion (ETA) of the 1st cluster
+(uniform).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max.PV</code></td>
+<td>
+<p>upper bound of p-values where initializations pick from.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>class.method</code></td>
+<td>
+<p>classification method for initializations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>RndEM.iter</code></td>
+<td>
+<p>number of RndEM iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>algorithm</code></td>
+<td>
+<p>either “ecm” (ECM), “apecma” (APECMa) or “em” (EM) algorithm.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.X</code></td>
+<td>
+<p>either “I” or “V” for covariance matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ignore.X</code></td>
+<td>
+<p>if <code>X.gbd</code> used in model, TRUE for PV.gbd only.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>check.X.unit</code></td>
+<td>
+<p>if <code>X.gbd</code> are all in <code>[0, 1]</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stop.unstable</code></td>
+<td>
+<p>if <code>fclust</code> stops if unstable results occur.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MPI.gbd</code></td>
+<td>
+<p>if MPI (“EGM” algorithm) is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>common.gbd</code></td>
+<td>
+<p>if <code>X.gbd</code> and <code>PV.gbd</code> are in common across all
+ranks when <code>MPI.gbd = TRUE</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The <code>fclust()</code> contains initialization and EM algorithms for clustering
+fMRI signal data which have two parts: <code>X.gbd</code> for voxel information
+either 2D or 3D, <code>PV.gbd</code> for p-value of signals associated with
+voxels. Each signal is assumed as a mixture distribution with <code>K</code>
+components with mixing proportion <code>ETA</code>, and each component has
+two independent coordinates with density functions: Beta and multivariate
+Normal distributions.
+</p>
+<p>Beta density:
+The 1st component is restricted by <code>min.1st.prop</code> and Beta(1, 1)
+distribution. The other <code>K - 1</code> components have Beta(alpha, beta)
+distribution with <code>alpha &lt; 1 &lt; beta</code>.
+</p>
+<p>Multivariate Normal density:
+<code>model.X = "I"</code> is for diagonal cov matrix of multivariate Normal
+distribution, and <code>"V"</code> for unstructured cov matrix.
+<code>ignore.X = TRUE</code> is to ignore <code>X.gbd</code> and normal density,
+i.e. only Beta density is used.
+</p>
+<p>Currently, APECMa and EM algorithms are implemented with EGM algorithm
+to speed up convergence if MPI is available.
+RndEM initialization is also implemented for better chance of good
+initial values for convergence.
+</p>
+<p>The <code>set.global()</code> has purposes: create a template/storage of
+parameters, save configurations, and called by <code>fclust()</code> to initial
+the parameters, such as <code>initial.em.gbd()</code> or
+<code>initial.RndEM.gbd()</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with class <code>fclust</code> by <code>fclust()</code> is returned
+which can be summarized by <code>print.fclust()</code>.
+</p>
+<p>A list <code>PARAM</code> or <code>PARAM.org</code> is returned by <code>set.global()</code>:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>N.gbd</code></td>
+<td>
+<p>number of observations (within the rank), and should be
+equal to <code>N.all</code> if <code>MPI.gbd = FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N.all</code></td>
+<td>
+<p>numbers of observations (of all ranks
+if <code>MPI.gbd = TRUE</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N</code></td>
+<td>
+<p>total number of observations (<code>sum(N.all)</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>dimension of an observation (3 for 2D signals, 4 for 3D signals),
+equivalent to total number of coordinates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.X</code></td>
+<td>
+<p>dimension of <code>X.gbd</code> (2 for 2D signals, 3 for 3D signals,
+0 when <code>ignore.X = TRUE</code>, number of voxel coordinates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>K</code></td>
+<td>
+<p>number of clusters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ETA</code></td>
+<td>
+<p>mixing proportion, length <code>K</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>log.ETA</code></td>
+<td>
+<p><code>log(ETA)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>BETA</code></td>
+<td>
+<p>a list of length <code>K</code> containing parameters (alpha, beta)
+of Beta density.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MU</code></td>
+<td>
+<p>a matrix of dimension <code>p.X by K</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SIGMA</code></td>
+<td>
+<p>a list of length <code>K</code>, and each is of dimension
+<code>K x K</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>logL</code></td>
+<td>
+<p>log likelihood value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min.1st.prop</code></td>
+<td>
+<p>carried from input.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max.PV</code></td>
+<td>
+<p>carried from input.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>class.method</code></td>
+<td>
+<p>classification method of initializations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min.N.CLASS</code></td>
+<td>
+<p><code>p + 1</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.X</code></td>
+<td>
+<p>carried from input.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Wei-Chen Chen and Ranjan Maitra.
+</p>
+
+
+<h3>References</h3>
+
+<p>Chen, W.-C. and Maitra, R. (2021)
+“A Practical Model-based Segmentation Approach for Accurate
+Activation Detection in Single-Subject functional Magnetic
+Resonance Imaging Studies”,
+<em>arXiv:2102.03639</em>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>print.fclust()</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(MixfMRI, quietly = TRUE)
+library(EMCluster, quietly = TRUE)
+# .FC.CT$algorithm &lt;- "em"
+# .FC.CT$model.X &lt;- "V"
+# .FC.CT$ignore.X &lt;- TRUE
+.FC.CT$check.X.unit &lt;- FALSE
+set.seed(1234)
+
+### Test toy1.
+X.gbd &lt;- toy1$X.gbd[, -3]
+PV.gbd &lt;- toy1$PV.gbd
+PARAM &lt;- fclust(X.gbd, PV.gbd, K = 2)
+print(PARAM)
+id.toy1 &lt;- .MixfMRIEnv$CLASS.gbd
+print(RRand(toy1$CLASS.gbd, id.toy1))
+
+
+.rem &lt;- function(){
+
+  ### Test toy2.
+  X.gbd &lt;- toy2$X.gbd[, -3]
+  PV.gbd &lt;- toy2$PV.gbd
+  PARAM &lt;- fclust(X.gbd, PV.gbd, K = 3)
+  print(PARAM)
+  id.toy2 &lt;- .MixfMRIEnv$CLASS.gbd
+  print(RRand(toy2$CLASS.gbd, id.toy2))
+
+}
+
+</code></pre>
+
+
+</div>

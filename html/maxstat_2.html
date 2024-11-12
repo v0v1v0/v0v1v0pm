@@ -1,0 +1,187 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>DLBCL</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Diffuse large B-cell lymphoma
+</h2>
+
+<h3>Description</h3>
+
+<p>A data frame with gene expression data from DLBCL (diffuse large B-cell
+lymphoma) patients.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">data("DLBCL")
+</code></pre>
+
+
+<h3>Format</h3>
+
+
+<dl>
+<dt><code>DLCLid</code></dt>
+<dd>
+<p>DLBCL identifier</p>
+</dd>
+<dt><code>GEG</code></dt>
+<dd>
+<p>Gene Expression Group</p>
+</dd>
+<dt><code>time</code></dt>
+<dd>
+<p>survival time in month</p>
+</dd>
+<dt><code>cens</code></dt>
+<dd>
+<p>censoring: 0 cencored, 1 dead</p>
+</dd>
+<dt><code>IPI</code></dt>
+<dd>
+<p>International Prognostic Index</p>
+</dd>
+<dt><code>MGE</code></dt>
+<dd>
+<p>Mean Gene Expression</p>
+</dd>
+</dl>
+<h3>Source</h3>
+
+<p>Except of <code>MGE</code>, the data is published at
+<a href="http://llmpp.nih.gov/lymphoma/data.shtml">http://llmpp.nih.gov/lymphoma/data.shtml</a>. <code>MGE</code> is the mean of
+the gene expression.
+</p>
+
+
+<h3>References</h3>
+
+<p>Ash A. Alizadeh et. al (2000), Distinct types of diffuse large
+B-cell lymphoma identified by gene
+expression profiling. <em>Nature</em>, <b>403</b>, 504–509
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library("survival")
+
+set.seed(29)
+
+# compute the cutpoint and plot the empirical process 
+
+mod &lt;- maxstat.test(Surv(time, cens) ~ MGE, data=DLBCL, smethod="LogRank")
+
+print(mod)
+
+## Not run: 
+  # postscript("statDLBCL.ps", horizontal=F, width=8, height=8)
+  pdf("statDLBCL.pdf", width=8, height=8)
+
+## End(Not run)
+par(mai=c(1.0196235, 1.0196235, 0.8196973, 0.4198450))
+plot(mod, cex.lab=1.6, cex.axis=1.6, xlab="Mean gene expression",lwd=2)
+## Not run: 
+  dev.off()
+
+## End(Not run)
+
+# significance of the cutpoint
+# limiting distribution
+
+maxstat.test(Surv(time, cens) ~ MGE, data=DLBCL,
+             smethod="LogRank", pmethod="Lau92", iscores=TRUE)
+
+# improved Bonferroni inequality, plot with significance bound
+
+maxstat.test(Surv(time, cens) ~ MGE, data=DLBCL,
+             smethod="LogRank", pmethod="Lau94", iscores=TRUE)
+
+mod &lt;- maxstat.test(Surv(time, cens) ~ MGE, data=DLBCL, smethod="LogRank",
+                    pmethod="Lau94", alpha=0.05)
+plot(mod, xlab="Mean gene expression")
+
+## Not run: 
+#  postscript(file="RNewsStat.ps",horizontal=F, width=8, height=8)
+   pdf("RNewsStat.pdf", width=8, height=8)
+
+
+## End(Not run)
+par(mai=c(1.0196235, 1.0196235, 0.8196973, 0.4198450))
+plot(mod, xlab="Mean gene expression", cex.lab=1.6, cex.axis=1.6)
+## Not run: 
+  dev.off()
+
+## End(Not run)
+
+# small sample solution Hothorn &amp; Lausen
+
+maxstat.test(Surv(time, cens) ~ MGE, data=DLBCL,
+             smethod="LogRank", pmethod="HL")
+
+# normal approximation
+
+maxstat.test(Surv(time, cens) ~ MGE, data=DLBCL,
+             smethod="LogRank", pmethod="exactGauss", iscores=TRUE,
+             abseps=0.01)
+
+# conditional Monte-Carlo
+maxstat.test(Surv(time, cens) ~ MGE, data=DLBCL,
+             smethod="LogRank", pmethod="condMC", B = 9999) 
+
+# survival analysis and plotting like in Alizadeh et al. (2000)
+
+  splitGEG &lt;- rep(1, nrow(DLBCL))
+  DLBCL &lt;- cbind(DLBCL, splitGEG)
+  DLBCL$splitGEG[DLBCL$GEG == "Activated B-like"] &lt;- 0
+
+  plot(survfit(Surv(time, cens) ~ splitGEG, data=DLBCL),
+       xlab="Survival time in month", ylab="Probability")
+
+  text(90, 0.7, "GC B-like")
+  text(60, 0.3, "Activated B-like")
+
+  splitIPI &lt;- rep(1, nrow(DLBCL))
+  DLBCL &lt;- cbind(DLBCL, splitIPI)
+  DLBCL$splitIPI[DLBCL$IPI &lt;= 2] &lt;- 0
+
+  plot(survfit(Surv(time, cens) ~ splitIPI, data=DLBCL),
+       xlab="Survival time in month", ylab="Probability")
+
+  text(90, 0.7, "Low clinical risk")
+  text(60, 0.25, "High clinical risk")
+
+  # survival analysis using the cutpoint 
+
+  splitMGE &lt;- rep(1, nrow(DLBCL))
+  DLBCL &lt;- cbind(DLBCL, splitMGE)
+  DLBCL$splitMGE[DLBCL$MGE &lt;= mod$estimate] &lt;- 0
+
+  ## Not run: 
+   # postscript("survDLBCL.ps",horizontal=F, width=8, height=8)
+    pdf("survDLBCL.pdf", width=8, height=8)
+
+  
+## End(Not run)
+  par(mai=c(1.0196235, 1.0196235, 0.8196973, 0.4198450))
+
+  plot(survfit(Surv(time, cens) ~ splitMGE, data=DLBCL),
+       xlab = "Survival time in month",
+       ylab="Probability", cex.lab=1.6, cex.axis=1.6, lwd=2)
+
+  text(90, 0.9, expression("Mean gene expression" &gt; 0.186), cex=1.6)   
+  text(90, 0.45, expression("Mean gene expression" &lt;= 0.186 ), cex=1.6)   
+
+  ## Not run: 
+    dev.off()
+  
+## End(Not run)
+</code></pre>
+
+
+</div>

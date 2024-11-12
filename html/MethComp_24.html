@@ -1,0 +1,416 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MCmcmc</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit a model for method comparison studies using WinBUGS</h2>
+
+<h3>Description</h3>
+
+<p>A model linking each of a number of methods of measurement linearly to the
+"true" value is set up in BUGS and run via the function
+<code>bugs</code> from the <code>R2WinBUGS</code> package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MCmcmc(
+  data,
+  bias = "linear",
+  IxR = has.repl(data),
+  linked = IxR,
+  MxI = TRUE,
+  matrix = MxI,
+  varMxI = nlevels(factor(data$meth)) &gt; 2,
+  n.chains = 4,
+  n.iter = 2000,
+  n.burnin = n.iter/2,
+  n.thin = ceiling((n.iter - n.burnin)/1000),
+  bugs.directory = getOption("bugs.directory"),
+  debug = FALSE,
+  bugs.code.file = "model.txt",
+  clearWD = TRUE,
+  code.only = FALSE,
+  ini.mult = 2,
+  list.ini = TRUE,
+  org = FALSE,
+  program = "JAGS",
+  Transform = NULL,
+  trans.tol = 1e-06,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Data frame with variables <code>meth</code>, <code>item</code>, <code>repl</code>
+and <code>y</code>, possibly a <code>Meth</code> object.  <code>y</code> represents a
+measurement on an <code>item</code> (typically patient or sample) by method
+<code>meth</code>, in replicate <code>repl</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bias</code></td>
+<td>
+<p>Character. Indicating how the bias between methods should be
+modelled. Possible values are <code>"none"</code>, <code>"constant"</code>,
+<code>"linear"</code> and <code>"proportional"</code>. Only the first three letters are
+significant. Case insensitive.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>IxR</code></td>
+<td>
+<p>Logical. Are the replicates linked across methods, i.e. should a
+random <code>item</code> by <code>repl</code> be included in the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>linked</code></td>
+<td>
+<p>Logical, alias for <code>IxR</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MxI</code></td>
+<td>
+<p>Logical, should a <code>meth</code> by <code>item</code> effect be included
+in the model?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>matrix</code></td>
+<td>
+<p>Logical, alias for <code>MxI</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>varMxI</code></td>
+<td>
+<p>Logical, should the method by item effect have method-specific
+variances. Ignored if only two methods are compared.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.chains</code></td>
+<td>
+<p>How many chains should be run by WinBUGS — passed on to
+<code>bugs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.iter</code></td>
+<td>
+<p>How many total iterations — passed on to <code>bugs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.burnin</code></td>
+<td>
+<p>How many of these should be burn-in — passed on to
+<code>bugs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.thin</code></td>
+<td>
+<p>How many should be sampled — passed on to <code>bugs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bugs.directory</code></td>
+<td>
+<p>Where is WinBUGS (&gt;=1.4) installed — passed on to
+<code>bugs</code>. The default is to use a parameter from options(). If you use
+this routinely, this is most conveniently set in your <code>.Rprofile</code> file.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>debug</code></td>
+<td>
+<p>Should WinBUGS remain open after running — passed on to
+<code>bugs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bugs.code.file</code></td>
+<td>
+<p>Where should the bugs code go?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>clearWD</code></td>
+<td>
+<p>Should the working directory be cleared for junk files after
+the running of WinBUGS — passed on to <code>bugs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>code.only</code></td>
+<td>
+<p>Should <code>MCmcmc</code> just create a bugs code file and a set
+of inits? See the <code>list.ini</code> argument.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ini.mult</code></td>
+<td>
+<p>Numeric. What factor should be used to randomly perturb the
+initial values for the variance components, see below in details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>list.ini</code></td>
+<td>
+<p>List of lists of starting values for the chains, or logical
+indicating whether starting values should be generated.  If <code>TRUE</code> (the
+default), the function VC.est will be used to generate initial
+values for the chains. <code>list.ini</code> is a list of length <code>n.chains</code>.
+Each element of which is a list with the following vectors as elements:
+</p>
+ <dl>
+<dt><code>mu</code></dt>
+<dd>
+<p>- length I</p>
+</dd> <dt><code>alpha</code></dt>
+<dd>
+<p>- length M</p>
+</dd>
+<dt><code>beta</code></dt>
+<dd>
+<p>- length M</p>
+</dd> <dt><code>sigma.mi</code></dt>
+<dd>
+<p>- length M - if M is
+2 then length 1</p>
+</dd> <dt><code>sigma.ir</code></dt>
+<dd>
+<p>- length 1</p>
+</dd>
+<dt><code>sigma.mi</code></dt>
+<dd>
+<p>- length M</p>
+</dd> <dt><code>sigma.res</code></dt>
+<dd>
+<p>- length M</p>
+</dd>
+</dl>
+<p> If
+<code>code.only==TRUE</code>, <code>list.ini</code> indicates whether a list of initial
+values is returned (invisibly) or not.  If <code>code.only==FALSE</code>,
+<code>list.ini==FALSE</code> is ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>org</code></td>
+<td>
+<p>Logical. Should the posterior of the original model parameters be
+returned too? If <code>TRUE</code>, the <code>MCmcmc</code> object will have an
+attribute, <code>original</code>, with the posterior of the parameters in the
+model actually simulated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>program</code></td>
+<td>
+<p>Which program should be used for the MCMC simulation.
+Possible values are "<code>BRugs</code>", "<code>ob</code>", "<code>winbugs</code>", "<code>wb</code>" (WinBUGS), "<code>jags</code>"
+(JAGS). Case insensitive. Defaults to "<code>JAGS</code>" since: 1) JAGS is
+available on all platforms and 2) JAGS seems to be faster than BRugs on
+(some) windows machines.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Transform</code></td>
+<td>
+<p>Transformation of data (<code>y</code>) before analysis.  See
+<code>choose.trans</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trans.tol</code></td>
+<td>
+<p>The tolerance used to check whether the supplied
+transformation and its inverse combine to the identity.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments passed on to <code>bugs</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The model set up for an observation <code class="reqn">y_{mir}</code> is: </p>
+<p style="text-align: center;"><code class="reqn">y_{mir} =
+\alpha_m + \beta_m(\mu_i+b_{ir} + c_{mi}) + </code>
+</p>
+<p style="text-align: center;"><code class="reqn"> e_{mir}</code>
+</p>
+<p> where <code class="reqn">b_{ir}</code> is a random
+<code>item</code> by <code>repl</code> interaction (included if <code>"ir"</code> is in <code>random</code>)
+and <code class="reqn">c_{mi}</code> is a random <code>meth</code> by <code>item</code> interaction
+(included if <code>"mi"</code> is in <code>random</code>). The <code class="reqn">\mu_i</code>'s are
+parameters in the model but are not monitored — only the
+<code class="reqn">\alpha</code>s, <code class="reqn">\beta</code>s and the variances of
+<code class="reqn">b_{ir}</code>, <code class="reqn">c_{mi}</code> and <code class="reqn">e_{mir}</code> are
+monitored and returned. The estimated parameters are only determined up to a
+linear transformation of the <code class="reqn">\mu</code>s, but the linear functions
+linking methods are invariant. The identifiable conversion parameters are:
+</p>
+<p style="text-align: center;"><code class="reqn">\alpha_{m\cdot k}=\alpha_m - \alpha_k \beta_m/\beta_k, \quad
+</code>
+</p>
+<p style="text-align: center;"><code class="reqn">
+\beta_{m\cdot k}=\beta_m/\beta_k</code>
+</p>
+<p> The posteriors of these are derived and included in
+the <code>posterior</code>, which also will contain the posterior of the variance
+components (the SDs, that is).  Furthermore, the posterior of the point
+where the conversion lines intersects the identity as well as the prediction
+SDs between any pairs of methods are included.
+</p>
+<p>The function <code>summary.MCmcmc</code> method gives estimates of the conversion
+parameters that are consistent. Clearly, </p>
+<p style="text-align: center;"><code class="reqn">\mathrm{median}(\beta_{1\cdot
+2})= </code>
+</p>
+<p style="text-align: center;"><code class="reqn">
+1/\mathrm{median}(\beta_{2\cdot 1})</code>
+</p>
+
+<p>because the inverse is a monotone transformation, but there is no guarantee
+that </p>
+<p style="text-align: center;"><code class="reqn">\mathrm{median}(\alpha_{1\cdot 2})=
+\mathrm{median}(-\alpha_{2\cdot 1}/
+</code>
+</p>
+<p style="text-align: center;"><code class="reqn"> \beta_{2\cdot
+1})</code>
+</p>
+<p> and hence no guarantee
+that the parameters derived as posterior medians produce conversion lines
+that are the same in both directions. Therefore, <code>summary.MCmcmc</code>
+computes the estimate for <code class="reqn">\alpha_{2\cdot 1}</code> as
+</p>
+<p style="text-align: center;"><code class="reqn">(\mathrm{median}(\alpha_{1\cdot 2})-\mathrm{median}(\alpha_{2\cdot 1})
+</code>
+</p>
+<p style="text-align: center;"><code class="reqn">
+/\mathrm{median}(\beta_{2\cdot 1}))/2</code>
+</p>
+<p> and the estimate of <code class="reqn">\alpha_{1\cdot 2}</code>
+correspondingly. The resulting parameter estimates defines the same lines.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>code.only==FALSE</code>, an object of class <code>MCmcmc</code> which
+is a <code>mcmc.list</code> object of the relevant parameters, i.e.
+the posteriors of the conversion parameters and the variance components
+transformed to the scales of each of the methods.
+</p>
+<p>Furthermore, the object have the following attributes:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>random</code></td>
+<td>
+<p>Character vector indicating which random effects ("ir","mi")
+were included in the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>methods</code></td>
+<td>
+<p>Character vector with the method
+names.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>The data frame used in the analysis. This is used in
+<code>plot.MCmcmc</code> when plotting points.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mcmc.par</code></td>
+<td>
+<p>A list
+giving the number of chains etc. used to generate the object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>original</code></td>
+<td>
+<p>If <code>org=TRUE</code>, an <code>mcmc.list</code> object
+with the posterior of the original model parameters, i.e.  the variance
+components and the unidentifiable mean parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Transform</code></td>
+<td>
+<p>The
+transformation used to the measurements before the analysis.</p>
+</td>
+</tr>
+</table>
+<p> If
+<code>code.only==TRUE</code>, a list containing the initial values is generated.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Bendix Carstensen, Steno Diabetes Center,
+<a href="http://BendixCarstensen.com">http://BendixCarstensen.com</a>, Lyle Gurrin, University of Melbourne,
+<a href="http://www.epi.unimelb.edu.au/about/staff/gurrin-lyle">http://www.epi.unimelb.edu.au/about/staff/gurrin-lyle</a>.
+</p>
+
+
+<h3>References</h3>
+
+<p>B Carstensen: Comparing and predicting between several methods
+of measurement, Biostatistics, 5, pp 399-413, 2004
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>BA.plot</code>, <code>plot.MCmcmc</code>,
+<code>print.MCmcmc</code>, <code>check.MCmcmc</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data( ox )
+str( ox )
+ox &lt;- Meth( ox )
+# Writes the BUGS program to your console
+MCmcmc( ox, MI=TRUE, IR=TRUE, code.only=TRUE, bugs.code.file="" )
+
+### What is written here is not necessarily correct on your machine.
+# ox.MC &lt;- MCmcmc( ox, MI=TRUE, IR=TRUE, n.iter=100, program="JAGS" )
+# ox.MC &lt;- MCmcmc( ox, MI=TRUE, IR=TRUE, n.iter=100 )
+#  data( ox.MC )
+#   str( ox.MC )
+# print( ox.MC )
+
+</code></pre>
+
+
+</div>

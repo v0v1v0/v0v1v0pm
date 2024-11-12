@@ -1,0 +1,128 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>set_pred</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Register Prediction Method for Model</h2>
+
+<h3>Description</h3>
+
+<p>This function is used to register prediction method information for a model,
+mode, and engine combination.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">set_pred(model, mode, eng, type, value)
+
+get_pred_type(model, type)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>A single character string for the model type (e.g. <code>"k_means"</code>,
+etc).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mode</code></td>
+<td>
+<p>A single character string for the model mode (e.g. "partition").</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>eng</code></td>
+<td>
+<p>A single character string for the model engine.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>A single character value for the type of prediction. Possible
+values are: <code>cluster</code> and <code>raw</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>value</code></td>
+<td>
+<p>A list of values, described in the Details.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The list passed to <code>value</code> needs the following values:
+</p>
+
+<ul>
+<li> <p><strong>pre</strong> and <strong>post</strong> are optional functions that can preprocess the data
+being fed to the prediction code and to postprocess the raw output of the
+predictions. These won’t be needed for this example, but a section below
+has examples of how these can be used when the model code is not easy to
+use. If the data being predicted has a simple type requirement, you can
+avoid using a <strong>pre</strong> function with the <strong>args</strong> below.
+</p>
+</li>
+<li> <p><strong>func</strong> is the prediction function (in the same format as above). In many
+cases, packages have a predict method for their model’s class but this is
+typically not exported. In this case (and the example below), it is simple
+enough to make a generic call to <code>predict()</code> with no associated package.
+</p>
+</li>
+<li> <p><strong>args</strong> is a list of arguments to pass to the prediction function. These
+will most likely be wrapped in <code>rlang::expr()</code> so that they are not
+evaluated when defining the method. For mda, the code would be
+<code>predict(object, newdata, type = "class")</code>. What is actually given to the
+function is the model fit object, which includes a sub-object
+called <code>fit()</code> that houses the mda model object. If the data need to be a
+matrix or data frame, you could also use
+<code>newdata = quote(as.data.frame(newdata))</code> or similar.
+</p>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>A tibble
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+set_new_model("shallow_learning_model")
+set_model_mode("shallow_learning_model", "partition")
+set_model_engine("shallow_learning_model", "partition", "stats")
+
+set_pred(
+  model = "shallow_learning_model",
+  eng = "stats",
+  mode = "partition",
+  type = "cluster",
+  value = list(
+    pre = NULL,
+    post = NULL,
+    func = c(fun = "predict"),
+    args =
+      list(
+        object = rlang::expr(object$fit),
+        newdata = rlang::expr(new_data),
+        type = "response"
+      )
+  )
+)
+
+get_pred_type("shallow_learning_model", "cluster")
+get_pred_type("shallow_learning_model", "cluster")$value
+
+</code></pre>
+
+
+</div>

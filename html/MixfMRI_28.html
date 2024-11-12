@@ -1,0 +1,155 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Compute Statistics for Log Odds Ratio of Posterior Probability</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compute Statistics for Log Odds Ratio of Posterior Probability</h2>
+
+<h3>Description</h3>
+
+<p>The function computes statistics for log odds ratio of posterior probability.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">  logor.stat(x, fcobj, post.z, cov.param = NULL, cov.post.z = NULL,
+                 cov.logit.z = NULL, all.x = FALSE, drop.ETA1 = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>an input list of two elements <code>X.gbd</code> and <code>PV.gbd</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fcobj</code></td>
+<td>
+<p>a <code>fclust</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>post.z</code></td>
+<td>
+<p>a matrix of <code>dim = N * K</code> for posterior probabilities,
+which is also the return value of <code>post.prob()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cov.param</code></td>
+<td>
+<p>a covariance matrix of <code>dim = d * d</code> for parameters,
+which is also a return of <code>cov.param()</code>.
+<code>d</code> is total number of parameters which is dependent
+on data and models.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cov.post.z</code></td>
+<td>
+<p>a covariance list of length equal to number of active
+voxels, which is also a return of <code>cov.post.z()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cov.logit.z</code></td>
+<td>
+<p>a covariance list of length equal to number of active
+voxels, which is also a return of <code>cov.logit.z()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>all.x</code></td>
+<td>
+<p>all cov matrices for all observations are returned if TRUE,
+while for only active observations (those of class ids are
+greater than 1) if FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>drop.ETA1</code></td>
+<td>
+<p>if drop the <code>ETA[1]</code> from the cov matrix due to the
+<code>min.1st.prop</code> constrain.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For posterior probability,
+this function compute log odd ratio, cov matrix of log odd ratio,
+degrees of freedom, and testing statistics.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list is returned with four elements: <code>log.or</code>, <code>cov.log.or</code>,
+<code>df</code>, and <code>test.stat</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Wei-Chen Chen and Ranjan Maitra.
+</p>
+
+
+<h3>References</h3>
+
+<p>Chen, W.-C. and Maitra, R. (2021)
+“A Practical Model-based Segmentation Approach for Accurate
+Activation Detection in Single-Subject functional Magnetic
+Resonance Imaging Studies”,
+<em>arXiv:2102.03639</em>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>post.prob()</code>, <code>cov.param()</code>, <code>cov.post.z()</code>,
+<code>cov.logit.z()</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(MixfMRI, quietly = TRUE)
+.FC.CT$model.X &lt;- "I"
+.FC.CT$CONTROL$debug &lt;- 0
+K &lt;- 3
+
+### Fit toy1.
+set.seed(1234)
+X.gbd &lt;- toy1$X.gbd
+X.range &lt;- apply(X.gbd, 2, range)
+X.gbd &lt;- t((t(X.gbd) - X.range[1,]) / (X.range[2,] - X.range[1,]))
+PV.gbd &lt;- toy1$PV.gbd
+fcobj &lt;- fclust(X.gbd, PV.gbd, K = K, min.1st.prop = 0.5)
+
+### Test log odds ratio.
+x &lt;- list(X.gbd = X.gbd, PV.gbd = PV.gbd)
+post.z &lt;- post.prob(x, fcobj)
+lor &lt;- logor.stat(x, fcobj, post.z)
+
+### Check if 95% CE covers log odd ratio = 1.
+id &lt;- !is.na(lor$df)
+id.cover.0 &lt;- which(lor$test.stat[id] &lt; pchisq(0.95, lor$df[id]))
+
+### Get voxels needed for merging.
+id.active &lt;- which(fcobj$class != 1)
+id.merge &lt;- id.active[id][id.cover.0]
+
+### Check results.
+post.z[id.merge,]
+cbind(toy1$X.gbd[id.merge,], toy1$PV.gbd[id.merge])
+</code></pre>
+
+
+</div>

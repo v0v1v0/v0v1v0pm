@@ -1,0 +1,410 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mrgsim</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Simulate from a model object</h2>
+
+<h3>Description</h3>
+
+<p>This function sets up the simulation run from data stored in the model
+object as well as arguments passed in.  Use <code>mrgsim_q()</code> instead
+to benchmark mrgsolve or to do repeated quick simulation for tasks like
+parameter optimization, sensitivity analyses, or optimal design.  See
+mrgsim_variants for other mrgsim-like functions that have more focused
+inputs. <code>mrgsim_df</code> coerces output to data.frame prior to returning.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mrgsim(x, data = NULL, idata = NULL, events = NULL, nid = NULL, ...)
+
+mrgsim_df(..., output = "df")
+
+do_mrgsim(
+  x,
+  data,
+  idata = no_idata_set(),
+  carry_out = carry.out,
+  carry.out = character(0),
+  recover = character(0),
+  seed = as.integer(NA),
+  Request = character(0),
+  output = NULL,
+  capture = NULL,
+  obsonly = FALSE,
+  obsaug = FALSE,
+  tgrid = NULL,
+  etasrc = "omega",
+  recsort = 1,
+  deslist = list(),
+  descol = character(0),
+  filbak = TRUE,
+  tad = FALSE,
+  nocb = TRUE,
+  skip_init_calc = FALSE,
+  ss_n = 500,
+  ss_fixed = FALSE,
+  interrupt = 256,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>the model object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>NMTRAN-like data set (see <code>data_set()</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>idata</code></td>
+<td>
+<p>a matrix or data frame of model parameters,
+one parameter per row (see <code>idata_set()</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>events</code></td>
+<td>
+<p>an event object</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nid</code></td>
+<td>
+<p>integer number of individuals to simulate; only used if
+idata and data are missing</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>passed to <code>update()</code> and
+<code>do_mrgsim()</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output</code></td>
+<td>
+<p>if <code>NULL</code> (the default) a mrgsims object is returned;
+otherwise, pass <code>df</code> to return a data.frame or <code>matrix</code> to
+return a matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>carry_out</code></td>
+<td>
+<p>numeric data items to copy into the output.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>carry.out</code></td>
+<td>
+<p>soon to be deprecated; use <code>carry_out</code> instead.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recover</code></td>
+<td>
+<p>character column names in either <code>data</code> or <code>idata</code>
+to join back (recover) to simulated data; may be any class (e.g. numeric,
+character, factor, etc).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>deprecated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Request</code></td>
+<td>
+<p>compartments or captured variables to retain
+in the simulated output; this is different than the <code>request</code>
+slot in the model object, which refers only to model compartments.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>capture</code></td>
+<td>
+<p>character file name used for debugging (not related
+to <code style="white-space: pre;">⁠$CAPTURE⁠</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>obsonly</code></td>
+<td>
+<p>if <code>TRUE</code>, dosing records are not included
+in the output.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>obsaug</code></td>
+<td>
+<p>augment the data set with time grid observations; when
+<code>TRUE</code> and a full data set is used, the simulated output is augmented
+with an observation at each time in <code>stime()</code>.  When using
+<code>obsaug</code>, a flag indicating augmented observations can be requested by
+including <code>a.u.g</code> in  <code>carry_out</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tgrid</code></td>
+<td>
+<p>a tgrid object; or a numeric vector of simulation times
+or another object with an <code>stime</code> method.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>etasrc</code></td>
+<td>
+<p>source for <code>ETA()</code> values in the model; values can include:
+<code>"omega"</code>, <code>"data"</code>, <code>"data.all"</code>, <code>"idata"</code>, or <code>"idata.all"</code>; see
+'Details'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>recsort</code></td>
+<td>
+<p>record sorting flag.  Default value is 1.  Possible values
+are 1,2,3,4: 1 and 2 put doses in a data set after padded observations at
+the same time; 3 and 4 put those doses before padded observations at the
+same time.  2 and 4 will put doses scheduled through <code>addl</code> after
+observations at the same time; 1 and 3 put doses scheduled through
+<code>addl</code> before observations at the same time. <code>recsort</code> will
+not change the order of your input data set if both doses and observations
+are given.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>deslist</code></td>
+<td>
+<p>a list of tgrid objects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>descol</code></td>
+<td>
+<p>the name of a column for assigning designs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>filbak</code></td>
+<td>
+<p>carry data items backward when the first
+data set row has time greater than zero.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tad</code></td>
+<td>
+<p>when <code>TRUE</code> a column is added to simulated
+output is added showing the time since the last dose.  Only data records
+with <code>evid == 1</code> will be considered doses for the purposes of <code>tad</code>
+calculation. The <code>tad</code> can be properly calculated with a dosing lag time in
+the model as long as the dosing lag time (specified in <code style="white-space: pre;">⁠$MAIN⁠</code>)  is always
+appropriate for any subsequent doses scheduled through <code>addl</code>.  This will
+always be true if the lag time doesn't change over time.  But it might
+(possibly) not hold if the lag time changes prior to the last dose in the
+<code>addl</code> sequence.  This known limitation shouldn't affect <code>tad</code> calculation
+in most common dosing lag time implementations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nocb</code></td>
+<td>
+<p>if <code>TRUE</code>, use next observation carry backward method;
+otherwise, use <code>locf</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>skip_init_calc</code></td>
+<td>
+<p>don't use <code style="white-space: pre;">⁠$MAIN⁠</code> to calculate initial conditions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ss_n</code></td>
+<td>
+<p>maximum number of iterations for determining steady state for
+the PK system; a warning will be issued if steady state is not achieved
+within <code>ss_n</code> iterations when <code>ss_fixed</code> is <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ss_fixed</code></td>
+<td>
+<p>if <code>FALSE</code> (the default), then a warning will be issued
+if the system does not reach steady state within <code>ss_n</code> iterations
+given the model tolerances <code>rtol</code> and <code>atol</code>; if <code>TRUE</code>,
+the number of iterations for determining steady state are capped at
+<code>ss_n</code> and no warning will be issued if steady state
+has not been reached within <code>ss_n</code> dosing iterations.
+To silence warnings related to steady state, set <code>ss_fixed</code> to <code>TRUE</code> and
+set <code>ss_n</code> as the maximum number of iterations to try when advancing the
+system for steady state determination.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>interrupt</code></td>
+<td>
+<p>integer check user interrupt interval; when <code>interrupt</code> is a
+positive integer, the simulation will check for the user interrupt signal
+every <code>interrupt</code> simulation records; pass a negative number to never check
+for the user interrupt interval.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+
+<ul>
+<li>
+<p> Use <code>mrgsim_df()</code> to return a data frame rather than
+<code>mrgsims</code> object
+</p>
+</li>
+<li>
+<p> Both <code>data</code> and <code>idata</code> will be coerced to numeric matrix
+</p>
+</li>
+<li> <p><code>carry_out</code> can be used to insert data columns into the output
+data set. This is partially dependent on the nature of the data brought
+into the problem
+</p>
+</li>
+<li>
+<p> When using <code>data</code> and <code>idata</code> together, an error is
+generated if an  ID occurs in <code>data</code> but not <code>idata</code>.
+Also, when looking up data in <code>idata</code>, ID in <code>idata</code> is
+assumed to be uniquely keyed to ID in <code>data</code>.  No error is
+generated if ID is duplicated in <code>data</code>; parameters will be used
+from the first occurrence found in <code>idata</code>
+</p>
+</li>
+<li> <p><code>carry_out</code>: <code>idata</code> is assumed to be individual-level and variables that
+are carried from <code>idata</code> are repeated throughout the individual's simulated
+data.  Variables carried from <code>data</code> are carried via last-observation carry
+forward.  <code>NA</code> is returned from observations that are inserted into
+simulated output that occur prior to the first record in <code>data</code>
+</p>
+</li>
+<li> <p><code>recover</code>: this is similar to <code>carry_out</code> with respect to
+end result, but it uses a different process.  Columns to be recovered are
+cached prior to running the simulation, and then joined back on to the
+simulated data.  So, whereas <code>carry_out</code> will only accept numeric
+data items, <code>recover</code> can handle data frame columns of any type.  There
+is a small decrease in performance with <code>recover</code> compared to
+<code>carry_out</code>, but it is likely that the performance difference is
+difficult to perceive (when the simulation runs very fast) or only a small
+fractional increase in run time when the simulation is very large.  And any
+performance hit is likely to be well worth it in light of the convenience
+gain.  Just think carefully about using this feature when every millisecond
+counts.
+</p>
+</li>
+<li> <p><code>etasrc</code>: this argument lets you control where <code>ETA(n)</code> come from in the
+model. When <code>etasrc</code> is set to <code>"omega"</code> (the default), <code>ETAs</code> will be
+simulated from a multivariate normal distribution defined by the <code style="white-space: pre;">⁠$OMEGA⁠</code>
+blocks in the model. Alternatively, input <code>data</code> or <code>idata</code> sets can be used
+to pass in fixed <code>ETA(n)</code> by setting <code>etasrc</code> to <code>"data"</code>, <code>"idata"</code>,
+<code>"data.all"</code> or <code>"idata.all"</code>. When <code>etasrc</code> is set to <code>"data"</code> or <code>"data.all"</code>,
+the input data set will be scanned for columns called <code>ETA1</code>, <code>ETA2</code>, ...,
+<code>ETAn</code> and those values will be copied into the appropriate slot in the
+<code>ETA()</code> vector. Only the first record for each individual will be copied into
+<code>ETA()</code>; all records after the first will be ignored. When there are more
+than <code>9</code> <code>ETAs</code> in a model, NONMEM will start naming the outputs <code>ET10</code>,
+<code>ET11</code> etc rather than <code>ETA10</code> and <code>ETA11</code>. When mrgsolve is looking for
+these columns, it will first search, for example, <code>ET10</code> and use that value
+if it is found. If <code>ET10</code> isn't found and there are more than <code>9</code> <code>ETAs</code>,
+then it will <em>also</em> search for <code>ETA10</code>. An error will be generated in case
+mrgsolve finds both the <code>ETA</code> and <code>ET</code> name variant for the tenth and higher
+<code>ETA</code> (e.g. it is an error to have both <code>ETA10</code> and <code>ET10</code> in the data set).
+When mrgsolve is searching for <code>ETA</code> columns in the data set, it will
+<em>only</em> look for <code>ETAn</code> up to the number of rows (or columns) in all the
+model <code style="white-space: pre;">⁠$OMEGA⁠</code> blocks. For example, if <code style="white-space: pre;">⁠$OMEGA⁠</code> is 5x5, only <code>ETA1</code> through
+<code>ETA5</code> will be searched. An error will be generated in case mrgsolve finds
+<em>no</em> columns with <code>ETAn</code> names and something other than <code>etasrc = "omega"</code>
+was passed. When <code>etasrc = "data"</code> and an <code>ETAn</code> column is missing from the
+data set, the missing <code>ETA()</code> will be set to <code>0</code>.  Alternatively, the user
+can pass <code>etasrc = "data.all"</code> which causes an error to be generated if any
+<code>ETAn</code> is missing from the data set. Use this option when you intend to have
+<em>all</em> <code>ETAs</code> attached to the data set and want an error generated if mrgsolve
+finds one or more of them is missing. Using <code>etasrc ="idata"</code> or
+<code>"idata.all"</code>, the behavior is identical to <code>"data"</code> (or <code>"data.all"</code>),
+except mrgsolve will look at the idata set rather than data set.
+</p>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>An object of class mrgsims
+</p>
+
+
+<h3>See Also</h3>
+
+<p>mrgsim_variants, <code>mrgsim_q()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## example("mrgsim")
+
+e &lt;- ev(amt = 1000)
+
+mod &lt;- mrgsolve::house() 
+
+out &lt;- mod %&gt;% ev(e) %&gt;% mrgsim()
+
+plot(out)
+
+out &lt;- mod %&gt;% ev(e) %&gt;% mrgsim(end=22)
+
+out
+
+data(exTheoph)
+
+out &lt;- mod %&gt;% data_set(exTheoph) %&gt;% mrgsim()
+
+out
+
+out &lt;- mod %&gt;% mrgsim(data=exTheoph)
+
+out &lt;- mrgsim(mod, data=exTheoph, obsonly=TRUE)
+
+out
+
+out &lt;- mod %&gt;% mrgsim(data=exTheoph, obsaug=TRUE, carry_out="a.u.g")
+
+out
+
+out &lt;- mod %&gt;% ev(e) %&gt;% mrgsim(outvars="CP,RESP")
+
+out
+
+a &lt;- ev(amt = 1000, group = 'a')
+b &lt;- ev(amt = 750, group = 'b')
+data &lt;- as_data_set(a,b)
+
+out &lt;- mrgsim_d(mod, data, recover="group")
+
+out
+</code></pre>
+
+
+</div>

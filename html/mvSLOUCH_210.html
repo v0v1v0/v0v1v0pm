@@ -1,0 +1,574 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvslouchModel</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Estimate parameters under a (multivariate) OUBM model of evolution
+</h2>
+
+<h3>Description</h3>
+
+<p>The <code>mvslouchModel</code> function uses maximum likelihood to fit parameters of a multivariate 
+OUBM model evolving on the phylogeny. The user is recommended to install the suggested package 
+<span class="pkg">PCMBaseCpp</span> which significantly speeds up the calculations (see Details).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mvslouchModel(phyltree, mData, kY, regimes = NULL, regimes.times = NULL, 
+root.regime = NULL, predictors = NULL, M.error = NULL, Atype = "Invertible", 
+Syytype = "UpperTri", diagA = "Positive", estimate.root.state=FALSE, 
+parameter_signs=NULL, start_point_for_optim = NULL, parscale = NULL, 
+min_bl = 0.0003, maxiter = c(10,50,100), estimateBmethod="ML")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>phyltree</code></td>
+<td>
+
+<p>The phylogeny in <code>phylo</code> format. The tree can be obtained from e.g. a <code>nexus</code> file 
+by the <code>read.nexus()</code> function from the <span class="pkg">ape</span> package. The "standard" <span class="pkg">ape</span> node
+indexing is assumed: for a tree with <code class="reqn">n</code> tips, the tips should have indices <code>1:n</code> 
+and the root index <code>n+1</code>. The <code>root.edge</code> field is ignored.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mData</code></td>
+<td>
+
+<p>A matrix with the rows corresponding to the tip species while the columns correspond to the traits.
+The rows should be named by species <br> (field <code>phyltree$tip.label</code>), if not, then a warning
+is thrown and the order of the species is assumed to be the same as the order in which the 
+species are in the phylogeny (i.e. correspond to the node indices <code>1:n</code>, 
+where <code class="reqn">n</code> is the number of tips). The columns should be named by traits, otherwise
+a warning is thrown and generic names are generated.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kY</code></td>
+<td>
+<p>Number of "Y" (response) variables.
+The first <code>kY</code>
+columns of <code>mY</code> are the "OU" ones, while the rest the "BM" ones.
+In more detail this value determines the number of columns of the <code>mData</code> matrix to treat as response variables ("OU" ones). For example, a 
+value of 1 means that only the first column is treated as a response variable, while a value of 3 means the first three 
+columns are treated as response variables. Any predictor variables ("BM" ones) the user is interested in setting for a particular model 
+should therefore be placed in the final columns of the <code>mData</code> matrix, allowing for selecting select <code>kY</code> columns before 
+this as response variables ("OU" ones).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regimes</code></td>
+<td>
+
+<p>A vector or list of regimes. If vector then each entry corresponds to each of <code>phyltree</code>'s
+branches, i.e. to each row of <code>phyltree$edge</code>. If list then each list entry corresponds to a tip node
+and is a vector for regimes on that lineage. If <code>NULL</code>, then a constant regime is assumed on
+the whole tree.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regimes.times</code></td>
+<td>
+
+<p>A list of vectors for each tree node, it starts with 0 and ends with the current time 
+of the species. In between are the times where the regimes (niches) changed. If <code>NULL</code> 
+then each branch is considered to be a regime.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>root.regime</code></td>
+<td>
+
+<p>The regime at the root of the tree. If not given, then it is taken as the regime that is present
+on the root's daughter lineages and is the most frequent one in the <code>regimes</code> vector. If more
+than one regime has the same maximum frequency, then alphabetically first one of the maximum ones
+is taken.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>predictors</code></td>
+<td>
+
+<p>A vector giving the numbers of the columns from <code>mData</code> matrix which are to be considered predictor ones, 
+<em>i.e.</em> conditioned on in the program output. If not provided then columns <code>(kY+1):ncol(mData)</code>, i.e. the 
+"BM" ones, are treated as predictors.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M.error</code></td>
+<td>
+
+<p>An optional measurement error covariance structure. The measurement errors between species are assumed 
+independent. The program tries to recognize the structure of the passed matrix and accepts the following 
+possibilities :
+</p>
+
+<ul>
+<li>
+<p>a single number that is a common measurement error for all tips and species,
+</p>
+</li>
+<li>
+<p>a m element vector with each value corresponding to a variable, measurement errors are independent
+between variables and each species is assumed to have the same measurement errors,
+</p>
+</li>
+<li>
+<p>a m x m ((number of variables) x (number of variables)) matrix, all species will
+have the same measurement error,
+</p>
+</li>
+<li>
+<p>a list of length n (number of species), each list element is the covariance structure 
+for the appropriate (numbering according to tree) species, either a single number 
+(each variable has same variance), vector (of length m for each variable), or m x m matrix, 
+the order of the list has to correspond to the order of the nodes in the <code>phyltree</code> object,
+</p>
+</li>
+<li>
+<p>NULL no measurement error.
+</p>
+</li>
+</ul>
+<p>From version <code>2.0.0</code> of <span class="pkg">mvSLOUCH</span> it is impossible to pass a single joint measurement error matrix 
+for all the species and traits. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Atype</code></td>
+<td>
+
+<p>What class does the A matrix in the multivariate OUBM model belong to, possible values :
+<code>"SingleValueDiagonal"</code>, <code>"Diagonal"</code>, <code>"UpperTri"</code>, <code>"LowerTri"</code>,
+<code>"Symmetric"</code>, <code>"SymmetricPositiveDefinite"</code>, <br><code>"DecomposablePositive"</code>,  <code>"DecomposableNegative"</code>, <br><code>"DecomposableReal"</code>, <code>"Invertible"</code>, <code>"TwoByTwo"</code>, <code>"Any"</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Syytype</code></td>
+<td>
+
+<p>What class does the Syy matrix in the multivariate OUBM model belong to, possible values :
+<code>"SingleValueDiagonal"</code>, <code>"Diagonal"</code>, <code>"UpperTri"</code>, <code>"LowerTri"</code>,
+<code>"Symmetric"</code>, <code>"Any"</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>diagA</code></td>
+<td>
+
+<p>Whether the values on <code>A</code>'s diagonal are to be <code>"Positive"</code>, <code>"Negative"</code> 
+or sign allowed to vary, <code>NULL</code>. However, setting this to
+a non-<code>NULL</code> value might be (but simulations concerning this are not conclusive) 
+slightly detrimental to the optimization process if <code>Atype</code> is
+<code>"DecomposablePositive"</code>, <code>"DecomposableNegative"</code>, or
+<code>"DecomposableReal"</code>. In these cases <code>A</code> is parametrized by its eigendecomposition.
+Additional exponentiation of the diagonal, to ensure positivity, could (but this is uncertain)
+make the exploration of the likelihood surface more difficult. The user is advised to
+also try <code>diag=NULL</code>. In the case of <code>Atype</code> being <code>"SymmetricPositiveDefinite"</code>,
+the diagonal is always guaranteed to be positive.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimate.root.state</code></td>
+<td>
+
+<p>Should the root state be estimate <code>TRUE</code> (not recommended) or set at the optimum 
+<code>FALSE</code> (recommended). Root state estimation is usually unreliable hence
+if fossil measurements are available prediction based on them and the estimated
+model will probably be more accurate. If there is only one regime, then 
+estimation of the root state separately is impossible and will not be allowed.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parameter_signs</code></td>
+<td>
+
+<p>WARNING: ONLY use this option if you understand what you are doing! This option
+is still in an experimental stage so some setups might not work (please report).
+A list allowing the user to control whether specific entries for each model parameter
+should be positive, negative, zero or set to a specific (other) value.  The entries
+of the list have to be named, the admissible names are <code>"signsA"</code> (for <code>A</code>
+matrix), <code>"signsB"</code> (for <code>B</code> matrix), <code>"signsSyy"</code> (for <code>Syy</code>
+matrix) and <code>"signsmPsi"</code> (for <code>mPsi</code> matrix) and <code>"signsvY0"</code> (for <code>vY0</code>
+matrix). Any other entry in this list will be ignored. Each entry of the list has to
+be a matrix of appropriate size, i.e. of the size of the parameter to which it corresponds.
+Inside this matrix the possible values are <code>"+"</code> if the given entry is to be positive,
+<code>"-"</code> if the given entry is to be negative, <code>x</code>, where <code>x</code> is a number,
+if the entry is to be set to specified value or <code>NA</code> if the entry is to be freely 
+estimated. See Details for an example, further description and important warnings! 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start_point_for_optim</code></td>
+<td>
+
+<p>A name list with starting parameters for of the parameters for be optimized by <code>optim()</code>,
+in this case <code>A</code> and <code>Syy</code>. One may provide both or only one of them.
+Make sure that the parameter is consistent with the other parameter restrictions
+as no check is done and this can result in undefined behaviour.
+For example one may provide this as (provided dimensions and other parameter restrictions agree) </p>
+<pre>
+start_point_for_optim=list(A=rbind(c(2,0),(0,4)), 
+Syy=rbind(c(1,0.5),c(0,2))).</pre>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parscale</code></td>
+<td>
+
+<p>A vector to calculate the <code>parscale</code> argument for <code>optim</code>. It is a named
+vector with 3 entries, e.g. <br><code>c("parscale_A"=3,"logparscale_A"=5,"logparscale_other"=1)</code>.
+The entry <code>parscale_A</code> is the scale for entries of the <code>A</code> matrix,
+<code>logparscale_A</code> is the scale for entries of the <code>A</code> matrix that are 
+optimized over on the logarithmic scale, e.g. if eigenvalues are assumed to be positive,
+then optimization is done over <code>log(eigenvalue)</code> for <code>A</code>'s eigendecomposition
+and <code>logparscale_other</code> is the scale for entries other then of <code>A</code>
+that are done on the logarithmic scale (e.g. <code>Syy</code>'s diagonal, or other entries
+indicated as positive via <code>parameter_signs</code>). If not provided (or if a name of the vector
+is misspelled), then made equal  to the example value provided above.  For other elements, then 
+mentioned above, that are optimized over by <code>optim()</code>, <code>1</code> is used for <code>optim()</code>'s 
+<code>parscale</code>. It is advised that  the user experiments with a couple of different values and 
+reads <code>optim</code>'s  man page.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>min_bl</code></td>
+<td>
+<p>Value to which <span class="pkg">PCMBase</span>'s <code>PCMBase.Threshold.Skip.Singular</code> should be set.
+It indicates that branches of length shorter than <code>min_bl</code> should be skipped in likelihood
+calculations. Short branches can result in singular covariance matrices for the transition
+density along a branch. The user should adjust this value if a lot of warnings are raised by
+<span class="pkg">PCMBase</span>  about singularities during the likelihood calculations.
+However, this does not concern tip branches-these cannot be skipped and hence should be long
+enough so that numerical issues are not raised.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>The maximum number of iterations for different components of the estimation
+algorithm. A vector of three integers. The first is the number of iterations for phylogenetic
+GLS evaluations, i.e. conditional on the other parameters, the regime optima, <code>B</code> and perhaps
+initial state are estimated by a phylogenetic GLS procedure. After this the other (except of <code>B</code>) 
+parameters are optimized over by <code>optim()</code>. This first entry controls the number of iterations of this 
+procedure.  The second is the number of iterations inside the iterated GLS. In the first step regime optima 
+and <code>B</code> (and perhaps initial state) are estimated conditional on the other parameters and current estimate 
+of <code>B</code>, then the estimate of <code>B</code> is update and the same phylogenetic GLS is repeated 
+(second entry of <code>maxiter</code> number of times). Finally, the third is the value of <code>maxiter</code>  
+passed to <code>optim()</code>, apart from the optimization in the Brownian motion and measurement error case.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimateBmethod</code></td>
+<td>
+<p>Should <code>B</code> be estimated by maximum likelihood (default 
+value <code>"ML"</code>) or generalized least squares (value <code>"GLS"</code>).
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The likelihood calculations are done by the <span class="pkg">PCMBase</span> package. However, there is a
+C++ backend, <span class="pkg">PCMBaseCpp</span>. If it is not available, then the likelihood is calculated
+slower using pure R. However, with the calculations in C++ up to a 100-fold increase in
+speed is possible (more realistically 10-20 times). The <span class="pkg">PCMBaseCpp</span> package is available
+from <a href="https://github.com/venelin/PCMBaseCpp">https://github.com/venelin/PCMBaseCpp</a>.
+</p>
+<p>This function estimates the parameters of the following multivariate SDE,
+</p>
+<p style="text-align: center;"><code class="reqn">\begin{array}{rclccl}
+dY(t) &amp; = &amp; -A(Y(t)-(\Psi(t)- A^{-1}BX(t)))dt + \Sigma_{yy} dB(t) &amp; Y(0) &amp; = &amp; Y_{0}, 
+\\ dX(t) &amp; = &amp; \Sigma_{xx} dB(t) &amp; X(0) &amp; = &amp; X_{0}
+\end{array}
+</code>
+</p>
+
+<p>on a phylogenetic tree. It uses a numerical optimization over <code>A</code> (parametrized by its 
+eigenvalues and eigenvectors or its QR decomposition) and <code>S</code> (parametrized by its values) 
+and conditional on <code>A</code> and <code>S</code> estimates the values of <code>Psi</code> corresponding
+to the different regimes by a GLS estimate. <code>Y(0)</code> is assumed to be equal to 
+<code>- solve(A)BX(0)</code> plus the root value of <code>Psi</code>. This assumes that <code>A</code> is invertible. 
+If not, then <code>Y(0)</code> will be set at the root value of <code>Psi</code>. This is unless 
+<code>estimate.root.state=TRUE</code>, in such a case <code>Y(0)</code> will be estimated by least squares.
+</p>
+<p>The setting <code>Atype="Any"</code> means that one assumes the matrix <code>A</code> is eigendecomposable.
+If the estimation algorithm hits a defective <code>A</code>, then it sets the log-likelihood at
+the minimum value and will try to get out of this dip.
+</p>
+<p>The function parameter <code>parameter_signs</code> is special in the sense that it can give 
+the user great control over the estimation procedure but can also make the output
+very inconsistent with what the user provides. If we have two response traits (OU ones)
+and two predictor traits (BM ones), then an EXAMPLE setting of this can be:
+<br><code>parameter_signs=list(signsA=rbind(c("+","-"),c(0,"+")),</code> <br><code>signsSyy=rbind(c(NA,0),c(0,NA)), signsB=rbind(c(NA,0),c(0,NA)))</code>. 
+This means that <code>A</code> is upper triangular with positive
+values on the diagonal and a negative value on the off-diagonal, <code>Syy</code> is diagonal
+and <code>B</code> is also diagonal. It is advisable to set now <code>Atype="Any"</code> and
+<code>Syytype="Any"</code> (see further description).
+</p>
+<p>If the given model parameter is to be estimated
+by a generalized least squares (currently <code>B</code>, <code>mPsi</code> and <code>vY0</code>), then the 
+sign specifications are ignored. However, it is possible to set specific values.
+Furthermore, the package does not check (for <code>A</code>
+and <code>Syy</code>) if the specifications here agree with the <code>Atype</code>, <code>Syytype</code>
+and <code>diagA</code>. The settings in <code>signsA</code> and <code>signsSyy</code> will override
+the other settings. Hence, it is up to the user to make sure that the settings of 
+<code>signsA</code> and <code>signsSyy</code> are consistent with <code>Atype</code>, <code>Syytype</code>
+and <code>diagA</code>. It is advisable to use <code>signsA</code> with <code>"+"</code>
+on the diagonal and have <code>diagA=NULL</code>. The diagonal of <code>Syy</code> is forced to
+be positive (unless <code>"-"</code> is used on the diagonal of <code>signsSyy</code>
+but this is strongly discouraged) so it is advisable to keep <code>NA</code> 
+on the diagonal of <code>signsSyy</code> and not put there <code>"+"</code> there.
+Hence, in particular using the signs mechanism result in a wrong class of the matrix
+<br> 
+(e.g. <code>Atype="SymmetricPositiveDefinite"</code>, but after corrections for the provided entries in
+<code>signsA</code> one obtains a non-symmetric <code>A</code> with complex, negative-real-part eigenvalues). 
+Lastly, using <code>signsA</code> and <code>signsSyy</code> can result in
+a wrong amount of <code>dof</code> and in turn incorrect <code>AICc</code> and <code>BIC</code> values.
+What the code does is subtracts the amount of fixed values in <code>signsA</code> and <code>signsSyy</code>
+from the amount of free parameters used to estimate <code>A</code> and <code>Syy</code>. For example
+if one sets <br><code>Atype="SingleValueDiagonal"</code> (estimated by one free parameter) 
+but specified two off-diagonal values, then the amount of dofs from <code>A</code> will be <code>-1</code>!!
+The ONLY fail-safe way to use this is to set <code>Atype="Any"</code> (if <code>signsA</code> used) and 
+<code>Syytype="Any"</code> (if <code>signsSyy</code> used). If using <code>Syytype="Any"</code> and <code>signsSyy</code> 
+the it is strongly advisable to set the entries either below or above <code>Syy</code>'s diagonal to <code>0</code>.
+The reason is that <code class="reqn">\Sigma_{yy}\Sigma_{yy}^{T}</code> enters the likelihood and not the 
+given value of <code class="reqn">\Sigma_{yy}</code>. Hence, having values below (or respectively above) the diagonal
+results in an overparameterized model. The package has the option of mixing different matrix types
+with specifying values in it but this is only for advanced users who need to dig into the code
+to see what the <code>dof</code>'s should be and  if it is possible to find a correspondence between the 
+parametrization and settings. If entries of <code>mPsi</code>, <code>vY0</code> and <code>B</code> are pre-specified,
+then the <code>dof</code> are correctly adjusted for this. The estimation procedures currently ignore any
+pre-specified values for <code>vX0</code> and <code>Sxx</code>!
+</p>
+<p>The found point is described by a list containing four fields. 
+The first field <br><code>HeuristicSearchPointFinalFind</code> is the parametrization of the model 
+parameters at the considered
+point with the value of the log–likelihood.
+The field <code>ParamsInModel</code> is the point estimate of the parameters of the SDE. 
+The field <code>ParamSummary</code> are different composite (evaluated at the tree's height) and summary statistics,
+The field <code>phylhalflife</code> are the eigenvalues, eigenvectors and phylogenetic half lives
+associated with the <code class="reqn">A</code> matrix of, <code>expmtA</code> is <code class="reqn">exp(-A*(tree height))</code>, 
+optimal regression is the <code class="reqn">A^{-1}B</code> matrix (if <code class="reqn">A</code> is invertible, otherwise this will not exist),
+<code>mPsi.rotated</code> is each of the regime effects multiplied by <code class="reqn">1-\exp(-A*(tree height))</code>, 
+<code>cov.matrix</code> is the trait vector covariance matrix at the tree's height, 
+<code>corr.matrix</code> is the trait vector correlation matrix at the tree's height, 
+<code>conditional.cov.matrix</code> is the conditional covariance matrix of the OU type variables 
+on the Brownian motion type at the tree's height, i.e. Cov[Y|X](tree height),
+<code>conditional.corr.matrix</code> is the conditional correlation matrix of the OU type variables 
+on the Brownian motion type at the tree's height, i.e. Corr[Y|X](tree height),
+<code>stationary.cov.matrix</code> is the limit of the <code>conditional.cov.matrix</code>, <br><code>stationary.corr.matrix</code> is the limit of the <code>conditional.corr.matrix</code>, 
+<code>optima.cov.matrix</code>
+is the covariance matrix of the optimal process at the tree's height 
+equalling <br><code class="reqn">(tree height)* A^{-1}B\Sigma_{xx}\Sigma_{xx}^{T}B^{T}A^{-T}</code>,
+<code>optima.corr.matrix</code>
+is the correlation matrix of the optimal process at time the tree's height,
+<code>cov.with.optima</code> is the covariance matrix between the optimal process and the Y type variables process,
+<code>corr.with.optima</code> is the correlation matrix between the optimal process and the Y type variables process, <br><code>evolutionary.regression</code> is the regression coefficient of E[Y|X](tree height).
+Everything concerning the optimal process assumes A has positive real-part eigenvalues (in particular
+it is invertible). Otherwise these will not exist.
+<code>StS</code> is the infinitesimal covariance matrix,
+<code>LogLik</code> the log–likelihood, dof the degrees of freedom, <code>m2loglik</code> is <code class="reqn">-2</code>log–likelihood,
+<code>aic</code> is the Akaike information criterion, <code>aic.c</code> is the Akaike information criterion corrected for small
+sample size, sic is the Schwarz information criterion, <code>bic</code> is the Bayesian information criterion
+(which is the same as the Schwarz information criterion) and <code>RSS</code> is the residual sum of squares.
+The field <code>RSS_non_phylogenetic</code> is a residual sum of squares calculated without correcting
+for the phylogeny–induced between species correlations, while the extension
+conditional_on_predictors indicates that we consider the RSS for the variables
+labelled as responses conditioned on the remaining variables. The <code>R2_phylaverage</code> field is
+R2, where the alternative model is the phylogenetically weighted sample average 
+(see <code>OU_phylreg</code>).
+The last field <code>LogLik</code> is the log–likelihood at the point.
+</p>
+<p>From version <code>2.0.0</code> of <span class="pkg">mvSLOUCH</span> the data has to be passed as a matrix.
+To underline this the data parameter's name has been changed to <code>mData</code>. 
+</p>
+<p>From version <code>2.0.0</code> of <span class="pkg">mvSLOUCH</span> the parameter <code>calcCI</code> has been removed. 
+The package now offers the possibility of bootstrap confidence intervals, see
+function <code>parametric.bootstrap</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>FinalFound</code></td>
+<td>
+<p>The point where the search procedure stopped. See Details for the description.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>MaxLikFound</code></td>
+<td>
+<p>The point with the highest likelihood found by the search procedure, 
+if it is the same as the final point then this field equals "Same as final found". </p>
+</td>
+</tr>
+</table>
+<h3>Warning</h3>
+
+<p>The estimation can take a long time and should be repeated a couple of times 
+so that it is run from different starting positions.
+The function can produce (a lot of) warnings and errors during the search procedure, 
+this is nothing to worry about.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The slouch package is a recommended alternative if one has only a single response (Y) trait.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Krzysztof Bartoszek</p>
+
+
+<h3>References</h3>
+
+<p>Bartoszek, K. and Pienaar, J. and Mostad. P. and Andersson, S. and Hansen, T. F. (2012)
+A phylogenetic comparative method for studying  multivariate adaptation.
+Journal of Theoretical Biology 314:204-215.
+</p>
+<p>Butler, M.A. and A.A. King (2004) 
+Phylogenetic comparative analysis: a modeling approach for adaptive evolution.  
+American Naturalist 164:683-695.
+</p>
+<p>Hansen, T.F. (1997) 
+Stabilizing selection and the comparative analysis of adaptation. 
+Evolution 51:1341-1351.
+</p>
+<p>Hansen, T.F. and Bartoszek, K. (2012)
+Interpreting the evolutionary regression: the interplay between observational and 
+biological errors in phylogenetic comparative studies.
+Systematic Biology 61(3):413-425.
+</p>
+<p>Hansen, T.F. and Pienaar, J. and Orzack, S.H. (2008) 
+A comparative method for studying adaptation to randomly evolving environment. 
+Evolution 62:1965-1977.
+</p>
+<p>Labra, A., Pienaar, J. &amp; Hansen, T.F. (2009) 
+Evolution of thermophysiology in Liolaemus lizards: adaptation, phylogenetic inertia and niche tracking. 
+The American Naturalist 174:204-220.
+</p>
+<p>Mitov, V. and Bartoszek, K. and Asimomitis, G. and Stadler, T. (2020) 
+Fast likelihood calculation for multivariate Gaussian phylogenetic models with shifts
+Theoretical Population Biology 131:66-78.
+</p>
+<p>Pienaar et al (in prep) An overview of comparative methods for
+testing adaptation to external environments.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>PCMLik</code>, <code>slouch::model.fit</code>, <code>SummarizeMVSLOUCH</code>, 
+<code>simulMVSLOUCHProcPhylTree</code>, <br><code>parametric.bootstrap</code>, 
+<code>optim</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">RNGversion(min(as.character(getRversion()),"3.6.1"))
+set.seed(12345, kind = "Mersenne-Twister", normal.kind = "Inversion")
+### We will first simulate a small phylogenetic tree using functions from ape. 
+### For simulating the tree one could also use alternative functions, e.g. sim.bd.taxa 
+### from the TreeSim package
+phyltree&lt;-ape::rtree(3)
+
+## The line below is not necessary but advisable for speed
+phyltree&lt;-phyltree_paths(phyltree)
+
+## 2 regimes
+### Define a vector of regimes.
+## regimes&lt;-c("small","small","large","small")
+## OUBMparameters&lt;-list(vY0=matrix(1,ncol=1,nrow=1),A=matrix(0.5,ncol=1,nrow=1),
+## B=matrix(2,ncol=1,nrow=1),mPsi=cbind("small"=1,"large"=-1),
+## Syy=matrix(2,ncol=1,nrow=1),vX0=matrix(0,ncol=1,nrow=1),Sxx=diag(2,1,1),
+## Syx=matrix(0,ncol=1,nrow=1),Sxy=matrix(0,ncol=1,nrow=1))
+## single regime for speed on CRAN
+regimes&lt;-c("small","small","small","small")
+OUBMparameters&lt;-list(vY0=matrix(1,ncol=1,nrow=1),A=matrix(0.5,ncol=1,nrow=1),
+B=matrix(2,ncol=1,nrow=1),mPsi=cbind("small"=1),
+Syy=matrix(2,ncol=1,nrow=1),vX0=matrix(0,ncol=1,nrow=1),Sxx=diag(2,1,1),
+Syx=matrix(0,ncol=1,nrow=1),Sxy=matrix(0,ncol=1,nrow=1))
+
+
+### Now simulate the data.
+OUBMdata&lt;-simulMVSLOUCHProcPhylTree(phyltree,OUBMparameters,regimes,NULL)
+OUBMdata&lt;-OUBMdata[phyltree$tip.label,,drop=FALSE]
+
+### Try to recover the parameters of the mvOUBM model.
+### maxiter here set to minimal working possibility, in reality it should be larger
+### e.g. default of c(10,50,100)
+### Also the Atype and Syytype variables should be changed, here set as simplest
+### for speed of evaluation, e.g. Atype="DecomposablePositive", Syytype="UpperTri"
+OUBMestim&lt;-mvslouchModel(phyltree,OUBMdata,1,regimes,Atype="SingleValueDiagonal",
+Syytype="SingleValueDiagonal",diagA="Positive",maxiter=c(1,2,1))
+RNGversion(as.character(getRversion()))
+
+## Not run:  ##It takes too long to run this
+## take a less trivial setup
+phyltree&lt;-ape::rtree(5)
+
+## The line below is not necessary but advisable for speed
+phyltree&lt;-phyltree_paths(phyltree)
+
+### Define a vector of regimes.
+regimes&lt;-c("small","small","large","small","small","large","large","large")
+
+### Define SDE parameters to be able to simulate data under the mvOUBM model.
+
+OUBMparameters&lt;-list(vY0=matrix(c(1,-1),ncol=1,nrow=2),A=rbind(c(9,0),c(0,5)),
+B=matrix(c(2,-2),ncol=1,nrow=2),mPsi=cbind("small"=c(1,-1),"large"=c(-1,1)),
+Syy=rbind(c(1,0.25),c(0,1)),vX0=matrix(0,1,1),Sxx=matrix(1,1,1),
+Syx=matrix(0,ncol=1,nrow=2),Sxy=matrix(0,ncol=2,nrow=1))
+
+
+### Now simulate the data.
+OUBMdata&lt;-simulMVSLOUCHProcPhylTree(phyltree,OUBMparameters,regimes,NULL)
+OUBMdata&lt;-OUBMdata[phyltree$tip.label,,drop=FALSE]
+
+### Try to recover the parameters of the mvOUBM model.
+OUBMestim&lt;-mvslouchModel(phyltree,OUBMdata,2,regimes,Atype="DecomposablePositive",
+Syytype="UpperTri",diagA="Positive",maxiter=c(10,50,100))
+
+### And finally bootstrap with particular interest in the evolutionary and optimal
+### regressions
+OUBMbootstrap&lt;-parametric.bootstrap(estimated.model=OUBMestim,phyltree=phyltree,
+values.to.bootstrap=c("evolutionary.regression","optimal.regression"),
+regimes=regimes,root.regime="small",M.error=NULL,predictors=c(3),kY=2,
+numboot=5,Atype="DecomposablePositive",Syytype="UpperTri",diagA="Positive")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

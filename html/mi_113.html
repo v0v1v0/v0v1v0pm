@@ -1,0 +1,124 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>fit_model</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Wrappers To Fit a Model</h2>
+
+<h3>Description</h3>
+
+<p>The methods are called by the <code>mi</code> function to model a given
+<code>missing_variable</code> as a function of all the other 
+<code>missing_variable</code>s and also their missingness pattern.
+By overwriting these methods, users can change the way a 
+<code>missing_variable</code> is modeled for the purposes of imputing
+its missing values. See also the table in <code>missing_variable</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">fit_model(y, data, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>An object that inherits from <code>missing_variable-class</code> or
+missing
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A <code>missing_data.frame</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments, not currently utilized
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>In <code>mi</code>, each <code>missing_variable</code> is modeled as a function of 
+all the other <code>missing_variable</code>s plus their missingness pattern. The
+<code>fit_model</code> methods are typically short wrappers around a statistical model fitting
+function and return the estimated model. The model is then passed to one of the 
+<code>mi-methods</code> to impute the missing values of that <code>missing_variable</code>.
+</p>
+<p>Users can easily overwrite these methods to estimate a different model, such as wrapping
+<code>glm</code> instead of <code>bayesglm</code>. See the source code for examples,
+but the basic outline is to first extract the <code>X</code> slot of the 
+<code>missing_data.frame</code>, then drop some of its columns using the <code>index</code> slot
+of the <code>missing_data.frame</code>, next pass the result along with the <code>data</code> slot
+of <code>y</code> to a statistical fitting function, and finally returned the appropriately classed
+result (along with the subset of <code>X</code> used in the model).
+</p>
+<p>Many of the optional arguments to a statistical fitting function can be specified using the
+slots of <code>y</code> (e.g. its <code>family</code> slot) or the slots of <b>data</b> (e.g. its 
+<code>weights</code> slot).
+</p>
+<p>The exception is the method where <code>y</code> is missing, which is used internally by 
+<code>mi</code>, and should <em>not</em> be overwritten unless great care is taken to understand
+its role.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>y</code> is missing, then the modified <code>missing_data.frame</code> passed to
+<code>data</code> is returned. Otherwise, the estimated model is returned as a classed
+list object.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Ben Goodrich and Jonathan Kropko, for this version, based on earlier versions written by Yu-Sung Su, Masanao Yajima,
+Maria Grazia Pittau, Jennifer Hill, and Andrew Gelman.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>missing_variable</code>, <code>mi</code>, <code>get_parameters</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">getMethod("fit_model", signature(y = "binary", data = "missing_data.frame"))
+setMethod("fit_model", signature(y = "binary", data = "missing_data.frame"), def =
+function(y, data, ...) {
+  to_drop &lt;- data@index[[y@variable_name]]
+  X &lt;- data@X[, -to_drop]
+  start &lt;- NULL
+  # using glm.fit() instead of bayesglm.fit()
+  out &lt;- glm.fit(X, y@data, weights = data@weights[[y@variable_name]], start = start, 
+                 family = y@family, Warning = FALSE, ...)
+  out$x &lt;- X
+  class(out) &lt;- c("glm", "lm") # not "bayesglm" class anymore
+  return(out)
+})
+## Not run: 
+if(!exists("imputations", env = .GlobalEnv)) {
+  imputations &lt;- mi:::imputations # cached from example("mi-package")
+}
+imputations &lt;- mi(imputations) # will use new fit_model() method for binary variables
+
+## End(Not run)
+</code></pre>
+
+
+</div>

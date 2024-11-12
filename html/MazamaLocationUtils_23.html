@@ -1,0 +1,136 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>table_addClustering</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Add clustering information to a dataframe</h2>
+
+<h3>Description</h3>
+
+<p>Clustering is used to identify unique deployments of a
+sensor in an environmental monitoring field study.
+</p>
+<p>Sensors will be moved around from time to time, sometimes across the country
+and sometimes across the street.  We would like to assign unique identifiers
+to each new "deployment" but not when the sensor is moved a short distance.
+</p>
+<p>We use clustering to find an appropriate number of unique "deployments".
+The sensitivity of this algorithm can be adjused with the clusterDiameter argument.
+</p>
+<p>Standard <code>kmeans</code> clustering does not work well when clusters can have widely
+differing numbers of members. A much better result is acheived with
+the Partitioning Around Medoids method available in <code>cluster::pam()</code>.
+</p>
+<p>The value of <code>clusterRadius</code> is compared with the output of
+<code>cluster::pam(...)$clusinfo[,'av_diss']</code> to determine the number of clusters.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">table_addClustering(
+  tbl,
+  clusterDiameter = 1000,
+  lonVar = "longitude",
+  latVar = "latitude",
+  maxClusters = 50
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>tbl</code></td>
+<td>
+<p>Tibble with geolocation information (<em>e.g.</em>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>clusterDiameter</code></td>
+<td>
+<p>Diameter in meters used to determine the number of
+clusters (see description).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lonVar</code></td>
+<td>
+<p>Name of longitude variable in the incoming tibble.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>latVar</code></td>
+<td>
+<p>Name of the latitude variable in the incoming tibble.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxClusters</code></td>
+<td>
+<p>Maximum number of clusters to try.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Input tibble with additional columns: <code>clusterLon, clusterLat</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The <code>table_addClustering()</code> function implements two-stage clustering
+using clusterByDistance. If the first attempt at clustering produces
+clustered locations that are still too close to eachother, another round
+of clustering is performed using the results of the previous attempt. This
+two-stage approach seems to work well in. practice.
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://working-with-data.mazamascience.com/2021/07/15/when-k-means-clustering-fails/">When k-means clustering fails</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>clusterByDistance
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(MazamaLocationUtils)
+
+# Fremont, Seattle 47.6504, -122.3509
+# Magnolia, Seattle 47.6403, -122.3997
+# Downtown Seattle 47.6055, -122.3370
+
+fremont_x &lt;- jitter(rep(-122.3509, 10), .0005)
+fremont_y &lt;- jitter(rep(47.6504, 10), .0005)
+
+magnolia_x &lt;- jitter(rep(-122.3997, 8), .0005)
+magnolia_y &lt;- jitter(rep(47.6403, 8), .0005)
+
+downtown_x &lt;- jitter(rep(-122.3370, 3), .0005)
+downtown_y &lt;- jitter(rep(47.6055, 3), .0005)
+
+# Apply clustering
+tbl &lt;-
+  dplyr::tibble(
+    longitude = c(fremont_x, magnolia_x, downtown_x),
+    latitude = c(fremont_y, magnolia_y, downtown_y)
+  ) %&gt;%
+  table_addClustering(
+    clusterDiameter = 1000
+  )
+
+plot(tbl$longitude, tbl$latitude, pch = tbl$clusterID)
+</code></pre>
+
+
+</div>

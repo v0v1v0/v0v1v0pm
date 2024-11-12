@@ -1,0 +1,131 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modelTest.merMod</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>estimate detailed results per variable and effect sizes for both fixed and random effects from lmer models</h2>
+
+<h3>Description</h3>
+
+<p>This function extends the current <code>drop1</code> method for
+<code>merMod</code> class objects from the lme4 package. Where
+the default method to be able to drop both fixed and random
+effects at once.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'merMod'
+modelTest(object, method = c("Wald", "profile", "boot"), control, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A <code>merMod</code> class object, the fitted result of
+<code>lmer</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>A character vector indicating the types of confidence
+intervals to calculate. One of “Wald”, “profile”, or
+“boot”.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>A <code>lmerControl()</code> results used to control how
+models are estimated when updating.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments passed to <code>confint</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>At the moment, the function is aimed to <code>lmer</code> models
+and has very few features for <code>glmer</code> or <code>nlmer</code>
+models. The primary motivation was to provide a way to
+provide an overall test of whether a variable
+“matters”.  In multilevel data, a variable may be
+included in both the fixed and random effects. To provide
+an overall test of whether it matters requires jointly testing
+the fixed and random effects. This also is needed to provide
+an overall effect size.
+</p>
+<p>The function works by generating a formula with one specific
+variable or “term” removed at all levels. A model is then
+fit on this reduced formula and compared to the full model passed
+in. This is a complex operation for mixed effects models for several
+reasons. Firstly, <code>R</code> has no default mechanism for dropping
+terms from both the fixed and random portions. Secondly,
+mixed effects models do not accomodate all types of models. For example,
+if a model includes only a random slope with no random intercept,
+if the random slope was dropped, there would be no more random effects,
+and at that point, <code>lmer</code> or <code>glmer</code> will not run the model.
+It is theoretically possible to instead fit the model using
+<code>lm</code> or <code>glm</code> but this becomes more complex for certain
+model comparisons and calculations and is not currently implemented.
+Marginal and conditional R2 values are calculated for each term,
+and these are used also to calculate something akin to an
+f-squared effect size.
+</p>
+<p>This is a new function and it is important to carefully evaluate
+the results and check that they are accurate and that they are
+sensible. Check accuracy by viewing the model formulae for each
+reduced model and checking that those are indeed accurate.
+In terms of checking whether a result is sensible or not,
+there is a large literature on the difficulty interpretting
+main effect tests in the presence of interactions. As it is
+challenging to detect all interactions, especially ones that are
+made outside of <code>R</code> formulae, all terms are tested. However,
+it likely does not make sense to report results from dropping a
+main effect but keeping the interaction term, so present
+and interpret these with caution.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## these examples are slow to run
+library(JWileymisc)
+m1 &lt;- lme4::lmer(extra ~ group + (1 | ID),
+data = sleep, REML=FALSE)
+modelTest(m1)
+
+
+data(aces_daily, package = "JWileymisc")
+
+strictControl &lt;- lme4::lmerControl(optCtrl = list(
+   algorithm = "NLOPT_LN_NELDERMEAD",
+   xtol_abs = 1e-10,
+   ftol_abs = 1e-10))
+
+m1 &lt;- lme4::lmer(NegAff ~ STRESS + (1 + STRESS | UserID),
+  data = aces_daily,
+  control = strictControl)
+modelTest(m1, method = "profile")
+
+m2 &lt;- lme4::lmer(NegAff ~ STRESS + I(STRESS^2) + (1 + STRESS | UserID),
+  data = aces_daily, control = strictControl)
+
+## might normally use more bootstraps but keeping low for faster run
+modelTest(m2, method = "boot", nsim = 100)
+
+</code></pre>
+
+
+</div>

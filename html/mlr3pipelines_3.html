@@ -1,0 +1,150 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>%&gt;&gt;%</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>PipeOp Composition Operator</h2>
+
+<h3>Description</h3>
+
+<p>These operators creates a connection that "pipes" data from the source <code>g1</code> into the sink <code>g2</code>.
+Both source and sink can either be
+a <code>Graph</code> or a <code>PipeOp</code> (or an object that can be automatically converted into a <code>Graph</code> or <code>PipeOp</code>, see <code>as_graph()</code> and <code>as_pipeop()</code>).
+</p>
+<p><code style="white-space: pre;">⁠%&gt;&gt;%⁠</code> and <code style="white-space: pre;">⁠%&gt;&gt;!%⁠</code> try to automatically match output channels of <code>g1</code> to input channels of <code>g2</code>; this is only possible if either
+</p>
+
+<ul>
+<li>
+<p> the number of output channels of <code>g1</code> (as given by <code>g1$output</code>) is equal to the
+number of input channels of <code>g2</code> (as given by <code>g2$input</code>), or
+</p>
+</li>
+<li> <p><code>g1</code> has only one output channel (i.e. <code>g1$output</code> has one line), or
+</p>
+</li>
+<li> <p><code>g2</code> has only one input channel, which is a <em>vararg</em> channel (i.e. <code>g2$input</code> has one line, with <code>name</code> entry <code>"..."</code>).
+</p>
+</li>
+</ul>
+<p>Connections between channels are created in the
+order in which they occur in <code>g1</code> and <code>g2</code>, respectively: <code>g1</code>'s output channel 1 is connected to <code>g2</code>'s input
+channel 1, channel 2 to 2 etc.
+</p>
+<p><code style="white-space: pre;">⁠%&gt;&gt;%⁠</code> always creates deep copies of its input arguments, so they cannot be modified by reference afterwards.
+To access individual <code>PipeOp</code>s after composition, use the resulting <code>Graph</code>'s <code style="white-space: pre;">⁠$pipeops⁠</code> list.
+<code style="white-space: pre;">⁠%&gt;&gt;!%⁠</code>, on the other hand, tries to avoid cloning its first argument: If it is a <code>Graph</code>, then this <code>Graph</code>
+will be modified in-place.
+</p>
+<p>When <code style="white-space: pre;">⁠%&gt;&gt;!%⁠</code> fails, then it leaves <code>g1</code> in an incompletely modified state. It is therefore usually recommended to use
+<code style="white-space: pre;">⁠%&gt;&gt;%⁠</code>, since the very marginal gain of performance from
+using <code style="white-space: pre;">⁠%&gt;&gt;!%⁠</code> often does not outweigh the risk of either modifying objects by-reference that should not be modified or getting
+graphs that are in an incompletely modified state. However,
+when creating long <code>Graph</code>s, chaining with <code style="white-space: pre;">⁠%&gt;&gt;!%⁠</code> instead of <code style="white-space: pre;">⁠%&gt;&gt;%⁠</code> can give noticeable performance benefits
+because <code style="white-space: pre;">⁠%&gt;&gt;%⁠</code> makes a number of <code>clone()</code>-calls that is quadratic in chain length, <code style="white-space: pre;">⁠%&gt;&gt;!%⁠</code> only linear.
+</p>
+<p><code>concat_graphs(g1, g2, in_place = FALSE)</code> is equivalent to <code>g1 %&gt;&gt;% g2</code>. <code>concat_graphs(g1, g2, in_place = TRUE)</code> is equivalent to <code>g1 %&gt;&gt;!% g2</code>.
+</p>
+<p>Both arguments of <code style="white-space: pre;">⁠%&gt;&gt;%⁠</code> are automatically converted to <code>Graph</code>s using <code>as_graph()</code>; this means that objects on either side may be objects
+that can be automatically converted to <code>PipeOp</code>s (such as <code>Learner</code>s or <code>Filter</code>s), or that can
+be converted to <code>Graph</code>s. This means, in particular, <code>list</code>s of <code>Graph</code>s, <code>PipeOp</code>s or objects convertible to that, because
+<code>as_graph()</code> automatically applies <code>gunion()</code> to <code>list</code>s. See examples. If the first argument of <code style="white-space: pre;">⁠%&gt;&gt;!%⁠</code> is not a <code>Graph</code>, then
+it is cloned just as when <code style="white-space: pre;">⁠%&gt;&gt;%⁠</code> is used; <code style="white-space: pre;">⁠%&gt;&gt;!%⁠</code> only avoids <code>clone()</code> if the first argument is a <code>Graph</code>.
+</p>
+<p>Note that if <code>g1</code> is <code>NULL</code>, <code>g2</code> converted to a <code>Graph</code> will be returned.
+Analogously, if <code>g2</code> is <code>NULL</code>, <code>g1</code> converted to a <code>Graph</code> will be returned.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">g1 %&gt;&gt;% g2
+
+concat_graphs(g1, g2, in_place = FALSE)
+
+g1 %&gt;&gt;!% g2
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>g1</code></td>
+<td>
+<p>(<code>Graph</code> | <code>PipeOp</code> | <code>Learner</code> | <code>Filter</code> | <code>list</code> | <code>...</code>) <br><code>Graph</code> / <code>PipeOp</code> / object-convertible-to-<code>PipeOp</code> to put in front of <code>g2</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>g2</code></td>
+<td>
+<p>(<code>Graph</code> | <code>PipeOp</code> | <code>Learner</code> | <code>Filter</code> | <code>list</code> | <code>...</code>) <br><code>Graph</code> / <code>PipeOp</code> / object-convertible-to-<code>PipeOp</code> to put after <code>g1</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>in_place</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br>
+Whether to try to avoid cloning <code>g1</code>. If <code>g1</code> is not a <code>Graph</code>, then it is cloned regardless.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>Graph</code>: the constructed <code>Graph</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other Graph operators: 
+<code>as_graph()</code>,
+<code>as_pipeop()</code>,
+<code>assert_graph()</code>,
+<code>assert_pipeop()</code>,
+<code>chain_graphs()</code>,
+<code>greplicate()</code>,
+<code>gunion()</code>,
+<code>mlr_graphs_greplicate</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">o1 = PipeOpScale$new()
+o2 = PipeOpPCA$new()
+o3 = PipeOpFeatureUnion$new(2)
+
+# The following two are equivalent:
+pipe1 = o1 %&gt;&gt;% o2
+
+pipe2 = Graph$new()$
+  add_pipeop(o1)$
+  add_pipeop(o2)$
+  add_edge(o1$id, o2$id)
+
+# Note automatical gunion() of lists.
+# The following three are equivalent:
+graph1 = list(o1, o2) %&gt;&gt;% o3
+
+graph2 = gunion(list(o1, o2)) %&gt;&gt;% o3
+
+graph3 = Graph$new()$
+  add_pipeop(o1)$
+  add_pipeop(o2)$
+  add_pipeop(o3)$
+  add_edge(o1$id, o3$id, dst_channel = 1)$
+  add_edge(o2$id, o3$id, dst_channel = 2)
+
+pipe1 %&gt;&gt;!% o3  # modify pipe1 in-place
+
+pipe1  # contains o1, o2, and o3 now.
+
+o1 %&gt;&gt;!% o2
+
+o1  # not changed, becuase not a Graph.
+</code></pre>
+
+
+</div>

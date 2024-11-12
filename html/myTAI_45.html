@@ -1,0 +1,220 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ReverseHourglassTest</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Perform the Reverse Hourglass Test</h2>
+
+<h3>Description</h3>
+
+<p>The <em>Reverse Hourglass Test</em> aims to statistically evaluate the
+existence of a reverse hourglass pattern based on <code>TAI</code> or <code>TDI</code> computations.
+The corresponding p-value quantifies the probability that a given TAI or TDI pattern (or any phylotranscriptomics pattern)
+does follow an hourglass like shape. A p-value &lt; 0.05 indicates that the corresponding phylotranscriptomics pattern does
+rather follow a reverse hourglass (low-high-low) shape.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ReverseHourglassTest(
+  ExpressionSet,
+  modules = NULL,
+  permutations = 1000,
+  lillie.test = FALSE,
+  plotHistogram = FALSE,
+  runs = 10,
+  parallel = FALSE,
+  gof.warning = FALSE,
+  custom.perm.matrix = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>ExpressionSet</code></td>
+<td>
+<p>a standard PhyloExpressionSet or DivergenceExpressionSet object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modules</code></td>
+<td>
+<p>a list storing three elements: early, mid, and late. Each element expects a numeric
+vector specifying the developmental stages or experiments that correspond to each module.
+For example, <code>module</code> = list(early = 1:2, mid = 3:5, late = 6:7) devides a dataset
+storing seven developmental stages into 3 modules.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>permutations</code></td>
+<td>
+<p>a numeric value specifying the number of permutations to be performed for the <code>ReverseHourglassTest</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lillie.test</code></td>
+<td>
+<p>a boolean value specifying whether the Lilliefors Kolmogorov-Smirnov Test shall be performed to quantify the goodness of fit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plotHistogram</code></td>
+<td>
+<p>a boolean value specifying whether a <em>Lillifor's Kolmogorov-Smirnov-Test</em>
+shall be performed to test the goodness of fit of the approximated distribution, as well as additional plots quantifying the significance
+of the observed phylotranscriptomic pattern.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>runs</code></td>
+<td>
+<p>specify the number of runs to be performed for goodness of fit computations, in case <code>plotHistogram</code> = <code>TRUE</code>.
+In most cases <code>runs</code> = 100 is a reasonable choice. Default is <code>runs</code> = 10 (because it takes less computation time for demonstration purposes).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>performing <code>runs</code> in parallel (takes all cores of your multicore machine).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gof.warning</code></td>
+<td>
+<p>a logical value indicating whether non significant goodness of fit results should be printed as warning. Default is <code>gof.warning = FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>custom.perm.matrix</code></td>
+<td>
+<p>a custom <code>bootMatrix</code> (permutation matrix) to perform the underlying test statistic. Default is <code>custom.perm.matrix = NULL</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The reverse hourglass test is a permutation test based on the following test statistic.
+</p>
+<p>(1) A set of developmental stages is partitioned into three modules - early, mid, and late - based on prior biological knowledge.
+</p>
+<p>(2) The mean <code>TAI</code> or <code>TDI</code> value for each of the three modules T_early, T_mid, and T_late are computed.
+</p>
+<p>(3) The two differences <code>D1 = T_mid - T_early</code> and <code>D2 = T_mid - T_late</code> are calculated.
+</p>
+<p>(4) The minimum <code>D_min</code> of <code>D1</code> and <code>D2</code> is computed as final test statistic of the reductive hourglass test.
+</p>
+<p>In order to determine the statistical significance of an observed minimum difference D_min
+the following permutation test was performed. Based on the <code>bootMatrix</code> D_min
+is calculated from each of the permuted <code>TAI</code> or <code>TDI</code> profiles,
+approximated by a Gaussian distribution with method of moments estimated parameters returned by <code>fitdist</code>,
+and the corresponding p-value is computed by <code>pnorm</code> given the estimated parameters of the Gaussian distribution.
+The <em>goodness of fit</em> for the random vector <em>D_min</em> is statistically quantified by an Lilliefors (Kolmogorov-Smirnov) test for normality.
+</p>
+<p>In case the parameter <em>plotHistogram = TRUE</em>, a multi-plot is generated showing:
+</p>
+<p>(1) A Cullen and Frey skewness-kurtosis plot generated by <code>descdist</code>.
+This plot illustrates which distributions seem plausible to fit the resulting permutation vector D_min.
+In the case of the <em>Reverse Hourglass Test</em> a normal distribution seemed plausible.
+</p>
+<p>(2) A histogram of <code>D_min</code> combined with the density plot is plotted. D_min is then fitted by a normal distribution.
+The corresponding parameters are estimated by <em>moment matching estimation</em> using the <code>fitdist</code> function.
+</p>
+<p>(3) A plot showing the p-values for N independent runs to verify that a specific p-value is biased by a specific permutation order.
+</p>
+<p>(4) A barplot showing the number of cases in which the underlying goodness of fit (returned by Lilliefors (Kolmogorov-Smirnov) test
+for normality) has shown to be significant (<code>TRUE</code>) or not significant (<code>FALSE</code>).
+This allows to quantify the permutation bias and their implications on the goodness of fit.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list object containing the list elements:
+</p>
+<p><code>p.value</code> : the p-value quantifying the statistical significance (low-high-low pattern) of the given phylotranscriptomics pattern.
+</p>
+<p><code>std.dev</code> : the standard deviation of the N sampled phylotranscriptomics patterns for each developmental stage S.
+</p>
+<p><code>lillie.test</code> : a boolean value specifying whether the <em>Lillifors KS-Test</em> returned a p-value &gt; 0.05,
+which indicates that fitting the permuted scores with a normal distribution seems plausible.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Hajk-Georg Drost
+</p>
+
+
+<h3>References</h3>
+
+<p>Drost HG et al. (2015) Mol Biol Evol. 32 (5): 1221-1231 doi:10.1093/molbev/msv012
+</p>
+<p>Quint M et al. (2012). A transcriptomic hourglass in plant embryogenesis. Nature (490): 98-101.
+</p>
+<p>M. L. Delignette-Muller, R. Pouillot, J.-B. Denis and C. Dutang (2014), fitdistrplus: help to fit
+of a parametric distribution to non-censored or censored data.
+</p>
+<p>Cullen AC and Frey HC (1999) Probabilistic techniques in exposure assessment. Plenum Press, USA, pp. 81-159.
+</p>
+<p>Evans M, Hastings N and Peacock B (2000) Statistical distributions. John Wiley and Sons Inc.
+</p>
+<p>Sokal RR and Rohlf FJ (1995) Biometry. W.H. Freeman and Company, USA, pp. 111-115.
+</p>
+<p>Juergen Gross and bug fixes by Uwe Ligges (2012). nortest: Tests for Normality. R package version
+1.0-2.
+</p>
+<p>http://CRAN.R-project.org/package=nortest
+</p>
+<p>Dallal, G.E. and Wilkinson, L. (1986): An analytic approximation to the distribution of Lilliefors' test for normality. The American Statistician, 40, 294-296.
+</p>
+<p>Stephens, M.A. (1974): EDF statistics for goodness of fit and some comparisons. Journal of the American Statistical Association, 69, 730-737.
+</p>
+<p>http://stackoverflow.com/questions/4290081/fitting-data-to-distributions?rq=1
+</p>
+<p>http://stats.stackexchange.com/questions/45033/can-i-use-kolmogorov-smirnov-test-and-estimate-distribution-parameters
+</p>
+<p>http://cran.r-project.org/doc/contrib/Ricci-distributions-en.pdf
+</p>
+<p>http://cran.r-project.org/doc/contrib/Ricci-distributions-en.pdf
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>reversehourglassScore</code>, <code>bootMatrix</code>, <code>FlatLineTest</code>, <code>EarlyConservationTest</code>, <code>PlotSignature</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+data(PhyloExpressionSetExample)
+
+# perform the reductive hourglass test for a PhyloExpressionSet
+# here the prior biological knowledge is that stages 1-2 correspond to module 1 = early,
+# stages 3-5 to module 2 = mid (phylotypic module), and stages 6-7 correspond to
+# module 3 = late
+ReverseHourglassTest(PhyloExpressionSetExample,
+                       modules = list(early = 1:2, mid = 3:5, late = 6:7),
+                       permutations = 1000)
+
+
+# use your own permutation matrix based on which p-values (ReverseHourglassTest)
+# shall be computed
+custom_perm_matrix &lt;- bootMatrix(PhyloExpressionSetExample,100)
+
+ReverseHourglassTest(PhyloExpressionSetExample,
+                     modules = list(early = 1:2, mid = 3:5, late = 6:7),
+                     custom.perm.matrix = custom_perm_matrix)
+
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,168 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>faultFilter</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Process Fault Filtering</h2>
+
+<h3>Description</h3>
+
+<p>Flag and filter out observations beyond normal operating
+conditions, then return the observations within normal operating
+conditions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">faultFilter(trainData, testData, updateFreq, faultsToTriggerAlarm = 5, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>trainData</code></td>
+<td>
+<p>An xts data matrix of initial training observations</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>testData</code></td>
+<td>
+<p>The data not included in the training data set</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>updateFreq</code></td>
+<td>
+<p>The number of observations from the test data matrix that
+must be returned to update the training data matrix and move it forward.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>faultsToTriggerAlarm</code></td>
+<td>
+<p>Specifies how many sequential faults will cause
+an alarm to trigger. Defaults to 5.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Lazy dots for additional internal arguments</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function is essentially a wrapper function to call and organize
+the output from these other internal functions: faultDetect(), threshold(),
+and pca(). It is applied over a rolling window, with observation width
+equal to updateFreq, of the larger full data matrix via the
+processMonitor() function, wherein the testing and training data sets move
+forward in time across the entire data matrix.
+</p>
+<p>This internal function is called by processMonitor().
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of class "fault_ls" with the following:
+</p>
+
+<dl>
+<dt>faultObj – </dt>
+<dd>
+<p>An xts flagging matrix with the same number of rows as
+"testData". This flag matrix has the following five columns:
+</p>
+
+<dl>
+<dt>SPE – </dt>
+<dd>
+<p>The SPE statistic value for each observation in
+"testData". This statistic is defined as
+</p>
+<p style="text-align: center;"><code class="reqn">
+              SPE_i = (\textbf{X}_i - \textbf{Y}_i * \textbf{P}^T) *
+               (\textbf{X}_i - \textbf{Y}_i * \textbf{P}^T)^T,
+            </code>
+</p>
+
+<p>where <code class="reqn">\textbf{X}_i</code> is the <code class="reqn">i^{th}</code> observation vector,
+<code class="reqn">\textbf{Y}_i</code> is the reduced-feature projection of the
+observation <code class="reqn">\textbf{X}_i</code>, and <code class="reqn">\textbf{P}</code> is the
+projection matrix such that <code class="reqn">\textbf{X}_i\textbf{P} =
+            \textbf{Y}_i</code>.</p>
+</dd>
+<dt>SPE_Flag – </dt>
+<dd>
+<p>A vector of SPE indicators recording 0 if the
+test statistic is less than or equal to the critical value
+passed through from the threshold object.</p>
+</dd>
+<dt>T2 – </dt>
+<dd>
+<p>The T2 statistic value for each observation in
+"testData". This statistic is defined as
+</p>
+<p style="text-align: center;"><code class="reqn">
+               T^2_i = \textbf{Y}_i * \textbf{D}^{-1} * \textbf{Y}_i^T,
+            </code>
+</p>
+
+<p>where <code class="reqn">\textbf{Y}_i = \textbf{X}_i\textbf{P}</code> is the reduced-
+feature projection of the observation <code class="reqn">\textbf{X}_i</code>, and
+<code class="reqn">\textbf{D}</code> is the diagonal matrix of eigenvalues.</p>
+</dd>
+<dt>T2_Flag – </dt>
+<dd>
+<p>A vector of T2 fault indicators, defined like
+SPE_Flag.</p>
+</dd>
+<dt>Alarm – </dt>
+<dd>
+<p>A column indicating if there have been five flags
+in a row for either the SPE or T2 monitoring statistics or both.
+Alarm states are as follows: 0 = no alarm, 1 = Hotelling's T2
+alarm, 2 = Squared Prediction Error alarm, and 3 = both alarms.</p>
+</dd>
+</dl>
+</dd>
+<dt>nonAlarmedTestObs – </dt>
+<dd>
+<p>An xts matrix of the first updateFreq number
+of rows of the training data which were not alarmed.</p>
+</dd>
+<dt>trainSpecs – </dt>
+<dd>
+<p>The threshold object returned by the internal
+threshold() function. See the threshold() function's help file for more
+details.</p>
+</dd>
+</dl>
+<h3>See Also</h3>
+
+<p>Calls: <code>pca</code>, <code>threshold</code>,
+<code>faultDetect</code>. Called by: <code>processMonitor</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">nrml &lt;- mspProcessData(faults = "NOC")
+# Select the data under state 1
+data &lt;- nrml[nrml[,1] == 1]
+
+faultFilter(trainData = data[1:672, -1],
+            testData = data[673:3360, -1],
+            updateFreq = 336)
+
+</code></pre>
+
+
+</div>

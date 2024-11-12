@@ -1,0 +1,131 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>average_forecast</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Average forecasts of MIDAS models</h2>
+
+<h3>Description</h3>
+
+<p>Average MIDAS model forecasts using specified weighting scheme. Produce in-sample and out-of-sample accuracy measures.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">average_forecast(
+  modlist,
+  data,
+  insample,
+  outsample,
+  type = c("fixed", "recursive", "rolling"),
+  fweights = c("EW", "BICW", "MSFE", "DMSFE"),
+  measures = c("MSE", "MAPE", "MASE"),
+  show_progress = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>modlist</code></td>
+<td>
+<p>a list of <code>midas_r</code> objects</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>a list with mixed frequency data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>insample</code></td>
+<td>
+<p>the low frequency indexes for in-sample data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>outsample</code></td>
+<td>
+<p>the low frequency indexes for out-of-sample data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>a string indicating which type of forecast to use.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fweights</code></td>
+<td>
+<p>names of weighting schemes</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>measures</code></td>
+<td>
+<p>names of accuracy measures</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>show_progress</code></td>
+<td>
+<p>logical, TRUE to show progress bar, FALSE for silent evaluation</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Given the data, split it to in-sample and out-of-sample data. Then given the list of models, reestimate each model with in-sample data and produce out-of-sample forecast. Given the forecasts average them with the specified weighting scheme. Then calculate the accuracy measures for individual and average forecasts.
+</p>
+<p>The forecasts can be produced in 3 ways. The <code>"fixed"</code> forecast uses model estimated with in-sample data. The <code>"rolling"</code> forecast reestimates model each time by increasing the in-sample by one low frequency observation and dropping the first low frequency observation. These reestimated models then are used to produce out-of-sample forecasts. The <code>"recursive"</code> forecast differs from <code>"rolling"</code> that it does not drop observations from the beginning of data.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list containing forecasts and tables of accuracy measures
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Virmantas Kvedaras, Vaidotas Zemlys
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(1001)  
+## Number of low-frequency observations
+n&lt;-250
+## Linear trend and higher-frequency explanatory variables (e.g. quarterly and monthly)
+trend&lt;-c(1:n)
+x&lt;-rnorm(4*n)
+z&lt;-rnorm(12*n)
+## Exponential Almon polynomial constraint-consistent coefficients
+fn.x &lt;- nealmon(p=c(1,-0.5),d=8)
+fn.z &lt;- nealmon(p=c(2,0.5,-0.1),d=17)
+## Simulated low-frequency series (e.g. yearly)
+y&lt;-2+0.1*trend+mls(x,0:7,4)%*%fn.x+mls(z,0:16,12)%*%fn.z+rnorm(n)
+mod1 &lt;- midas_r(y ~ trend + mls(x, 4:14, 4, nealmon) + mls(z, 12:22, 12, nealmon),
+                start=list(x=c(10,1,-0.1),z=c(2,-0.1)))
+mod2 &lt;- midas_r(y ~ trend + mls(x, 4:20, 4, nealmon) + mls(z, 12:25, 12, nealmon),
+                start=list(x=c(10,1,-0.1),z=c(2,-0.1)))
+
+##Calculate average forecasts
+avgf &lt;- average_forecast(list(mod1,mod2),
+                        data=list(y=y,x=x,z=z,trend=trend),
+                        insample=1:200,outsample=201:250,
+                        type="fixed",                            
+                        measures=c("MSE","MAPE","MASE"),
+                        fweights=c("EW","BICW","MSFE","DMSFE"))
+</code></pre>
+
+
+</div>

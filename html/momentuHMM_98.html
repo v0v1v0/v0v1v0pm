@@ -1,0 +1,255 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>prepData</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Preprocessing of the data streams and covariates</h2>
+
+<h3>Description</h3>
+
+<p>Preprocessing of the data streams, including calculation of step length, turning angle, and covariates from location data to be suitable for
+analysis using <code>fitHMM</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">prepData(data, ...)
+
+## Default S3 method:
+prepData(
+  data,
+  type = c("UTM", "LL"),
+  coordNames = c("x", "y"),
+  covNames = NULL,
+  spatialCovs = NULL,
+  centers = NULL,
+  centroids = NULL,
+  angleCovs = NULL,
+  altCoordNames = NULL,
+  ...
+)
+
+## S3 method for class 'hierarchical'
+prepData(
+  data,
+  type = c("UTM", "LL"),
+  coordNames = c("x", "y"),
+  covNames = NULL,
+  spatialCovs = NULL,
+  centers = NULL,
+  centroids = NULL,
+  angleCovs = NULL,
+  altCoordNames = NULL,
+  hierLevels,
+  coordLevel,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Either a data frame of data streams or a <code>crwData</code> (or <code>crwHierData</code>) object (as returned by <code>crawlWrap</code>). If <code>data</code> is a data frame, it can optionally include a field <code>ID</code>
+(identifiers for the observed individuals), coordinates from which step length ('step') 
+and turning angle ('angle') are calculated, and any covariates (with names matching <code>covNames</code> and/or <code>angleCovs</code>). 
+If step length and turning angle are to be calculated from coordinates, the <code>coordNames</code> argument 
+must identify the names for the x- (longitunal) and y- (latitudinal) coordinates, and, for hierarchical data, the <code>coordLevel</code> argument must identify the level of the hierarchy at which the location data are obtained.
+With the exception of <code>ID</code>, <code>coordNames</code>, and, for hierarchical data, <code>level</code>, all variables in <code>data</code> are treated as data streams unless identified
+as covariates in <code>covNames</code> and/or <code>angleCovs</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments passed to or from other methods</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p><code>'UTM'</code> if easting/northing provided (the default), <code>'LL'</code> if longitude/latitude. If <code>type='LL'</code> then step lengths are calculated in kilometers and turning angles are based on initial bearings (see <code>turnAngle</code>).
+Ignored if <code>data</code> is a <code>crwData</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coordNames</code></td>
+<td>
+<p>Names of the columns of coordinates in the <code>data</code> data frame. Default: <code>c("x","y")</code>. If <code>coordNames=NULL</code> then step lengths, turning angles, 
+and location covariates (i.e., those specified by <code>spatialCovs</code>, <code>centers</code>, and <code>angleCovs</code>) are not calculated. Ignored if <code>data</code> is a <code>crwData</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covNames</code></td>
+<td>
+<p>Character vector indicating the names of any covariates in <code>data</code> dataframe. Any variables in <code>data</code> (other than <code>ID</code>) that are not identified in 
+<code>covNames</code> and/or <code>angleCovs</code> are assumed to be data streams (i.e., missing values will not be accounted for).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>spatialCovs</code></td>
+<td>
+<p>List of <code>raster</code> objects for spatio-temporally referenced covariates. Covariates specified by <code>spatialCovs</code> are extracted from the raster 
+layer(s) based on the location data (and the z values for a raster <code>stack</code> 
+or <code>brick</code>) for each time step.  If an element of <code>spatialCovs</code> is a raster <code>stack</code> or <code>brick</code>, 
+then z values must be set using <code>raster::setZ</code> and <code>data</code> must include column(s) of the corresponding z value(s) for each observation (e.g., 'time').</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>centers</code></td>
+<td>
+<p>2-column matrix providing the x-coordinates (column 1) and y-coordinates (column 2) for any activity centers (e.g., potential 
+centers of attraction or repulsion) from which distance and angle covariates will be calculated based on the location data. If no row names are provided, then generic names are generated 
+for the distance and angle covariates (e.g., 'center1.dist', 'center1.angle', 'center2.dist', 'center2.angle'); otherwise the covariate names are derived from the row names
+of <code>centers</code> as <code>paste0(rep(rownames(centers),each=2),c(".dist",".angle"))</code>. As with covariates identified in <code>angleCovs</code>, note that the angle covariates for each activity center are calculated relative to 
+the previous movement direction (instead of standard direction relative to the x-axis); this is to allow the mean turning angle to be modelled as a function of these covariates using circular-circular regression in <code>fitHMM</code>
+or <code>MIfitHMM</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>centroids</code></td>
+<td>
+<p>List where each element is a data frame containing the x-coordinates ('x'), y-coordinates ('y'), and times (with user-specified name, e.g., ‘time’) for centroids (i.e., dynamic activity centers where the coordinates can change over time)
+from which distance and angle covariates will be calculated based on the location data. If any centroids are specified, then <code>data</code> must include a column indicating the time of each observation, and this column name must match the corresponding user-specified 
+name of the time column in <code>centroids</code> (e.g. ‘time’). Times can be numeric or POSIXt.  If no list names are provided, then generic names are generated 
+for the distance and angle covariates (e.g., 'centroid1.dist', 'centroid1.angle', 'centroid2.dist', 'centroid2.angle'); otherwise the covariate names are derived from the list names
+of <code>centroids</code> as <code>paste0(rep(names(centroids),each=2),c(".dist",".angle"))</code>. As with covariates identified in <code>angleCovs</code>, note that the angle covariates for each centroid are calculated relative to 
+the previous movement direction (instead of standard direction relative to the x-axis); this is to allow the mean turning angle to be modelled as a function of these covariates using circular-circular regression in <code>fitHMM</code>
+or <code>MIfitHMM</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>angleCovs</code></td>
+<td>
+<p>Character vector indicating the names of any circular-circular regression angular covariates in <code>data</code> or <code>spatialCovs</code> that need conversion from standard direction (in radians relative to the x-axis) to turning angle (relative to previous movement direction) 
+using <code>circAngles</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>altCoordNames</code></td>
+<td>
+<p>Character string indicating an alternative name for the returned location data. If provided, then <code>prepData</code> will return easting (or longitude) coordinate names as <code>paste0(altCoordNames,".x")</code> and northing (or latitude) as <code>paste0(altCoordNames,".y")</code> instead of <code>x</code> and <code>y</code>, respectively. This can be useful for location data that are intended to be modeled using a bivariate normal distribution (see <code>fitHMM</code>). Ignored unless <code>coordNames</code> are provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>hierLevels</code></td>
+<td>
+<p>Character vector indicating the levels of the hierarchy and their order, from top (coarsest scale) to bottom (finest scale), that are included in <code>data$level</code>. For example, for a 2-level hierarchy then 
+<code>hierLevels=c("1","2i","2")</code> indicates <code>data$level</code> for each observation can be one of three factor levels: "1" (coarse scale), "2i" (initial fine scale), and "2" (fine scale).  Ignored if <code>data</code> is a <code>crwHierData</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>coordLevel</code></td>
+<td>
+<p>Character string indicating the level of the hierarchy for the location data. If specified, then <code>data</code> must include a 'level' field indicating the level of the hierarchy for each observation.  Ignored if <code>coordNames</code> is <code>NULL</code> or <code>data</code> is a <code>crwHierData</code> object.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+
+<ul>
+<li>
+<p> If <code>data</code> is a <code>crwData</code> (or <code>crwHierData</code>) object, the <code>momentuHMMData</code> (or <code>momentuHierHMMData</code>) object created by <code>prepData</code> includes step lengths and turning angles calculated from the best predicted 
+locations (i.e., <code>crwData$crwPredict$mu.x</code> and <code>crwData$crwPredict$mu.y</code>). Prior to using <code>prepData</code>, additional data streams or covariates unrelated to location (including z-values associated with
+<code>spatialCovs</code> raster stacks or bricks) can be merged with the <code>crwData</code> (or <code>crwHierData</code>) object using <code>crawlMerge</code>.
+</p>
+</li>
+<li>
+<p> For hierarchical data, <code>data</code> must include a 'level' field indicating the level of the hierarchy for each observation, and, for location data identified by <code>coordNames</code>, the <code>coordLevel</code> argument must indicate the level of the hierarchy at which the location data are obtained.
+</p>
+</li>
+</ul>
+<h3>Value</h3>
+
+<p>An object <code>momentuHMMData</code> or <code>momentuHierHMMData</code>, i.e., a dataframe of:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>ID</code></td>
+<td>
+<p>The ID(s) of the observed animal(s)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Data streams (e.g., 'step', 'angle', etc.)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Either easting or longitude (if <code>coordNames</code> is specified or <code>data</code> is a <code>crwData</code> object)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Either norting or latitude (if <code>coordNames</code> is specified or <code>data</code> is a <code>crwData</code> object)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Covariates (if any)</p>
+</td>
+</tr>
+</table>
+<h3>See Also</h3>
+
+<p><code>crawlMerge</code>, <code>crawlWrap</code>, <code>crwData</code>
+</p>
+<p><code>crwHierData</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">coord1 &lt;- c(1,2,3,4,5,6,7,8,9,10)
+coord2 &lt;- c(1,1,1,2,2,2,1,1,1,2)
+cov1 &lt;- rnorm(10)
+
+data &lt;- data.frame(coord1=coord1,coord2=coord2,cov1=cov1)
+d &lt;- prepData(data,coordNames=c("coord1","coord2"),covNames="cov1")
+
+# include additional data stream named 'omega'
+omega &lt;- rbeta(10,1,1)
+data &lt;- data.frame(coord1=coord1,coord2=coord2,omega=omega,cov1=cov1)
+d &lt;- prepData(data,coordNames=c("coord1","coord2"),covNames="cov1")
+
+# include 'forest' example raster layer as covariate
+data &lt;- data.frame(coord1=coord1*1000,coord2=coord2*1000)
+spatialCov &lt;- list(forest=forest)
+d &lt;- prepData(data,coordNames=c("coord1","coord2"),spatialCovs=spatialCov)
+
+# include 2 activity centers
+data &lt;- data.frame(coord1=coord1,coord2=coord2,cov1=cov1)
+d &lt;- prepData(data,coordNames=c("coord1","coord2"),covNames="cov1",
+              centers=matrix(c(0,10,0,10),2,2,dimnames=list(c("c1","c2"),NULL)))
+              
+# include centroid
+data &lt;- data.frame(coord1=coord1,coord2=coord2,cov1=cov1,time=1:10)
+d &lt;- prepData(data,coordNames=c("coord1","coord2"),covNames="cov1",
+              centroid=list(centroid=data.frame(x=coord1+rnorm(10),
+                                                y=coord2+rnorm(10),
+                                                time=1:10)))
+              
+# Include angle covariate that needs conversion to 
+# turning angle relative to previous movement direction
+u &lt;- rnorm(10) # horizontal component
+v &lt;- rnorm(10) # vertical component
+cov2 &lt;- atan2(v,u)
+data &lt;- data.frame(coord1=coord1,coord2=coord2,cov1=cov1,cov2=cov2)
+d &lt;- prepData(data,coordNames=c("coord1","coord2"),covNames="cov1",
+              angleCovs="cov2")
+
+</code></pre>
+
+
+</div>

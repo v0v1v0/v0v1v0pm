@@ -1,0 +1,235 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>simHMM</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Simulates data from Hidden Markov Model</h2>
+
+<h3>Description</h3>
+
+<p>Creates a set of data from a specified HMM model for capture-recapture data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">simHMM(
+  data,
+  ddl = NULL,
+  begin.time = 1,
+  model = "hmmCJS",
+  title = "",
+  model.parameters = list(),
+  design.parameters = list(),
+  initial = NULL,
+  groups = NULL,
+  time.intervals = NULL,
+  accumulate = TRUE,
+  strata.labels = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>Either the raw data which is a dataframe with at least one column named ch (a character field containing the capture history) or a processed dataframe</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ddl</code></td>
+<td>
+<p>Design data list which contains a list element for each parameter type; if NULL it is created</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>begin.time</code></td>
+<td>
+<p>Time of first capture(release) occasion</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>Type of c-r model</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>title</code></td>
+<td>
+<p>Optional title; not used at present</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.parameters</code></td>
+<td>
+<p>List of model parameter specifications</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>design.parameters</code></td>
+<td>
+<p>Specification of any grouping variables for design data for each parameter</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial</code></td>
+<td>
+<p>Optional list (by parameter type) of initial values for beta parameters (e.g., initial=list(Phi=0.3,p=-2)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>groups</code></td>
+<td>
+<p>Vector of names of factor variables for creating groups</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>time.intervals</code></td>
+<td>
+<p>Intervals of time between the capture occasions</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>accumulate</code></td>
+<td>
+<p>if TRUE, like capture-histories are accumulated to reduce computation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strata.labels</code></td>
+<td>
+<p>labels for strata used in capture history; they are converted to numeric in the order listed. Only needed to specify unobserved strata. For any unobserved strata p=0..</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The specification for the simulation includes a set of data with at least 2 unique ch and freq value to 
+specify the number of ch values to simulate that start at the specified occasion. For example, 
+1000 50
+0100 50
+0010 50
+would simulate 150 capture histories with 50 starting at each of occasions 1 2 and 3. The data can also 
+contain other fields used to generate the model probabilities and each row can have freq=1 to use individual
+covariates. Either a dataframe (data) is provided and it is processed and the design data list are created
+or the processed dataframe and design data list are provided. Formula for the model parameters for generating 
+the data are provided in model.parameters and parameter values are provided in initial.
+</p>
+
+
+<h3>Value</h3>
+
+<p>dataframe with simulated data
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jeff Laake
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# simulate phi(.) p(.) with 1000 Females and 100 males, 3 occasions all released on first occasion
+df=simHMM(data.frame(ch=c("100","110"),sex=factor(c("F","M")),freq=c(1000,100),
+   stringsAsFactors=FALSE))
+df=simHMM(data.frame(ch=rep("100",100),u=rnorm(100,0,1),freq=rep(1,100),
+  stringsAsFactors=FALSE),
+  model.parameters=list(Phi=list(formula=~u),p=list(formula=~time)),
+   initial=list(Phi=c(1,1),p=c(0,1)))
+df=simHMM(data.frame(ch=c("1000","0100","0010"),freq=rep(50,3),stringsAsFactors=FALSE),
+  model.parameters=list(Phi=list(formula=~1),p=list(formula=~time)),
+    initial=list(Phi=c(1),p=c(0,1,2)))
+
+######################################################################## 
+# Example developed by Jay Rotella, Montana State University
+# example of using the 'simHMM' function in 'marked' package for
+#  a multi-state model with 3 states
+
+# simulate a single release cohort of 1000 animals with 1 release from 
+#  each of the 3 states for 10 recapture occasions; 
+# Note: at least 2 unique ch are needed in simHMM
+simd &lt;- data.frame(ch = c("A0000000000", "B0000000000", "C0000000000"),
+	freq = c(1000, 1000, 1000),
+	stringsAsFactors = FALSE)
+
+# define simulation/fitting model; default for non-specified parameters is ~1
+# but all are listed here. For the formula for Psi, the -1 is necessary to remove
+# the intercept which is not needed and would be redundant. 
+# The formula '~ -1 + stratum:tostratum' is often appropriate for multi-state
+# transitions as it allows different values for Psi depending on 
+# the current state (state at time t) and the new state (state at t+1). 
+modelspec &lt;- list(
+	S = list(formula = ~ -1 + stratum),
+	# by presenting the formula for S as '~-1+stratum', it is possible to 
+	# present the desired survival rates directly for each group in the 
+	# simulations (see how 'initial' is created below) for this simple
+	# scenario where survival varies by stratum but no other covariates
+	p = list(formula = ~ 1),
+	Psi = list(formula =  ~ -1 + stratum:tostratum))
+
+# process data with A,B,C strata
+sd &lt;- process.data(simd,
+	model = "hmmMSCJS",
+	strata.labels = c("A", "B", "C"))
+
+# create design data
+ddl &lt;- make.design.data(sd)
+# view design data (especially important for seeing which order to present
+#  beta values used to set probabilities for various transitions)
+head(model.matrix(~stratum, ddl$S))
+head(model.matrix(~-1+stratum:tostratum, ddl$Psi), 9)
+
+# set initial parameter values for model S=~stratum, p=~1, Psi=~stratum:tostratum
+initial &lt;- list(S = c(log(0.8/0.2), log(0.6/0.4), log(0.5/0.5)),
+	p = log(0.6/0.4),
+	# order of presentation is BA, CA, AB, CB, AC, BC
+	# Note: values for AA, BB, CC are obtained by subtraction
+	Psi = c(log(0.2/0.6), log(0.3/0.1),   # Psi(BA) &amp; Psi(CA)
+			log(0.3/0.5), log(0.6/0.1),   # Psi(AB) &amp; Psi(CB)
+			log(0.2/0.5), log(0.2/0.6)))  # Psi(AC) &amp; Psi(BC)
+# The desired probabilties for the transition matrix for Psi are as follows
+#        To:
+# From:    A   B    C
+#    A   .5   .3   .2
+#    B   .2   .6   .2
+#    C   .3   .6   .4
+# The values in the list above are obtained using the transitions AA, BB, CC
+#  as reference values in the denominator of log-odds calculations. 
+# For example, to achieve the desired probabilities for the transition 
+#  from A to B use log(0.3/0.5) and from A to C use log(0.2/0.5)
+# exp(log(0.3/0.5))/(1 + exp(log(0.3/0.5)) + exp(log(0.2/0.5))) = 0.3
+# exp(log(0.2/0.5))/(1 + exp(log(0.3/0.5)) + exp(log(0.2/0.5))) = 0.2
+# Note:           1/(1 + exp(log(0.3/0.5)) + exp(log(0.2/0.5))) = 0.5
+
+# call simmHMM to get a single realization
+realization &lt;- simHMM(sd, ddl, model.parameters = modelspec, 
+		initial = initial)
+
+# using that realization, process data and make design data
+# note that the analysis can also use model="MSCJS" in marked or "Multistrata" in RMark
+# it is only the simulation that requires specification as an HMM.
+sd &lt;- process.data(realization, model = "hmmMSCJS",
+	strata.labels = c("A","B","C"))
+rddl &lt;- make.design.data(sd)
+
+# fit model
+m &lt;- crm(sd, rddl, model.parameters = modelspec,
+	hessian = TRUE)
+
+# model output
+m$results$beta
+initial
+m$results$reals
+
+</code></pre>
+
+
+</div>

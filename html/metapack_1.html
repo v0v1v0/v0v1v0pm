@@ -1,0 +1,246 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bayes_nmr</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit Bayesian Network Meta-Regression Models</h2>
+
+<h3>Description</h3>
+
+<p>This is a function the fits the model introduced in <em>Bayesian Network Meta-Regression Models Using Heavy-Tailed Multivariate Random Effects with Covariate-Dependent Variances</em>. The first seven arguments are required except <code>ZCovariate</code>. If not provided, <code>ZCovariate</code> will be assigned a vector of ones, <code>rep(1, length(Outcome))</code>. <code>ZCovariate</code> is the centerpiece of the modeling of variances and the heavy-tailed random effects distribution.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bayes_nmr(
+  Outcome,
+  SD,
+  XCovariate,
+  ZCovariate,
+  Treat,
+  Trial,
+  Npt,
+  prior = list(),
+  mcmc = list(),
+  control = list(),
+  init = list(),
+  Treat_order = NULL,
+  Trial_order = NULL,
+  scale_x = FALSE,
+  verbose = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Outcome</code></td>
+<td>
+<p>the aggregate mean of the responses for each arm of every study.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>SD</code></td>
+<td>
+<p>the standard deviation of the responses for each arm of every study.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>XCovariate</code></td>
+<td>
+<p>the aggregate covariates for the fixed effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ZCovariate</code></td>
+<td>
+<p>the aggregate covariates associated with the variance of the random effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Treat</code></td>
+<td>
+<p>the treatment identifiers for trial arm. This is equivalent to the arm labels in each study. The elements within will be coerced to consecutive integers</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Trial</code></td>
+<td>
+<p>the study/trial identifiers. The elements within will be coerced to consecutive integers.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Npt</code></td>
+<td>
+<p>the number of observations/participants for a unique <code style="white-space: pre;">⁠(k,t)⁠</code>, or each arm of every trial.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>(Optional) a list of hyperparameters. The hyperparameters include <code>df</code>, <code>c01</code>, <code>c02</code>, <code>a4</code>, <code>b4</code>, <code>a5</code>, and <code>b5</code>. <code>df</code> indicates the degrees of freedom whose value is 20. The hyperparameters <code style="white-space: pre;">⁠a*⁠</code> and <code style="white-space: pre;">⁠b*⁠</code> will take effect only if <code>sample_df=TRUE</code>. See <code>control</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mcmc</code></td>
+<td>
+<p>(Optional) a list of MCMC specification. <code>ndiscard</code> is the number of burn-in iterations. <code>nskip</code> configures the thinning of the MCMC. For instance, if <code>nskip=5</code>, <code>bayes_nmr</code> will save the posterior sample every 5 iterations. <code>nkeep</code> is the size of the posterior sample. The total number of iterations will be <code>ndiscard + nskip * nkeep</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>control</code></td>
+<td>
+<p>(Optional) a list of parameters for <a href="https://en.wikipedia.org/wiki/Metropolis-Hastings_algorithm">the Metropolis-Hastings algorithm</a>. <code>lambda</code>, <code>phi</code>, and <code>Rho</code> are sampled through the localized Metropolis algorithm. <code style="white-space: pre;">⁠*_stepsize⁠</code> with the asterisk replaced with one of the names above specifies the stepsize for determining the sample evaluation points in the localized Metropolis algorithm. <code>sample_Rho</code> can be set to <code>FALSE</code> to suppress the sampling of <code>Rho</code>. When <code>sample_Rho</code> is <code>FALSE</code>, <code>Rho</code> will be fixed using the value given by the <code>init</code> argument, which defaults to an equicorrelation matrix of <code class="reqn">0.5\boldsymbol{I}+0.5\boldsymbol{1}\boldsymbol{1}^\prime</code> where <code class="reqn">\boldsymbol{1}</code> is the vector of ones. When <code>sample_df</code> is <code>TRUE</code>, <code>df</code> will be sampled.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+<p>(Optional) a list of initial values for the parameters to be sampled: <code>theta</code>, <code>phi</code>, <code>sig2</code>, and <code>Rho</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Treat_order</code></td>
+<td>
+<p>(Optional) a vector of unique treatments to be used for renumbering the <code>Treat</code> vector. The first element will be assigned treatment zero, potentially indicating placebo. If not provided, the numbering will default to an alphabetical/numerical order.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Trial_order</code></td>
+<td>
+<p>(Optional) a vector unique trials. The first element will be assigned trial zero. If not provided, the numbering will default to an alphabetical/numerical order.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale_x</code></td>
+<td>
+<p>(Optional) a logical variable indicating whether <code>XCovariate</code> should be scaled/standardized. The effect of setting this to <code>TRUE</code> is not limited to merely standardizing <code>XCovariate</code>. The following generic functions will scale the posterior sample of <code>theta</code> back to its original unit: <code>plot</code>, <code>fitted</code>, <code>summary</code>, and <code>print</code>. That is <code>theta[j] &lt;- theta[j] / sd(XCovariate[,j])</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>(Optional) a logical value indicating whether to print the progress bar during the MCMC sampling.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>bayes_nmr</code> returns an object of class <code>"bayesnmr"</code>. The functions <code>summary</code> or <code>print</code> are used to obtain and print a summary of the results. The generic accessor function <code>fitted</code> extracts the posterior mean, posterior standard deviation, and the interval estimates of the value returned by <code>bayes_nmr</code>.
+</p>
+<p>An object of class <code>bayesnmr</code> is a list containing the following components:
+</p>
+
+<ul>
+<li> <p><code>Outcome</code> - the aggregate response used in the function call.
+</p>
+</li>
+<li> <p><code>SD</code> - the standard deviation used in the function call.
+</p>
+</li>
+<li> <p><code>Npt</code> - the number of participants for <code style="white-space: pre;">⁠(k,t)⁠</code> used in the function call.
+</p>
+</li>
+<li> <p><code>XCovariate</code> - the aggregate design matrix for fixed effects used in the function call. Depending on <code>scale_x</code>, this may differ from the matrix provided at function call.
+</p>
+</li>
+<li> <p><code>ZCovariate</code> - the aggregate design matrix for random effects. <code>bayes_nmr</code> will assign <code>rep(1, length(Outcome))</code> if it was not provided at function call.
+</p>
+</li>
+<li> <p><code>Trial</code> - the <em>renumbered</em> trial indicators. Depending on <code>Trial_order</code>, it may differ from the vector provided at function call.
+</p>
+</li>
+<li> <p><code>Treat</code> - the <em>renumbered</em> treatment indicators. Depending on <code>Treat_order</code>, it may differ from the vector provided at function call.
+</p>
+</li>
+<li> <p><code>TrtLabels</code> - the vector of treatment labels corresponding to the renumbered <code>Treat</code>. This is equivalent to <code>Treat_order</code> if it was given at function call.
+</p>
+</li>
+<li> <p><code>TrialLabels</code> - the vector of trial labels corresponding to the renumbered <code>Trial</code>. This is equivalent to <code>Trial_order</code> if it was given at function call.
+</p>
+</li>
+<li> <p><code>K</code> - the total number of trials.
+</p>
+</li>
+<li> <p><code>nT</code> - the total number of treatments.
+</p>
+</li>
+<li> <p><code>scale_x</code> - a Boolean indicating whether <code>XCovariate</code> has been scaled/standardized.
+</p>
+</li>
+<li> <p><code>prior</code> - the list of hyperparameters used in the function call.
+</p>
+</li>
+<li> <p><code>control</code> - the list of tuning parameters used for MCMC in the function call.
+</p>
+</li>
+<li> <p><code>mcmctime</code> - the elapsed time for the MCMC algorithm in the function call. This does not include all the other preprocessing and post-processing outside of MCMC.
+</p>
+</li>
+<li> <p><code>mcmc</code> - the list of MCMC specification used in the function call.
+</p>
+</li>
+<li> <p><code>mcmc.draws</code> - the list containing the MCMC draws. The posterior sample will be accessible here.
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Daeyoung Lim, <a href="mailto:daeyoung.lim@uconn.edu">daeyoung.lim@uconn.edu</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Li, H., Chen, M. H., Ibrahim, J. G., Kim, S., Shah, A. K., Lin, J., &amp; Tershakovec, A. M. (2019). Bayesian inference for network meta-regression using multivariate random effects with applications to cholesterol lowering drugs. <em>Biostatistics</em>, <strong>20(3)</strong>, 499-516.
+</p>
+<p>Li, H., Lim, D., Chen, M. H., Ibrahim, J. G., Kim, S., Shah, A. K., &amp; Lin, J. (2021). Bayesian network meta-regression hierarchical models using heavy-tailed multivariate random effects with covariate-dependent variances. <em>Statistics in Medicine</em>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>bmeta_analyze</code> for using the <code>Formula</code> interface
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(metapack)
+data(TNM)
+groupInfo &lt;- list(c("PBO"), c("R"))
+nz &lt;- length(groupInfo)
+ns &lt;- nrow(TNM)
+XCovariate &lt;- model.matrix(~ 0 + bldlc + bhdlc + btg + age +
+ white + male + bmi + potencymed + potencyhigh + durat, data = TNM)
+XCovariate &lt;- scale(XCovariate, center = TRUE, scale = FALSE)
+ZCovariate &lt;- matrix(0, ns, nz)
+for (j in 1:length(groupInfo)) {
+    for (i in 1:ns) {
+        if (TNM$treat[i] %in% groupInfo[[j]]) {
+            ZCovariate[i, j] &lt;- 1
+        }
+    }
+}
+addz &lt;- scale(cbind(TNM$bldlc, TNM$btg), center=TRUE, scale=TRUE)
+ZCovariate &lt;- cbind(1, ZCovariate, addz)
+theta_init &lt;- c(0.05113, -1.38866, 1.09817, -0.85855, -1.12056, -1.14133,
+             -0.22435, 3.63453, -2.09322, 1.07858, 0.80566, -40.76753,
+             -45.07127, -28.27232, -44.14054, -28.13203, -19.19989,
+             -47.21824, -51.31234, -48.46266, -47.71443)
+set.seed(2797542)
+fit &lt;- bayes_nmr(TNM$ptg, TNM$sdtg, XCovariate, ZCovariate, TNM$treat,
+    TNM$trial, TNM$n, prior = list(c01 = 1.0e05, c02 = 4, df = 3),
+    mcmc = list(ndiscard = 1, nskip = 1, nkeep = 1),
+    init = list(theta = theta_init),
+    Treat_order = c("PBO", "S", "A", "L", "R", "P", "E", "SE",
+         "AE", "LE", "PE"),
+    scale_x = TRUE, verbose = FALSE)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,170 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>bf_equality</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Bayes Factor with Inequality and (Approximate) Equality Constraints</h2>
+
+<h3>Description</h3>
+
+<p>To obtain the Bayes factor for the equality constraints <code>C*x = d</code>, a
+sequence of approximations <code>abs(C*x - d) &lt; delta</code> is used.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">bf_equality(
+  k,
+  options,
+  A,
+  b,
+  C,
+  d,
+  prior = rep(1, sum(options)),
+  M1 = 1e+05,
+  M2 = 20000,
+  delta = 0.5^(1:8),
+  return_Ab = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>the number of choices for each alternative ordered by item type (e.g.
+<code>c(a1,a2,a3,  b1,b2)</code> for a ternary and a binary item type).
+The length of <code>k</code> must be equal to the sum of <code>options</code>.
+The default <code>k=0</code> is equivalent to sampling from the prior.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>options</code></td>
+<td>
+<p>number of observable categories/probabilities for each item
+type/multinomial distribution, e.g., <code>c(3,2)</code> for a ternary and binary item.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>A</code></td>
+<td>
+<p>a matrix with one row for each linear inequality constraint and one
+column for each of the free parameters. The parameter space is defined
+as all probabilities <code>x</code> that fulfill the order constraints  <code>A*x &lt;= b</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b</code></td>
+<td>
+<p>a vector of the same length as the number of rows of <code>A</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>C</code></td>
+<td>
+<p>a matrix specifying the equality constraints <code>C*x = d</code> with
+columns refering to the free parameters (similar to <code>A</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>d</code></td>
+<td>
+<p>a vector with the same number of elements as the rows of <code>C</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>the prior parameters of the Dirichlet-shape parameters.
+Must have the same length as <code>k</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M1</code></td>
+<td>
+<p>number of independent samples from the encompassing model to test
+whether <code>A*x &lt; b</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M2</code></td>
+<td>
+<p>number of Gibbs-sampling iterations for each step of the approximation
+of <code>C*x = d</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>delta</code></td>
+<td>
+<p>a vector of stepsizes that are used for the approximation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>return_Ab</code></td>
+<td>
+<p>if <code>TRUE</code>, the function returns a list with the additional
+inequality constraints (specified via <code>A</code>, <code>b</code>, and <code>steps</code>)
+that are used in the stepwise approximation <code>abs(C*x - d) &lt; delta[i]</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments passed to <code>count_binom</code> or
+<code>count_multinom</code> (e.g., <code>M</code>, <code>steps</code>).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>First, the encompassing Bayes factor for the equality constraint <code>A*x&lt;b</code>
+is computed using <code>M1</code> independent Dirichlet samples. Next, the equality
+constraint <code>C*x=d</code> is approximated by drawing samples from the model
+<code>A*x&lt;b</code> and testing whether <code>abs(C*x - d) &lt; delta[1]</code>. Similarly, the
+stepsize <code>delta</code> is reduced step by step until <code>abs(C*x - d) &lt; min(delta)</code>.
+Klugkist  et al. (2010) show that this procedure provides a valid approximation
+of the exact equality constraints if the step size becomes sufficiently small.
+</p>
+
+
+<h3>References</h3>
+
+<p>Klugkist, I., Laudy, O., &amp; Hoijtink, H. (2010). Bayesian evaluation of inequality and equality constrained hypotheses for contingency tables. Psychological Methods, 15(3), 281-299. <a href="https://doi.org/10.1037/a0020137">doi:10.1037/a0020137</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Equality constraints:  C * x = d
+d &lt;- c(.5, .5, 0)
+C &lt;- matrix(
+  c(
+    1, 0, 0, 0, # p1 = .50
+    0, 1, 0, 0, # p2 = .50
+    0, 0, 1, -1
+  ), # p3 = p4
+  ncol = 4, byrow = TRUE
+)
+k &lt;- c(3, 7, 6, 4, 2, 8, 5, 5)
+options &lt;- c(2, 2, 2, 2)
+bf_equality(k, options,
+  C = C, d = d, delta = .5^(1:5),
+  M1 = 50000, M2 = 5000
+) # only for CRAN checks
+
+# check against exact equality constraints (see ?bf_binom)
+k_binom &lt;- k[seq(1, 7, 2)]
+bf_binom(k_binom,
+  n = 10, A = matrix(0), b = 0,
+  map = c(0, 0, 1, 1)
+)
+</code></pre>
+
+
+</div>

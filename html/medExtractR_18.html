@@ -1,0 +1,217 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>medExtractR_tapering</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Extract Medication Entities From Clinical Note - Extension of <code>medExtractR</code> for Tapering applications</h2>
+
+<h3>Description</h3>
+
+<p>This function identifies medication entities of interest and returns found
+expressions with start and stop positions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">medExtractR_tapering(
+  note,
+  drug_names,
+  unit,
+  max_dist = 0,
+  drug_list = "rxnorm",
+  lastdose = FALSE,
+  strength_sep = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>note</code></td>
+<td>
+<p>Text to search.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>drug_names</code></td>
+<td>
+<p>Vector of drug names of interest to locate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>unit</code></td>
+<td>
+<p>Strength unit to look for (e.g., ‘mg’).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_dist</code></td>
+<td>
+<p>Numeric - edit distance to use when searching for <code>drug_names</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>drug_list</code></td>
+<td>
+<p>Vector of known drugs that may end search window. By default calls
+<code>rxnorm_druglist</code>. Can be supplemented with expressions in <code>addl_expr</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lastdose</code></td>
+<td>
+<p>Logical - whether or not last dose time entity should be extracted. See ‘Details’
+section below for more information.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strength_sep</code></td>
+<td>
+<p>Delimiter for contiguous medication strengths (e.g., ‘-’ for “LTG 200-300”).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Parameter settings used in dictionary-based entities. For each dictionary-based
+entity, the user can supply the optional arguments <code>&lt;entity&gt;_fun</code> and <code>&lt;entity&gt;_dict</code>
+to provide custom extraction functions and dictionaries, respectively. If no additional arguments are provided,
+<code>medExtractR_tapering</code> will use <code>extract_generic</code> and the default dictionary for each entity.
+See <code>extract_entities_tapering</code> documentation for details.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function uses a combination of regular expressions, rule-based
+approaches, and dictionaries to identify various drug entities of interest, with a
+particular focus on drugs administered with a tapering schedule.
+Specific medications to be found are specified with <code>drug_names</code>, which
+is not case-sensitive or space-sensitive (e.g., ‘lamotrigine XR’ is treated
+the same as ‘lamotrigineXR’). Entities to be extracted include drug name, strength,
+dose amount, dose strength, frequency, intake time, route, duration, dose schedule,
+time keyword, preposition, transition, dispense amount, refill, and time of last dose.
+While it is still an optional entity in <code>medExtractR_tapering</code>, if <code>lastdose=TRUE</code>
+then <code>medExtractR_tapering</code> will search for time of last dose in the same search window used for all
+other entities. As a result, there is no need for the <code>lastdose_window_ext</code> argument. See
+<code>extract_entities_tapering</code> and <code>extract_lastdose</code> for more details.
+</p>
+<p>When searching for medication names of interest, fuzzy matching may be used.
+The <code>max_dist</code> argument determines the maximum edit distance allowed for
+such matches. If using fuzzy matching, any drug name with less than 7 characters
+will force an exact match, regardless of the value of <code>max_dist</code>. The default value of 7 was
+selected based on a set of training notes for the drug prednisone, and differs slightly from the default
+values of 5 for <code>medExtractR</code>. The tapering extension does not use the <code>window_length</code> argument
+to define the search window, since tapering schedules can be much longer than a static regimens.
+Instead, <code>medExtractR_tapering</code> dynamically generates the search window based on competing drug names or
+phrases, and the distance between consecutive entities. The <code>stength_sep</code> argument is <code>NULL</code> by
+default, and operates in the same manner as it does in <code>medExtractR</code>.
+</p>
+<p>By default, the <code>drug_list</code> argument is “rxnorm” which calls <code>data(rxnorm_druglist)</code>.
+A custom drug list in the form of a character string can be supplied instead, or can be appended
+to <code>rxnorm_druglist</code> by specifying <code>drug_list = c("rxnorm", custom_drug_list)</code>. This uses
+publicly available data courtesy of the U.S. National Library of Medicine (NLM), National
+Institutes of Health, Department of Health and Human Services; NLM is not responsible for the product and
+does not endorse or recommend this or any other product. See <code>rxnorm_druglist</code> documentation for details.
+</p>
+
+
+<h3>Value</h3>
+
+<p>data.frame with entity information. If no dosing
+information for the drug of interest is found, the following output will be returned: <br></p>
+
+<table>
+<tr>
+<td style="text-align: right;">
+entity    </td>
+<td style="text-align: right;">  expr   </td>
+<td style="text-align: right;">    pos</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+NA </td>
+<td style="text-align: right;">  NA </td>
+<td style="text-align: right;">  NA
+</td>
+</tr>
+</table>
+<p>The “entity” column of the output contains the formatted label for that entity, according to
+the following mapping.<br>
+drug name: “DrugName”<br>
+strength: “Strength”<br>
+dose amount: “DoseAmt”<br>
+dose strength: “DoseStrength”<br>
+frequency: “Frequency”<br>
+intake time: “IntakeTime”<br>
+duration: “Duration”<br>
+route: “Route”<br>
+dose change: “DoseChange”<br>
+dose schedule: “DoseScheule”<br>
+time keyword: “TimeKeyword”<br>
+transition: “Transition”<br>
+preposition: “Preposition”<br>
+dispense amount: “DispenseAmt”<br>
+refill: “Refill”<br>
+time of last dose: “LastDose”<br>
+Sample output:<br></p>
+
+<table>
+<tr>
+<td style="text-align: right;">
+entity    </td>
+<td style="text-align: right;">  expr   </td>
+<td style="text-align: right;">    pos</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+DoseChange</td>
+<td style="text-align: right;">  decrease </td>
+<td style="text-align: right;">  66:74</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+DrugName   </td>
+<td style="text-align: right;"> Prograf </td>
+<td style="text-align: right;">   78:85</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+Strength  </td>
+<td style="text-align: right;">  2 mg   </td>
+<td style="text-align: right;">    86:90</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+DoseAmt   </td>
+<td style="text-align: right;">  1     </td>
+<td style="text-align: right;">     91:92</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+Frequency </td>
+<td style="text-align: right;">  bid    </td>
+<td style="text-align: right;">    101:104</td>
+</tr>
+<tr>
+<td style="text-align: right;">
+LastDose  </td>
+<td style="text-align: right;">  2100    </td>
+<td style="text-align: right;">   121:125
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Nelson SJ, Zeng K, Kilbourne J, Powell T, Moore R. Normalized names for clinical drugs: RxNorm at 6 years.
+J Am Med Inform Assoc. 2011 Jul-Aug;18(4)441-8. doi: 10.1136/amiajnl-2011-000116. Epub 2011 Apr 21.
+PubMed PMID: 21515544; PubMed Central PMCID: PMC3128404.
+</p>
+
+
+</div>

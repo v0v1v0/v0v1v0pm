@@ -1,0 +1,149 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mspMonitor</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Real-Time Process Monitoring Function</h2>
+
+<h3>Description</h3>
+
+<p>Monitor and flag (if necessary) incoming multivariate process
+observations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mspMonitor(observations, labelVector, trainingSummary, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>observations</code></td>
+<td>
+<p>an n x p xts matrix. For real-time monitoring via a
+script within a batch file, n = 1, so this must be a 1 x p matrix. If lags
+were included at the training step, then these observations will also have
+lagged features.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>labelVector</code></td>
+<td>
+<p>an n x 1 integer vector of class memberships</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trainingSummary</code></td>
+<td>
+<p>the TrainingSpecs list returned by the mspTrain()
+function. This list contains—for each class—the SPE and T2 thresholds,
+as well the projection matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Lazy dots for additional internal arguments</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function is designed to be run at specific time intervals
+(e.g.every 10 seconds, 30 seconds, 1 minute, 5 minutes, 10 minutes) through
+a scheduled operating script which calls this function and mspWarning(). We
+expect this script to be set up in Windows "Task Scheduler" or Macintosh OX
+"launchd" application suites. This function takes in the specific
+observations to monitor and their class memberships (if any) and returns an
+xts matrix of these observation columns concatenated with their monitoring
+statistic values, flag statuses, and an empty alarm column. Users should
+then append these rows onto a previously existing matrix of daily
+observations. The mspWarning() function will then take in the daily
+observation xts matrix with updated rows returned by this function and
+check the monitoring statistic flag indicators to see if an alarm status
+has been reached. For further details, see the mspWarning() function.
+</p>
+<p>This function calls the faultDetect() function, and requires the training
+information returned by the mspTrain function. This function will return
+the xts matrix necessary for the mspWarning() function.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An n x (p + 5) xts matrix, where the last five columns are:
+</p>
+
+<dl>
+<dt>SPE – </dt>
+<dd>
+<p>the SPE statistic value for each observation
+in "observations"</p>
+</dd>
+<dt>SPE_Flag – </dt>
+<dd>
+<p>a vector of SPE indicators recording 0 if the test
+statistic is less than or equal to the critical value passed through
+from the threshold object</p>
+</dd>
+<dt>T2 – </dt>
+<dd>
+<p>the T2 statistic value for each observation in
+"observations"</p>
+</dd>
+<dt>T2_Flag – </dt>
+<dd>
+<p>a vector of T2 fault indicators, defined like
+SPE_Flag</p>
+</dd>
+<dt>Alarm – </dt>
+<dd>
+<p>a column indicating if there have been five flags in a
+row for either the SPE or T2 monitoring statistics or both. Alarm
+states are as follows: 0 = no alarm, 1 = Hotelling's T2 alarm, 2 =
+Squared Prediction Error alarm, and 3 = both alarms.</p>
+</dd>
+</dl>
+<h3>See Also</h3>
+
+<p>Calls: <code>faultDetect</code>. Pipe flow: <code>mspTrain</code>
+into <code>mspMonitor</code> into <code>mspWarning</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: # cut down on R CMD check time
+
+  nrml &lt;- mspProcessData(faults = "NOC")
+  n &lt;- nrow(nrml)
+
+  # Calculate the training summary, but save five observations for monitoring.
+  trainResults_ls &lt;- mspTrain(data = nrml[1:(n - 5), -1],
+                              labelVector = nrml[1:(n - 5), 1],
+                              trainObs = 4320)
+
+  # While training, we included 1 lag (the default), so we will also lag the
+  #   observations we will test.
+  testObs &lt;- nrml[(n - 6):n, -1]
+  testObs &lt;- xts:::lag.xts(testObs, 0:1)
+  testObs &lt;- testObs[-1,]
+  testObs &lt;- cbind(nrml[(n - 5):n, 1], testObs)
+
+  mspMonitor(observations = testObs[, -1],
+             labelVector = testObs[, 1],
+             trainingSummary = trainResults_ls$TrainingSpecs)
+
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

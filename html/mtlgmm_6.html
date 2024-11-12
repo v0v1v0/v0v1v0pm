@@ -1,0 +1,106 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>misclustering_error</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Calculate the misclustering error given the predicted cluster labels.</h2>
+
+<h3>Description</h3>
+
+<p>Calculate the misclustering error given the predicted cluster labels.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">misclustering_error(y_pred, y_test, type = c("max", "all", "avg"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y_pred</code></td>
+<td>
+<p>predicted cluster labels</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y_test</code></td>
+<td>
+<p>true cluster labels</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>which type of the misclustering error rate to return. Can be either "max", "all", or "avg". Default: "max".
+</p>
+
+<ul>
+<li>
+<p> max: maximum of misclustering error rates on all tasks
+</p>
+</li>
+<li>
+<p> all: a vector of misclustering error rates on each tasks
+</p>
+</li>
+<li>
+<p> avg: average of misclustering error rates on all tasks
+</p>
+</li>
+</ul>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Depends on <code>type</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Tian, Y., Weng, H., &amp; Feng, Y. (2022). Unsupervised Multi-task and Transfer Learning on Gaussian Mixture Models. arXiv preprint arXiv:2209.15224.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mtlgmm</code>, <code>tlgmm</code>, <code>data_generation</code>, <code>predict_gmm</code>, <code>initialize</code>, <code>alignment</code>, <code>alignment_swap</code>, <code>estimation_error</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">set.seed(23, kind = "L'Ecuyer-CMRG")
+## Consider a 5-task multi-task learning problem in the setting "MTL-1"
+data_list &lt;- data_generation(K = 5, outlier_K = 1, simulation_no = "MTL-1", h_w = 0.1,
+h_mu = 1, n = 100)  # generate the data
+x_train &lt;- sapply(1:length(data_list$data$x), function(k){
+  data_list$data$x[[k]][1:50,]
+}, simplify = FALSE)
+x_test &lt;- sapply(1:length(data_list$data$x), function(k){
+  data_list$data$x[[k]][-(1:50),]
+}, simplify = FALSE)
+y_test &lt;- sapply(1:length(data_list$data$x), function(k){
+  data_list$data$y[[k]][-(1:50)]
+}, simplify = FALSE)
+
+fit &lt;- mtlgmm(x = x_train, C1_w = 0.05, C1_mu = 0.2, C1_beta = 0.2,
+C2_w = 0.05, C2_mu = 0.2, C2_beta = 0.2, kappa = 1/3, initial_method = "EM",
+trim = 0.1, lambda_choice = "fixed", step_size = "lipschitz")
+
+y_pred &lt;- sapply(1:length(data_list$data$x), function(i){
+predict_gmm(w = fit$w[i], mu1 = fit$mu1[, i], mu2 = fit$mu2[, i],
+beta = fit$beta[, i], newx = x_test[[i]])
+}, simplify = FALSE)
+misclustering_error(y_pred[-data_list$data$outlier_index],
+y_test[-data_list$data$outlier_index], type = "max")
+</code></pre>
+
+
+</div>

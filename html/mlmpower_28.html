@@ -1,0 +1,114 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>generate</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Generates Data Sets Based on a <code>mp_model</code>
+</h2>
+
+<h3>Description</h3>
+
+<p>Generates data sets based on a <code>mp_model</code>.
+These data sets will be returned as a <code>data.frame</code> and include the
+solved parameters as an attribute to the <code>data.frame</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">generate(model, n_within, n_between, ndata = 1, mechanism = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>a <code>mp_model</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_within</code></td>
+<td>
+<p>a single positive integer of the desired within cluster observations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_between</code></td>
+<td>
+<p>a single positive integer of the desired between cluster observations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ndata</code></td>
+<td>
+<p>a single positive integer of the number of desired data sets.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mechanism</code></td>
+<td>
+<p>a function for inducing missing data to the data set. If NULL it is ignored. See details below.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Note that there must only be one global ICC in <code>mp_model</code>.
+</p>
+<p>Use the <code>mechanism</code> argument to specify  missing data mechanisms. See <code>mechanisms</code>
+for predefined missing data mechanisms for the outcome and examples using them.
+When creating custom mechanisms care needs to be taken because it is considered for
+advanced usage. This a argument expects a function with the <code>mp_data</code> as the input,
+and the function should return the modified <code>mp_data</code>. Be careful when
+using this because it allows you to modify the population parameters, which will
+be incorrect. You should only induce missing data values on variables. Missing data
+on the predictors will cause listwise deletion to be used, but missing data on the
+outcome will be appropriate for MAR-based mechanisms. See examples below for an
+example that generates MCAR data on the outcome. See <code>parameters</code>
+to obtain the population parameters from each data set.
+</p>
+
+
+<h3>Value</h3>
+
+<p>For <code>ndata = 1</code> a single <code>data.frame</code> is returned.
+The first variable is the cluster identifier labeled <code style="white-space: pre;">⁠_id⁠</code>.
+This object is also of class <code>mp_data</code> which means that it was generated
+based on a specified model.
+If multiple data sets are requested then they will be contained in a <code>list</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Create Model
+model &lt;- (
+    outcome('Y')
+    + within_predictor('X')
+    + effect_size(icc = 0.1)
+)
+# Set seed
+set.seed(198723)
+# Create data set
+model |&gt; generate(5, 50) -&gt; mydata
+
+# Induce missing data with custom function
+model |&gt; generate(50, 5, mechanism = MCAR(0.25)) -&gt; mydata_mcar
+
+# Induce missing data with custom function
+model |&gt; generate(50, 5, mechanism = \(data) {
+    # `data` will be the `mp_data` used
+    within(data, {
+        # MCAR Process
+        Y &lt;- ifelse(runif(NROW(data)) &lt; 0.5, Y, NA)
+    })
+}) -&gt; mydata_mcar_custom
+
+</code></pre>
+
+
+</div>

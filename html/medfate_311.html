@@ -1,0 +1,639 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>spwb</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Soil-plant water balance</h2>
+
+<h3>Description</h3>
+
+<p>Function <code>spwb()</code> is a water balance model that determines changes in soil moisture, 
+soil water potentials, plant transpiration and drought stress at daily steps for a given forest stand 
+during a period specified in the input climatic data. Function <code>pwb()</code> performs plant water balance 
+only (i.e. soil moisture dynamics is an input) at daily steps for a given forest stand 
+during a period specified in the input climatic data. On both simulation functions plant transpiration 
+and photosynthesis processes are conducted with different level of detail depending on the transpiration mode.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">spwb(
+  x,
+  meteo,
+  latitude,
+  elevation,
+  slope = NA_real_,
+  aspect = NA_real_,
+  CO2ByYear = numeric(0),
+  waterTableDepth = NA_real_
+)
+
+pwb(
+  x,
+  meteo,
+  W,
+  latitude,
+  elevation,
+  slope = NA_real_,
+  aspect = NA_real_,
+  canopyEvaporation = numeric(0),
+  snowMelt = numeric(0),
+  soilEvaporation = numeric(0),
+  herbTranspiration = numeric(0),
+  CO2ByYear = numeric(0)
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>An object of class <code>spwbInput</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meteo</code></td>
+<td>
+<p>A data frame with daily meteorological data series. 
+Row names of the data frame should correspond to date strings with format "yyyy-mm-dd" (see <code>Date</code>). Alternatively,
+a column called <code>"dates"</code> or <code>"Dates"</code> can contain <code>Date</code> or <code>POSIXct</code> classes.
+The following columns are required and cannot have missing values:
+</p>
+
+<ul>
+<li>
+<p><code>MinTemperature</code>: Minimum temperature (in degrees Celsius).
+</p>
+</li>
+<li>
+<p><code>MaxTemperature</code>: Maximum temperature (in degrees Celsius).
+</p>
+</li>
+<li>
+<p><code>Precipitation</code>: Precipitation (in mm).
+</p>
+</li>
+</ul>
+<p>The following columns are required but can contain missing values (NOTE: missing values will raise warnings):
+</p>
+
+<ul>
+<li>
+<p><code>MinRelativeHumidity</code>: Minimum relative humidity (in percent).
+</p>
+</li>
+<li>
+<p><code>MaxRelativeHumidity</code>: Maximum relative humidity (in percent).
+</p>
+</li>
+<li>
+<p><code>Radiation</code>: Solar radiation (in MJ/m2/day).
+</p>
+</li>
+</ul>
+<p>The following columns are optional:
+</p>
+
+<ul>
+<li>
+<p><code>WindSpeed</code>: Above-canopy wind speed (in m/s). This column may not exist, or can be left with <code>NA</code> values. In both cases simulations will assume a constant value specified in <code>defaultControl</code>.
+</p>
+</li>
+<li>
+<p><code>CO2</code>: Atmospheric (above-canopy) CO2 concentration (in ppm). This column may not exist, or can be left with <code>NA</code> values. In both cases simulations will assume a constant value specified in <code>defaultControl</code>.
+</p>
+</li>
+<li>
+<p><code>Patm</code>: Atmospheric pressure (in kPa). This column may not exist, or can be left with <code>NA</code> values. In both cases, a value is estimated from elevation.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>latitude</code></td>
+<td>
+<p>Latitude (in degrees).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>elevation, slope, aspect</code></td>
+<td>
+<p>Elevation above sea level (in m), slope (in degrees) and aspect (in degrees from North).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CO2ByYear</code></td>
+<td>
+<p>A named numeric vector with years as names and atmospheric CO2 concentration (in ppm) as values. Used to specify annual changes in CO2 concentration along the simulation (as an alternative to specifying daily values in <code>meteo</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>waterTableDepth</code></td>
+<td>
+<p>Water table depth (in mm). When not missing, capillarity rise will be allowed if lower than total soil depth.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>W</code></td>
+<td>
+<p>A matrix with the same number of rows as <code>meteo</code> and as many columns as soil layers, containing the soil moisture of each layer as proportion of field capacity.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>canopyEvaporation</code></td>
+<td>
+<p>A vector of daily canopy evaporation (from interception) values (mm). The length should match the number of rows in <code>meteo</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>snowMelt</code></td>
+<td>
+<p>A vector of daily snow melt values (mm). The length should match the number of rows in <code>meteo</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>soilEvaporation</code></td>
+<td>
+<p>A vector of daily bare soil evaporation values (mm). The length should match the number of rows in <code>meteo</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>herbTranspiration</code></td>
+<td>
+<p>A vector of daily herbaceous transpiration values (mm). The length should match the number of rows in <code>meteo</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The simulation functions allow using three different sub-models of transpiration and photosynthesis:
+</p>
+
+<ul>
+<li>
+<p>The sub-model corresponding to 'Granier' transpiration mode is illustrated by function <code>transp_transpirationGranier</code> and was described in De Caceres et al. (2015),
+and implements an approach originally described in Granier et al. (1999). 
+</p>
+</li>
+<li>
+<p>The sub-model corresponding to 'Sperry' transpiration mode is illustrated by function <code>transp_transpirationSperry</code> and was described in De Caceres et al. (2021), and
+implements a modelling approach originally described in Sperry et al. (2017).  
+</p>
+</li>
+<li>
+<p>The sub-model corresponding to 'Sureau' transpiration mode is illustrated by function <code>transp_transpirationSureau</code> and was described for model SurEau-Ecos v2.0 in Ruffault et al. (2022). 
+</p>
+</li>
+</ul>
+<p>Simulations using the 'Sperry' or 'Sureau' transpiration mode are computationally much more expensive than 'Granier'.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Function <code>spwb</code> returns a list of class 'spwb' whereas function <code>pwb</code> returns a list of class 'pwb'. 
+There are many elements in common in these lists, so they are listed here together:
+</p>
+
+<ul>
+<li>
+<p><code>"latitude"</code>: Latitude (in degrees) given as input. 
+</p>
+</li>
+<li>
+<p><code>"topography"</code>: Vector with elevation, slope and aspect given as input. 
+</p>
+</li>
+<li>
+<p><code>"weather"</code>: A copy of the input weather data frame.
+</p>
+</li>
+<li>
+<p><code>"spwbInput"</code>: An copy of the object <code>x</code> of class <code>spwbInput</code> given as input.
+</p>
+</li>
+<li>
+<p><code>"spwbOutput"</code>: An copy of the final state of the object <code>x</code> of class <code>spwbInput</code>.
+</p>
+</li>
+<li>
+<p><code>"WaterBalance"</code>: A data frame where different variables (in columns) are given for each simulated day (in rows):
+</p>
+
+<ul>
+<li>
+<p><code>"PET"</code>: Potential evapotranspiration (in mm).
+</p>
+</li>
+<li>
+<p><code>"Precipitation"</code>: Input precipitation (in mm).
+</p>
+</li>
+<li>
+<p><code>"Rain"</code>: Precipitation as rainfall (in mm).
+</p>
+</li>
+<li>
+<p><code>"Snow"</code>: Precipitation as snowfall (in mm).
+</p>
+</li>
+<li>
+<p><code>"NetRain"</code>: Net rain, after accounting for interception (in mm).
+</p>
+</li>
+<li>
+<p><code>"Infiltration"</code>: The amount of water infiltrating into the soil (in mm).
+</p>
+</li>
+<li>
+<p><code>"InfiltrationExcess"</code>: Excess infiltration in the topmost layer leading to an increase in runoff (in mm).
+</p>
+</li>
+<li>
+<p><code>"SaturationExcess"</code>: Excess saturation in the topmost layer leading to an increase in runoff (in mm).
+</p>
+</li>
+<li>
+<p><code>"CapillarityRise"</code>: Water entering the soil via capillarity rise (mm) from the water table, if <code>waterTableDepth</code> is supplied.
+</p>
+</li>
+<li>
+<p><code>"Runoff"</code>: The amount of water exported via surface runoff (in mm).
+</p>
+</li>
+<li>
+<p><code>"DeepDrainage"</code>: The amount of water exported via deep drainage (in mm).
+</p>
+</li>
+<li>
+<p><code>"Evapotranspiration"</code>: Evapotranspiration (in mm).
+</p>
+</li>
+<li>
+<p><code>"SoilEvaporation"</code>: Bare soil evaporation (in mm).
+</p>
+</li>
+<li>
+<p><code>"HerbTranspiration"</code>: Transpiration due to the herbaceous layer (in mm).
+</p>
+</li>
+<li>
+<p><code>"PlantExtraction"</code>: Amount of water extracted from soil by woody plants (in mm).
+</p>
+</li>
+<li>
+<p><code>"Transpiration"</code>: Woody plant transpiration (in mm).
+</p>
+</li>
+<li>
+<p><code>"HydraulicRedistribution"</code>: Water redistributed among soil layers, transported through the plant hydraulic network.
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p><code>"EnergyBalance"</code>: A data frame with the daily values of energy balance components for the soil and the canopy (only for <code>transpirationMode = "Sperry"</code> or <code>transpirationMode = "Sureau"</code>).
+</p>
+</li>
+<li>
+<p><code>"Temperature"</code>: A data frame with the daily values of minimum/mean/maximum temperatures for the atmosphere (input), canopy and soil (only for <code>transpirationMode = "Sperry"</code> or <code>transpirationMode = "Sureau"</code>).
+</p>
+</li>
+<li>
+<p><code>"Soil"</code>: A list with the following subelements:
+</p>
+
+<ul>
+<li>
+<p><code>"SWC"</code>: Soil water content (percent of soil volume) in each soil layer (and overall).
+</p>
+</li>
+<li>
+<p><code>"RWC"</code>: Relative soil moisture content (relative to field capacity) in each soil layer (and overall).
+</p>
+</li>
+<li>
+<p><code>"REW"</code>: Relative extractable water (min. psi = -5 MPa) in each soil layer (and overall).
+</p>
+</li>
+<li>
+<p><code>"ML"</code>: Soil water volume in each soil layer (in L/m2) (and overall).
+</p>
+</li>
+<li>
+<p><code>"Psi"</code>: Soil water potential in each soil layer (in MPa) (and overall).
+</p>
+</li>
+<li>
+<p><code>"PlantExt"</code>: Plant extraction from each soil layer (in mm) (and overall).
+</p>
+</li>
+<li>
+<p><code>"HydraulicInput"</code>: Water that entered the layer coming from other layers and transported via the plant hydraulic network (in mm) (and overall).
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p><code>"Snow"</code>: A data frame where the following variable (in columns) is given for each simulated day (in rows):
+</p>
+
+<ul><li>
+<p><code>"SWE"</code>: Snow water equivalent (mm) of the snow pack.
+</p>
+</li></ul>
+</li>
+<li>
+<p><code>"Stand"</code>: A data frame where different variables (in columns) are given for each simulated day (in rows):
+</p>
+
+<ul>
+<li>
+<p><code>"LAI"</code>: LAI of the stand (including the herbaceous layer and live + dead leaves of woody plants) (in m2/m2).
+</p>
+</li>
+<li>
+<p><code>"LAIherb"</code>: LAI of the herbaceous layer (in m2/m2).
+</p>
+</li>
+<li>
+<p><code>"LAIlive"</code>: LAI of the woody plants assuming all leaves are unfolded (in m2/m2).
+</p>
+</li>
+<li>
+<p><code>"LAIexpanded"</code>: LAI of the woody plants with leaves actually unfolded (in m2/m2).
+</p>
+</li>
+<li>
+<p><code>"LAIdead"</code>: LAI of the woody plants corresponding to dead leaves (in m2/m2).
+</p>
+</li>
+<li>
+<p><code>"Cm"</code>: Water retention capacity of the canopy (in mm) (accounting for leaf phenology).
+</p>
+</li>
+<li>
+<p><code>"LgroundPAR"</code>: The percentage of PAR that reaches the ground (accounting for leaf phenology).
+</p>
+</li>
+<li>
+<p><code>"LgroundSWR"</code>: The percentage of SWR that reaches the ground (accounting for leaf phenology).
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p><code>"Plants"</code>: A list of daily results for plant cohorts (see below).
+</p>
+</li>
+<li>
+<p><code>"subdaily"</code>: A list of objects of class <code>spwb_day</code>, one per day simulated (only if required in <code>control</code> parameters, see <code>defaultControl</code>).
+</p>
+</li>
+</ul>
+<p>When <code>transpirationMode = "Granier"</code>, element <code>"Plants"</code> is a list with the following subelements:
+</p>
+
+<ul>
+<li>
+<p><code>"LAI"</code>: A data frame with the daily leaf area index for each plant cohort.
+</p>
+</li>
+<li>
+<p><code>"LAIlive"</code>: A data frame with the daily leaf area index for each plant cohort, assuming all leaves are unfolded (in m2/m2).
+</p>
+</li>
+<li>
+<p><code>"FPAR"</code>: A data frame with the fraction of PAR at the canopy level of each plant cohort. 
+</p>
+</li>
+<li>
+<p><code>"AbsorbedSWRFraction"</code>: A data frame with the fraction of SWR absorbed by each plant cohort. 
+</p>
+</li>
+<li>
+<p><code>"Transpiration"</code>: A data frame with the amount of daily transpiration (in mm) for each plant cohort.
+</p>
+</li>
+<li>
+<p><code>"GrossPhotosynthesis"</code>: A data frame with the amount of daily gross photosynthesis (in g C·m-2) for each plant cohort. 
+</p>
+</li>
+<li>
+<p><code>"PlantPsi"</code>: A data frame with the average daily water potential of each plant (in MPa).
+</p>
+</li>
+<li>
+<p><code>"LeafPLC"</code>: A data frame with the average daily proportion of leaf conductance loss of each plant ([0-1]).
+</p>
+</li>
+<li>
+<p><code>"StemPLC"</code>: A data frame with the average daily proportion of stem conductance loss of each plant ([0-1]).
+</p>
+</li>
+<li>
+<p><code>"PlantWaterBalance"</code>: A data frame with the daily balance between transpiration and soil water extraction for each plant cohort. 
+</p>
+</li>
+<li>
+<p><code>"LeafRWC"</code>: A data frame with the average daily leaf relative water content of each plant (in percent).
+</p>
+</li>
+<li>
+<p><code>"StemRWC"</code>: A data frame with the average daily stem relative water content of each plant (in percent). 
+</p>
+</li>
+<li>
+<p><code>"LFMC"</code>: A data frame with the daily live fuel moisture content (in percent of dry weight).
+</p>
+</li>
+<li>
+<p><code>"PlantStress"</code>: A data frame with the amount of daily stress [0-1] suffered by each plant cohort (relative whole-plant conductance).
+</p>
+</li>
+</ul>
+<p>If <code>transpirationMode="Sperry"</code> or <code>transpirationMode="Sureau"</code>, element <code>"Plants"</code> is a list with the following subelements:
+</p>
+
+<ul>
+<li>
+<p><code>"LAI"</code>: A data frame with the daily leaf area index for each plant cohort.
+</p>
+</li>
+<li>
+<p><code>"AbsorbedSWR"</code>: A data frame with the daily SWR absorbed by each plant cohort.
+</p>
+</li>
+<li>
+<p><code>"NetLWR"</code>: A data frame with the daily net LWR by each plant cohort.
+</p>
+</li>
+<li>
+<p><code>"Transpiration"</code>: A data frame with the amount of daily transpiration (in mm) for each plant cohorts.
+</p>
+</li>
+<li>
+<p><code>"GrossPhotosynthesis"</code>: A data frame with the amount of daily gross photosynthesis (in g C·m-2) for each plant cohort. 
+</p>
+</li>
+<li>
+<p><code>"NetPhotosynthesis"</code>: A data frame with the amount of daily net photosynthesis (in g C·m-2) for each plant cohort. 
+</p>
+</li>
+<li>
+<p><code>"dEdP"</code>: A data frame with mean daily values of soil-plant conductance (derivative of the supply function) for each plant cohort.
+</p>
+</li>
+<li>
+<p><code>"PlantWaterBalance"</code>: A data frame with the daily balance between transpiration and soil water extraction for each plant cohort. 
+</p>
+</li>
+<li>
+<p><code>"SunlitLeaves"</code> and <code>"ShadeLeaves"</code>: A list with daily results for sunlit and shade leaves:
+</p>
+
+<ul>
+<li>
+<p><code>"PsiMin"</code>: A data frame with the minimum (midday) daily sunlit or shade leaf water potential (in MPa). 
+</p>
+</li>
+<li>
+<p><code>"PsiMax"</code>: A data frame with the maximum (predawn) daily sunlit or shade leaf water potential (in MPa). 
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p><code>"LeafPsiMin"</code>: A data frame with the minimum (midday) daily (average) leaf water potential of each plant (in MPa).
+</p>
+</li>
+<li>
+<p><code>"LeafPsiMax"</code>: A data frame with the maximum (predawn) daily (average) leaf water potential of each plant (in MPa).
+</p>
+</li>
+<li>
+<p><code>"LeafRWC"</code>: A data frame with the average daily leaf relative water content of each plant (in percent).
+</p>
+</li>
+<li>
+<p><code>"StemRWC"</code>: A data frame with the average daily stem relative water content of each plant (in percent). 
+</p>
+</li>
+<li>
+<p><code>"LFMC"</code>: A data frame with the daily live fuel moisture content (in percent of dry weight).
+</p>
+</li>
+<li>
+<p><code>"StemPsi"</code>: A data frame with the minimum daily stem water potential of each plant (in MPa). 
+</p>
+</li>
+<li>
+<p><code>"LeafPLC"</code>: A data frame with the average daily proportion of leaf conductance loss of each plant ([0-1]).
+</p>
+</li>
+<li>
+<p><code>"StemPLC"</code>: A data frame with the average daily proportion of stem conductance loss of each plant ([0-1]).
+</p>
+</li>
+<li>
+<p><code>"RootPsi"</code>: A data frame with the minimum daily root water potential of each plant (in MPa). 
+</p>
+</li>
+<li>
+<p><code>"RhizoPsi"</code>: A list of data frames (one per plant cohort) with the minimum daily root water potential of each plant (in MPa).
+</p>
+</li>
+<li>
+<p><code>"PlantStress"</code>: A data frame with the amount of daily stress [0-1] suffered by each plant cohort (relative whole-plant conductance).
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+
+<ul>
+<li>
+<p>Miquel De Cáceres Ainsa, CREAF
+</p>
+</li>
+<li>
+<p>Nicolas Martin-StPaul, URFM-INRAE
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>De Cáceres M, Martínez-Vilalta J, Coll L, Llorens P, Casals P, Poyatos R, Pausas JG, Brotons L. (2015) Coupling a water balance model with forest inventory data to predict drought stress: the role of forest structural changes vs. climate changes. Agricultural and Forest Meteorology 213: 77-90 (doi:10.1016/j.agrformet.2015.06.012).
+</p>
+<p>De Cáceres M, Mencuccini M, Martin-StPaul N, Limousin JM, Coll L, Poyatos R, Cabon A, Granda V, Forner A, Valladares F, Martínez-Vilalta J (2021) Unravelling the effect of species mixing on water use and drought stress in holm oak forests: a modelling approach. Agricultural and Forest Meteorology 296 (doi:10.1016/j.agrformet.2020.108233).
+</p>
+<p>Granier A, Bréda N, Biron P, Villette S (1999) A lumped water balance model to evaluate duration and intensity of drought constraints in forest stands. Ecol Modell 116:269–283. https://doi.org/10.1016/S0304-3800(98)00205-1.
+</p>
+<p>Ruffault J, Pimont F, Cochard H, Dupuy JL, Martin-StPaul N (2022) 
+SurEau-Ecos v2.0: a trait-based plant hydraulics model for simulations of plant water status and drought-induced mortality at the ecosystem level.
+Geoscientific Model Development 15, 5593-5626 (doi:10.5194/gmd-15-5593-2022).
+</p>
+<p>Sperry, J. S., M. D. Venturas, W. R. L. Anderegg, M. Mencuccini, D. S. Mackay, Y. Wang, and D. M. Love. 2017. Predicting stomatal responses to the environment from the optimization of photosynthetic gain and hydraulic cost. Plant Cell and Environment 40, 816-830 (doi: 10.1111/pce.12852).
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>spwbInput</code>, <code>spwb_day</code>, <code>plot.spwb</code>, 
+<code>extract</code>, <code>summary.spwb</code>,  <code>forest</code>, <code>aspwb</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+#Load example daily meteorological data
+data(examplemeteo)
+
+#Load example plot plant data
+data(exampleforest)
+
+#Default species parameterization
+data(SpParamsMED)
+
+#Define soil with default soil params (4 layers)
+examplesoil &lt;- defaultSoilParams(4)
+
+#Initialize control parameters
+control &lt;- defaultControl("Granier")
+
+#Initialize input
+x1 &lt;- spwbInput(exampleforest,examplesoil, SpParamsMED, control)
+
+#Call simulation function
+S1 &lt;- spwb(x1, examplemeteo, latitude = 41.82592, elevation = 100)
+
+#Switch to 'Sperry' transpiration mode
+control &lt;- defaultControl("Sperry")
+
+#Initialize input
+x2 &lt;- spwbInput(exampleforest,examplesoil, SpParamsMED, control)
+
+#Call simulation function
+S2 &lt;- spwb(x2, examplemeteo, latitude = 41.82592, elevation = 100)
+
+#Switch to 'Sureau' transpiration mode
+control &lt;- defaultControl("Sureau")
+
+#Initialize input
+x3 &lt;- spwbInput(exampleforest,examplesoil, SpParamsMED, control)
+
+#Call simulation function
+S3 &lt;- spwb(x3, examplemeteo, latitude = 41.82592, elevation = 100)
+
+                
+</code></pre>
+
+
+</div>

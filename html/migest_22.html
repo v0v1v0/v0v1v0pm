@@ -1,0 +1,153 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>index_impact</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Summary indices of migration impact</h2>
+
+<h3>Description</h3>
+
+<p>Summary indices of migration impact
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">index_impact(
+  m,
+  p,
+  pop_col = "pop",
+  reg_col = "region",
+  orig_col = "orig",
+  dest_col = "dest",
+  flow_col = "flow",
+  long = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>m</code></td>
+<td>
+<p>A <code>matrix</code> or data frame of origin-destination flows. For <code>matrix</code> the first and second dimensions correspond to origin and destination respectively. For a data frame ensure the correct column names are passed to <code>orig_col</code>, <code>dest_col</code> and <code>flow_col</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p</code></td>
+<td>
+<p>A data frame or named vector for the total population. When data frame, column of populations labelled using <code>pop_col</code> and region names labelled <code>reg_col</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pop_col</code></td>
+<td>
+<p>Character string of the population column name</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>reg_col</code></td>
+<td>
+<p>Character string of the region column name. Must match dimension names or values in origin and destination columns of <code>m</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>orig_col</code></td>
+<td>
+<p>Character string of the origin column name (when <code>m</code> is a data frame rather than a <code>matrix</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dest_col</code></td>
+<td>
+<p>Character string of the destination column name (when <code>m</code> is a data frame rather than a <code>matrix</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>flow_col</code></td>
+<td>
+<p>Character string of the flow column name (when <code>m</code> is a data frame rather than a <code>matrix</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>long</code></td>
+<td>
+<p>Logical to return a long data frame with index values all in one column</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A tibble with 4 summary measures where
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>effectivness</code></td>
+<td>
+<p>Migration effectiveness index (MEI) from Shryock et al. (1975). Values range between 0 and 100. High values indicate migration is an efficient mechanism of population redistribution, generating a large net migration. Conversely, low values denote that migration is closely balanced, leading to comparatively little redistribution.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>anmr</code></td>
+<td>
+<p>Aggregate net migration rate from Bell et. al. (2002). The population weighted version of <code>mei</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>perference</code></td>
+<td>
+<p>Index of preference, given in UN DESA (1983). From Bachi (1957) and Shryock et al. (1975) - measures size of migration compared to expected flows based on unifrom migration. Can go from 0 to infinity</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>velocity</code></td>
+<td>
+<p>Index of velocity, given in UN DESA (1983). From Bogue, Shryock, Jr. &amp; Hoermann (1957) - measures size of migration compared to expected flows based on population size alone. Can go from 0 to infinity</p>
+</td>
+</tr>
+</table>
+<h3>Source</h3>
+
+<p>Bell, M., Blake, M., Boyle, P., Duke-Williams, O., Rees, P. H., Stillwell, J., &amp; Hugo, G. J. (2002). Cross-national comparison of internal migration: issues and measures. Journal of the Royal Statistical Society: Series A (Statistics in Society), 165(3), 435–464. https://doi.org/10.1111/1467-985X.00247 <br></p>
+<p>Shryock, H. S., &amp; Siegel, J. S. (1976). The Methods and Materials of Demography. (E. G. Stockwell (ed.); Condensed). Academic Press. <br></p>
+<p>United Nations Department of Economic and Social Affairs Population Division. (1970). Methods of measuring internal migration. United Nations Department of Economic and Social Affairs Population Division - 1970 - Methods of measuring internal migration <a href="https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/files/documents/2020/Jan/manual_vi_methods_of_measuring_internal_migration.pdf">https://www.un.org/development/desa/pd/sites/www.un.org.development.desa.pd/files/files/documents/2020/Jan/manual_vi_methods_of_measuring_internal_migration.pdf</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># single year
+library(dplyr)
+m &lt;- korea_gravity %&gt;%
+  filter(year == 2020,
+         orig != dest) %&gt;%
+  select(orig, dest, flow)
+m
+p &lt;- korea_gravity %&gt;%
+  filter(year == 2020) %&gt;%
+  distinct(dest, dest_pop)
+p
+index_impact(m = m, p = p, pop_col = "dest_pop", reg_col = "dest")
+
+# multiple years
+library(tidyr)
+library(purrr) 
+
+korea_gravity %&gt;%
+  select(year, orig, dest, flow, dest_pop) %&gt;%
+  group_nest(year) %&gt;%
+  mutate(m = map(.x = data, .f = ~select(.x, orig, dest, flow)),
+         p = map(.x = data, .f = ~distinct(.x, dest, dest_pop)),
+         i = map2(.x = m, .y = p,
+                  .f = ~index_impact(
+                    m = .x, p = .y, pop_col = "dest_pop", reg_col = "dest", long = FALSE
+                  ))) %&gt;%
+  select(-data, -m, -p) %&gt;%
+  unnest(i)
+</code></pre>
+
+
+</div>

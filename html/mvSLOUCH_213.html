@@ -1,0 +1,228 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>OU_RSS</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Calculates the RSS under a (multivariate) phylogenetic OU model of evolution
+</h2>
+
+<h3>Description</h3>
+
+<p>The <code>OU_RSS</code> function calculates the residual sum of squares (RSS)
+for given data under a multivariate OU model evolving on the phylogeny. 
+The user is recommended to install the suggested package 
+<span class="pkg">PCMBaseCpp</span> which significantly speeds up the calculations (see Details).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">OU_RSS(mY, phyltree, modelParams, M.error = NULL, do_centre = NA,
+regimes = NULL, regimes.times = NULL, root.regime = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>mY</code></td>
+<td>
+
+<p>A matrix with the rows corresponding to the tip species while the columns correspond to the traits.
+The rows should be named by species <br> (field <code>phyltree$tip.label</code>), if not, then a warning
+is thrown and the order of the species is assumed to be the same as the order in which the 
+species are in the phylogeny (i.e. correspond to the node indices <code>1:n</code>, 
+where <code class="reqn">n</code> is the number of tips). The columns should be named by traits, otherwise
+a warning is thrown and generic names are generated.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>phyltree</code></td>
+<td>
+
+<p>The phylogeny in <code>phylo</code> format. The tree can be obtained from e.g. a <code>nexus</code> file 
+by the <code>read.nexus()</code> function from the <span class="pkg">ape</span> package. The "standard" <span class="pkg">ape</span> node
+indexing is assumed: for a tree with <code class="reqn">n</code> tips, the tips should have indices <code>1:n</code> 
+and the root index <code>n+1</code>. The <code>root.edge</code> field is ignored.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>modelParams</code></td>
+<td>
+
+<p>List of model parameters of the BM/OUOU/OUBM model as <code>ParamsInModel</code> part of output of 
+<code>BrownianMotionModel</code>/<code>ouchModel</code>/<code>mvslouchModel</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>M.error</code></td>
+<td>
+
+<p>An optional measurement error covariance structure. The measurement errors between species are assumed 
+independent. The program tries to recognize the structure of the passed matrix and accepts the following 
+possibilities :
+</p>
+
+<ul>
+<li>
+<p>a single number that is a common measurement error for all tips and species,
+</p>
+</li>
+<li>
+<p>a m element vector with each value corresponding to a variable, measurement errors are independent
+between variables and each species is assumed to have the same measurement errors,
+</p>
+</li>
+<li>
+<p>a m x m ((number of variables) x (number of variables)) matrix, all species will
+have the same measurement error,
+</p>
+</li>
+<li>
+<p>a list of length n (number of species), each list element is the covariance structure 
+for the appropriate (numbering according to tree) species, either a single number 
+(each variable has same variance), vector (of length m for each variable), or m x m matrix, 
+the order of the list has to correspond to the order of the nodes in the <code>phyltree</code> object,
+</p>
+</li>
+<li>
+<p>NULL no measurement error.
+</p>
+</li>
+</ul>
+<p>From version <code>2.0.0</code> of <span class="pkg">mvSLOUCH</span> it is impossible to pass a single joint measurement error matrix 
+for all the species and traits.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>do_centre</code></td>
+<td>
+
+<p>Should the data, <code>mY</code>, be centred (admissable values are <code>"average"</code>, <code>"phylaverage"</code> or 
+<code>"evolutionary_model"</code>) or not (<code>NA</code>). If <code>"average"</code>, then each column (trait)
+is centred by its arithmetic average, if <code>"evolutionary_model"</code>, then <code>mY</code> is centred
+by the expectation under the evolutoniary model (inferred from <code>modelParams</code>) and if
+<code>"phylaverage"</code>, then <code>mY</code> is centred by a phylogenetically weighted arithmetic
+average (see Details).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regimes</code></td>
+<td>
+
+<p>A vector or list of regimes. If vector then each entry corresponds to each of the branches of <code>phyltree</code>,
+i.e. to each row of <code>phyltree$edge</code>. If list then each list entry corresponds to a tip node
+and is a vector for regimes on that lineage. If <code>NULL</code>, then a constant regime is assumed on
+the whole tree.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regimes.times</code></td>
+<td>
+
+<p>A list of vectors for each tree node, it starts with <code class="reqn">0</code> and ends with the current time of the species.
+In between are the times where the regimes (niches) changed. If <code>NULL</code> then each branch is
+considered to be a regime.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>root.regime</code></td>
+<td>
+
+<p>The regime at the root of the tree. If not given, then it is taken as the regime that is present
+on the daughter lineages stemming from the root and is the most frequent one in the <code>regimes</code> 
+vector. If more than one regime has the same maximum frequency, then alphabetically first one of 
+the maximum ones is taken.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The matrix algebra calculations are done using the likelihood function offerred by the <span class="pkg">PCMBase</span> package. 
+However, there is a C++ backend, <span class="pkg">PCMBaseCpp</span>. If it is not available, then the likelihood is calculated
+slower using pure R. However, with the calculations in C++ up to a 100-fold increase in
+speed is possible (more realistically 10-20 times). The <span class="pkg">PCMBaseCpp</span> package is available
+from <a href="https://github.com/venelin/PCMBaseCpp">https://github.com/venelin/PCMBaseCpp</a>.
+</p>
+<p>For a given input data matrix, <code>mY</code>, the function considers the stacking of it by rows
+(i.e. stacking species by species). Let Y = vec(<code>mY</code>), i.e. <code>Y&lt;-c(t(mY))</code>,
+V be the between-species-between-traits variance-covariance matrix (under the parameters passed
+in <code>modelParams</code>) and <code>v</code> a centring vector (if <code>do_centre</code> is <code>NA</code>, then
+<code class="reqn">v=0</code>). The function calculates the value of the quadratic form
+</p>
+<p style="text-align: center;"><code class="reqn">(Y-v)^{T}V^{-1}(Y-v).</code>
+</p>
+
+<p>A special centring is when <code>do_centre</code> equals <code>"phylaverage"</code>. In this situation
+the centring vector is a phylogenetically weighted average, i.e.
+</p>
+<p style="text-align: center;"><code class="reqn">v=(D^{T}V^{-1}D)^{-1}D^{T}V^{-1}Y ,</code>
+</p>
+
+<p>where denoting <code class="reqn">1_{n}</code> as a column vector of n ones and <code class="reqn">Id_{k}</code> as 
+the identity matrix with rows and columns equalling the number or columns of <code>mY</code>,
+</p>
+<p style="text-align: center;"><code class="reqn">D=1_{n}\otimes Id_{k}.</code>
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>The value of the residual sum of squares, quadratic form with respect to the 
+between-species-between-traits precision matrix. Also the used phylogeny is returned.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Krzysztof Bartoszek</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">RNGversion(min(as.character(getRversion()),"3.6.1"))
+set.seed(12345, kind = "Mersenne-Twister", normal.kind = "Inversion")
+### We will first simulate a small phylogenetic tree using functions from ape.
+### For simulating the tree one could also use alternative functions, e.g. sim.bd.taxa 
+### from the TreeSim package
+phyltree&lt;-ape::rtree(5)
+
+## The line below is not necessary but advisable for speed
+phyltree&lt;-phyltree_paths(phyltree)
+
+### Define a vector of regimes.
+regimes&lt;-c("small","small","large","small","small","large","large","large")
+
+### Define SDE parameters to be able to simulate data under the OUOU model.
+## 3D model
+## OUOUparameters&lt;-list(vY0=matrix(c(1,-1,0.5),nrow=3,ncol=1),
+## A=rbind(c(9,0,0),c(0,5,0),c(0,0,1)),mPsi=cbind("small"=c(1,-1,0.5),"large"=c(-1,1,0.5)),
+## Syy=rbind(c(1,0.25,0.3),c(0,1,0.2),c(0,0,1)))
+## 2D model used to reduce running time on CRAN
+OUOUparameters&lt;-list(vY0=matrix(c(1,-1),nrow=2,ncol=1),
+A=rbind(c(9,0),c(0,5)),mPsi=cbind("small"=c(1,-1),"large"=c(-1,1)),
+Syy=rbind(c(1,0.25),c(0,1)))
+
+### Now simulate the data.
+OUOUdata&lt;-simulOUCHProcPhylTree(phyltree,OUOUparameters,regimes,NULL)
+OUOUdata&lt;-OUOUdata[phyltree$tip.label,,drop=FALSE]
+
+## below will return the RSS under the assumed OUOU model of evolution
+OU_RSS(OUOUdata, phyltree, OUOUparameters, M.error=NULL, 
+do_centre="evolutionary_model", regimes = regimes)
+</code></pre>
+
+
+</div>

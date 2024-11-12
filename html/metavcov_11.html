@@ -1,0 +1,144 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>md.vcov</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Computing Variance-Covariance Matrices for Mean Differences</h2>
+
+<h3>Description</h3>
+
+<p>The function <code>md.vcov</code> computes effect sizes and variance-covariance matrix for multivariate meta-analysis when the effect sizes of interest are all measured by mean difference. See <code>mix.vcov</code> for effect sizes of the same or different types.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">md.vcov(r, nt, nc, n_rt = NA, n_rc = NA, sdt, sdc)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>r </code></td>
+<td>
+<p> A <code class="reqn">N</code>-dimensional list of <code class="reqn">p \times p</code> correlation matrices for the <code class="reqn">p</code> outcomes from the <code class="reqn">N</code> studies. <code>r[[k]][i,j]</code> is the correlation coefficient between outcome <code class="reqn">i</code> and outcome <code class="reqn">j</code> from study <code class="reqn">k</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nt </code></td>
+<td>
+<p> A <code class="reqn">N \times p</code> matrix storing sample sizes in the treatment group reporting the  <code class="reqn">p</code> outcomes. <code>nt[i,j]</code> is the sample size from study <code class="reqn">i</code> reporting outcome <code class="reqn">j</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nc </code></td>
+<td>
+<p> A matrix defined in a similar way as <code>nt</code> for the control group.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_rt </code></td>
+<td>
+<p>A <code class="reqn">N</code>-dimensional list of <code class="reqn">p \times p</code> matrices storing sample sizes in the treatment group reporting pairwise outcomes in the off-diagonal elements. <code>n_rt[[k]][i,j]</code> is the sample size reporting both outcome <code class="reqn">i</code> and outcome <code class="reqn">j</code> from study <code class="reqn">k</code>. Diagonal elements of these matrices are discarded. The default value is <code>NA</code>, which means that the smaller sample size reporting the corresponding two outcomes is imputed: i.e. <code>n_rt[[k]][i,j]=min(nt[k,i],nt[k,j])</code>. </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_rc </code></td>
+<td>
+<p> A list defined in a similar way as <code>n_rt</code> for the control group.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sdt </code></td>
+<td>
+<p> A <code class="reqn">N \times p</code> matrix storing sample standard deviations for each outcome from treatment group. <code>sdt[i,j]</code> is the sample standard deviation from study <code class="reqn">i</code> for outcome <code class="reqn">j</code>. If outcome <code class="reqn">j</code> is not continuous such as MD or SMD, NA has to be imputed in the <code class="reqn">j</code>th column.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sdc </code></td>
+<td>
+<p> A matrix defined in a similar way as <code>sdt</code> for the control group.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>list.vcov </code></td>
+<td>
+<p> A <code class="reqn">N</code>-dimensional list of <code class="reqn">p(p+1)/2 \times p(p+1)/2</code> matrices of computed variance-covariance matrices.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>matrix.vcov </code></td>
+<td>
+<p> A <code class="reqn">N \times p(p+1)/2</code> matrix whose rows are computed variance-covariance vectors.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Min Lu
+</p>
+
+
+<h3>References</h3>
+
+<p>Lu, M. (2023). Computing within-study covariances, data visualization, and missing data solutions for multivariate meta-analysis with metavcov. <em>Frontiers in Psychology</em>, 14:1185012.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">######################################################
+# Example: Geeganage2010 data
+# Preparing covariances for multivariate meta-analysis
+######################################################
+## set the correlation coefficients list r
+r12 &lt;- 0.71
+r.Gee &lt;- lapply(1:nrow(Geeganage2010), function(i){matrix(c(1, r12, r12, 1), 2, 2)})
+
+computvcov &lt;- md.vcov(nt = subset(Geeganage2010, select = c(nt_SBP, nt_DBP)),
+                    nc = subset(Geeganage2010, select = c(nc_SBP, nc_DBP)),
+                    sdt = subset(Geeganage2010, select=c(sdt_SBP, sdt_DBP)),
+                    sdc = subset(Geeganage2010, select=c(sdc_SBP, sdc_DBP)),
+                    r = r.Gee)
+# name variance-covariance matrix as S
+S &lt;- computvcov$matrix.vcov
+## fixed-effect model
+y &lt;- as.data.frame(subset(Geeganage2010, select = c(MD_SBP, MD_DBP)))
+MMA_FE &lt;- summary(metafixed(y = y, Slist = computvcov$list.vcov))
+MMA_FE
+#######################################################################
+# Running random-effects model using package "mixmeta" or "metaSEM"
+#######################################################################
+# Restricted maximum likelihood (REML) estimator from the mixmeta package
+#library(mixmeta)
+#mvmeta_RE &lt;- summary(mixmeta(cbind(MD_SBP, MD_DBP)~1, S = S,
+#                         data = subset(Geeganage2010, select = c(MD_SBP, MD_DBP)),
+#                         method = "reml"))
+#mvmeta_RE
+
+# maximum likelihood estimators from the metaSEM package
+# library(metaSEM)
+# metaSEM_RE &lt;- summary(meta(y = y, v = S))
+# metaSEM_RE
+##############################################################
+# Plotting the result:
+##############################################################
+# obj &lt;- MMA_FE
+# obj &lt;- mvmeta_RE
+# obj &lt;- metaSEM_RE
+
+# plotCI(y = y, v = computvcov$list.vcov,
+#         name.y = c("MD_SBP", "MD_DBP"), name.study = Geeganage2010$studyID,
+#         y.all = obj$coefficients[,1],
+#         y.all.se = obj$coefficients[,2])
+</code></pre>
+
+
+</div>

@@ -1,0 +1,82 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>lsp_mosaic</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Creates a raster mosaic</h2>
+
+<h3>Description</h3>
+
+<p>Creates a raster mosaic by rearranging spatial data for example regions.
+See examples.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">lsp_mosaic(x, output = "stars")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>Usually the output of the <code>lsp_add_examples()</code> function</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output</code></td>
+<td>
+<p>The class of the output. Either <code>"stars"</code> or <code>terra</code></p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A <code>stars</code> or <code>terra</code> object
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# larger data example
+library(stars)
+library(sf)
+landform = read_stars(system.file("raster/landform.tif", package = "motif"))
+landform_cove = lsp_signature(landform,
+                               type = "cove",
+                               window = 200,
+                               normalization = "pdf")
+
+landform_dist = lsp_to_dist(landform_cove,
+                            dist_fun = "jensen-shannon")
+
+landform_hclust = hclust(landform_dist, method = "ward.D2")
+plot(landform_hclust)
+
+clusters = cutree(landform_hclust, k = 6)
+
+landform_grid_sf = lsp_add_clusters(landform_cove, clusters)
+plot(landform_grid_sf["clust"])
+
+landform_grid_sf_sel = landform_grid_sf %&gt;%
+    dplyr::filter(na_prop == 0) %&gt;%
+    dplyr::group_by(clust) %&gt;%
+    dplyr::slice_sample(n = 16, replace = TRUE)
+
+landform_grid_sf_sel = lsp_add_examples(x = landform_grid_sf_sel, y = landform)
+landform_grid_sf_sel
+
+landform_clust_m = lsp_mosaic(landform_grid_sf_sel)
+
+plot(landform_clust_m)
+
+</code></pre>
+
+
+</div>

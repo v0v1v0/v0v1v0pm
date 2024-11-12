@@ -1,0 +1,150 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>modifyParams</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Modify parameters</h2>
+
+<h3>Description</h3>
+
+<p>Routines to modify species parameter table or model input objects
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">modifySpParams(SpParams, customParams, subsetSpecies = TRUE)
+
+modifyCohortParams(x, customParams, verbose = TRUE)
+
+modifyInputParams(x, customParams, verbose = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>SpParams</code></td>
+<td>
+<p>A species parameter data frame, typically <code>SpParamsMED</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>customParams</code></td>
+<td>
+<p>A data frame or a named vector with new parameter values (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subsetSpecies</code></td>
+<td>
+<p>A logical flag to indicate that the output data frame should include only those species mentioned in <code>customParams</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A model input object of class <code>spwbInput</code> or <code>growthInput</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>A logical flag to indicate that messages should be printed on the console.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>When calling function <code>modifySpParams</code>, <code>customParams</code> should be a data frame with as many rows as species 
+and as many columns as parameters to modify, plus a column called 'SpIndex' or 'Species' to match species between the two tables.
+</p>
+<p>When calling <code>modifyCohortParams</code>, <code>customParams</code> can be a data frame with as many rows as cohorts 
+and as many columns as parameters to modify, plus a column called 'Cohort' which will be matched with the cohort names 
+given by <code>spwbInput</code> or <code>growthInput</code>. 
+Alternatively, <code>customParams</code> can be a named list or named numeric vector as for <code>modifyInputParams</code>.
+</p>
+<p>When calling <code>modifyInputParams</code>, <code>customParams</code> must be either a named list or a named numeric vector. 
+Cohort parameters are specified using the syntax "&lt;cohortName&gt;/&lt;paramName&gt;" for names (e.g. "T2_176/Z50" to modify parameter 'Z50' of cohort 'T2_176'). 
+Soil layer parameters are specified using the syntax "&lt;paramName&gt;@#layer" for names, where #layer is the layer index (e.g. "rfc@1" will modify the rock fragment content of soil layer 1). 
+Control parameters are specified using either "&lt;paramName&gt;" (e.g "phloemConductanceFactor") or "&lt;paramName&gt;$&lt;subParamName&gt;" (e.g "maximumRelativeGrowthRates$leaf"). 
+It may seem unnecessary to modify soil or control parameters via a function, but <code>modifyInputParams</code> is called from optimization functions (see <code>optimization</code>).
+</p>
+
+
+<h3>Value</h3>
+
+<p>Function <code>modifySpParams</code> returns a modified species parameter data frame. 
+</p>
+<p>Functions <code>modifyCohortParams</code> and <code>modifyInputParams</code> return a modified <code>spwbInput</code> or <code>growthInput</code> object. Note that modifications may affect other parameters beyond those indicated in <code>customParams</code>, as a result of parameter dependencies (see examples).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Miquel De Cáceres Ainsa, CREAF
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>spwbInput</code>, <code>SpParamsMED</code>, <code>optimization</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#Load example daily meteorological data
+data(examplemeteo)
+
+#Load example plot plant data
+data(exampleforest)
+
+#Default species parameterization
+data(SpParamsMED)
+
+#Define soil with default soil params (4 layers)
+examplesoil &lt;- defaultSoilParams(4)
+
+#Initialize control parameters
+control &lt;- defaultControl("Granier")
+
+#Initialize input
+x1 &lt;- spwbInput(exampleforest,examplesoil, SpParamsMED, control)
+
+# Cohort name for Pinus halepensis
+PH_coh &lt;- paste0("T1_", SpParamsMED$SpIndex[SpParamsMED$Name=="Pinus halepensis"])
+PH_coh 
+
+# Modify Z50 and Z95 of Pinus halepensis cohort 
+customParams &lt;- c(200,2000)
+names(customParams) &lt;- paste0(PH_coh,c("/Z50", "/Z95"))
+x1m &lt;- modifyInputParams(x1, customParams)
+
+# Inspect original and modified objects 
+x1$below
+x1m$below
+
+# Inspect dependencies: fine root distribution across soil layers
+x1$belowLayers$V
+x1m$belowLayers$V
+
+# Modify rock fragment content and sand proportion of soil layer 1
+x1s &lt;- modifyInputParams(x1, c("rfc@1" = 5, "sand@1" = 10))
+
+# Inspect original and modified soils 
+x1$soil
+x1s$soil
+
+# When modifying growth input objects dependencies increase
+x1 &lt;- growthInput(exampleforest,examplesoil, SpParamsMED, control)
+customParams &lt;- c(2000,2)
+names(customParams) &lt;- paste0(PH_coh,c("/Al2As", "/LAI_live"))
+x1m &lt;- modifyInputParams(x1, customParams)
+
+</code></pre>
+
+
+</div>

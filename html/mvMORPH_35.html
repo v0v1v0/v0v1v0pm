@@ -1,0 +1,186 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>pruning</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Pruning algorithm to compute the square root of the phylogenetic covariance matrix and its determinant.
+
+</h2>
+
+<h3>Description</h3>
+
+<p>This function uses the pruning algorithm (Felsenstein 1973) to efficiently compute the determinant of the phylogenetic covariance matrix as well as the square root of this matrix (or its inverse; Stone 2011, Khabbazian et al. 2016). This algorithm is faster than using "eigen" or "cholesky" function to compute the determinant or the square root (see e.g., Clavel et al. 2015) and can be used to compute independent contrasts scores and the log-likelihood of a model in linear time.
+</p>
+
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">pruning(tree, inv=TRUE, scaled=TRUE, trans=TRUE, check=TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+ 
+<table>
+<tr style="vertical-align: top;">
+<td><code>tree</code></td>
+<td>
+
+<p>Phylogenetic tree (an object of class "phylo" or "simmap").
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>inv</code></td>
+<td>
+
+<p>Return the matrix square root of either the covariance matrix (inv=FALSE) or its inverse (inv=TRUE, the default). This matrix is a "contrasts" matrix.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scaled</code></td>
+<td>
+
+<p>Indicates whether the contrasts should be scaled with their expected variances (default to TRUE).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trans</code></td>
+<td>
+
+<p>Return the transpose (trans=TRUE) of the matrix square root/contrasts matrix.
+(by default - i.e., trans=TRUE - it returns a matrix equivalent to the upper triangular Cholesky factor)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>check</code></td>
+<td>
+
+<p>Check if the input tree is dichotomous and in "postorder" (see ?is.binary.tree and ?reorder.phylo).
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The tree is assumed to be fully dichotomic and in "postorder", otherwise the functions <em>multi2di</em> and <em>reorder.phylo</em> are used internally when <em>check=TRUE</em>.
+</p>
+
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>sqrtMat  </code></td>
+<td>
+<p>The matrix square root (contrasts matrix) </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>varNode  </code></td>
+<td>
+<p>Variance associated to each node values (similar to "contrasts" variance)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>varRoot  </code></td>
+<td>
+<p>Variance associated to the root value (similar to the ancestral state variance)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>det      </code></td>
+<td>
+<p>Log-determinant of the phylogenetic covariance of the tree</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Julien Clavel
+
+</p>
+
+
+<h3>References</h3>
+
+<p>Clavel J., Escarguel G., Merceron G. 2015. mvMORPH: an r package for fitting multivariate evolutionary models to morphometric data. Methods Ecol. Evol. 6:1311-1319.
+</p>
+<p>Felsenstein J. 1973. Maximum-likelihood estimation of evolutionary trees from continuous characters. Am. J. Hum. Genet. 25:471-492.
+</p>
+<p>Khabbazian M., Kriebel R., Rohe K., Ane C. 2016. Fast and accurate detection of evolutionary shifts in Ornstein-Uhlenbeck models. Methods Ecol. Evol. 7:811-824.
+</p>
+<p>Stone E.A. 2011. Why the phylogenetic regression appears robust to tree misspecification. Syst. Biol. 60:245-260
+</p>
+
+
+
+<h3>See Also</h3>
+
+<p><code>mvLL</code>
+<code>mvgls</code>
+
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Simulated dataset
+set.seed(14)
+# Generating a random tree
+tree&lt;-pbtree(n=50)
+Y &lt;- mvSIM(tree, model="BM1", param=list(sigma=1, theta=0)) # trait
+X &lt;- matrix(1, nrow=Ntip(tree), ncol=1) # design matrix
+
+## Use the GLS trick
+# Compute the matrix square root
+C &lt;- vcv.phylo(tree)
+D &lt;- chol(C)
+Cinv &lt;- solve(C)
+Di &lt;- chol(Cinv)
+
+# transform the traits
+Xi &lt;- Di%*%X
+Yi &lt;- Di%*%Y
+
+# Compute the GLS estimate and determinant (see Clavel et al. 2015)
+# GLS estimate for the root
+print(pseudoinverse(Xi)%*%Yi)
+
+# Determinant of the phylogenetic covariance matrix
+print(sum(log(diag(D)^2)))    
+
+
+## Use the pruning algorithm (much faster)
+
+M &lt;- pruning(tree, inv=TRUE)
+
+Xi &lt;- M$sqrtMat%*%X
+Yi &lt;- M$sqrtMat%*%Y
+
+# GLS estimate
+print(pseudoinverse(Xi)%*%Yi)
+
+# determinant
+print(M$det)
+
+## REML determinant (without variance of the root state; see Felsenstein 1973)
+# full REML
+log(det(C)) + log(det(t(X)%*%Cinv%*%X))
+
+# pruning REML
+sum(log(M$varNode))
+
+</code></pre>
+
+
+</div>

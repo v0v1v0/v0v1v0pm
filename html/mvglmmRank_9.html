@@ -1,0 +1,329 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvglmmRank</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+mvglmmRank
+</h2>
+
+<h3>Description</h3>
+
+<p>This function fits a (multivariate) generalized linear mixed model to team scores and/or win/loss indicators.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mvglmmRank(game.data, method = "PB0", first.order = FALSE, 
+home.field = TRUE, max.iter.EM = 1000, tol1 = 1e-04, 
+tol2 = 1e-04, tolFE = 0, tol.n = 1e-07, verbose = TRUE, OT.flag = FALSE, 
+Hessian = FALSE, REML.N=TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>game.data</code></td>
+<td>
+
+<p>a data frame that contains a column "home" of team names, a column "away" of team names,
+a column "home.response" containing the scores (or other response) of the "home" teams, a column "away.response"
+containing the scores (or other response) of the "away" teams, (optionally) a column "binary.response" that contains a column of binary responses (0's and 1's), and (optionally) a column "neutral.site" which 
+takes the value 1 for neutral site games and 0 otherwise. 
+NOTE: If game.data does not contain a "binary.response" column, then an indicator will be created
+for whether the home team won.
+NOTE: For neutral site games, randomly assign the teams as "home" or "away". As noted below, the data frame may optionally contain a column,
+OT, which indicates how many overtime periods were played. 
+NOTE: the game.data$OT column should not contain missing data. If there was no overtime, specify "none" or 0.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>a character (remember to use quotation marks!). Choices are "N", "P0", "P1", "B",
+"NB", "PB0", "PB1", "NB.mov", or "N.mov". "N" indicates the scores are fit with a normal distribution with intra-game
+correlation between the home and away teams accounted for in an unstructured 2x2 error covariance matrix.
+"P" indicates the scores are fit with a Poisson distribution. "B" indicates the home win/loss indicators are
+fit using a binary distribution with a probit link. The presence of a "1" with a "P" indicates
+potential intra-game correlation is modeled with an additional game-level random effect. A "0"
+indicates no such random effects are included. "NB.mov" fits the margin of victory of the "home" team (under an assumed normal distribution) 
+jointly with the binary win/loss indicators.  "N.mov" fits only the margin of victory of the "home" team (under an assumed normal distribution). See the NOTES section below 
+for further details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>first.order</code></td>
+<td>
+
+<p>logical. TRUE requests that only a first order Laplace approximation be used, FALSE
+requests a fully exponential Laplace approximation. See the references.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>home.field</code></td>
+<td>
+
+<p>logical. TRUE requests that seperate home and away mean scores be modeled (along with a mean 
+neutral site score, if applicable) along with a single home field effect in the binary model. 
+FALSE requests only a single mean be calculated for the scores, and no fixed effects are fit for the
+binary win/loss indicators. Note that the estimator for the home field effect may be biased, depending on the scheduling structure; see the Karl and Zimmerman (2021) reference.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max.iter.EM</code></td>
+<td>
+
+<p>a number giving the maximum number of EM iterations.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol1</code></td>
+<td>
+
+<p>refers to the maximum relative change in parameters between iterations. This is the convergence criterion for the 
+first order Laplace approximation. The first order Laplace approximation runs 
+until tol1 signals, at which point the fully exponential corrections for the random effects vector begin
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol2</code></td>
+<td>
+
+<p>The fully exponential iterations run until the maximum relative change in model paramters is less than tol2. N/A when first.order==TRUE. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tolFE</code></td>
+<td>
+
+<p>intermediate convergence criterion for fully exponential approximations. The algorithm runs with the fully exponential corrections only to the random
+effects vector until tolFE signals (maximum relative change in parameters). 
+After this, the fully exponential corrections for both the random efffects vector and the random effects covariance matrix are calculated 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol.n</code></td>
+<td>
+
+<p>convergence tolerance for EM algorithm with method="N". Convergence is declared when <code class="reqn">(l_k-l_{k-1})/l_k &lt; tol.n</code>, where <code class="reqn">l_k</code> is the log-likelihood 
+at iteration <code class="reqn">k</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+
+<p>logical. If TRUE, model information will be printed after each iteration.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>OT.flag</code></td>
+<td>
+
+<p>logical. If TRUE, then there should be a continuous column OT in game.data that indicates how many overtime periods there were for each game. The information will not be used for the binary models. NOTE: the game.data$OT column should not contain  missing data. If there was no overtime, specify 0.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Hessian</code></td>
+<td>
+
+<p>logical. If TRUE, the Hessian of the model parameters is calculated via a central difference approximation.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>REML.N</code></td>
+<td>
+<p>logical. If TRUE and if method=="N.mov" or method=="N", then REML estimation is used instead of ML.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Setting first.order=TRUE will yield the first order Laplace approximation. A partial fully exponential Laplace approximation can be obtained by setting tol1 &gt; tol2 and tolFE=0. This
+will apply fully exponential corrections to the vector of team ratings (the EBLUPs), but not to the covariance matrix of this vector. Karl, Yang, and Lohr (2014) show that this approach
+produces a large portion of the benefit of the fully exponential Laplace approximation in only a fraction of the time. Using the default tolerances of mvglmmRank leads to this behavior.
+</p>
+<p>To summarize, the models (except for method="N") run with the first order Laplace approximation until the relative change between parameteres is &lt;= tol1. If first.order=TRUE, the program stops.
+Otherwise, the program continues with the Laplace approximation, applying fully exponential corrections to the random effects vector until the maximum of the relative parameter
+changes is &lt;= tolFE. At this point, the program continues using the complete fully exponential Laplace approximation (corrections to both the random effects vector and its covariance matrix) 
+until the maximum relative parameter change is &lt;= tol2. If tolFE &lt; tol2, then the program will finish without applying fully exponential corrections to the random effects covariance matrix.
+</p>
+<p>method="PB1" is the least scalable, as the memory and computational requirements for this model are at least O((teams+number of games)^2). In the example data included with the package, the
+NCAA basketball data is slow with the fully exponential approximation and method="PB1".
+</p>
+
+
+<h3>Value</h3>
+
+<p>mvglmmRank returns an object of class <code>mvglmmRank</code>
+</p>
+<p>An object of class <code>mvglmmRank</code> is a list containing the following components:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>n.ratings.offense</code></td>
+<td>
+<p>The vector of offensive ratings from the normal model, or <code>NULL</code> if the normal model was not fit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.ratings.defense</code></td>
+<td>
+<p>The vector of defensive ratings from the normal model, or <code>NULL</code> if the normal model was not fit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.ratings.offense</code></td>
+<td>
+<p>The vector of offensive ratings from the Poisson model, or <code>NULL</code> if the Poisson model was not fit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.ratings.defense</code></td>
+<td>
+<p>The vector of defensive ratings from the Poisson model, or <code>NULL</code> if the Poisson model was not fit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b.offense</code></td>
+<td>
+<p>The vector of win-propensity ratings from the binary model, or <code>NULL</code> if the binary model was not fit.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.mean</code></td>
+<td>
+<p>Mean scores from the normal model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p.mean</code></td>
+<td>
+<p>Mean scores from the Poisson model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b.mean</code></td>
+<td>
+<p>Home field effect from the binary model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>G</code></td>
+<td>
+<p>Single block of random effects covariance matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>G.cor</code></td>
+<td>
+<p>Correlation matrix corresponding to covariance matrix <code>G</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>R</code></td>
+<td>
+<p>Error covariance matrix for normal model, or NULL if normal model not used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>R.cor</code></td>
+<td>
+<p>Error correlation matrix for normal model, or NULL if normal model not used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>home.field</code></td>
+<td>
+<p>Logical indicating whether or not a home field effect was modeled.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Hessian</code></td>
+<td>
+<p>The Hessian of the model parameters, if requested.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parameters</code></td>
+<td>
+<p>A vector of fitted model parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>N.output</code></td>
+<td>
+<p><code>NULL</code>, or a list if <code>method="N"</code> or <code>method="N.mov"</code>. In the later cases, the list contains the random effect design matrix <code>Z</code>,
+the fixed effects design matrix <code>X</code>, the esitmated random effects covariance matrix <code>G</code>, the estimated error covariance matrix <code>R</code>, the predicted random effects <code>eta</code>, the joint covariance matrix of fixed and random effects <code>ybetas_eblup_asycov</code>, the covariance matrix of the fixed effects only <code>ybetas_asycov</code>, and the standard errrors of the fixed effects <code>ybetas_stderror</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fixed.effect.model.output</code></td>
+<td>
+<p><code>NULL</code>, or a list if <code>method="N.mov"</code>. In the later case, the list contains information about the results of fitting the margin of victory model with fixed (instead of random) team effects: the fixed effect design matrix <code>X</code>, the fixed effect parameter estimates <code>beta</code>, logical indicating whether or not the home field effect is estimable <code>is.mean.estimable</code> (see Notes), the predicted margins of victory <code>pred</code>, the residuals <code>resid</code>, the fitted model variance <code>sigma.sq</code>, and the covariance matrix of the random effects <code>beta.covariance</code>. This can provide an unbiased estimate when the estimator from the mixed model is biased (Karl and Zimmerman, 2021). </p>
+</td>
+</tr>
+</table>
+<p>The function  <code>game.pred</code> may be used to predict the outcome of future games.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Andrew T. Karl <a href="mailto:akarl@asu.edu">akarl@asu.edu</a>, Jennifer Broatch
+</p>
+
+
+<h3>References</h3>
+
+<p>Broatch, J.E. and Karl, A.T. (2018). Multivariate Generalized Linear Mixed Models for Joint Estimation of Sporting Outcomes. <em>Italian Journal of Applied Statistics</em>. Vol.30, No.2, 189-211. Also available from https://arxiv.org/abs/1710.05284.
+</p>
+<p>Karl, A.T., Zimmerman, D.L. (2021). A Diagnostic for Bias in Linear Mixed Model Estimators Induced by Dependence Between the Random Effects and the Corresponding Model Matrix. <em>Journal of Statistical Planning and Inference</em>,  211, 107-118. https://doi.org/10.1016/j.jspi.2020.06.004. 
+</p>
+<p>Karl, A.T., Yang, Y. and Lohr, S. (2013). Efficient Maximum Likelihood Estimation of Multiple Membership Linear Mixed Models, with an Application to 
+Educational Value-Added Assessments. <em>Computational Statistics and Data Analysis</em>,  59, 13-27.
+</p>
+<p>Karl, A., Yang, Y. and Lohr, S. (2014) Computation of Maximum Likelihood Estimates for Multiresponse Generalized Linear Mixed Models with Non-nested, Correlated Random Effects. <em>Computational Statistics &amp; Data Analysis</em> <b>73</b>, 146–162.
+</p>
+<p>Karl, A.T. (2012). The Sensitivity of College Football Rankings to Several Modeling Choices, <em>Journal of Quantitative Analysis in Sports</em>, 
+Volume 8, Issue 3, DOI 10.1515/1559-0410.1471
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See also <code>game.pred</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(nfl2012)
+mvglmmRank(nfl2012,method="PB0",first.order=TRUE,verbose=TRUE,max.iter.EM=1)
+
+result &lt;- mvglmmRank(nfl2012,method="PB0",first.order=TRUE,verbose=TRUE)
+print(result)
+game.pred(result,home="Denver Broncos",away="Green Bay Packers")
+
+</code></pre>
+
+
+</div>

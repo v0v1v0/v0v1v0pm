@@ -1,0 +1,314 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>miceRanger</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>miceRanger: Fast Imputation with Random Forests</h2>
+
+<h3>Description</h3>
+
+<p>Performs multiple imputation by chained random forests.
+Returns a miceDefs object, which contains information about the imputation process.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">miceRanger(
+  data,
+  m = 5,
+  maxiter = 5,
+  vars,
+  valueSelector = c("meanMatch", "value"),
+  meanMatchCandidates = pmax(round(nrow(data) * 0.01), 5),
+  returnModels = FALSE,
+  parallel = FALSE,
+  verbose = TRUE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A data.frame or data.table to be imputed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>m</code></td>
+<td>
+<p>The number of datasets to produce.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>The number of iterations to run for each dataset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vars</code></td>
+<td>
+<p>Specifies which and how variables should be imputed. Can be specified in 3 different ways:
+</p>
+
+<ul>
+<li> <p>&lt;missing&gt; If not provided, all columns will be imputed using all columns. If
+a column contains no missing values, it will still be used as a feature to impute missing columns.
+</p>
+</li>
+<li> <p>&lt;character vector&gt; If a character vector of column names is passed, these columns will
+be imputed using all available columns in the dataset. The order of this vector will determine the 
+order in which the variables are imputed.
+</p>
+</li>
+<li> <p>&lt;named list of character vectors&gt; Predictors can be specified for each variable with a named list. 
+List names are the variables to impute. Elements in the vectors should be features used to 
+impute that variable. The order of this list will determine the order in which the variables are imputed.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>valueSelector</code></td>
+<td>
+<p>How to select the value to be imputed from the model predictions. 
+Can be "meanMatching", "value", or a named vector containing a mixture of those values.
+If a named vector is passed, the names must equal the variables to be imputed specified in <code>vars</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meanMatchCandidates</code></td>
+<td>
+<p>Specifies the number of candidate values which are selected from in the 
+mean matching algorithm. Can be either specified as an integer or a named integer vector for different 
+values by variable. If a named integer vector is passed, the names of the vector must contain at a 
+minimum the names of the numeric variables imputed using <code>valueSelector = "meanMatch"</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>returnModels</code></td>
+<td>
+<p>Logical. Should the final model for each variable be returned? Set to <code>TRUE</code>
+to use the <code>impute</code> function, which allows imputing new samples without having to run <code>miceRanger</code> again.
+Setting to TRUE can cause the returned <code>miceDefs</code> object to take up a lot of memory. Use only if
+you plan on using the <code>impute</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>Should the process run in parallel? Usually not necessary. This process will 
+take advantage of any cluster set up when <code>miceRanger</code> is called.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>should progress be printed?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>other parameters passed to <code>ranger()</code> to control forest growth.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a miceDefs object, containing the following:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>callParams</code></td>
+<td>
+<p>The parameters of the object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>The original data provided by the user, cast to a data.table.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>naWhere</code></td>
+<td>
+<p>Logical index of missing data, having the same dimensions as <code>data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>missingCounts</code></td>
+<td>
+<p>The number of missing values for each variable</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rawClasses</code></td>
+<td>
+<p>The original classes provided in <code>data</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newClasses</code></td>
+<td>
+<p>The new classes of the returned data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allImps</code></td>
+<td>
+<p>The imputations of all variables at each iteration, for each dataset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allImport</code></td>
+<td>
+<p>The variable importance metrics at each iteration, for each dataset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>allError</code></td>
+<td>
+<p>The OOB model error for all variables at each iteration, for each dataset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>finalImps</code></td>
+<td>
+<p>The final imputations for each dataset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>finalImport</code></td>
+<td>
+<p>The final variable importance metrics for each dataset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>finalError</code></td>
+<td>
+<p>The final model error for each variable in every dataset.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>finalModels</code></td>
+<td>
+<p>Only returned if <code>returnModels = TRUE</code>. A list of <code>ranger</code> random forests for each dataset/variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>imputationTime</code></td>
+<td>
+<p>The total time in seconds taken to create the imputations for the 
+specified datasets and iterations. Does not include any setup time.</p>
+</td>
+</tr>
+</table>
+<h3>Vignettes</h3>
+
+<p>It is highly recommended to visit the <a href="https://github.com/farrellday/miceRanger">GitHub README</a> 
+for a thorough walkthrough of miceRanger's capabilities, as well as performance benchmarks.
+</p>
+<p>Several vignettes are also available on <a href="https://cran.r-project.org/package=miceRanger">miceRanger's listing</a>
+on the CRAN website.
+</p>
+
+<ol>
+<li> <p><a href="https://cran.r-project.org/package=miceRanger/vignettes/miceAlgorithm.html">The MICE Algorithm</a>
+</p>
+</li>
+<li> <p><a href="https://cran.r-project.org/package=miceRanger/vignettes/usingMiceRanger.html">Imputing Missing Data with miceRanger</a>
+</p>
+</li>
+<li> <p><a href="https://cran.r-project.org/package=miceRanger/vignettes/diagnosticPlotting.html">Diagnostic Plotting</a>
+</p>
+</li>
+</ol>
+<h3>Examples</h3>
+
+<pre><code class="language-R">#################
+## Simple Example
+
+data(iris)
+ampIris &lt;- amputeData(iris)
+
+miceObj &lt;- miceRanger(
+    ampIris
+  , m = 1
+  , maxiter = 1
+  , verbose=FALSE
+  , num.threads = 1
+  , num.trees=5
+)
+
+
+##################
+## Run in parallel
+
+data(iris)
+ampIris &lt;- amputeData(iris)
+
+library(doParallel)
+cl &lt;- makeCluster(2)
+registerDoParallel(cl)
+
+# Perform mice 
+miceObjPar &lt;- miceRanger(
+    ampIris
+  , m = 2
+  , maxiter = 2
+  , parallel = TRUE
+  , verbose = FALSE
+)
+stopCluster(cl)
+registerDoSEQ()
+
+
+############################
+## Complex Imputation Schema
+
+data(iris)
+ampIris &lt;- amputeData(iris)
+
+# Define variables to impute, as well as their predictors
+v &lt;- list(
+  Sepal.Width = c("Sepal.Length","Petal.Width","Species")
+  , Sepal.Length = c("Sepal.Width","Petal.Width")
+  , Species = c("Sepal.Width")
+)
+
+# Specify mean matching for certain variables.
+vs &lt;- c(
+  Sepal.Width = "meanMatch"
+  , Sepal.Length = "value"
+  , Species = "meanMatch"
+)
+
+# Different mean matching candidates per variable.
+mmc &lt;- c(
+  Sepal.Width = 4
+  , Species = 10
+)
+
+miceObjCustom &lt;- miceRanger(
+    ampIris
+  , m = 1
+  , maxiter = 1
+  , vars = v
+  , valueSelector = vs
+  , meanMatchCandidates = mmc
+  , verbose=FALSE
+)
+
+</code></pre>
+
+
+</div>

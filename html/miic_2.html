@@ -1,0 +1,205 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>computeThreePointInfo</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compute (conditional) three-point information</h2>
+
+<h3>Description</h3>
+
+<p>Three point information is defined and computed as the
+difference of mutual information and conditional mutual information, e.g.
+</p>
+<p style="text-align: center;"><code class="reqn">I(X;Y;Z|U) = I(X;Y|U) - Ik(X;Y|U,Z)</code>
+</p>
+
+<p>For discrete or categorical variables, the three-point information is
+computed with the empirical frequencies minus a complexity cost
+(computed as BIC or with the Normalized Maximum Likelihood).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">computeThreePointInfo(
+  x,
+  y,
+  z,
+  df_conditioning = NULL,
+  maxbins = NULL,
+  cplx = c("nml", "bic"),
+  n_eff = -1,
+  sample_weights = NULL,
+  is_continuous = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>[a vector]
+The <code class="reqn">X</code> vector that contains the observational data of the first variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>[a vector]
+The <code class="reqn">Y</code> vector that contains the observational data of the second variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>z</code></td>
+<td>
+<p>[a vector]
+The <code class="reqn">Z</code> vector that contains the observational data of the third variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df_conditioning</code></td>
+<td>
+<p>[a data frame]
+The data frame of the observations of the set of conditioning variables
+<code class="reqn">U</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxbins</code></td>
+<td>
+<p>[an integer]
+When the data contain continuous variables, the maximum number of bins
+allowed during the discretization. A smaller number makes the computation
+faster, a larger number allows finer discretization.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cplx</code></td>
+<td>
+<p>[a string]
+The complexity model:
+</p>
+
+<ul>
+<li>
+<p>["bic"] Bayesian Information Criterion
+</p>
+</li>
+<li>
+<p>["nml"] Normalized Maximum Likelihood, more accurate complexity cost
+compared to BIC, especially on small sample size.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_eff</code></td>
+<td>
+<p>[an integer]
+The effective number of samples. When there is significant autocorrelation
+between successive samples, you may want to specify an effective number of
+samples that is lower than the total number of samples.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sample_weights</code></td>
+<td>
+<p>[a vector of floats]
+Individual weights for each sample, used for the same reason as the effective
+number of samples but with individual weights.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>is_continuous</code></td>
+<td>
+<p>[a vector of booleans]
+Specify if each variable is to be treated as continuous (TRUE) or discrete
+(FALSE), must be of length 'ncol(df_conditioning) + 3', in the order
+<code class="reqn">X, Y, Z, U1, U2, ...</code>. If not specified, factors and character vectors
+are considered as discrete, and numerical vectors as continuous.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For variables <code class="reqn">X</code>, <code class="reqn">Y</code>, <code class="reqn">Z</code> and a set of conditioning
+variables <code class="reqn">U</code>, the conditional three point information is defined as
+</p>
+<p style="text-align: center;"><code class="reqn">Ik(X;Y;Z|U) = Ik(X;Y|U) - Ik(X;Y|U,Z)</code>
+</p>
+
+<p>where <code class="reqn">Ik</code> is the shifted or regularized conditional mutual information.
+See <code>computeMutualInfo</code> for the definition of <code class="reqn">Ik</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list that contains :
+</p>
+
+<ul>
+<li>
+<p> i3: The estimation of (conditional) three-point information without the
+complexity cost.
+</p>
+</li>
+<li>
+<p> i3k: The estimation of (conditional) three-point information with the
+complexity cost (<em>i3k = i3 - cplx</em>).
+</p>
+</li>
+<li>
+<p> i2: For reference, the estimation of (conditional) mutual information
+<code class="reqn">I(X;Y|U)</code> used in the estimation of <em>i3</em>.
+</p>
+</li>
+<li>
+<p> i2k: For reference, the estimation of regularized (conditional) mutual
+information <code class="reqn">Ik(X;Y|U)</code> used in the estimation of <em>i3k</em>.
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+
+<ul>
+<li>
+<p> Cabeli <em>et al.</em>, PLoS Comput. Biol. 2020, <a href="https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007866">Learning clinical networks from medical records based on information estimates in mixed-type data</a>
+</p>
+</li>
+<li>
+<p> Affeldt <em>et al.</em>, UAI 2015, <a href="https://auai.org/uai2015/proceedings/papers/293.pdf">Robust Reconstruction of Causal Graphical Models based on Conditional 2-point and 3-point Information</a>
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(miic)
+N &lt;- 1000
+# Dependence, conditional independence : X &lt;- Z -&gt; Y
+Z &lt;- runif(N)
+X &lt;- Z * 2 + rnorm(N, sd = 0.2)
+Y &lt;- Z * 2 + rnorm(N, sd = 0.2)
+res &lt;- computeThreePointInfo(X, Y, Z)
+message("I(X;Y;Z) = ", res$i3)
+message("Ik(X;Y;Z) = ", res$i3k)
+
+
+# Independence, conditional dependence : X -&gt; Z &lt;- Y
+X &lt;- runif(N)
+Y &lt;- runif(N)
+Z &lt;- X + Y + rnorm(N, sd = 0.1)
+res &lt;- computeThreePointInfo(X, Y, Z)
+message("I(X;Y;Z) = ", res$i3)
+message("Ik(X;Y;Z) = ", res$i3k)
+
+</code></pre>
+
+
+</div>

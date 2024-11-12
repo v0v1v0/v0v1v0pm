@@ -1,0 +1,136 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>normBioCondBySizeFactors</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Normalize <code>bioCond</code> Objects by Their Size Factors</h2>
+
+<h3>Description</h3>
+
+<p>Given a list of <code>bioCond</code> objects,
+<code>normBioCondBySizeFactors</code> normalizes the signal intensities stored in
+them based on their respective size factors, so that these <code>bioCond</code>s
+become comparable to each other. Note that the normalization method
+implemented in this function is most suited to the <code>bioCond</code>s comprised
+of RNA-seq samples. See <code>normBioCond</code> for a more robust method
+for normalizing the <code>bioCond</code>s consisting of ChIP-seq samples.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">normBioCondBySizeFactors(conds, subset = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>conds</code></td>
+<td>
+<p>A list of <code>bioCond</code> objects to be normalized.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>subset</code></td>
+<td>
+<p>An optional vector specifying the subset of intervals or
+genes to be used for estimating size factors.
+Defaults to the intervals/genes occupied
+by all the <code>bioCond</code> objects. See <code>normalize</code> and
+<code>bioCond</code> for more information about occupancy states of
+intervals/genes in a biological condition.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Technically, <code>normBioCondBySizeFactors</code> considers each
+<code>bioCond</code> object to be a single ChIP-seq/RNA-seq sample. It
+treats the <code>sample.mean</code> variable of each <code>bioCond</code> as in the
+scale of log2 read count, and applies the median ratio strategy to estimate
+their respective size factors (see "References"). Finally, each
+<code>bioCond</code> object is normalized by subtracting its log2 size factor
+from each of its samples.
+</p>
+<p>The idea of <code>normBioCondBySizeFactors</code> comes from the principle that
+the more similar a set of samples are to each other, the fewer biases are
+expected to introduce when normalizing them. With this function, instead of
+performing an overall normalization on all the samples involved, you may
+choose to first normalize the samples within each biological condition, and
+then perform a normalization between the resulting <code>bioCond</code> objects
+(see "Examples" below).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of <code>bioCond</code> objects with normalized signal
+intensities, corresponding to the argument <code>conds</code>. To be noted,
+information about the mean-variance dependence stored in the original
+<code>bioCond</code> objects, if any, will be removed from the returned
+<code>bioCond</code>s. You can re-fit a mean-variance curve for them by, for
+example, calling <code>fitMeanVarCurve</code>. Note also that the
+original structure matrices are retained for each <code>bioCond</code> in the
+returned list (see <code>setWeight</code> for a detailed description
+of structure matrix).
+</p>
+<p>Besides, an attribute named <code>"size.factor"</code> is added to the
+returned list, recording the size factor of each <code>bioCond</code> object.
+</p>
+
+
+<h3>References</h3>
+
+<p>Anders, S. and W. Huber, <em>Differential expression analysis
+for sequence count data.</em> Genome Biol, 2010. <strong>11</strong>(10): p. R106.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>normalizeBySizeFactors</code> for normalizing
+ChIP-seq/RNA-seq samples based on their size factors;
+<code>bioCond</code> for creating a <code>bioCond</code> object;
+<code>normBioCond</code> for performing an MA normalization on
+<code>bioCond</code> objects; <code>cmbBioCond</code> for combining a set of
+<code>bioCond</code> objects into a single one; <code>MAplot.bioCond</code>
+for creating an MA plot on two normalized <code>bioCond</code> objects;
+<code>fitMeanVarCurve</code> for modeling the mean-variance dependence
+across intervals in <code>bioCond</code> objects.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(H3K27Ac, package = "MAnorm2")
+attr(H3K27Ac, "metaInfo")
+
+## First perform a normalization within each cell line, and then normalize
+## across cell lines.
+
+# Normalize samples separately for each cell line.
+norm &lt;- normalizeBySizeFactors(H3K27Ac, 4)
+norm &lt;- normalizeBySizeFactors(norm, 5:6,
+                               subset = apply(norm[10:11], 1, all))
+norm &lt;- normalizeBySizeFactors(norm, 7:8,
+                               subset = apply(norm[12:13], 1, all))
+
+# Construct separately a bioCond object for each cell line, and normalize
+# the resulting bioConds by their size factors.
+conds &lt;- list(GM12890 = bioCond(norm[4], norm[9], name = "GM12890"),
+              GM12891 = bioCond(norm[5:6], norm[10:11], name = "GM12891"),
+              GM12892 = bioCond(norm[7:8], norm[12:13], name = "GM12892"))
+conds &lt;- normBioCondBySizeFactors(conds)
+
+# Inspect the normalization effects.
+attr(conds, "size.factor")
+MAplot(conds[[1]], conds[[2]], main = "GM12890 vs. GM12891")
+abline(h = 0, lwd = 2, lty = 5)
+
+</code></pre>
+
+
+</div>

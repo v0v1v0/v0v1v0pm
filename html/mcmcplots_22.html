@@ -1,0 +1,111 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>parms2plot</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Matches groups of parameters to plot in MCMC diagnostics plots.</h2>
+
+<h3>Description</h3>
+
+<p>Utility function that finds the parameter names to plot in the <code>mcmcplot</code> function.  Intended for internal use only.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">parms2plot(parnames, parms, regex, random, leaf.marker = "[\\[_]", do.unlist = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>parnames</code></td>
+<td>
+<p> parameter names from an MCMC run </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parms</code></td>
+<td>
+<p> partial parameter names that will be used to determine which subset of <code>parnames</code> will be plotted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regex</code></td>
+<td>
+<p> a vector of character strings containing regular expressions to match parameter names in the <code>mcmc</code> object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>random</code></td>
+<td>
+<p> an integer or <code>NULL</code>.  If an integer is specified, the function will select only <code>random</code> number of plots from each parameter group for plotting.  If <code>NULL</code>, all parameter names from groups specified in <code>params</code> will be plotted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>leaf.marker</code></td>
+<td>
+<p> a regular expression with a character class that marks the beginning of the “leaf” portion of a parameter name.  The default character class includes <code>[</code> and <code>_</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>do.unlist</code></td>
+<td>
+<p> a logical indicating whether the function should return the vector of parameter names or a list of parameter names according to parameter "groupings" (so parameters can be accessed according to their "stems").  This option was added in order to improve the functionality of <code>mcmcplot</code> function.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function <code>parms2plot</code> is used internally by most plotting functions in the <span class="pkg">mcmcplots</span> package.  The function's purpose is to allow users to conveniently specify groups of parameters to be used in plots of MCMC output.
+</p>
+<p><code>parms2plot</code> relies on using regular expressions to find “stems” and “leaves” in parameter names and to create groups of parameters.  For example, the parameter <code>beta[10]</code> has stem <code>beta</code> and leaf <code>[10]</code>, and this naming convention indicates that the parameter <code>beta[10]</code> is part of a larger collection of <code>beta</code> parameters.
+</p>
+<p><code>parms2plot</code> uses a “leaf marker” specified by the <code>leaf.marker</code> argument to determine the end of the parameter stem and the beginning of its leaf.  The default leaf marker is an open left bracket “[” or an “_” as specified by a regular expression character class.
+</p>
+<p>Creating plots of specific groupings of parameters is possible by specifying parameter stems in the <code>parms</code> argument.  For example, calling the function <code>traplot(mcmcout, parms="beta")</code> will create a single plot window of trace plots for parameters <code>beta[1]</code>, ..., <code>beta[10]</code>.
+</p>
+<p>At first glance the leaf-marker concept might seem like overkill.  For example, to plot parameters <code>mu[1]</code>, ..., <code>mu[10]</code> why not simply use a string matching function to match “mu” in the parameter names?  The answer is that other parameter names might also match “mu” but may not be part of the grouping <code>mu[1]</code>, ..., <code>mu[10]</code>.  A model with parameter name <code>mu.gamma</code> would match the string “mu” but is not part of the parameter grouping <code>mu[1]</code>, ..., <code>mu[10]</code>.  <code>parms2plot</code> avoids this “greedy” matching by requiring an explicit declaration of a leaf marker.
+</p>
+<p><code>parms2plot</code> also allows the user to specify regular expressions for more direct control over the groups of parameters that are plotted.  Regular expressions are specified via the <code>regex</code> argument.  When <code>parms</code>, <code>regex</code>, and <code>random</code> are <code>NULL</code>, parms2plot will return all parameter names.
+</p>
+<p>The <code>random</code> option is useful when an MCMC simulation contains a large number of parameters in a group, e.g. in a hierarchical model with one or more parameter per observation in the data set.  In such settings, it is not feasible to create or examine plots for all parameters in a model. The <code>random</code> argument allows the user to specify a maximum number of plots to create for each parameter grouping.  If a parameter grouping exceeds the number specified in <code>random</code>, then a number of parameters (as specified in <code>random</code>)  will be randomly selected for plotting.  If <code>random</code> is a vector, then each element of <code>random</code> corresponds to a parameter grouping specified in <code>parms</code> and <code>regex</code>.  If specified, the <code>random</code> argument is recycled to be the same length as <code>length(parms) + length(regex)</code>.  Values of <code>NA</code> in <code>random</code> denote parameter groupings where all parameters in the group will be plotted.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A character vector with parameter names.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p> S. McKay Curtis with contributions from Ilya Goldin </p>
+
+
+<h3>See Also</h3>
+
+<p><code>mcmcplot</code>, <code>caterplot</code>, <code>traplot</code>, <code>denplot</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">prm &lt;- c(paste("gamma[", 1:30, "]", sep=""), paste("alpha[", 1:20, "]", sep=""))
+
+parms2plot(prm, NULL, NULL, NULL)      # returns all
+parms2plot(prm, NULL, NULL, 5)         # returns 5 randomly from each group
+parms2plot(prm, NULL, NULL, c(5, 10))  # 5 from gamma, 10 from alpha
+parms2plot(prm, NULL, NULL, c(10, NA)) # 10 from gamma, all from alpha
+parms2plot(prm, "alpha", NULL, NULL)   # all alphas
+parms2plot(prm, "gamma", NULL, NULL)   # all gammas
+parms2plot(prm, NULL, "alpha\\[1[[:digit:]]\\]$", NULL)   # alpha[10]-alpha[19]
+parms2plot(prm, "gamma", "alpha\\[1[[:digit:]]\\]$", NULL)  # all gamma and alpha[10]-alpha[19]
+</code></pre>
+
+
+</div>

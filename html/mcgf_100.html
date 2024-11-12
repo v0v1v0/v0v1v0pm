@@ -1,0 +1,117 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sim2</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Simulated regime-switching Markov chain Gaussian field</h2>
+
+<h3>Description</h3>
+
+<p>Simulated RS-MCGF for 10 locations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">sim2
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p><code>sim2</code>: a list containing a data.frame with 1000 rows and 10 columns,
+a list of distances, and a vector of regime labels.
+</p>
+
+
+<h3>Details</h3>
+
+<p><code>sim2</code> contains a simulated RS-MCGF for 10 locations. It is simulated with
+a regime-switching separable base model. The true parameters for the base
+model are: </p>
+<p style="text-align: center;"><code class="reqn">\text{Regime 1}: \text{nugget} = 0, c = 0.01, \gamma = 0.5,
+a = 0.5, \alpha = 0.2,</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\text{Regime 2}: \text{nugget} = 0, c = 0.04, \gamma = 0.5, a = 0.3,
+\alpha = 0.9.</code>
+</p>
+
+
+
+<h3>See Also</h3>
+
+<p>Other (simulated) datasets: 
+<code>sim1</code>,
+<code>sim3</code>,
+<code>wind</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Code used to generate `sim2`
+
+library(mcgf)
+set.seed(123)
+x &lt;- stats::rnorm(10, -110)
+y &lt;- stats::rnorm(10, 50)
+locations &lt;- cbind(x, y)
+h &lt;- find_dists(locations, longlat = TRUE)
+
+# simulate regimes
+K &lt;- 2
+N &lt;- 1000
+lag &lt;- 5
+
+tran_mat &lt;- matrix(rnorm(K^2, mean = 0.06 / (K - 1), sd = 0.01), nrow = K)
+diag(tran_mat) &lt;- rnorm(K, mean = 0.94, sd = 0.1)
+tran_mat &lt;- sweep(abs(tran_mat), 1, rowSums(tran_mat), `/`)
+tran_mat
+#            [,1]       [,2]
+# [1,] 0.94635675 0.05364325
+# [2,] 0.06973429 0.93026571
+
+regime &lt;- rep(NA, N)
+regime[1] &lt;- 1
+
+for (n in 2:(N)) {
+    regime[n] &lt;- sample(1:K, 1, prob = tran_mat[regime[n - 1], ])
+}
+table(regime)
+# regime
+#   1   2
+# 567 433
+
+# simulate RS MCGF
+par_base1 &lt;- list(
+    par_s = list(nugget = 0, c = 0.001, gamma = 0.5),
+    par_t = list(a = 0.5, alpha = 0.2)
+)
+
+par_base2 &lt;- list(
+    par_s = list(nugget = 0, c = 0.004, gamma = 0.5),
+    par_t = list(a = 0.3, alpha = 0.9)
+)
+
+sim2 &lt;- mcgf_rs_sim(
+    N = N, label = regime,
+    base_ls = list("sep"), lagrangian_ls = list("none"),
+    par_base_ls = list(par_base1, par_base2),
+    lambda_ls = list(0.1, 0.3),
+    lag_ls = list(lag, lag),
+    dists_ls = list(h, h)
+)
+sim2 &lt;- sim2[-c(1:(lag + 1)), ]
+rownames(sim2) &lt;- 1:nrow(sim2)
+
+sim2 &lt;- list(
+    data = sim2[, -1], locations = locations, dists = h,
+    label = sim2[, 1]
+)
+
+</code></pre>
+
+
+</div>

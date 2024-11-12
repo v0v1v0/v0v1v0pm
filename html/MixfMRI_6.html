@@ -1,0 +1,157 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>Generalized Cluster-Based Analysis (CBA) Method</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Generalized Cluster-Based Analysis (CBA) Method</h2>
+
+<h3>Description</h3>
+
+<p>Find clusters in 2D or 3D based on a generalized CBA method. The CBA
+method is originally proposed by Heller, et.al. (2006) using the correlation
+of two time series as the similarity of two spatial locations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">  cba.cor(da.ts, da.m = NULL, adj.dist = TRUE, fun.sim = stats::cor)
+  cba.cor.2d(da.ts, da.m = NULL, adj.dist = TRUE, fun.sim = stats::cor)
+  cba.cor.3d(da.ts, da.m = NULL, adj.dist = TRUE, fun.sim = stats::cor)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>da.ts</code></td>
+<td>
+<p>a time series array of dimensions <code>x * y * z * t</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>da.m</code></td>
+<td>
+<p>a mask determining inside of brain or not.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>adj.dist</code></td>
+<td>
+<p>if adjust correlations by distance.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun.sim</code></td>
+<td>
+<p>a function computing simility of two locations.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>These functions implement the 2D and 3D versions of CBA proposed by
+Heller, et.al. (2006).
+</p>
+<p><code>da.ts</code> should have dimensions <code>x * y * z * t</code> for 3D data
+and <code>x * y * time</code> for 2D data. Similarly, <code>da.m</code> would have
+<code>x * y * z</code> and <code>x * y</code> correspondingly.
+</p>
+<p><code>da.m</code> has values 0 or 1 indicating outside or inside a brain,
+respectively.
+</p>
+<p><code>fun.sim(a, B)</code> is a function return similarity between a location
+<code>a</code> and N neighboring locations <code>B</code> where <code>a</code> is of dimension
+<code>t * 1</code> and <code>B</code> is of dimensiont * N. Ideally, <code>fun.sim</code>()
+should return values of similarity which take values
+between 0 and 1 where 0 means totally different and
+1 means completely identical of two spatial locations.
+By default, <code>stats::cor</code> is used.
+See the example section next for user defined functions for
+<code>fun.sim</code>().
+</p>
+
+
+<h3>Value</h3>
+
+<p>Return the cluster ids for each voxel. NA for outside of brain if
+<code>da.m</code> is provided.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Wei-Chen Chen.
+</p>
+
+
+<h3>References</h3>
+
+<p>Heller, et.al. (2006) “Cluster-based analysis of FMRI data”,
+NeuroImage, 33(2), 599-608.
+</p>
+<p>Chen, W.-C. and Maitra, R. (2021)
+“A Practical Model-based Segmentation Approach for Accurate
+Activation Detection in Single-Subject functional Magnetic
+Resonance Imaging Studies”,
+<em>arXiv:2102.03639</em>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>fdr.bh.p1()</code>, <code>fdr.bh.p2()</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">### Simulated data
+library(MixfMRI, quietly = TRUE)
+dim &lt;- c(4, 5, 4, 10)
+set.seed(123)
+da.ts &lt;- array(rnorm(prod(dim)), dim = dim)
+id.class &lt;- suppressWarnings(cba.cor(da.ts))
+table(id.class)
+
+fun.tanh &lt;- function(a, B){
+  d &lt;- 1 / apply(B, 2, function(b){ dist(rbind(as.vector(a), b)) })
+  tanh(d)
+}
+id.class.tanh &lt;- suppressWarnings(cba.cor(da.ts, fun.sim = fun.tanh))
+table(id.class.tanh)
+
+fun.logit &lt;- function(a, B){
+  d &lt;- dist(t(cbind(a, B)))[1:ncol(B)]
+  (1 / (1 + exp(-d))) * 2 - 1
+}
+id.class.logit &lt;- suppressWarnings(cba.cor(da.ts, fun.sim = fun.logit))
+table(id.class.logit)
+
+
+.rem &lt;- function(){
+
+  ### Real data
+  # library(AnalyzeFMRI, quietly = TRUE)
+  # library(oro.nifti, quietly = TRUE)
+
+  # fn &lt;- "pb02_volreg_tlrc.nii"
+  # da &lt;- readNIfTI(fn)
+  # da.ts &lt;- da@.Data
+
+  # fn &lt;- "mask_anat.nii"
+  # da &lt;- readNIfTI(fn)
+  # da.m &lt;- da@.Data
+
+  # id.class &lt;- suppressWarnings(cba.cor(da.ts, da.m))
+  # dim(id.class) &lt;- dim(da.m)
+  # length(table(id.class))
+
+}
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,126 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>findOrfs</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Finding ORFs in genomes</h2>
+
+<h3>Description</h3>
+
+<p>Finds all ORFs in prokaryotic genome sequences.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">findOrfs(genome, circular = F, trans.tab = 11)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>genome</code></td>
+<td>
+<p>A fasta object (<code>tibble</code>) with the genome sequence(s).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>circular</code></td>
+<td>
+<p>Logical indicating if the genome sequences are completed, 
+circular sequences.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trans.tab</code></td>
+<td>
+<p>Translation table.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>A prokaryotic Open Reading Frame (ORF) is defined as a sub-sequence 
+starting with a  start-codon (ATG, GTG or TTG), followed by an integer number
+of triplets (codons), and ending with a stop-codon (TAA, TGA or TAG, unless 
+<code>trans.tab = 4</code>, see below). This function will locate all such ORFs in
+a genome.
+</p>
+<p>The argument <code>genome</code> is a fasta object, i.e. a table with columns 
+‘<span class="samp">⁠Header⁠</span>’ and ‘<span class="samp">⁠Sequence⁠</span>’, and will typically have several sequences
+(chromosomes/plasmids/scaffolds/contigs). It is vital that the <em>first 
+token</em> (characters before first space) of every ‘<span class="samp">⁠Header⁠</span>’ is
+unique, since this will be used to identify these genome sequences in the
+output.
+</p>
+<p>By default the genome sequences are assumed to be linear, i.e. contigs or
+other incomplete fragments of a genome. In such cases there will usually be
+some truncated ORFs at each end, i.e. ORFs where either the start- or the 
+stop-codon is lacking. In the <code>orf.table</code> returned by this function this
+is marked in the ‘<span class="samp">⁠Attributes⁠</span>’ column. The texts "Truncated=10" or 
+"Truncated=01" indicates truncated at the beginning or end of the genomic 
+sequence, respectively. If the supplied <code>genome</code> is a completed genome,
+with circular chromosome/plasmids, set the flag <code>circular = TRUE</code> and no
+truncated ORFs will be listed. In cases where an ORF runs across the origin 
+of a circular genome sequences, the stop coordinate will be larger than the 
+length of the genome sequence. This is in line with the specifications of
+the GFF3 format, where a ‘<span class="samp">⁠Start⁠</span>’ cannot be larger than the
+corresponding ‘<span class="samp">⁠End⁠</span>’.
+</p>
+<p>An alternative translation table may be specified, and as of now the only
+alternative implemented is table 4. This means codon TGA is no longer a stop,
+but codes for Tryptophan. This coding is used by some bacteria
+(e.g. under the orders Entomoplasmatales and Mycoplasmatales).
+</p>
+<p>Note that for any given stop-codon there are usually multiple start-codons 
+in the same reading frame. This function will return all such nested ORFs, 
+i.e. the same stop position may appear multiple times. If you want ORFs with
+the most upstream start-codon only (LORFs), then filter the output from this
+function with <code>lorfs</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>This function returns an <code>orf.table</code>, which is simply a 
+<code>tibble</code> with columns adhering to the GFF3 format specifications
+(a <code>gff.table</code>), see <code>readGFF</code>. If you want to retrieve
+the actual ORF sequences, use <code>gff2fasta</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Lars Snipen and Kristian Hovde Liland.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>readGFF</code>, <code>gff2fasta</code>, <code>lorfs</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Using a genome file in this package
+genome.file &lt;- file.path(path.package("microseq"),"extdata","small.fna")
+
+# Reading genome and finding orfs
+genome &lt;- readFasta(genome.file)
+orf.tbl &lt;- findOrfs(genome)
+
+# Pipeline for finding LORFs of minimum length 100 amino acids
+# and collecting their sequences from the genome
+findOrfs(genome) %&gt;% 
+ lorfs() %&gt;% 
+ filter(orfLength(., aa = TRUE) &gt; 100) %&gt;% 
+ gff2fasta(genome) -&gt; lorf.tbl
+
+</code></pre>
+
+
+</div>

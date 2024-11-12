@@ -1,0 +1,277 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>f_mactivate</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Map Activation Layer and Inputs to Polynomial Model Inputs
+</h2>
+
+<h3>Description</h3>
+
+<p>Passes activation inputs, <code>U</code> into activation layer, <code>W</code>, to obtain new polynomial model inputs.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">f_mactivate(U, W)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>U</code></td>
+<td>
+
+<p>Numeric matrix, <code>N</code> x <code>d_u</code> of activation inputs.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>W</code></td>
+<td>
+
+<p>Numeric matrix, <code>d_u</code> x <code>m</code>, the multiplicative activation layer.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function calculates the multiplicative activations; it maps selected inputs, <code>U</code>, back into the input space using the m-activation layer(s).  In practice, the arg <code>W</code>, will be a fitted value, as created by the fitting functions.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Numeric matrix, <code>N</code> x <code>m</code>.  Referred to as <code>Xstar</code> elsewhere in this documentation.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+
+
+library(mactivate)
+
+set.seed(777)
+
+
+d &lt;- 7
+N &lt;- 15000
+
+X &lt;- matrix(rnorm(N*d, 0, 1), N, d) ####
+
+colnames(X) &lt;- paste0("x", I(1:d))
+
+############# primary effects
+b &lt;- rep_len( c(-1/4, 1/4), d )
+
+
+
+###########
+
+xxA &lt;- (X[ , 1]+1/3) * (X[ , 1]-1/3) * (X[ , 3]+1/3)
+xxB &lt;- (X[ , 2]+0) * (X[ , 2]+1/3) * (X[ , 3]-0) * (X[ , 3]-1/3)
+xxC &lt;- (X[ , 3]+1/3) * (X[ , 3]-1/3)
+
+ystar &lt;-
+X %*% b +
+1/3 * xxA -
+1/2 * xxB +
+1/3 * xxC
+
+
+#############
+
+xs2 &lt;- "y ~ . "
+
+xtrue_formula &lt;- eval(parse(text=xs2))
+
+xnoint_formula &lt;- eval(parse(text="y ~ . - xxA - xxB - xxC"))
+
+
+
+yerrs &lt;- rnorm(N, 0, 3)
+
+y &lt;- ystar + yerrs
+
+########## standardize X
+Xall &lt;- t( ( t(X) - apply(X, 2, mean) ) / apply(X, 2, sd) )
+yall &lt;- y
+Nall &lt;- N
+
+
+####### fold index
+xxfoldNumber &lt;- rep_len(1:2, N)
+
+ufolds &lt;- sort(unique(xxfoldNumber)) ; ufolds
+
+
+############### predict
+############### predict
+
+
+dfx &lt;- data.frame("y"=yall, Xall, xxA, xxB, xxC)
+
+tail(dfx)
+
+
+
+################### incorrectly fit LM: no interactions
+
+xlm &lt;- lm(xnoint_formula , data=dfx)
+summary(xlm)
+yhat &lt;- predict(xlm, newdata=dfx)
+sqrt( mean( (yall - yhat)^2 ) )
+
+
+
+################### correctly fit LM
+xlm &lt;- lm(xtrue_formula, data=dfx)
+summary(xlm)
+yhat &lt;- predict(xlm, newdata=dfx)
+sqrt( mean( (yall - yhat)^2 ) )
+
+
+
+
+
+################ fit using hybrid m-activation
+###### takes about 2 minutes
+
+xcmact_hybrid &lt;-
+f_control_mactivate(
+param_sensitivity = 10^12,
+bool_free_w       = TRUE,
+w0_seed           = 0.1,
+w_col_search      = "alternate",
+max_internal_iter = 500, #####
+ss_stop           = 10^(-14), ###
+escape_rate       = 1.005,
+Wadj              = 1/1,
+force_tries       = 0,
+lambda            = 0/10000, ###
+tol               = 10^(-14) ###
+)
+
+
+
+
+#### Fit
+
+m_tot &lt;- 7
+
+Uall &lt;- cbind(Xall, Xall)
+colnames(Uall) &lt;- paste0(rep(c("a_", "b_"), each=d), colnames(Uall))
+
+head(Uall)
+
+xthis_fold &lt;- ufolds[ 1 ]
+
+
+xndx_test &lt;- which( xxfoldNumber %in% xthis_fold )
+xndx_train &lt;- setdiff( 1:Nall, xndx_test )
+
+X_train &lt;- Xall[ xndx_train, , drop=FALSE ]
+y_train &lt;- yall[ xndx_train ]
+U_train &lt;- Uall[ xndx_train, , drop=FALSE ]
+
+xxnow &lt;- Sys.time()
+xxls_out &lt;-
+f_fit_hybrid_01(
+X = X_train,
+y = y_train,
+m_tot = m_tot,
+U = U_train,
+m_start = 1,
+mact_control = xcmact_hybrid,
+verbosity = 1
+)
+cat( difftime(Sys.time(), xxnow, units="mins"), "\n" )
+
+
+
+######### check test error
+
+U_test &lt;- Uall[ xndx_test, , drop=FALSE ]
+X_test &lt;- Xall[ xndx_test, , drop=FALSE ]
+y_test &lt;- yall[ xndx_test ]
+
+
+yhatTT &lt;- matrix(NA, length(xndx_test), m_tot+1)
+
+for(iimm in 0:m_tot) {
+    yhat_fold &lt;- predict(object=xxls_out, X0=X_test, U0=U_test, mcols=iimm )
+    yhatTT[ , iimm + 1 ] &lt;- yhat_fold
+}
+
+errs_by_m &lt;- NULL
+for(iimm in 1:ncol(yhatTT)) {
+    yhatX &lt;- yhatTT[ , iimm]
+    errs_by_m[ iimm ] &lt;- sqrt(mean( (y_test - yhatX)^2 ))
+    cat(iimm, "::", errs_by_m[ iimm ])
+}
+
+plot(0:(length(errs_by_m)-1), errs_by_m, type="l", xlab="m", ylab="RMSE Cost")
+
+
+
+
+##################
+
+xthis_fold &lt;- ufolds[ 1 ]
+
+xndx_test &lt;- which( xxfoldNumber %in% xthis_fold )
+xndx_train &lt;- setdiff( 1:Nall, xndx_test )
+
+xlm &lt;- lm(xtrue_formula , data=dfx[ xndx_train, ])
+yhat &lt;- predict(xlm, newdata=dfx[ xndx_test, ])
+
+sqrt( mean( (y_test - yhat)^2 ) )
+
+
+################ hatXstar
+
+X_test &lt;- Xall[ xndx_test, ]
+y_test &lt;- yall[ xndx_test ]
+
+Xstar_test &lt;- f_mactivate(U=U_test, W=xxls_out[[ length(xxls_out) ]][[ "What" ]])
+Xi &lt;- cbind(X_test, Xstar_test)
+xlm &lt;- lm(y_test ~ Xi)
+
+sumxlm &lt;- summary(xlm)
+print(sumxlm)
+
+xcoefs &lt;- sumxlm$coefficients
+xcoefs &lt;- xcoefs[ (2+d):nrow(xcoefs), ] ; xcoefs
+
+xndox_cu &lt;- which( abs(xcoefs[ , "t value"]) &gt; 3 ) ; xndox_cu
+
+
+bWhat &lt;- xxls_out[[ length(xxls_out) ]][[ "What" ]][ ,  xndox_cu ]
+bWhat
+
+wwmag &lt;- apply(bWhat, 1, function(x) { return(sum(abs(x)))} ) ; wwmag
+
+plot(wwmag, type="h", lwd=4,
+ylim=c(0, max(wwmag)),
+main="W Coefficient Total Magnitute vs Input Term",
+xlab="Column of U",
+ylab="Sum of magnitudes in fitted W",
+cex.lab=1.3
+)
+
+
+
+
+
+</code></pre>
+
+
+</div>

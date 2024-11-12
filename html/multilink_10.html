@@ -1,0 +1,231 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>reduce_comparison_data</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Reduce Comparison Data Size</h2>
+
+<h3>Description</h3>
+
+<p>Use indexing to reduce the number of record pairs that are potential matches.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">reduce_comparison_data(comparison_list, pairs_to_keep, cc = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>comparison_list</code></td>
+<td>
+<p>The output of a call to
+<code>create_comparison_data</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pairs_to_keep</code></td>
+<td>
+<p>A <code>logical</code> vector, the same length as
+<code>comparison_list$record_pairs</code>, indicating which record pairs should be
+kept as potential matches. These potential matches do not have to be
+transitive (see the argument <code>cc</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cc</code></td>
+<td>
+<p>A <code>numeric</code> indicator of whether to find the transitive
+closure of <code>pairs_to_keep</code>, and use these potential matches instead
+of just those from <code>pairs_to_keep</code>. <code>cc</code> should be <code>1</code> if the
+transitive closure is being used, and <code>cc</code> should be <code>0</code> if the
+transitive closure is not being used. We recommend setting <code>cc</code> to
+<code>1</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>When using comparison-based record linkage methods, scalability is a concern,
+as the number of record pairs is quadratic in the number of records. In
+order to address these concerns, it's common to declare certain record pairs
+to not be potential matches a priori, using indexing methods. The user is
+free to index using any method they like, as long as they can produce a
+<code>logical</code> vector that indicates which record pairs are potential matches
+according to their indexing method. We recommend, if the user chosen indexing
+method does not output potential matches that are transitive, to set the
+<code>cc</code> argument to <code>1</code>. By transitive we mean, for any three records
+<code class="reqn">i</code>, <code class="reqn">j</code>, and <code class="reqn">k</code>, if <code class="reqn">i</code> and <code class="reqn">j</code> are potential matches,
+and <code class="reqn">j</code> and <code class="reqn">k</code> are potential matches, then <code class="reqn">i</code> and <code class="reqn">k</code> are
+potential matches. Non-transitive indexing schemes can lead to poor mixing of
+the Gibbs sampler used for posterior inference, and suggests that the
+indexing method used may have been too stringent.
+</p>
+<p>If indexing is used, it may be the case that some records are declared to not
+be potential matches to any other records. In this case, the indexing method
+has made the decision that these records have no matches, and thus we can
+remove them from the data set and relabel the remaining records; see the
+documentation for <code>labels</code> for information on how to go between the
+original labeling and the new labeling.
+</p>
+<p>If indexing is used, comparisons for record pairs that aren't potential
+matches are still used during inference, where they're used to inform the
+distribution of comparisons for non-matches.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list containing:
+</p>
+
+<dl>
+<dt><code>record_pairs</code></dt>
+<dd>
+<p>A <code>data.frame</code>, where each row
+contains the pair of records being compared in the corresponding row of
+<code>comparisons</code>. The rows are sorted in ascending order according to the
+first column, with ties broken according to the second column in ascending
+order. For any given row, the first column is less than the second column,
+i.e. <code>record_pairs[i, 1] &lt; record_pairs[i, 2]</code> for each row <code>i</code>.
+If according to <code>pairs_to_keep</code> there are records which are not
+potential matches to any other records, the remaining records are
+relabeled (see <code>labels</code>).</p>
+</dd>
+<dt><code>comparisons</code></dt>
+<dd>
+<p>A <code>logical</code> matrix, where each row contains
+the comparisons between the record pair in the corresponding row of
+<code>record_pairs</code>. Comparisons are in the same order as the columns of
+<code>records</code>, and are represented by <code>L + 1</code> columns of
+<code>TRUE/FALSE</code> indicators, where <code>L + 1</code> is the number of
+disagreement levels for the field based on <code>breaks</code>.</p>
+</dd>
+<dt><code>K</code></dt>
+<dd>
+<p>The number of files, assumed to be of class
+<code>numeric</code>.</p>
+</dd>
+<dt><code>file_sizes</code></dt>
+<dd>
+<p>A <code>numeric</code> vector of length <code>K</code>,
+indicating the size of each file. If according to <code>pairs_to_keep</code>
+there are records which are not potential matches to any other records, the
+remaining records are relabeled (see <code>labels</code>), and <code>file_sizes</code>
+now represents the sizes of each file after removing such records.</p>
+</dd>
+<dt><code>duplicates</code></dt>
+<dd>
+<p>A <code>numeric</code> vector of length <code>K</code>,
+indicating which files are assumed to have duplicates. <code>duplicates[k]</code>
+should be <code>1</code> if file <code>k</code> has duplicates, and
+<code>duplicates[k]</code> should be <code>0</code> if file <code>k</code> has no
+duplicates.</p>
+</dd>
+<dt><code>field_levels</code></dt>
+<dd>
+<p>A <code>numeric</code> vector indicating the number of
+disagreement levels for each field.</p>
+</dd>
+<dt><code>file_labels</code></dt>
+<dd>
+<p>An <code>integer</code> vector of length
+<code>sum(file_sizes)</code>, where <code>file_labels[i]</code> indicated which file
+record <code>i</code> is in.</p>
+</dd>
+<dt><code>fp_matrix</code></dt>
+<dd>
+<p>An <code>integer</code> matrix, where
+<code>fp_matrix[k1, k2]</code> is a label for the file pair <code>(k1, k2)</code>. Note
+that <code>fp_matrix[k1, k2] = fp_matrix[k2, k1]</code>.</p>
+</dd>
+<dt><code>rp_to_fp</code></dt>
+<dd>
+<p>A <code>logical</code> matrix that indicates which record
+pairs belong to which file pairs. <code>rp_to_fp[fp, rp]</code> is <code>TRUE</code> if
+the records  <code>record_pairs[rp, ]</code> belong to the file pair <code>fp</code>,
+and is FALSE otherwise. Note that <code>fp</code> is given by the labeling in
+<code>fp_matrix</code>.</p>
+</dd>
+<dt><code>ab</code></dt>
+<dd>
+<p>An <code>integer</code> vector, of length
+<code>ncol(comparisons) * K * (K + 1) / 2</code> that indicates how many record
+pairs there are with a given disagreement level for a given field, for each
+file pair.</p>
+</dd>
+<dt><code>file_sizes_not_included</code></dt>
+<dd>
+<p>If according to <code>pairs_to_keep</code>
+there are records which are not potential matches to any other records, the
+remaining records are relabeled (see <code>labels</code>), and
+<code>file_sizes_not_included</code> indicates, for each file, the number of such
+records that were removed.</p>
+</dd>
+<dt><code>ab_not_included</code></dt>
+<dd>
+<p>For record pairs not included according to
+<code>pairs_to_keep</code>, this is an <code>integer</code> vector, of length
+<code>ncol(comparisons) * K * (K + 1) / 2</code> that indicates how many record
+pairs there are with a given disagreement level for a given field, for each
+file pair.</p>
+</dd>
+<dt><code>labels</code></dt>
+<dd>
+<p>If according to <code>pairs_to_keep</code>
+there are records which are not potential matches to any other records, the
+remaining records are relabeled. <code>labels</code> provides a dictionary that
+indicates, for each of the new labels, which record in the original
+labeling the new label corresponds to. In particular, the first column
+indicates the record in the original labeling, and the second column
+indicates the new labeling.</p>
+</dd>
+<dt><code>pairs_to_keep</code></dt>
+<dd>
+<p>A <code>logical</code> vector, the same length as
+<code>comparison_list$record_pairs</code>, indicating which record pairs were
+kept as potential matches. This may not be the same as the input
+<code>pairs_to_keep</code> if <code>cc</code> was set to 1.</p>
+</dd>
+<dt><code>cc</code></dt>
+<dd>
+<p>A <code>numeric</code> indicator of whether the connected
+components of the potential matches are closed under transitivity.</p>
+</dd>
+</dl>
+<h3>References</h3>
+
+<p>Serge Aleshin-Guendel &amp; Mauricio Sadinle (2022). Multifile Partitioning for Record Linkage and Duplicate Detection. <em>Journal of the
+American Statistical Association</em>. [doi: <a href="https://doi.org/10.1080/01621459.2021.2013242">10.1080/01621459.2021.2013242</a>][<a href="https://arxiv.org/abs/2110.03839">arXiv</a>]
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Example with small duplicate dataset
+data(dup_data_small)
+
+# Create the comparison data
+comparison_list &lt;- create_comparison_data(dup_data_small$records,
+ types = c("bi", "lv", "lv", "lv", "lv", "bi", "bi"),
+ breaks = list(NA,  c(0, 0.25, 0.5),  c(0, 0.25, 0.5),
+               c(0, 0.25, 0.5), c(0, 0.25, 0.5),  NA, NA),
+ file_sizes = dup_data_small$file_sizes,
+ duplicates = c(1, 1, 1))
+
+# Reduce the comparison data
+# The following line corresponds to only keeping pairs of records for which
+# neither gname nor fname disagree at the highest level
+pairs_to_keep &lt;- (comparison_list$comparisons[, "gname_DL_3"] != TRUE) &amp;
+ (comparison_list$comparisons[, "fname_DL_3"] != TRUE)
+reduced_comparison_list &lt;- reduce_comparison_data(comparison_list,
+ pairs_to_keep, cc = 1)
+</code></pre>
+
+
+</div>

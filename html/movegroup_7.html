@@ -1,0 +1,217 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>scaleraster</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Scales individual utilization distribution rasters and volume area estimates</h2>
+
+<h3>Description</h3>
+
+<p>Scales individual-level utilization distribution (UD) rasters from 0 to 1 to facilitate interpretation as relative
+intensity of utilization (as opposed to absolute), making comparisons across individuals and interpretations at
+the group level more straightforward. Subsequently, scaled individual-level rasters are aggregated to create a
+single group-level UD raster. See www.GitHub.com/SimonDedman/movegroup for issues, feedback, and development
+suggestions. There is an option to account for bias in acoustic receiver array spatial representation (see Details).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">scaleraster(
+  path = NULL,
+  pathsubsets = NULL,
+  pattern = ".asc",
+  weighting = 1,
+  format = "ascii",
+  datatype = "FLT4S",
+  bylayer = TRUE,
+  overwrite = TRUE,
+  scalefolder = "Scaled",
+  scaledweightedname = "All_Rasters_Scaled_Weighted",
+  crsloc = NULL,
+  returnObj = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>path</code></td>
+<td>
+<p>Path to directory where the individual-level UDs are saved. Likely the same as
+savedir from movegroup. Default NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pathsubsets</code></td>
+<td>
+<p>Path to parent directory that contains all UDs across spatial groups or
+subsets, i.e. if you ran movegroup multiple times for different areas in a connected system, this
+would be the parent folder within which all the movegroup savedir's are located. Default NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pattern</code></td>
+<td>
+<p>Extension pattern used to read in all UDs in directory and pathsubsets directory.
+Default ".asc".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weighting</code></td>
+<td>
+<p>Addresses unbalanced receiver array design after receivers have first been
+partitioned into regions, and group-level UDs estimated per region. Numeric. Weights
+area-specific scaled group-level UD raster by value. This then means that estimated scaled
+individual-level volume areas also become weighted. Default is 1 for no weighting.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>format</code></td>
+<td>
+<p>Character. Output file type for raster::writeRaster param format. Default "ascii".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>datatype</code></td>
+<td>
+<p>Character. Data type for writing values to disk for raster::writeRaster param
+Datatype. Default "FLT4S".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bylayer</code></td>
+<td>
+<p>For raster::writeRaster param bylayer. Default TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>overwrite</code></td>
+<td>
+<p>For raster::writeRaster param overwrite. Default TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scalefolder</code></td>
+<td>
+<p>Folder to save outputs to. Default "Scaled".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scaledweightedname</code></td>
+<td>
+<p>Name of chunk for scaled and weighted output rasters. Default
+"All_Rasters_Scaled_Weighted".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>crsloc</code></td>
+<td>
+<p>Location of saved CRS Rds file from movegroup.R. Should be same as path. Default
+NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>returnObj</code></td>
+<td>
+<p>Logical. Return the scaled object to the parent environment? Default FALSE.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Step 1. Scale rasters.
+Individual-level UD rasters are scaled from 0 to 1 by dividing each raster by the maximum probability density value
+occurring within the raster set.
+</p>
+<p>Step 2. Aggregate into a group-level raster.
+Scaled individual-level rasters are summed to create a single group-level UD raster.
+</p>
+<p>Step 3. Re-scale to 0 to 1.
+The group-level raster is divided by its own maximum value.
+</p>
+<p>Step 4. Weight raster (optional).
+The scaled group-level UD raster is divided by the specified weighting factor(s). Note that this is only useful if you
+want to account for an unbalanced listening station (e.g., acoustic receivers) array and have split up the study site and receivers in regions, and have
+run the movegroup() for each regional data set separately. See van Zinnicq Bergmann et al. 2022
+(https://doi.org/10.1016/j.biocon.2022.109469) for example. If not applicable, choose a value of "1".
+</p>
+<p>Step 5. Standardize raster.
+Standardize the potentially weighted and scaled group-level UD raster so that its values sum to 1.
+</p>
+<p>Step 6. Export as latlon CRS.
+Change crs to latlon for plotting and calculation purposes, save file, continue.
+</p>
+<p>Step 7. Estimate 50 and 95pct contour volume areas.
+For each scaled individual-level UD raster, estimate 50 and 95pct contour volume areas, as well as their mean and standard
+deviation. Additionally, the 50 and 95pct volume area is estimated for the group-level UD raster.
+</p>
+<p>Step 8. Export the projected-CRS group-level raster.
+</p>
+<p>Errors and their origins:
+</p>
+
+<ol>
+<li>
+<p> Error in (function (cond): error in evaluating the argument 'x' in selecting a method for
+function 'res': subscript out of bounds. Probably path can't find any files of type=pattern:
+check you used a terminal slash in savedir in movegroup, and that path has files of type=pattern.
+</p>
+</li>
+<li>
+<p> Error in if (substr(x = pathsubsets, start = nchar(pathsubsets), stop = nchar(pathsubsets))==:
+argument is of length zero: pathsubsets is wrong. Try setting to same as path. NULL does this.
+</p>
+</li>
+<li>
+<p> Error in gzfile(file, "rb"): cannot open compressed file 'CRS.Rds', probable reason 'No such
+file or directory': crsloc is wrong. Try setting to same as path. NULL does this.
+</p>
+</li>
+<li>
+<p> In min/max: No non-missing arguments to min; returning Inf: likely not enough memory, increase
+rasterResolution value.
+</p>
+</li>
+</ol>
+<h3>Value</h3>
+
+<p>Scaled and weighted individual-level and group-level utilization distributions saved as
+rasters. Scaled 50 and 95pct contour volume area estimates (in km2) for individuals and the group
+, saved in .csv format. Latlon raster.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Simon Dedman, <a href="mailto:simondedman@gmail.com">simondedman@gmail.com</a>
+</p>
+<p>Maurits van Zinnicq Bergmann, <a href="mailto:mauritsvzb@gmail.com">mauritsvzb@gmail.com</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Having run the movegroup function example:
+scaleraster(path = tempdir())
+
+# Weighted by number of positions per ID, fewer locations = lower Weighting value = higher final 
+# UD values after dividing by Weighting. This scales all IDs up to match the group max.
+Weighting &lt;- TracksCleaned |&gt;
+ dplyr::group_by(Shark) |&gt;
+ dplyr::summarise(N = n()) |&gt; 
+ dplyr::filter(N &gt; 23) |&gt; 
+ dplyr::mutate(N = N / max(N, na.rm = TRUE)) |&gt; 
+ dplyr::pull(N)
+ 
+ scaleraster(path = tempdir(), weighting = Weighting)
+
+
+</code></pre>
+
+
+</div>

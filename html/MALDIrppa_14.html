@@ -1,0 +1,174 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>screenSpectra</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Identification of potentially low-quality raw mass spectra
+</h2>
+
+<h3>Description</h3>
+
+<p>This function implements a quality control check to help in the identification of possibly faulty, low-quality raw mass spectra. It computes an atypicality score and labels suspicious profiles for further inspection and filtering.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">screenSpectra(x, meta = NULL, threshold = 1.5, estimator = c("Q", "MAD"),
+                 method = c("adj.boxplot", "boxplot", "ESD", "Hampel", "RC"),
+                 nd = 1, lambda = 0.5, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+
+<p>A list of <code>MassSpectrum</code> objects.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>meta</code></td>
+<td>
+<p>(optional) Matrix or vector containing metadata associated to <code>x</code>. Typically a data matrix including spectrum ID, biotype, replicate number, etc. for each element of <code>x</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+
+<p>Multiplicative factor used in computing the upper and lower fences to determine passes and failures. It is related to the actual method used to compute the fences (see <code>method</code>). Typically, <code>threshold = 1.5</code> (default value) for the boxplot rules, and <code>threshold = 3</code> for the others.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>estimator</code></td>
+<td>
+<p>Robust scale estimator used:
+</p>
+<p><code>Q</code>: robust location-free scale estimate (default, see <code>Qn</code> function in <code>robustbase</code> package). More efficient than MAD and adequate for non-symmetric distributions.
+</p>
+<p><code>MAD</code>: median absolute deviance scale estimate. Very robust and preferred for fairly symmetric distributions.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>Method used to compute upper and lower fences for the identification of atypical mass spectra.
+</p>
+<p><code>boxplot</code>: standard boxplot rule based on the first and third quartiles and the interquartile range. 
+</p>
+<p><code>adj.boxplot</code>: extension of boxplot rule for strongly asymmetric data (default).
+</p>
+<p><code>ESD</code>: extreme studentized deviation method. Based on the mean and the standard deviation of the data. Typically used with <code>threshold = 3</code> (three-sigma rule).
+</p>
+<p><code>Hampel</code>: robust version of the ESD method based on the median and the median absolute deviance estimate (MAD).
+</p>
+<p><code>RC</code>: as Hampel's but replacing MAD by Rousseeuw &amp; Croux (1993)'s <code>Qn</code> as scale estimate.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nd</code></td>
+<td>
+
+<p>Order for the derivative function of the mass spectra (default = 1).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+
+<p>Weight given to each component of the atypicality score (values in [0, 1], default = 0.5, see details below).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Other arguments.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The procedure computes an atypicality score (A score) based on a weighted function of two components: (1) a robust scale estimator (<code>Q</code> or <code>MAD</code>) of the n-order derivative (computed using Savitzky-Golay smoothing filter) of scaled mass spectra and (2) the median intensity of the signals. Given a <code>method</code> to determine tolerance fences, a mass spectrum is labelled as potentially faulty, low-quality according to the magnitude of its A score. The <code>adj.boxplot</code> method based on the <code>Q</code> scale estimator and equal weights to both components (<code>lambda</code> = 0.5) are the default options. The greater <code>lambda</code> the higher the weight given to the scale estimator in the A score. The function produces summaries and a list of mass spectra and (if given) associated metadata in which the identified cases were filtered out.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>scSpectra</code> with elements:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>fspectra </code></td>
+<td>
+<p>List of mass spectra (<code>MassSpectrum</code> class) with potential low-quality cases filtered out.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fmeta </code></td>
+<td>
+<p>Associated filtered metadata (<code>data.frame</code> object).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>est.table </code></td>
+<td>
+<p>Results table showing the mass spectra ID, A score and label (pass/failure).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>... </code></td>
+<td>
+<p>Other details (see method <code>summary.scSpectra</code> for <code>scSpectra</code> objects).</p>
+</td>
+</tr>
+</table>
+<h3>See Also</h3>
+
+<p>See methods <code>summary.scSpectra</code> and <code>plot.scSpectra</code> for <code>scSpectra</code> objects.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Load example data
+
+data(spectra) # list of MassSpectra objects
+data(type)    # metadata
+
+# Results using different settings
+
+sc.results &lt;- screenSpectra(spectra)
+sc.results &lt;- screenSpectra(spectra, type)
+sc.results &lt;- screenSpectra(spectra, type, method = "RC")
+sc.results &lt;- screenSpectra(spectra, type, threshold = 3, estimator = "MAD", method = "Hampel")
+
+# Numerical and graphical summary
+
+summary(sc.results)
+plot(sc.results)
+
+# Save filtered data for further pre-processing
+
+filtered.spectra &lt;- sc.results$fspectra
+filtered.type &lt;- sc.results$fmeta
+</code></pre>
+
+
+</div>

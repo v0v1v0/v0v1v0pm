@@ -1,0 +1,139 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict.MEDgating</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Predictions from MEDseq gating networks</h2>
+
+<h3>Description</h3>
+
+<p>Predicts mixing proportions from MEDseq gating networks. Effectively akin to predicting from a multinomial logistic regression via <code>multinom</code>, although here the noise component (if any) is properly accounted for. So too are models with no gating covariates at all, or models with the equal mixing proportion constraint. Prior probabilities are returned by default.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'MEDgating'
+predict(object,
+        newdata = NULL,
+        type = c("probs", "class"),
+        keep.noise = TRUE,
+        droplevels = FALSE,
+        ...)
+
+## S3 method for class 'MEDgating'
+fitted(object,
+       ...)
+
+## S3 method for class 'MEDgating'
+residuals(object,
+          ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>An object of class <code>"MEDgating"</code> (typically <code>x$gating</code>, where <code>x</code> is of class <code>"MEDseq"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>A matrix or data frame of test examples. If omitted, the fitted values are used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>The type of output desired. The default (<code>"probs"</code>) returns prior probabilities, while <code>"class"</code> returns labels indicating the most likely group <em>a priori</em>. Note that observations classified assigned the noise component (if any) are given a label of <code>0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep.noise</code></td>
+<td>
+<p>A logical indicating whether the output should acknowledge the noise component (if any). Defaults to <code>TRUE</code>; when <code>FALSE</code>, this column is discarded and the matrix of probabilities is renormalised accordingly.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>droplevels</code></td>
+<td>
+<p>A logical indicating whether unseen factor levels in categorical variables within <code>newdata</code> should be dropped (with <code>NA</code> predicted in their place). Defaults to <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Catches unused arguments or allows the <code>type</code> and <code>keep.noise</code> arguments to be passed through <code>fitted</code> and the <code>keep.noise</code> argument to be passed through <code>residuals</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function (unlike the <code>predict</code> method for <code>multinom</code> on which <code>predict.MEDgating</code> is based) accounts for sampling weights and the various ways of treating gating covariates, equal mixing proportion constraints, and noise components, although its <code>type</code> argument defaults to <code>"probs"</code> rather than <code>"class"</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The return value depends on whether <code>newdata</code> is supplied or not and whether the model includes gating covariates to begin with. When <code>newdata</code> is not supplied, the fitted values are returned (as matrix if the model contained gating covariates, otherwise as a vector as per <code>x$params$tau</code>). If <code>newdata</code> is supplied, the output is always a matrix with the same number of rows as the <code>newdata</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Keefe Murphy - &lt;<a href="mailto:keefe.murphy@mu.ie">keefe.murphy@mu.ie</a>&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Murphy, K., Murphy, T. B., Piccarreta, R., and Gormley, I. C. (2021). Clustering longitudinal life-course sequences using mixtures of exponential-distance models. <em>Journal of the Royal Statistical Society: Series A (Statistics in Society)</em>, 184(4): 1414-1451. &lt;<a href="https://doi.org/10.1111/rssa.12712">doi:10.1111/rssa.12712</a>&gt;.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>multinom</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Load the MVAD data
+data(mvad)
+mvad$Location &lt;- factor(apply(mvad[,5:9], 1L, function(x) 
+                 which(x == "yes")), labels = colnames(mvad[,5:9]))
+mvad          &lt;- list(covariates = mvad[c(3:4,10:14,87)],
+                      sequences = mvad[,15:86], 
+                      weights = mvad[,2])
+mvad.cov      &lt;- mvad$covariates
+
+# Create a state sequence object with the first two (summer) time points removed
+states        &lt;- c("EM", "FE", "HE", "JL", "SC", "TR")
+labels        &lt;- c("Employment", "Further Education", "Higher Education", 
+                   "Joblessness", "School", "Training")
+mvad.seq      &lt;- seqdef(mvad$sequences[-c(1,2)], states=states, labels=labels)
+
+# Fit a model with weights and a gating covariate
+# Have the probability of noise-component membership be constant
+mod    &lt;- MEDseq_fit(mvad.seq, G=11, modtype="UUN", weights=mvad$weights, 
+                     gating=~ gcse5eq, covars=mvad.cov, noise.gate=FALSE)
+(preds &lt;- predict(mod$gating, newdata=mvad.cov[1:5,]))
+
+# Note that the predictions are not the same as the multinom predict method
+# in this instance, owing to the invocation of noise.gate=FALSE above
+mod2   &lt;- mod
+class(mod2$gating) &lt;- c("multinom", "nnet")
+predict(mod2$gating, newdata=mvad.cov[1:5,], type="probs")
+
+# We can make this function behave in the same way by invoking keep.noise=FALSE
+predict(mod$gating, keep.noise=FALSE, newdata=mvad.cov[1:5,])
+</code></pre>
+
+
+</div>

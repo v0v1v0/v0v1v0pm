@@ -1,0 +1,168 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>standard_atmosphere</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Standard atmosphere</h2>
+
+<h3>Description</h3>
+
+<p>Utilities to use the International Standard Atmosphere. It uses the
+International Standard Atmosphere up to the tropopause (11 km by definition)
+and then extends up to the 500 km using the ARDC Model Atmosphere.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">sa_pressure(height)
+
+sa_height(pressure)
+
+sa_temperature(height)
+
+sa_height_trans(pressure_in = "hPa", height_in = "km")
+
+sa_pressure_trans(height_in = "km", pressure_in = "hPa")
+
+sa_height_breaks(n = 6, pressure_in = "hPa", height_in = "km", ...)
+
+sa_height_axis(
+  name = ggplot2::waiver(),
+  breaks = sa_height_breaks(pressure_in = pressure_in, height_in = height_in),
+  labels = ggplot2::waiver(),
+  guide = ggplot2::waiver(),
+  pressure_in = "hPa",
+  height_in = "km"
+)
+
+sa_pressure_axis(
+  name = ggplot2::waiver(),
+  breaks = scales::log_breaks(n = 6),
+  labels = scales::number_format(drop0trailing = TRUE, big.mark = "", trim = FALSE),
+  guide = ggplot2::waiver(),
+  height_in = "km",
+  pressure_in = "hPa"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>height</code></td>
+<td>
+<p>height in meter</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pressure</code></td>
+<td>
+<p>pressure in pascals</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>height_in, pressure_in</code></td>
+<td>
+<p>units of height and pressure, respectively.
+Possible values are "km", "m" for height and "hPa" and "Pa" for pressure.
+Alternatively, it can be a numeric constant that multiplied to convert the
+unit to meters and Pascals respectively. (E.g. if height is in feet,
+use <code>height_in = 0.3048</code>.)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n</code></td>
+<td>
+<p>desiderd number of breaks.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>extra arguments passed to scales::breaks_extended.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>name, breaks, labels, guide</code></td>
+<td>
+<p>arguments passed to <code>ggplot2::sec_axis()</code></p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>sa_pressure()</code>, <code>sa_height()</code>, <code>sa_temperature()</code> return, respectively,
+pressure (in pascals), height (in meters) and temperature (in Kelvin).
+</p>
+<p><code>sa_height_trans()</code> and <code>sa_pressure_trans()</code> are two transformation functions
+to be used as the <code>trans</code> argument in ggplot2 scales (e.g. <code style="white-space: pre;">⁠scale_y_continuous(trans = "sa_height"⁠</code>).
+</p>
+<p><code>sa_height_axis()</code>  and <code>sa_pressure_axis()</code> return a secondary axis that transforms to
+height or pressure respectively to be used as ggplot2 secondary axis
+(e.g. <code>scale_y_continuous(sec.axis = sa_height_axis())</code>).
+</p>
+<p>For convenience, and unlike the "primitive" functions, both the transformation
+functions and the axis functions input and output in hectopascals and kilometres
+by default.
+</p>
+
+
+<h3>References</h3>
+
+<p>Standard atmosphere—Glossary of Meteorology. (n.d.).
+Retrieved 22 February 2021, from <a href="https://glossary.ametsoc.org/wiki/Standard_atmosphere">https://glossary.ametsoc.org/wiki/Standard_atmosphere</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">height &lt;- seq(0, 100*1000, by = 1*200)
+
+# Temperature profile that defines the standard atmosphere (in degrees Celsius)
+plot(sa_temperature(height) - 273.15, height, type = "l")
+
+# Pressure profile
+plot(sa_pressure(height), height, type = "l")
+
+# Use with ggplot2
+library(ggplot2)
+data &lt;- data.frame(height = height/1000,               # height in kilometers
+                   pressure = sa_pressure(height)/100) # pressures in hectopascals
+
+# With the sa_*_axis functions, you can label the approximate height
+# when using isobaric coordinates#'
+ggplot(data, aes(height, pressure)) +
+  geom_path() +
+  scale_y_continuous(sec.axis = sa_height_axis("height"))
+
+# Or the approximate pressure when using physical height
+ggplot(data, aes(pressure, height)) +
+  geom_path() +
+  scale_y_continuous(sec.axis = sa_pressure_axis("level"))
+
+# When working with isobaric coordinates,using a linear scale exagerates
+# the thickness of the lower levels
+ggplot(temperature[lat == 0], aes(lon, lev)) +
+   geom_contour_fill(aes(z = air)) +
+   scale_y_reverse()
+
+# Using the standard atmospehre height transormation, the result
+# is an approximate linear scale in height
+ggplot(temperature[lat == 0], aes(lon, lev)) +
+   geom_contour_fill(aes(z = air)) +
+   scale_y_continuous(trans = "sa_height", expand = c(0, 0))
+
+# The result is very similar to using a reverse log transform, which is the
+# current behaviour of scale_y_level(). This transformation slightly
+# overextends the higher levels.
+ggplot(temperature[lat == 0], aes(lon, lev)) +
+   geom_contour_fill(aes(z = air)) +
+   scale_y_level()
+
+</code></pre>
+
+
+</div>

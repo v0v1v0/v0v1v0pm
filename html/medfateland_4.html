@@ -1,0 +1,162 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>soil_parametrization</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Landscape soil parametrization</h2>
+
+<h3>Description</h3>
+
+<p>Function <code>add_soilgrids</code> fills column 'soil' with physical soil characteristics drawn from SoilGrids 2.0 (Hengl et al. 2017; Poggio et al. 2021).
+Function <code>modify_soils</code> modifies soil definition according to soil depth and depth to bedrock information.
+Function <code>check_soils</code> verifies that soil data does not contain missing values for key variables and, if so, assigns default values.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">add_soilgrids(
+  x,
+  soilgrids_path = NULL,
+  widths = NULL,
+  replace_existing = TRUE,
+  progress = TRUE
+)
+
+modify_soils(
+  x,
+  soil_depth_map = NULL,
+  depth_to_bedrock_map = NULL,
+  regolith_rfc = 97.5,
+  full_rock_filling = TRUE,
+  progress = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>An object of class <code>sf</code> with a valid CRS definition. If it contains a column called 'land_cover_type', soils will be retrieved for "agriculture" and "wildland"
+cover types only. Otherwise, soils are retrieved for all locations. For functions <code>modify_soils</code> or <code>check_soils</code>, <code>x</code> should already contain a column named "soil".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>soilgrids_path</code></td>
+<td>
+<p>Path to SoilGrids rasters (see details). If missing, the SoilGrids REST API (https://rest.isric.org) will be queried.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>widths</code></td>
+<td>
+<p>A numeric vector indicating the desired layer widths, in <em>mm</em>. If <code>NULL</code> the default soil grids layer definition is returned.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>replace_existing</code></td>
+<td>
+<p>A logical flag to force the replacement of existing soil data, when already present</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>progress</code></td>
+<td>
+<p>A logical flag to include a progress bar while processing the output of the query to the SoilGrids REST API.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>soil_depth_map</code></td>
+<td>
+<p>An object of class <code>SpatRaster</code> or <code>SpatVector</code> with the soil depth (in <em>mm</em>) values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>depth_to_bedrock_map</code></td>
+<td>
+<p>An object of class <code>SpatRaster</code> or <code>SpatVector</code> with depth to bedrock (in <em>mm</em>) values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regolith_rfc</code></td>
+<td>
+<p>Rock fragment content, in percent volume, between soil depth and 200cm depth (or lower depths, if modified via <code>widths</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>full_rock_filling</code></td>
+<td>
+<p>Logical flag to modify rock fragment content in all soil layers with according to distance to soil depth.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>If <code>soilgrids_path = NULL</code> the function connects with the SoilGrids REST API (https://rest.isric.org)
+to retrieve the soil physical and chemical characteristics for a site (Hengl <em>et al</em>. 2007; Poggio et al. 2021), selected
+by its coordinates. Also, in case the depths are not the default ones in the SoilGrids API, the function uses
+averages the values of soil grid layers depending on the overlap between soil layer definitions. Unfortunately,
+SoilGrids REST API queries are limited to a few points.
+</p>
+<p>If <code>soilgrids_path != NULL</code> the function will read SoilGrid rasters from the file disk. Folders need to be defined
+for each variable ("sand", "clay", "soc", "bdod", "cfvo" and "nitrogen"). File paths from <code>soilgrids_path</code> should be named:
+</p>
+<p><em>var</em>/<em>var</em>_<em>layer</em>_mean.tif
+</p>
+<p>where <em>var</em> is one of the above and <em>layer</em> is "0-5cm", "5-15cm", "15-30cm", "30-60cm", "60-100cm" or "100-200cm"
+</p>
+<p>SoilGrids does not provide soil depth estimates. Function <code>modify_soils</code> is designed to adjust soil depths according to available information.
+When <code>soil_depth_map</code> is provided, the function adjusts rock fragment content of layers below soil depth with the value of <code>regolith_rfc</code>.
+When <code>depth_to_bedrock_map</code> is provided, the function truncates the total depth of the soil definition to the depth to bedrock.
+If regional maps of soil depth are not available, users are recommended to resort on Shangguan et al (2017).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A modified object of class <code>sf</code> with column 'soil'.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Víctor Granda, EMF-CREAF
+</p>
+<p>Miquel De Cáceres Ainsa, EMF-CREAF
+</p>
+
+
+<h3>References</h3>
+
+<p>Hengl T, Mendes de Jesus J, Heuvelink GBM, Ruiperez Gonzalez M, Kilibarda M, Blagotić A, et al. (2017) SoilGrids250m: Global gridded soil information based on machine learning. PLoS ONE 12(2): e0169748. doi:10.1371/journal.pone.0169748.
+</p>
+<p>Poggio L, de Sousa LM, Batjes NH, Heuvelink GBM, Kempen B, Ribeiro E, Rossiter D (2021). SoilGrids 2.0: producing soil information for the globe with quantified spatial uncertainty. SOIL 7, 217-240. doi: 10.5194/soil-7-217-2021
+</p>
+<p>Shangguan W, Hengl T, Mendes de Jesus J, Yuan H, Dai J (2017). Mapping the global depth to bedrock for land surface modeling. Journal of Advances in Modeling Earth Systems 9: 65-88. doi: 10.1002/2016MS000686
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>add_topography()</code>, <code>impute_forests()</code>, <code>soil</code>, <code>defaultSoilParams</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"> 
+   library(sf)
+   x &lt;- st_sf(geometry = st_sfc(st_point(c(-5.6333, 42.6667)), crs = 4326))
+   x_soil &lt;- add_soilgrids(x, widths = c(300, 700, 1000))
+   x_soil
+   # See more complete examples in package vignettes 'Preparing inputs'
+ 
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,141 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mkde3Dinteraction</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Probability of 3D spatial-temporal interaction.
+</h2>
+
+<h3>Description</h3>
+
+<p>Metric of 3D spatial-temporal interaction.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mkde3Dinteraction(mkde.obj, move.dat0, move.dat1, t.step, d.thresh)	
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>mkde.obj</code></td>
+<td>
+<p>An MKDE object created with <code>initialize3DMKDE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>move.dat0</code></td>
+<td>
+<p>A move data object for the first individual created
+with <code>initializeMovementData</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>move.dat1</code></td>
+<td>
+<p>A move data object for the second individual created
+with <code>initializeMovementData</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>t.step</code></td>
+<td>
+<p>A time step used for numerical integration
+over the movement trajectory</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>d.thresh</code></td>
+<td>
+<p>The value of the kernel below which its contibrution
+to the overal density is considered negligible</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function assumes that the two individual animals were observed at
+the same times. The voxel values returned in the mkde.obj can be summed 
+to obtain a global measure of spatio-temporal interaction.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns a list with the following elements:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>mkde.obj</code></td>
+<td>
+<p>An updated MKDE object containing the voxel-level
+Bhattacharyya coefficients</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>move.dat0</code></td>
+<td>
+<p>A move data object for the first individuals with
+updated variance parameters</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>move.dat1</code></td>
+<td>
+<p>A move data object for the second individuals with
+updated variance parameters</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Jeff A. Tracey, PhD <br>
+USGS Western Ecological Research Center, San Diego Field Station <br><a href="mailto:jatracey@usgs.gov">jatracey@usgs.gov</a>  <br>
+James Sheppard, PhD <br>
+San Diego Zoo Institute for Conservation Research <br><a href="mailto:jsheppard@sandiegozoo.org">jsheppard@sandiegozoo.org</a> <br>
+Jun Zhu, PhD <br>
+University of Wisconsin-Madison <br><a href="mailto:jzhu@stat.wisc.edu">jzhu@stat.wisc.edu</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(terra)
+data(condor)
+condor &lt;- condor[1:4,] # simply to make example run more quickly
+mv.dat0 &lt;- initializeMovementData(condor$time, condor$x, condor$y, 
+z.obs=condor$z, sig2obs=25.0, sig2obs.z=81.0, t.max=65.0)
+n &lt;- nrow(condor)
+v &lt;- 20.0 # increase from 0 to increase difference between move trajectories
+vz &lt;- 5.0
+mv.dat1 &lt;- initializeMovementData(condor$time, condor$x+rnorm(n, 0, v), 
+condor$y+rnorm(n, 0, v), z.obs=condor$z+rnorm(n, 0, vz), sig2obs=25.0, 
+sig2obs.z=81.0, t.max=65.0)
+
+fpath &lt;- system.file("extdata", "condordem120.RDS", package="mkde")
+condordem120 &lt;- terra::readRDS(fpath)
+# next two lines reduce extent of 2D space to speed execution of example
+tmp &lt;- ext(c(range(condor$x) + c(-100, 100), range(condor$y) + c(-100, 100)))
+condordem120 &lt;- crop(condordem120, tmp)
+cell.sz &lt;- mean(res(condordem120))
+ext &lt;- ext(condordem120)
+nx &lt;- ncol(condordem120)
+ny &lt;- nrow(condordem120)
+nz &lt;- ceiling(3000.0/cell.sz)
+mkde.obj &lt;- initializeMKDE3D(ext$xmin, cell.sz, nx, ext$ymin, cell.sz,
+ny, 0.0, cell.sz, nz)
+
+res &lt;- mkde3Dinteraction(mkde.obj, mv.dat0, mv.dat1, 10.0, 1e-20)
+mkde.obj &lt;- res$mkde.obj
+mv.dat0 &lt;- res$move.dat0
+mv.dat1 &lt;- res$move.dat1
+</code></pre>
+
+
+</div>

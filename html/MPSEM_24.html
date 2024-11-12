@@ -1,0 +1,448 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>PEM-functions</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Phylogenetic Eigenvector Maps</h2>
+
+<h3>Description</h3>
+
+<p>Functions to calculate and manipulate Phylogenetic Eigenvector
+Maps (PEM), which are sets of eigenfunctions describing the structure of a 
+phylogenetic graph. Each computation function is briefly described in 
+section <code>Functions</code> below.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">PEMInfluence(x, mroot = TRUE)
+
+PEMweights(d, a = 0, psi = 1)
+
+PEM.build(
+  x,
+  d = "distance",
+  sp = "species",
+  a = 0,
+  psi = 1,
+  tol = .Machine$double.eps^0.5
+)
+
+PEM.updater(object, a, psi = 1, tol = .Machine$double.eps^0.5)
+
+PEM.fitSimple(
+  y,
+  x,
+  w,
+  d = "distance",
+  sp = "species",
+  lower = 0,
+  upper = 1,
+  tol = .Machine$double.eps^0.5
+)
+
+PEM.forcedSimple(
+  y,
+  x,
+  w,
+  d = "distance",
+  sp = "species",
+  a = 0,
+  psi = 1,
+  tol = .Machine$double.eps^0.5
+)
+
+getGraphLocations(tpall, targets)
+
+getAncGraphLocations(x, tpall)
+
+Locations2PEMscores(object, gsc)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>A <code>graph-class</code> object containing a phylogenetic graph.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mroot</code></td>
+<td>
+<p>Boolean (TRUE or FALSE) specifying whether multiple roots are
+allowed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>d</code></td>
+<td>
+<p>The name of the member of <code>x$edge</code> where the phylogenetic
+distances (edge lengths) can be found.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>a</code></td>
+<td>
+<p>The steepness parameter describing whether changes occur, on
+average: progressively long edges (a close to 0) or abruptly at vertices (a
+close to 1).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>psi</code></td>
+<td>
+<p>Relative evolution rate along the edges (default: 1). This
+parameter is only relevant when multiple values are assigned to different
+portions of the phylogeny.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sp</code></td>
+<td>
+<p>Name of the member of <code>x$vertex</code> where a <code>logical</code>
+vertex property can be found, specifying which vertices are species (see
+<code>graph-class</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>Eigenvalue threshold indicating that eigenvectors as usable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>A <code>PEM-class</code> object containing a Phylogenetic
+Eigenvector Map.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>One or many response variable(s) in the form of a single numeric 
+vector or a <code>matrix</code>, respectively.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>w</code></td>
+<td>
+<p>A <code>graph-class</code> object containing a phylogenetic graph.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lower</code></td>
+<td>
+<p>Lower limit for the L-BFGS-B optimization algorithm
+implemented in <code>optim</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>upper</code></td>
+<td>
+<p>Upper limit for the L-BFGS-B optimization algorithm
+implemented in <code>optim</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tpall</code></td>
+<td>
+<p>First parameter of function <code>getGraphLocations</code>:
+Phylogenetic tree object with class ‘phylo’ (package ape)
+containing all species (model and target) used in the study.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targets</code></td>
+<td>
+<p>Name of the target species to extract using the tree
+<code>tpall</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gsc</code></td>
+<td>
+<p>The output of <code>getGraphLocations</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Functions <code>PEMInfluence</code> and <code>PEMweights</code>
+are used internally by <code>PEM.build</code> to create a binary matrix
+referred to as an ‘influence matrix’ and weight its columns. That
+matrix has a row for each vertex (or node) of graph ‘x’ and a column
+for each of its edges. The elements of the influence matrix are 1 whenever
+the vertex associated with a row is located in the tree, either directly or
+indirectly downward the edge associated with a column. That function is
+implemented in <code>C</code> language using recursive function calls. Although
+<code>PEMInfluence</code> allows one to use multiple roots as its default
+argument, it is called within <code>PEM.build</code> with <code>mroot = FALSE</code>.
+User must therefore make sure that the graph provided to <code>PEMap</code> is
+single-rooted.
+</p>
+<p>Function <code>PEM.build</code> is used to produce a phylogenetic
+eigenvector map, while function <code>PEM.updater</code> allows one to
+re-calculate a <code>PEM-class</code> object with new weighting function
+parameters. Function <code>PEM.fitSimple</code> performs a maximum
+likelihood estimation of parameters <code>a</code> and <code>psi</code> assuming single
+values for the whole tree, whereas function <code>PEM.forcedSimple</code>
+allows one to impose values to arguments <code>a</code> and <code>psi</code> of a
+<code>PEM-class</code> object, while making the function produce the same
+details as <code>PEM.fitSimple</code> would have produced; these details are
+necessary to make predictions.
+</p>
+<p>Functions <code>getGraphLocations</code> returns the coordinates of a
+species in terms of its position with respect to the influence matrix while
+function <code>Locations2PEMscores</code> transforms these coordinates into
+sets of scores that can be used to make predictions. Function
+<code>getAncGraphLocations</code> produces the same output as
+<code>getGraphLocations</code>, but for the ancestral species (i.e. the
+nodes of the phylogeny) in order to estimate ancestral trait values.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Function <code>PEMInfluence</code> returns the influence matrix of
+graph <code>x</code> and function <code>PEMweights</code> returns weights
+corresponding to the distances. Functions <code>PEM.build</code>,
+<code>PEM.fitSimple</code> and <code>PEM.forcedSimple</code> return a
+<code>PEM-class</code> object. Function <code>getGraphLocations</code>
+returns a list whose first member is an influence coordinate matrix whose
+rows refer to the target species and columns refer to the edges. The second
+member contains the lengths of the terminal edges connecting each target
+species to the rest of the phylogeny.
+</p>
+<p>Function <code>Locations2PEMscores</code> returns a list whose first member
+is a PEM score matrix whose rows refer to the target species and columns
+refer to the eigenvectors. The second member contains the variance associated
+with the terminal edges connecting the target species to the phylogeny.
+</p>
+
+
+<h3>Functions</h3>
+
+
+<ul>
+<li> <p><code>PEMInfluence()</code>: Influence Matrix
+</p>
+<p>Calculates the influence matrix of a phylogenetic graph. The influence matrix
+is a binary matrix whose rows and columns correspond to the vertices and
+edges of the phylogenetic graph, respectively, and whose elements describe
+whether a given edge had been taken by any ancestors of a vertex
+(representing extinct of extant species) during evolution (value = 1) or not
+(value = 0).
+</p>
+</li>
+<li> <p><code>PEMweights()</code>: PEM Weighting
+</p>
+<p>A power function to obtain the edge weights used during PEM calculation.
+</p>
+</li>
+<li> <p><code>PEM.build()</code>: PEM Building
+</p>
+<p>Calculates a PEM with parameters given by arguments a and psi.
+</p>
+</li>
+<li> <p><code>PEM.updater()</code>: PEM Update
+</p>
+<p>Update a PEM with new parameters given by arguments a and psi.
+</p>
+</li>
+<li> <p><code>PEM.fitSimple()</code>: Fitting a PEM to Data while Estimating Global Steepness
+</p>
+<p>Fits a PEM to a data set estimating the selection (steepness) parameter using
+gradient descent. The selection and evolution rate (psi = 1) are assumed to
+be homogeneous for the whole phylogenetic network.
+</p>
+</li>
+<li> <p><code>PEM.forcedSimple()</code>: Fitting a PEM to Data while Forcing Global Steepness
+</p>
+<p>Fits a PEM to a data set forcing a user-provided selection (steepness)
+parameter. The selection and evolution rate (psi = 1) are assumed to be
+homogeneous for the whole phylogenetic network.
+</p>
+</li>
+<li> <p><code>getGraphLocations()</code>: Get Phylogenetic Graph Locations
+</p>
+<p>Takes a phylogenetic tree and a list of species to be removed, and produce a
+phylogenic graph without these species together with the locations of the
+removed species on that graph (i.e., the location where the removed species
+would be found should they be inserted again in the phylogenetic graph).
+</p>
+</li>
+<li> <p><code>getAncGraphLocations()</code>: Get Ancestral Species Location
+</p>
+<p>Get the location on the phylogenetic graph of the immediate ancestors for a
+list of species. The species of the list remain in the resulting phylogenetic
+graph. This function is useful for estimating the ancestral state of a trait.
+</p>
+</li>
+<li> <p><code>Locations2PEMscores()</code>: PEM Score Calculation
+</p>
+<p>Calculates the scores of an extant or ancestral species on a phylogenetic
+eigenvector map (i.e., its value on the eigenvectors of the map) from its
+location on the phylogenetic graph used to build that map.
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Guillaume Guénard [aut, cre] (&lt;https://orcid.org/0000-0003-0761-3072&gt;),
+  Pierre Legendre [ctb] (&lt;https://orcid.org/0000-0002-3838-3305&gt;) –
+Maintainer: Guillaume Guénard &lt;guillaume.guenard@umontreal.ca&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Guénard, G., Legendre, P., and Peres-Neto, P. 2013. Phylogenetic eigenvector
+maps: a framework to model and predict species traits. Methods in Ecology 
+and Evolution. 4: 1120–1131
+</p>
+<p>Makarenkov, V., Legendre, L. &amp; Desdevise, Y. 2004. Modelling phylogenetic
+relationships using reticulated networks. Zoologica Scripta 33: 89–96
+</p>
+<p>Blanchet, F. G., Legendre, P. &amp; Borcard, D. 2008. Modelling directional
+spatial processes in ecological data. Ecological Modelling 215: 325–336
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>PEM-class</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">### Synthetic example
+
+## This example describes the phyogeny of 7 species (A to G) in a tree with 6
+## nodes, presented in Newick format, read by function
+## read.tree of package ape.
+
+t1 &lt;- read.tree(text=paste(
+            "(((A:0.15,B:0.2)N4:0.15,C:0.35)N2:0.25,((D:0.25,E:0.1)N5:0.3,",
+            "(F:0.15,G:0.2)N6:0.3)N3:0.1)N1;",sep=""))
+t1                 # Summary of the structure of the tree
+summary(t1)
+
+x &lt;- Phylo2DirectedGraph(t1)
+
+## Calculate the (binary) influence matrix; E1 to E12 are the tree edges
+## Edge E12 comes from the tree origin
+PEMInfluence(x)
+PEMInfluence(x)[x$vertex$species,]
+
+## Building phylogenetic eigenvector maps
+PEM1 &lt;- PEM.build(x)
+PEM2 &lt;- PEM.build(x, a = 0.2)
+PEM3 &lt;- PEM.build(x, a = 1)
+PEM4 &lt;- PEM.updater(PEM3,a=0.5)
+
+## Print summary statistics about PEM1
+print(PEM1)
+
+## Extract the eigenvectors (species A--G, 6 eigenvectors)
+as.data.frame(PEM4)
+
+## Example of a made up set of trait values for the 7 species
+y &lt;- c(A=-1.1436265,B=-0.3186166,C=1.9364105,D=1.7164079,E=1.0013993,
+       F=-1.8586351,G=-2.0236371)
+
+## Estimate a single steepness parameter for the whole tree
+PEMfs1 &lt;- PEM.fitSimple(y=y, x=NULL, w=x, d="distance", sp="species",
+                        lower=0, upper=1)
+PEMfs1$optim       # Optimisation results
+
+## Force neutral evolution over the whole tree
+PEMfrc1 &lt;- PEM.forcedSimple(y=y,x=NULL,w=x,d="distance",sp="species",a=0)
+PEMfrc1$x$edge$a   # Steepness parameter forced on each individual edge
+
+## Graph locations for target species X, Y, and Z not found in the original
+## data set
+tpAll &lt;- read.tree(text=paste("((X:0.45,((A:0.15,B:0.2)N4:0.15,",
+                              "(C:0.25,Z:0.2)NZ:0.1)N2:0.05)NX:0.2,",
+                              "(((D:0.25,E:0.1)N5:0.05,Y:0.25)NY:0.25,",
+                              "(F:0.15,G:0.2)N6:0.3)N3:0.1)N1;",sep=""))
+tpAll
+summary(tpAll)     # Summary of the structure of the tree
+
+grloc &lt;- getGraphLocations(tpAll, c("X","Y","Z"))
+grloc
+
+PEMfs2 &lt;- PEM.fitSimple(y=y, x=NULL, w=grloc$x, d="distance", sp="species",
+                        lower=0, upper=1)
+PEMfs2
+
+## Same as for PEMfs1$optim
+PEMfs2$optim
+
+## Get the PEM scores from the species graph locations:
+PEMsc1 &lt;- Locations2PEMscores(PEMfs2, grloc)
+lm1 &lt;- lm(y ~ V_2 + V_3 + V_5, data=PEMfs2)
+
+## Making prdictions for the species in locations `grloc`
+## using linear model `lm1`:
+ypred &lt;- predict(object=PEMfs2, targets=grloc, lmobject=lm1, interval="none")
+
+## Removing species X, Y, and Z from the tree in `tpAll`:
+tpModel &lt;- drop.tip(tpAll, c("X","Y","Z"))
+
+## Plot the results
+layout(t(c(1,1,2)))
+par(mar=c(6,2,2,0.5)+0.1)
+plot(tpModel, show.tip.label=TRUE, show.node.label=TRUE, root.edge = TRUE,
+     srt = 0, adj=0.5, label.offset=0.08, font=1, cex=1.5, xpd=TRUE)
+edgelabels(paste("E", 1:nrow(tpModel$edge), sep=""),
+           edge=1:nrow(tpModel$edge), bg="white", font=1, cex=1)
+points(x=0.20,y=2.25,pch=21,bg="black")
+lines(x=c(0.20,0.20,0.65), y=c(2.25,0.55,0.55), xpd=TRUE, lty=2)
+text("X",x=0.69, y=0.55, xpd=TRUE, font=1, cex=1.5)
+points(x=0.35, y=4.5,pch=21,bg="black")
+lines(x=c(0.35,0.35,0.6), y=c(4.5,5.47,5.47), xpd=TRUE, lty=2)
+text("Y", x=0.64, y=5.47, xpd=TRUE, font=1, cex=1.5)
+points(x=0.35, y=3, pch=21, bg="black")
+lines(x=c(0.35,0.35,0.55), y=c(3,3.5,3.5), xpd=TRUE, lty=2)
+text("Z", x=0.59, y=3.5, xpd=TRUE, font=1, cex=1.5)
+text(c("NX","NY","NZ"), x=c(0.20,0.35,0.35), y=c(2.25,4.5,3)+0.3*c(1,-1,-1),
+     font=1, cex=1)
+add.scale.bar(length=0.1, cex=1.25)
+par(mar=c(3.75,0,2,2)+0.1)
+plot(x=y, y=1:7, ylim=c(0.45,7), xlim=c(-4,4), axes=FALSE, type="n", xlab="")
+axis(1, label=c("-4","-2","0","2","4"), at=c(-4,-2,0,2,4))
+abline(v=0)
+
+## Plot the observed values
+points(x=y, y=1:7, xlim=c(-2,2), pch=21, bg="black")
+text("B)", x=-3.5, y=7, cex=1.5, xpd=TRUE)
+text("Trait value", x=0, y=-0.5, cex=1.25, xpd=TRUE)
+
+## Plot the predicted values
+points(x=ypred, y=c(0.5,5.5,3.5), pch=23, bg="white", cex=1.25)
+
+## Estimate the ancestral trait values
+ANCloc &lt;- getAncGraphLocations(x)
+PEMfsAnc &lt;- PEM.fitSimple(y=y, x=NULL, w=ANCloc$x, d="distance",
+                          sp="species", lower=0, upper=1)
+PEMfsAnc$optim
+
+## Get the PEM scores from the species graph locations:
+PEManc1 &lt;- Locations2PEMscores(PEMfsAnc, ANCloc)
+
+## Making predictions for the ancestral species whose locations are found in
+## `ANCloc` using the linear model `lm1`:
+y_anc &lt;- predict(object=PEMfsAnc, targets=ANCloc, lmobject=lm1,
+                 interval="confidence")
+
+</code></pre>
+
+
+</div>

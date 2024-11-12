@@ -1,0 +1,212 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>makeRepo</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Downloads packages from CRAN to specified path and creates a local
+repository.</h2>
+
+<h3>Description</h3>
+
+<p>Given a list of packages, downloads these packages to a specified destination
+folder using the required CRAN folder structure, and finally creates the
+PACKAGES index file.  Since the folder structure mimics the required
+structure and files of a CRAN repository, it supports functions like
+<code>utils::install.packages()</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">makeRepo(
+  pkgs,
+  path,
+  repos = getOption("repos"),
+  type = "source",
+  Rversion = R.version,
+  download = TRUE,
+  writePACKAGES = TRUE,
+  quiet = FALSE
+)
+
+updateRepoIndex(path, type = "source", Rversion = R.version)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>pkgs</code></td>
+<td>
+<p>Character vector of packages to download</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>path</code></td>
+<td>
+<p>Destination download path. This path is the root folder of your
+new repository.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>repos</code></td>
+<td>
+<p>URL(s) of the 'contrib' sections of the repositories, e.g.
+<code>"https://cran.us.r-project.org"</code>. Passed to <code>available.packages()</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>Possible values are (currently) "source", "mac.binary" and
+"win.binary": the binary types can be listed and downloaded but not
+installed on other platforms.  Passed to <code>download.packages()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Rversion</code></td>
+<td>
+<p>Version of R (only used if <code>type</code> is not <code>source</code>.) Defaults to R.version, but this can be specified as any of the following formats:
+</p>
+
+<ul>
+<li>
+<p> a character string with the two digit R version, e.g. "3.1"
+</p>
+</li>
+<li>
+<p> a list with components <code>major</code> and <code>minor</code>
+</p>
+</li>
+<li>
+<p> the result of <code>getRversion()</code>
+</p>
+</li>
+<li>
+<p> the result of R.version
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>download</code></td>
+<td>
+<p>If TRUE downloads packages.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>writePACKAGES</code></td>
+<td>
+<p>If TRUE, calls <code>write_PACKAGES()</code> to update the
+repository PACKAGES file.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>quiet</code></td>
+<td>
+<p>If TRUE, suppress status messages (if any), and the progress bar
+during download.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>character vector of downloaded package files
+</p>
+
+
+<h3>Repo folder structure</h3>
+
+<p>A repository has two main folders, one for source packages, and the other
+for binary packages.  Inside the binary package folder, <code>bin</code>, you will find
+subfolders for Windows as well as the various OSX binaries.
+</p>
+<p><code>+- Root</code>
+</p>
+<p><code>...+- src/contrib</code>
+</p>
+<p><code>......+- PACKAGES</code>
+</p>
+<p><code>..+- bin</code>
+</p>
+<p><code>.......+- windows/contrib/version</code>
+</p>
+<p><code>..........+- PACKAGES</code>
+</p>
+<p><code>.......+-  macosx/contrib/version</code>
+</p>
+<p><code>..........+-  PACKAGES</code>
+</p>
+<p><code>.......+-  macosx/mavericks/contrib/version</code>
+</p>
+<p><code>..........+-  PACKAGES</code>
+</p>
+<p><code>.......+-  macosx/leopard/contrib/version</code>
+</p>
+<p><code>..........+- PACKAGES</code>
+</p>
+
+
+<h3>Note</h3>
+
+<p>Internally makes use of <code>utils::download.packages()</code> and
+<code>write_PACKAGES()</code>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other update repo functions: 
+<code>addOldPackage()</code>,
+<code>addPackage()</code>,
+<code>checkVersions()</code>,
+<code>updatePackages()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Specify list of packages to download
+mirror &lt;- c(CRAN = "https://cloud.r-project.org")
+pkgs &lt;- c("foreach")
+
+if (interactive()) {
+  pdb &lt;- cranJuly2014
+  
+  pdb &lt;- pkgAvail(
+    repos = c(CRAN = getOption("minicran.mran")),
+    type = "source"
+  )
+  
+  pkgList &lt;- pkgDep(pkgs, availPkgs = pdb, repos = mirror,
+                    type = "source", suggests = FALSE)
+  pkgList
+  
+  
+  # Create temporary folder for miniCRAN
+  dir.create(pth &lt;- file.path(tempdir(), "miniCRAN"))
+  
+  # Make repo for source and win.binary
+  makeRepo(pkgList, path = pth, repos = mirror, type = "source")
+  
+  # List all files in miniCRAN
+  list.files(pth, recursive = TRUE)
+  
+  # Check for available packages
+  pkgAvail(repos = pth, type = "source")
+  
+  # Repeat process for windows binaries
+  makeRepo(pkgList, path = pth, repos = mirror, type = "win.binary")
+  pkgAvail(repos = pth, type = "win.binary")
+  
+  # Delete temporary folder
+  unlink(pth, recursive = TRUE)
+}
+</code></pre>
+
+
+</div>

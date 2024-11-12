@@ -1,0 +1,170 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>buildTransitionMatrix</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Determining transition pattern and transition functions 
+</h2>
+
+<h3>Description</h3>
+
+<p>The function <code>buildTransitionMatrix</code> supports the constructing of the ‘transition matrix’, which determines the transition pattern of the microsimulation model. The actual microsimulation is performed by micSim (sequentially) or by micSimParallel (parallel computing).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">buildTransitionMatrix(allTransitions, absTransitions, stateSpace)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>allTransitions</code></td>
+<td>
+
+<p>A matrix comprising all possible transitions between values of state variables in the first column and in the second column the names of the functions defining the corresponding transition rates.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>absTransitions</code></td>
+<td>
+
+<p>A matrix comprising the names of the absorbing states which individuals are always exposed to (such as "dead"" and emigrated labeled as "rest") in the first column and in the second column the names of the functions defining the corresponding transition rates. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stateSpace</code></td>
+<td>
+
+<p>A matrix comprising all nonabsorbing states considered during simulation. 
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function <code>buildTransitionMatrix</code> is an auxiliary function for building the transition matrix required to run the microsimulation using micSim or micSimParallel. 
+</p>
+<p>In <code>stateSpace</code> all state variables considered during simulation including their values have to be defined. Values are always described using labels. For example, label "M" for being married. Each column of <code>stateSpace</code> refers to one state variable considered and each row refers to one state of the state space. Apart from "m" and "f" reserved for male and female (state variable: gender) and "no" and "low" reserved for no education and elementary school attended (state variable: educational attainment), labels can be set arbitrarily.
+</p>
+<p>Each element of the first column of <code>allTransitions</code> has to be of the form "A-&gt;B" with indicating "A" the starting value of a transition and "B" the arrival value. ("-&gt;" is the placeholder defined to mark a transition.) For example, "0" (childless) describes the starting value of the transition marking a first birth event and "1" (first child) its arrival value. All value labels used have to be identical to the value labels of the state variables specifying the simulation model.
+</p>
+<p>All absorbing states listed in the first column of <code>absTransitions</code> have to be given as strings such as "dead" for being dead or "rest" for emigrated. Since dying is a competing risk all individuals are always exposed to, "dead" is a mandatory part of <code>absTransitions</code>.
+</p>
+<p>All transitions can be defined to depend on several state variables. For example, a divorce rate depends on gender and on the fertility status. Therefore, the starting value and the arrival value of a transition have to be specified as a combination of the considered attributes, separated by a forward slash and in accordance with the ordering of the state variables in the state space. For example, "f/A-&gt;f/B" describes a female specific transition from "A" to "B" and "f/M/1 -&gt; f/D/1" might describe a mother's (indicated by "1") transition from "M" (e.g., married) to "D" (e.g., divorced).
+For absorbing states, a prefix indicates the attributes on which a transition is assumed to depend (also separated by forward slashs), e.g., "f/dead" and "m/dead" describe gender specific mortality transitions and "f/M/dead" and "m/M/dead" indicate gender specific mortality rates for married persons. 
+</p>
+
+
+<h3>Value</h3>
+
+<p>The <code>transitionMatrix</code> that is mandatory to perform a microsimulation run by micSim (sequentially) or by micSimParallel (parallel computing) is returned. The matrix has as many rows as the simulation model comprises nonabsorbing states and as many columns as the simulation model comprises absorbing and nonabsorbing states. The rows indicate starting states of transitions and the columns signify arrival states. At positions indicating impossible transitions, the matrix contains zeros. Otherwise the name of the function defining the respective transition rates is given.  
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sabine Zinn
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+#########################################################################################
+# 1. Example: Transition rates are specified to depend on only one state variable
+#########################################################################################
+
+# Defintion of state space, i.e., nonabsorbing and absorbing states
+sex &lt;- c("m","f")                     
+fert &lt;- c("0","1","2","3+")           
+marital &lt;- c("NM","M","D","W")        
+edu &lt;- c("no","low","med","high")   
+stateSpace &lt;- expand.grid(sex=sex,fert=fert,marital=marital,edu=edu)
+
+# Possible transitions indicating fertility behavior are "0-&gt;1", "1-&gt;2", "2-&gt;3+", 
+# and "3+-&gt;3+". Here, "-&gt;" is the defined placeholder defining a transition.
+# `fert1Rates' marks the name of the function defining the transition rates to 
+# parity one and `fert2Rates' marks the name of the function defining the transition 
+# rates to higher parities. 
+# Note: The functions `fert1Rates' and `fert1Rates' are transition rate functions 
+# defined by the user. Their naming depends on the user's choice.
+fertTrMatrix &lt;- cbind(c("0-&gt;1","1-&gt;2","2-&gt;3+","3+-&gt;3+"),                         
+                c("fert1Rates", "fert2Rates", "fert2Rates","fert2Rates"))
+
+# Possible transitions indicating changes in the marital status are "NM-&gt;M", "M-&gt;D", 
+# "M-&gt;W", "D-&gt;M", and "W-&gt;M".
+# `marriage1Rates' marks the name of the function defining the transition rates for first 
+# marriage and `marriage2Rates' marks the name of the function defining the transition rates 
+# for further marriages. `divorceRates' marks the name of the function defining divorce 
+# rates and `widowhoodRates' marks the name of the function describing transition rates to 
+# widowhood. 
+# Note: The functions `marriage1Rates',`marriage2Rates', `divorceRates', and 
+# `widowhoodRates' are transition rate functions defined by the user. 
+# Their naming depends on the user's choice.
+maritalTrMatrix &lt;- cbind(c("NM-&gt;M","M-&gt;D","M-&gt;W","D-&gt;M","W-&gt;M"),              
+                   c("marriage1Rates","divorceRates","widowhoodRates","marriage2Rates",
+                     "marriage2Rates"))
+                   
+# Possible transitions indicating changes in the educational attainment are "no-&gt;low", 
+# "low-&gt;med", and "med-&gt;high". 
+# `noToLowEduRates' marks the name of the function defining transition rates for accessing 
+# primary education, `noToLowEduRates' marks the name of the function defining transition 
+# rates for graduating with a lower secondary education, and `medToHighEduRates' marks the 
+# name of the function defining transition rates for graduating with a higher secondary 
+# education.
+# Note: The functions `noToLowEduRates',`noToLowEduRates', and `medToHighEduRates' are 
+# transition rate functions defined by the user. Their naming depends on the user's 
+# choice.                  
+eduTrMatrix &lt;- cbind(c("no-&gt;low","low-&gt;med","med-&gt;high"),
+               c("noToLowEduRates","noToLowEduRates","medToHighEduRates")) 
+               
+# Combine all possible transitions and the related transition function into one matrix.          
+allTransitions &lt;- rbind(fertTrMatrix, maritalTrMatrix, eduTrMatrix)
+
+# Possible absorbing states are `dead' and `rest'. (The latter indicates leaving the 
+# population because of emigration). The accordant transition rate functions are named 
+# `mortRates' and `emigrRates'. (Again, naming is up to the user.)
+absTransitions &lt;- rbind(c("dead","mortRates"),c("rest","emigrRates"))
+
+# Construct `transition matrix'.
+transitionMatrix &lt;- buildTransitionMatrix(allTransitions,absTransitions,stateSpace)
+
+#########################################################################################
+# 2. Example: Transition rates are gender specific
+#########################################################################################
+# Defintion of nonabsorbing and absorbing states
+sex &lt;- c("m","f")                               
+stateX &lt;- c("H","P")        
+stateSpace &lt;- expand.grid(sex=sex,stateX=stateX)
+absStates &lt;- c("dead")   
+
+# Transitions indicating changes in `stateX'. 
+# We assume distinct transition rates for females and males.
+# Note: The functions `ratesHP_f',`ratesHP_m', `ratesPH_f', and 
+# `ratesPH_m' are transition rate functions defined by the user. 
+trMatrix_f &lt;- cbind(c("f/H-&gt;f/P","f/P-&gt;f/H"),c("ratesHP_f", "ratesPH_f"))
+trMatrix_m &lt;- cbind(c("m/H-&gt;m/P","m/P-&gt;m/H"),c("ratesHP_m", "ratesPH_m"))
+allTransitions &lt;- rbind(trMatrix_f,trMatrix_m)
+
+# We assume gender specific mortality rates.
+# Note: The naming and specification of the respective mortality rate functions 
+# `mortRates_f' and `mortRates_m' depend on the user.
+absTransitions &lt;- rbind(c("f/dead","mortRates_f"), c("m/dead","mortRates_m"))
+
+transitionMatrix &lt;- buildTransitionMatrix(allTransitions=allTransitions,
+                      absTransitions=absTransitions, stateSpace=stateSpace)
+
+
+
+</code></pre>
+
+
+</div>

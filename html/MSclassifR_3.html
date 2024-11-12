@@ -1,0 +1,312 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>LogReg</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimation of a multinomial regression to predict the category to which a mass spectrum belongs</h2>
+
+<h3>Description</h3>
+
+<p>This function estimates a multinomial regression using cross-validation to predict the category (species, phenotypes...) to which a mass spectrum belongs from a set of shortlisted mass-over-charge values corresponding to discriminant peaks. Two main kinds of models can be estimated: linear or nonlinear (with neural networks, random forests, support vector machines with linear kernel, or eXtreme Gradient Boosting). Hyperparameters are randomly searched, except for the eXtreme Gradient Boosting where a grid search is performed.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">LogReg(X,
+       moz,
+       Y,
+       number = 2,
+       repeats = 2,
+       Metric = c("Kappa", "Accuracy", "F1", "AdjRankIndex", "MatthewsCorrelation"),
+       kind="linear",
+       Sampling = c("no", "up", "down", "smote"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p><code>matrix</code> corresponding to a library of mass spectra. Each row of <code>X</code> is the intensities of a mass spectrum measured on the <code>moz</code> values. The columns should be represented by mass-over-charge values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>moz</code></td>
+<td>
+<p><code>vector</code> with shortlisted mass-over-charge values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+<p><code>factor</code> with a length equal to the number of rows in <code>X</code> and containing the categories of each mass spectrum in <code>X</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>number</code></td>
+<td>
+<p><code>integer</code> corresponding to the number of folds or number of resampling iterations. See arguments of the <code>trainControl</code> function of the <code>caret</code> R package.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Metric</code></td>
+<td>
+<p>a <code>character</code> indicating metric to select the optimal model. The possibles metrics are the <code>"Kappa"</code> coefficient,<code>"Accuracy"</code>, the <code>"F1"</code> score, <code>"AdjRankIndex"</code> for the Adjusted Rand Index or <code>"MatthewsCorrelation"</code> for the Matthews Correlation Coefficient.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>repeats</code></td>
+<td>
+<p><code>integer</code> corresponding to the number of complete sets of folds to compute. See <code>trainControl</code> function of the <code>caret</code> R package for more details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>kind</code></td>
+<td>
+<p>If <code>kind="nnet"</code>, then a nonlinear multinomial logistic regression is estimated via neural networks. If <code>kind="rf"</code>, then it is estimated via random forests. If <code>kind="svm"</code>, then it is estimated via support vector machines with linear kernel. If <code>kind="xgb"</code>, then it is estimated via eXtreme gradient boosting. Else a linear multinomial logistic regression is performed (by default).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Sampling</code></td>
+<td>
+<p>a <code>character</code> indicating an optional subsampling method to handle imbalanced datasets: subsampling methods are either <code>"no"</code> (no subsampling), <code>"up"</code>, <code>"down"</code> or <code>"smote"</code>. <code>"no"</code> by default.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function estimates a model from a library of mass spectra for which we already know the category to which they belong (ex.: species, etc). This model can next be used to predict the category of a new coming spectrum for which the category is unknown (see <code>PredictLogReg</code>).
+</p>
+<p>The estimation is performed using the <code>train</code> function of the <code>caret</code> R package. For each kind of model, random parameters are tested to find a model according to the best <code>metric</code>. The formulas for the <code>metric</code> are as follows:
+</p>
+<p style="text-align: center;"><code class="reqn">Accuracy = Number Of Correct Predictions/Total Number Of Predictions</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">Kappa coefficient = (Observed Agreement-Chance Agreement)/(1-Chance Agreement)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">F1 = True Positive/(True Positive + 1/2 (False Positive + False Negative))</code>
+</p>
+
+<p>The adjusted Rand index (<code>"AdjRankIndex"</code>) is defined as the corrected-for-chance version of the Rand index which allows comparing two groups (see <code>mclust</code> package and <code>adjustedRandIndex()</code> function for more details). The Matthews correlation coefficient (<code>"MatthewsCorrelation"</code>) is estimated using <code>mcc</code> function in the <code>mltools</code> R package.
+</p>
+<p>The <code>Sampling</code> methods available for imbalanced data are: <code>"up"</code> to the up-sampling method which consists of random sampling (with replacement) so that the minority class is the same size as the majority class; <code>"down"</code> to the down-sampling method which consists of random sampling (without replacement) of the majority class so that their class frequencies match the minority class; <code>"smote"</code> to the Synthetic Minority Over sampling Technique (SMOTE) algorithm for data augmentation which consists of creating new data from minority class using the K Nearest Neighbor algorithm.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns a <code>list</code> with four items:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>train_mod</code></td>
+<td>
+<p>a <code>list</code> corresponding to the output of the train function of the <code>caret</code> R package containing the multinomial regression model estimated using repeated cross-validation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>conf_mat</code></td>
+<td>
+<p>a confusion matrix containing percentages classes of predicted categories in function of actual categories, resulting from repeated cross-validation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>stats_global</code></td>
+<td>
+<p>a <code>data frame</code> containing the mean and standard deviation values of the "Accuracy"" and "Kappa" parameters computed for each cross-validation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>boxplot</code></td>
+<td>
+<p>a <code>ggplot</code> object (see <code>ggplot2</code> R package). This is a graphical representation of the <code>Metric</code> parameters of <code>stats_global</code> using boxplots.</p>
+</td>
+</tr>
+</table>
+<h3>References</h3>
+
+<p>Kuhn, M. (2008). Building predictive models in R using the caret package. Journal of statistical software, 28(1), 1-26.
+</p>
+<p>L. Hubert and P. Arabie (1985) Comparing Partitions, Journal of the Classification, 2, pp. 193-218.
+</p>
+<p>Scrucca L, Fop M, Murphy TB, Raftery AE (2016). mclust 5: clustering, classification and density estimation using Gaussian finite mixture models. The R Journal.
+</p>
+<p>Nitesh V. Chawla, Kevin W. Bowyer, Lawrence O. Hall, and W. Philip Kegelmeyer. 2002. SMOTE: synthetic minority over-sampling technique. J. Artif. Int. Res. 16, 1.
+</p>
+<p>Matthews, B. W. (1975). "Comparison of the predicted and observed secondary structure of T4 phage lysozyme". Biochimica et Biophysica Acta (BBA) - Protein Structure. PMID 1180967.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library("MSclassifR")
+library("MALDIquant")
+
+###############################################################################
+## 1. Pre-processing of mass spectra
+
+# load mass spectra and their metadata
+data("CitrobacterRKIspectra","CitrobacterRKImetadata", package = "MSclassifR")
+# standard pre-processing of mass spectra
+spectra &lt;- SignalProcessing(CitrobacterRKIspectra)
+# detection of peaks in pre-processed mass spectra
+peaks &lt;- MSclassifR::PeakDetection(x = spectra, averageMassSpec=FALSE)
+# matrix with intensities of peaks arranged in rows (each column is a mass-over-charge value)
+IntMat &lt;- MALDIquant::intensityMatrix(peaks)
+rownames(IntMat) &lt;- paste(CitrobacterRKImetadata$Strain_name_spot)
+# remove missing values in the matrix
+IntMat[is.na(IntMat)] &lt;- 0
+# normalize peaks according to the maximum intensity value for each mass spectrum
+IntMat &lt;- apply(IntMat,1,function(x) x/(max(x)))
+# transpose the matrix for statistical analysis
+X &lt;- t(IntMat)
+# define the known categories of mass spectra for the classification
+Y &lt;- factor(CitrobacterRKImetadata$Species)
+
+###############################################################################
+## 2. Selection of discriminant mass-over-charge values using RFERF
+# with 5 to 10 variables, 
+# up sampling method and 
+# trained with the Accuracy coefficient metric
+
+a &lt;- MSclassifR::SelectionVar(X,
+                              Y,
+                              MethodSelection = c("RFERF"),
+                              MethodValidation = c("cv"),
+                              PreProcessing = c("center","scale","nzv","corr"),
+                              NumberCV = 2,
+                              Metric = "Accuracy",
+                              Sizes = c(2:5),
+                              Sampling = "up")
+
+sel_moz=a$sel_moz
+
+###############################################################################
+## 3. Perform LogReg from shortlisted discriminant mass-over-charge values
+
+# linear multinomial regression 
+# without sampling mehod 
+# and trained with the Kappa coefficient metric
+
+model_lm=MSclassifR::LogReg(X=X,
+                            moz=sel_moz,
+                            Y=factor(Y),
+                            number=2,
+                            repeats=2,
+                            Metric = "Kappa")
+# Estimated model:
+model_lm
+
+# nonlinear multinomial regression using neural networks 
+# with up-sampling method and 
+# trained with the Kappa coefficient metric
+
+model_nn=MSclassifR::LogReg(X=X,
+                            moz=sel_moz,
+                            Y=factor(Y),
+                            number=2,
+                            repeats=2,
+                            kind="nnet",
+                            Metric = "Kappa",
+                            Sampling = "up")
+# Estimated model:
+model_nn
+
+# nonlinear multinomial regression using random forests 
+# without down-sampling method and 
+# trained with the Kappa coefficient metric
+
+model_rf=MSclassifR::LogReg(X=X,
+                            moz=sel_moz,
+                            Y=factor(Y),
+                            number=2,
+                            repeats=2,
+                            kind="rf",
+                            Metric = "Kappa",
+                            Sampling = "down")
+
+# Estimated model:
+model_rf
+
+# nonlinear multinomial regression using xgboost 
+# with down-sampling method and 
+# trained with the Kappa coefficient metric
+
+model_xgb=MSclassifR::LogReg(X=X,
+                             moz=sel_moz,
+                             Y=factor(Y),
+                             number=2,
+                             repeats=2,
+                             kind="xgb",
+                             Metric = "Kappa",
+                             Sampling = "down")
+# Estimated model:
+model_xgb
+
+# nonlinear multinomial regression using svm 
+# with down-sampling method and 
+# trained with the Kappa coefficient metric
+
+model_svm=MSclassifR::LogReg(X=X,
+                             moz=sel_moz,
+                             Y=factor(Y),
+                             number=2,
+                             repeats=2,
+                             kind="svm",
+                             Metric = "Kappa",
+                             Sampling = "down")
+# Estimated model:
+model_svm
+
+##########
+# Of note, step 3 can be performed several times 
+# to find optimal models 
+# because of random hyperparameter search
+
+###############################################################################
+## 4. Select best models in term of average Kappa and saving it for reuse
+
+Kappa_model=c(model_lm$stats_global[1,2],model_nn$stats_global[1,2],
+              model_rf$stats_global[1,2],model_xgb$stats_global[1,2],model_svm$stats_global[1,2])
+names(Kappa_model)=c("lm","nn","rf","xgb","svm")
+#Best models in term of accuracy
+Kappa_model[which(Kappa_model==max(Kappa_model))]
+
+#save best models for reuse
+#models=list(model_lm$train_mod,model_nn$train_mod,model_rf$train_mod,
+#model_xgb$train_mod,model_svm$train_mod)
+#models_best=models[which(Kappa_model==max(Kappa_model))]
+#for (i in 1:length(models_best)){
+#save(models_best[[i]], file = paste0("model_best_",i,".rda",collapse="")
+#}
+
+#load a saved model
+#load("model_best_1.rda")
+
+###############################################################################
+## 5. Try other metrics to select the best model
+
+# linear multinomial regression 
+# with up-sampling method and 
+# trained with the Adjusted Rank index metric
+
+model_lm=MSclassifR::LogReg(X=X,
+                            moz=sel_moz,
+                            Y=factor(Y),
+                            number=2,
+                            repeats=3,
+                            Metric = "AdjRankIndex",
+                            Sampling = "up")
+
+
+
+</code></pre>
+
+
+</div>

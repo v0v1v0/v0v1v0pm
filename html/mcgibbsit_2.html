@@ -1,0 +1,280 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mcgibbsit</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Warnes and Raftery's MCGibbsit MCMC diagnostic</h2>
+
+<h3>Description</h3>
+
+<p><code>mcgibbsit</code> provides an implementation of Warnes &amp; Raftery's MCGibbsit
+run-length diagnostic for a set of (not-necessarily independent) MCMC
+samplers.  It combines the estimate error-bounding approach of Raftery and
+Lewis with the between chain variance verses within chain variance approach
+of Gelman and Rubin.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mcgibbsit(
+  data,
+  q = 0.025,
+  r = 0.0125,
+  s = 0.95,
+  converge.eps = 0.001,
+  correct.cor = TRUE
+)
+
+## S3 method for class 'mcgibbsit'
+print(x, digits = 3, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>an ‘mcmc’ object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>q</code></td>
+<td>
+<p>quantile(s) to be estimated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>r</code></td>
+<td>
+<p>the desired margin of error of the estimate.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>s</code></td>
+<td>
+<p>the probability of obtaining an estimate in the interval</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>converge.eps</code></td>
+<td>
+<p>Precision required for estimate of time to convergence.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>correct.cor</code></td>
+<td>
+<p>should the between-chain correlation correction (R) be
+computed and applied.  Set to false for independent MCMC chains.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>an object used to select a method.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>digits</code></td>
+<td>
+<p>minimal number of <em>significant</em> digits, see
+<code>print.default</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments passed to or from other methods.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>mcgibbsit</code> computes the minimum run length <code class="reqn">N_{min}</code>,
+required burn in <code class="reqn">M</code>, total run length <code class="reqn">N</code>, run length inflation due
+to <em>auto-correlation</em>, <code class="reqn">I</code>, and the run length inflation due to
+<em>between-chain</em> correlation, <code class="reqn">R</code> for a set of exchangeable MCMC
+simulations which need not be independent.
+</p>
+<p>The normal usage is to perform an initial MCMC run of some pre-determined
+length (e.g., 300 iterations) for each of a set of <code class="reqn">k</code> (e.g.,
+<code class="reqn">k=20</code>) MCMC samplers.  The output from these samplers is then read in
+to create an <code>mcmc.list</code> object and <code>mcgibbsit</code> is run specifying
+the desired accuracy of estimation for quantiles of interest.  This will
+return the minimum number of iterations to achieve the specified error
+bound.  The set of MCMC samplers is now run so that the total number of
+iterations exceeds this minimum, and <code>mcgibbsit</code> is again called.  This
+should continue until the number of iterations already complete is less than
+the minimum number computed by <code>mcgibbsit</code>.
+</p>
+<p>If the initial number of iterations in <code>data</code> is too small to perform
+the calculations, an error message is printed indicating the minimum pilot
+run length.
+</p>
+<p>The parameters <code>q</code>, <code>r</code>, <code>s</code>, <code>converge.eps</code>, and
+<code>correct.cor</code> can be supplied as vectors.  This will cause
+<code>mcgibbsit</code> to produce a list of results, with one element produced for
+each set of values.  I.e., setting <code>q=(0.025,0.975), r=(0.0125,0.005)</code>
+will yield a list containing two <code>mcgibbsit</code> objects, one computed with
+parameters <code>q=0.025, r=0.0125</code>, and the other with <code>q=0.975,
+r=0.005</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An <code>mcgibbsit</code> object with components
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+<p>parameters used to call 'mcgibbsit'</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>params</code></td>
+<td>
+<p>values of r,
+s, and q used</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>resmatrix</code></td>
+<td>
+<p>a matrix with 6 columns: </p>
+
+<dl>
+<dt>Nmin</dt>
+<dd>
+<p>The minimum required sample size for a chain with no correlation
+between consecutive samples. Positive autocorrelation will increase the
+required sample size above this minimum value.</p>
+</dd> <dt>M</dt>
+<dd>
+<p>The number of <code style="white-space: pre;">⁠burn in' iterations to be discarded (total over all chains).} \item{N}{The number of iterations after burn in required to estimate the quantile q to within an accuracy of +/- r with probability p (total over all chains).} \item{Total}{Overall number of iterations required (M + N).} \item{I}{An estimate (the ⁠</code>dependence factor') of the extent to which auto-correlation
+inflates the required sample size.  Values of <code style="white-space: pre;">⁠I' larger than 5 indicate strong autocorrelation which may be due to a poor choice of starting value, high posterior correlations, or ⁠</code>stickiness' of the MCMC algorithm.</p>
+</dd>
+<dt>R</dt>
+<dd>
+<p>An estimate of the extent to which between-chain correlation
+inflates the required sample size.  Large values of 'R' indicate that there
+is significant correlation between the chains and may be indicative of a
+lack of convergence or a poor multi-chain algorithm.</p>
+</dd> </dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nchains</code></td>
+<td>
+<p>the
+number of MCMC chains in the data</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>len</code></td>
+<td>
+<p>the length of each chain</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Gregory R. Warnes <a href="mailto:greg@warnes.net">greg@warnes.net</a> based on the the R
+function <code>raftery.diag</code> which is part of the 'CODA' library.
+<code>raftery.diag</code>, in turn, is based on the FORTRAN program ‘gibbsit’
+written by Steven Lewis which is available from the Statlib archive.
+</p>
+
+
+<h3>References</h3>
+
+<p>Warnes, G.W. (2004). The Normal Kernel Coupler: An adaptive MCMC method for
+efficiently sampling from multi-modal distributions,
+<a href="https://stat.uw.edu/sites/default/files/files/reports/2001/tr395.pdf">https://stat.uw.edu/sites/default/files/files/reports/2001/tr395.pdf</a>
+</p>
+<p>Warnes, G.W. (2000).  Multi-Chain and Parallel Algorithms for Markov Chain
+Monte Carlo. Dissertation, Department of Biostatistics, University of
+Washington,
+<a href="https://digital.lib.washington.edu/researchworks/handle/1773/9541">https://digital.lib.washington.edu/researchworks/handle/1773/9541</a>
+</p>
+<p>Raftery, A.E. and Lewis, S.M. (1992).  One long run with diagnostics:
+Implementation strategies for Markov chain Monte Carlo. Statistical Science,
+7, 493-497.
+</p>
+<p>Raftery, A.E. and Lewis, S.M. (1995).  The number of iterations, convergence
+diagnostics and generic Metropolis algorithms.  In Practical Markov Chain
+Monte Carlo (W.R. Gilks, D.J. Spiegelhalter and S. Richardson, eds.).
+London, U.K.: Chapman and Hall.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>read.mcmc</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+###
+# Create example data files for 20 independent chains
+# with serial correlation of 0.25
+###
+
+set.seed(42)
+tmpdir &lt;- tempdir()
+
+nsamples &lt;- 1000
+
+for(i in 1:20){
+  x &lt;- matrix(nrow = nsamples+1, ncol=4)
+  colnames(x) &lt;- c("alpha","beta","gamma", "nu")
+  
+  x[,"alpha"] &lt;- rnorm (nsamples+1, mean=0.025, sd=0.0025)^2
+  x[,"beta"]  &lt;- rnorm (nsamples+1, mean=53,    sd=12)
+  x[,"gamma"] &lt;- rbinom(nsamples+1, 20,         p=0.25) + 1
+  x[,"nu"]    &lt;- rnorm (nsamples+1, mean=x[,"alpha"] * x[,"beta"], sd=1/x[,"gamma"])
+
+  # induce serial correlation of 0.25
+  x &lt;- 0.75 * x[2:(nsamples+1),] + 0.25 * x[1:nsamples,]
+  
+  
+  write.table(
+    x,
+    file = file.path(
+      tmpdir,
+      paste("mcmc", i, "csv", sep=".")
+      ),
+    sep = ",",
+    row.names = FALSE
+  )
+}
+
+# Read them back in as an mcmc.list object
+data &lt;- read.mcmc(
+  20, 
+  file.path(tmpdir, "mcmc.#.csv"), 
+  sep=",",
+  col.names=c("alpha","beta","gamma", "nu")
+  )
+
+# Summary statistics
+summary(data)
+
+# Trace and Density Plots
+plot(data)
+
+# And check the necessary run length 
+mcgibbsit(data)
+
+
+</code></pre>
+
+
+</div>

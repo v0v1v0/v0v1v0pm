@@ -1,0 +1,183 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>fuse</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Compute FUSE (Functionally Unique, Specialized and Endangered)</h2>
+
+<h3>Description</h3>
+
+<p>This index takes into account species functional uniqueness (also called
+Functional Originality), species specialisation and species IUCN status.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">fuse(sp_dist, sp_faxes_coord, nb_NN = 5, GE, standGE = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>sp_dist</code></td>
+<td>
+<p>a dist object provided by <code>funct.dist</code>,
+<code>daisy</code> or <code>dist.ktab</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sp_faxes_coord</code></td>
+<td>
+<p>a data frame with the coordinates of the species on a
+multidimensional space based on a selected number of axes derived from a
+Principal Coordinate Analysis (PCoA). The species are in rows and the PCOA
+axes are in column.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nb_NN</code></td>
+<td>
+<p>a numerical value giving the number of nearest neighbor to
+consider. Default: <code>nb_NN = 5</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>GE</code></td>
+<td>
+<p>a numerical vector giving the IUCN status rank (DD = NA, LC = 0,
+NT = 1, VU = 2, EN = 3, CR = 4) or the IUCN extinction probability
+associated with each status. See Mooers <em>et al.</em> (2008) for further
+information. For example, DD = NA, LC = 0, NT = 0.1, VU = 0.4, EN = 0.666,
+and CR = 0.999).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>standGE</code></td>
+<td>
+<p>a logical value to standardize the GE values.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A data frame with species in rows and the following metrics in
+columns:
+</p>
+
+<ul>
+<li>
+<p> FUSE: functionally unique, specialized and endangered (see
+Pimiento <em>et al.</em> (2020);
+</p>
+</li>
+<li>
+<p> FUn_std: functional uniqueness standardized between 0 and 1 (see
+Mouillot <em>et al.</em> (2013);
+</p>
+</li>
+<li>
+<p> FSp_std: functional specialization standardized between 0 and 1
+(see Mouillot <em>et al.</em> (2013);
+</p>
+</li>
+</ul>
+<h3>Author(s)</h3>
+
+<p>Fabien Leprieur and Camille Albouy
+</p>
+
+
+<h3>References</h3>
+
+<p>Mouillot <em>et al.</em> (2013) Rare species support vulnerable functions in
+high-diversity ecosystems. <em>PLoS Biology</em>, <strong>11</strong>, e1001569.<br>
+Pimiento <em>et al.</em> (2020) Functional diversity of marine megafauna in the
+Anthropocene. <em>Science Advances</em>, <strong>6</strong>, eaay7650.<br>
+Violle <em>et al.</em> (2007) Let the concept of trait be functional! <em>Oikos</em>,
+<strong>116</strong>, 882-892.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># Load species traits data:
+sp_tr &lt;- read.csv(system.file('extdata', 'data_traits_MMA_ursus.csv', 
+  package = 'mFD'), dec = ',', sep = ';', header = TRUE, row.names = 1,
+  na.strings='NA')
+
+# Trait compilation and ordination:
+dimorphism      &lt;- ordered(sp_tr$dimorphism)
+breeding_site   &lt;- ordered(sp_tr$breeding_site)
+social_behavior &lt;- ordered(sp_tr$social_behavior)
+weight_max      &lt;- log(sp_tr$adult_weight_max)
+social_group    &lt;- log(sp_tr$social_group_mean)
+ 
+# Trait Matrix construction:
+sp_tr_end &lt;- data.frame(
+  main_diet = sp_tr$main_diet, 
+  foraging_water_depth = sp_tr$foraging_water_depth,
+  foraging_location = sp_tr$foraging_location, 
+  fasting_strategy = sp_tr$fasting_strategy,
+  female_sexual_maturity = sp_tr$female_sexual_maturity, 
+  weaning = sp_tr$weaning,
+  gestation = sp_tr$gestation, inter_litter = sp_tr$inter_litter,
+  breeding_site = sp_tr$breeding_site, 
+  social_group = sp_tr$social_group_mean,
+  social_behavior = sp_tr$social_behavior, 
+  weight_max = sp_tr$adult_weight_max,
+  dimorphism = sp_tr$dimorphism)
+  
+rownames(sp_tr_end) &lt;- rownames(sp_tr)
+ 
+# Function weigthing vector:
+v &lt;- c(0.25, 0.25, 0.25, 0.25, 0.20, 0.20, 0.20, 0.20, 0.20, 0.5, 0.5, 0.5, 
+  0.5)
+   
+# Gower distance calculation:
+sp_tr_end$main_diet &lt;- as.factor(sp_tr_end$main_diet)
+sp_tr_end$foraging_water_depth &lt;- as.factor(sp_tr_end$foraging_water_depth)
+sp_tr_end$foraging_location &lt;- as.factor(sp_tr_end$foraging_location)
+sp_tr_end$breeding_site &lt;- as.factor(sp_tr_end$breeding_site)
+sp_tr_end$social_behavior &lt;- as.factor(sp_tr_end$social_behavior)
+
+sp_dist_tr &lt;- cluster::daisy(sp_tr_end, metric = c('gower'), 
+  type = list(symm = c(4)), weights = v)
+  
+# Principal coordinate analyses
+Pcoa &lt;- ade4::dudi.pco(ade4::quasieuclid(sp_dist_tr), scann = FALSE, 
+                       nf = 40)
+
+sp_faxes_coord &lt;- Pcoa$li[1:40]
+ 
+# FUSE calculation:
+ FUSE_res &lt;- mFD::fuse(
+    sp_dist        = sp_dist_tr, 
+    sp_faxes_coord = as.matrix(sp_faxes_coord), 
+    nb_NN          = 5,  
+    GE             = sp_tr$IUCN_num,
+    standGE        = TRUE)
+ FUSE_res
+    
+ FUSE_res2 &lt;- mFD::fuse(
+    sp_dist        = sp_dist_tr, 
+    sp_faxes_coord = as.matrix(sp_faxes_coord), 
+    nb_NN          = 5,
+    GE             = sp_tr$IUCN_50,
+    standGE        = TRUE)
+ FUSE_res2
+    
+ FUSE_res3 &lt;- mFD::fuse(
+    sp_dist        = sp_dist_tr, 
+    sp_faxes_coord = as.matrix(sp_faxes_coord), 
+    nb_NN          = 5, 
+    GE             = sp_tr$IUCN_100,
+    standGE        = TRUE)
+ FUSE_res3
+</code></pre>
+
+
+</div>

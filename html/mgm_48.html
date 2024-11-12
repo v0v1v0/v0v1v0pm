@@ -1,0 +1,438 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mvar</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Estimating mixed Vector Autoregressive Model (mVAR)
+</h2>
+
+<h3>Description</h3>
+
+<p>Estimates mixed Vector Autoregressive Model (mVAR) via elastic-net regularized Generalized Linear Models
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mvar(data, type, level, lambdaSeq, lambdaSel, lambdaFolds,
+     lambdaGam, alphaSeq, alphaSel, alphaFolds, alphaGam, lags,
+     consec, beepvar, dayvar, weights, threshold, method, binarySign, 
+     scale, verbatim, pbar, warnings, saveModels, saveData, 
+     overparameterize, thresholdCat, signInfo, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>n x p data matrix.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+
+<p>p vector indicating the type of variable for each column in <code>data</code>. "g" for Gaussian, "p" for Poisson, "c" for categorical.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>level</code></td>
+<td>
+
+<p>p vector indicating the number of categories of each variable. For continuous variables set to 1.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambdaSeq</code></td>
+<td>
+
+<p>A sequence of lambdas that should be searched (see also <code>lambdaSel</code>). Defaults to <code>NULL</code>, which uses the  <code>glmnet</code> default to select a lambda candidate sequence (recommended). See <code>?glmnet</code> for details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambdaSel</code></td>
+<td>
+
+<p>Specifies the procedure for selecting the tuning parameter controlling the Lq-penalization. The two options are cross validation "CV" and the Extended Bayesian Information Criterion (EBIC) "EBIC". The EBIC performs well in selecting sparse graphs (see Barber and Drton, 2010 and Foygel and Drton, 2014). Note that when also searching the alpha parameter in the elastic net penalty, cross validation should be preferred, as the parameter vector will not necessarily be sparse anymore. The EBIC tends to be a bit more conservative than CV (see Haslbeck and Waldorp, 2016). CV can sometimes not be performed with categorical variables, because <code>glmnet</code> requires at least 2 events of each category of each categorical variable in each training-fold. Defaults to <code>lambdaSel = "CV"</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambdaFolds</code></td>
+<td>
+
+<p>Number of folds in cross validation if <code>lambdaSel = "CV"</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambdaGam</code></td>
+<td>
+
+<p>Hyperparameter gamma in the EBIC if <code>lambdaSel = "EBIC"</code>. Defaults to <code>lambdaGam = .25</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alphaSeq</code></td>
+<td>
+
+<p>A sequence of alpha parameters for the elastic net penality in [0,1] that should be searched (see also <code>alphaSel</code>). Defaults to <code>alphaSeq = 1</code>, which means that the lasso is being used. <code>alphaSeq = 0</code> corresponds to an L2-penalty (Ridge regression). For details see Friedman, Hastie and Tibshirani (2010).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alphaSel</code></td>
+<td>
+
+<p>Specifies the procedure for selecting the alpha parameter in the elastic net penalty. The two options are cross validation "CV" and the Extended Bayesian Information Criterion (EBIC) "EBIC". The EBIC performs well in selecting sparse graphs (see Barber and Drton, 2010 and Foygel and Drton, 2014). Note that when also searching the alpha parameter in the elastic net penalty, cross validation should be preferred, as the parameter vector will not necessarily be sparse anymore. The EBIC tends to be a bit more conservative than CV (see Haslbeck and Waldorp, 2016). CV can sometimes not be performed with categorical variables, because <code>glmnet</code> requires at least 2 events of each category of each categorical variable in each training-fold. Defaults to <code>alphaSel = "CV"</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alphaFolds</code></td>
+<td>
+
+<p>Number of folds in cross validation if <code>alphaSel = "CV"</code>
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alphaGam</code></td>
+<td>
+
+<p>Hyperparameter gamma in the EBIC if <code>alphaSel = "EBIC"</code>. Defaults to <code>alphaGam = .25</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lags</code></td>
+<td>
+
+<p>Vector of positive integers indicating the lags included in the mVAR model (e.g. 1:3 or c(1,3,5))
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>consec</code></td>
+<td>
+
+<p>An integer vector of length n, indicating the consecutiveness of measurement points of the rows in <code>data</code>. This means that rows for which the necessary (defined by the specified VAR model) measurements at previous time points are not available are excluded from the analysis. For instance, for a VAR model with lag 1 a consec vector of <code>consec = c(1,2,3,5)</code> would mean that the fourth row is excluded from the analysis, since no measurement 5-1=4 is available (next to the first row, for which also no previous measurement can be available). This is useful in many applications in which measurements are missing randomly or due to the design of the data collection (for example, respondents only respond during the hours they are awake). The "trimmed" dataset is returned in <code>call$data_lagged</code> if <code>saveData = TRUE</code>. Defaults to <code>consec = NULL</code>, which assumes that all measurements are consecutive, i.e. <code>consec = 1:n</code>. In this case only the first <code>max(lags)</code> lags are excluded to obtain the VAR design matrix.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beepvar</code></td>
+<td>
+<p>Together with the argument <code>dayvar</code>, this argument is an alternative to the <code>consec</code> argument (see above) to specify the consecutiveness of measurements. This is tailored to experience sampling method (ESM) studies, where the consectutiveness is defined by the number of notification on a given day (<code>beepvar</code>) and the given day (<code>dayvar</code>).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dayvar</code></td>
+<td>
+<p>See <code>beepvar</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weights</code></td>
+<td>
+
+<p>A vector with n - max(lags) entries, indicating the weight for each observation. The mVAR design matrix has with n - max(lags) rows, because the first row must be predictable by the highest lag. The weights have to be on the scale [0, n - max(lags) ].
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+
+<p>A threshold below which edge-weights are put to zero. This is done in order to guarantee a lower bound on the false-positive rate. <code>threshold = "LW"</code> refers to the threshold in Loh and Wainwright (2013), which was used in all previous versions of mgm. <code>threshold = "HW"</code> refers to the threshold in Haslbeck and Waldorp (2016). If <code>threshold = "none"</code> no thresholding is applied.  Defaults to <code>threshold = "LW"</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+
+<p>Estimation method, currently only <code>method = "glm"</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>binarySign</code></td>
+<td>
+
+<p>If <code>binarySign = TRUE</code>, a sign for the interaction within binary nodes and between binary and continuous nodes is provided in the output. Note that in this case the two categories of the binary variables have to be coded in 0,1. This is to ensure that the interpretation of the sign is unambigous: a positive sign of a parameter means that increasing the associated predictor results in a higher probability for category 1.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+
+<p>If <code>scale = TRUE</code>, all Gaussian nodes (specified by <code>"g"</code> in the <code>type</code> argument) are centered and divided by their standard deviation. Scaling is recommended, because otherwise the penalization of a parameter depends on the variance of the associated predictor.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbatim</code></td>
+<td>
+
+<p>If <code>verbatim = TRUE</code>, no warnings and no progress bar is shown. Defaults to <code>verbatim = FALSE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pbar</code></td>
+<td>
+
+<p>If <code>pbar = TRUE</code>, a progress bar is shown. Defaults to <code>pbar = TRUE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>warnings</code></td>
+<td>
+
+<p>If <code>warnings = TRUE</code>, no warnigns are returned. Defaults to <code>warnings = FALSE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>saveModels</code></td>
+<td>
+
+<p>If <code>saveModels = FALSE</code>, only information about the weighted adjacency matrix, and if d &gt; 1 about the factor graph is provided in the output list. If <code>saveModels = TRUE</code>, all fitted parameters are additionally returned.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>saveData</code></td>
+<td>
+
+<p>If <code>saveData = TRUE</code>, the data is saved in the output list. Defaults to <code>saveData = FALSE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>overparameterize</code></td>
+<td>
+
+<p>If <code>overparameterize = TRUE</code>, <code>mgm()</code> uses over-parameterized design-matrices for each neighborhood regression; this means that a cross-lagged effect between two categorical variables with m and s categories is parameterized by m*s parameters. If <code>overparameterize = FALSE</code> the standard parameterization (in <code>glmnet</code>) with m*(s-1) parameters is used, where the first category of the predicting variable serves as reference category. If all variables are continuous both parameterizations are the same. The default is set to <code>overparameterize = FALSE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thresholdCat</code></td>
+<td>
+
+<p>If <code>thresholdCat = FALSE</code>, the thresholds of categorical variables are set to zero. Defaults to <code>thresholdCat = TRUE</code> for which the thresholds are esimated.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>signInfo</code></td>
+<td>
+
+<p>If <code>signInfo = TRUE</code>, a message is shown in the console, indicating that the sign of estimates is stored separately. Defaults to <code>signInfo = TRUE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Additional arguments.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>See Haslbeck and Waldorp (2018) for details about how the mixed VAR model is estimated.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The function returns a list with the following entries:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+
+<p>Contains all provided input arguments. If <code>saveData = TRUE</code>, it also contains the data.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>wadj</code></td>
+<td>
+
+<p>A p x p x n_lags array, in which rows are predicted by columns, i.e. entry <code>wadj[1, 2, 4]</code> corresponds to the parameter(s) of variable 2 at time point t predicting variable 1 at time point t - z, where z is the fourth specified lag in <code>lags</code> and n_lags is the number of specified lags in <code>lags</code>. For interactions that involve more than two parameters (e.g. always for categorical variables with more than 2 categories), we take the arithmetic mean of the absolute value of all parameters. The full set of estimated parameters is saved in <code>rawlags</code> (see below).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>signs</code></td>
+<td>
+
+<p>A p x p x n_lags array, specifying the signs corresponding to the entries of <code>wadj</code> (if defined), where n_lags is the number of specified lags in <code>lags</code>. 1/-1 indicate positive and negative relationships, respectively. 0 indicates that no sign is defined, which is the case for interactions that involve a categorical variable where an interaction can have more than one parameter. If <code>binarySign = TRUE</code>, a sign is calculated for interactions between binary variables and binary and continuous variables, where the interaction is still defined by one parameter and hence a sign can be specified. <code>NA</code> indicates that the corresponding parameter in <code>wadj</code> is zero.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>edgecolor</code></td>
+<td>
+
+<p>A p x p x n_lags array of colors indicating the sign of each parameter. This array contains the same information is <code>signs</code> and is included for convenient plotting.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rawlags</code></td>
+<td>
+
+<p>List with entries equal to the number of specified lags in <code>lags</code>. Each entry is a nested list, with each p entries: the first level indicates the predicted variable, the second level the predictor variable. In case of categorical variables, interactions have more than one parameter.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intercepts</code></td>
+<td>
+
+<p>A list with p entries, which contain the intercept/thresholds for each node. In case a given node is categorical with m categories, there are m thresholds for this variable.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nodemodels</code></td>
+<td>
+
+<p>A list with p <code>glmnet()</code> models, from which all above output is computed. Also contains the coefficients <code>models</code> for the selected lambda and the applied tau threshold <code>tau</code>.
+</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Jonas Haslbeck &lt;jonashaslbeck@gmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Barber, R. F., &amp; Drton, M. (2015). High-dimensional Ising model selection with Bayesian information criteria. Electronic Journal of Statistics, 9(1), 567-607.
+</p>
+<p>Foygel, R., &amp; Drton, M. (2010). Extended Bayesian information criteria for Gaussian graphical models. In Advances in neural information processing systems (pp. 604-612).
+</p>
+<p>Friedman, J., Hastie, T., &amp; Tibshirani, R. (2010). Regularization paths for generalized linear models via coordinate descent. Journal of statistical software, 33(1), 1.
+</p>
+<p>Haslbeck, J. M. B., &amp; Waldorp, L. J. (2020). mgm: Estimating time-varying Mixed Graphical Models in high-dimensional Data. Journal of Statistical Software, 93(8), pp. 1-46. DOI: 10.18637/jss.v093.i08
+</p>
+<p>Loh, P. L., &amp; Wainwright, M. J. (2012, December). Structure estimation for discrete graphical models: Generalized covariance matrices and their inverses. In NIPS (pp. 2096-2104).
+</p>
+<p>Yang, E., Baker, Y., Ravikumar, P., Allen, G. I., &amp; Liu, Z. (2014, April). Mixed Graphical Models via Exponential Families. In AISTATS (Vol. 2012, pp. 1042-1050).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+
+
+## We generate data from a mixed VAR model and then recover the model using mvar()
+
+# 1) Define mVAR model
+p &lt;- 6 # Six variables
+type &lt;- c("c", "c", "c", "c", "g", "g") # 4 categorical, 2 gaussians
+level &lt;- c(2, 2, 4, 4, 1, 1) # 2 categoricals with m=2, 2 categoricals with m=4, two continuous
+max_level &lt;- max(level)
+
+lags &lt;- c(1, 3, 9) # include lagged effects of order 1, 3, 9
+n_lags &lt;- length(lags)
+
+# Specify thresholds
+thresholds &lt;- list()
+thresholds[[1]] &lt;- rep(0, level[1])
+thresholds[[2]] &lt;- rep(0, level[2])
+thresholds[[3]] &lt;- rep(0, level[3])
+thresholds[[4]] &lt;- rep(0, level[4])
+thresholds[[5]] &lt;- rep(0, level[5])
+thresholds[[6]] &lt;- rep(0, level[6])
+
+# Specify standard deviations for the Gaussians
+sds &lt;- rep(NULL, p)
+sds[5:6] &lt;- 1
+
+# Create coefficient array
+coefarray &lt;- array(0, dim=c(p, p, max_level, max_level, n_lags))
+
+# a.1) interaction between continuous 5&lt;-6, lag=3
+coefarray[5, 6, 1, 1, 2] &lt;- .4
+# a.2) interaction between 1&lt;-3, lag=1
+m1 &lt;- matrix(0, nrow=level[2], ncol=level[4])
+m1[1,1:2] &lt;- 1
+m1[2,3:4] &lt;- 1
+coefarray[1, 3, 1:level[2], 1:level[4], 1] &lt;- m1
+# a.3) interaction between 1&lt;-5, lag=9
+coefarray[1, 5, 1:level[1], 1:level[5], 3] &lt;- c(0, 1)
+
+
+# 2) Sample
+set.seed(1)
+dlist &lt;- mvarsampler(coefarray = coefarray,
+                     lags = lags,
+                     thresholds = thresholds,
+                     sds = sds,
+                     type = type,
+                     level = level,
+                     N = 200,
+                     pbar = TRUE)
+
+# 3) Recover
+set.seed(1)
+mvar_obj &lt;- mvar(data = dlist$data,
+                 type = type,
+                 level = level,
+                 lambdaSel = "CV",
+                 lags = c(1, 3, 9),
+                 signInfo = FALSE,
+                 overparameterize = F)
+
+# Did we recover the true parameters?
+mvar_obj$wadj[5, 6, 2] # cross-lagged effect of 6 on 2 over lag lags[2]
+mvar_obj$wadj[1, 3, 1] # cross-lagged effect of 3 on 1 over lag lags[1]
+mvar_obj$wadj[1, 5, 3] # cross-lagged effect of 1 on 5 over lag lags[3]
+
+# How to get the exact parameter estimates?
+# Example: the full parameters for the crossed-lagged interaction of 2 on 1 over lag lags[1]
+mvar_obj$rawlags[[1]][[1]][[2]] 
+
+# 4) Predict / Compute nodewise Error
+pred_mvar &lt;- predict.mgm(mvar_obj, dlist$data)
+
+head(pred_mvar$predicted) # first 6 rows of predicted values
+pred_mvar$errors # Nodewise errors
+
+# For more examples see https://github.com/jmbh/mgmDocumentation
+
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

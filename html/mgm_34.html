@@ -1,0 +1,183 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict.mgm</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Compute predictions from mgm model objects
+</h2>
+
+<h3>Description</h3>
+
+<p>Computes predictions and prediction errors from a mgm model-object (<code>mgm</code>, <code>mvar</code>, <code>tvmgm</code> or <code>tvmvar</code>).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'mgm'
+predict(object, data, errorCon, errorCat, 
+        tvMethod, consec, beepvar, dayvar, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+
+<p>An mgm model object (the output of one of the functions <code>mgm()</code>, <code>mvar()</code>, <code>tvmgm()</code> or <code>tvmvar()</code>)
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>A n x p data matrix with the same structure (number of variables p and types of variables) as the data used to fit the model.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>errorCon</code></td>
+<td>
+
+<p>Either a character vector specifying the types of nodewise errors that should be computed, where the two provided error functions for continuous varaibles are <code>errorCon = "RMSE"</code>, the Root Mean Squared Error, and <code>errorCon = "R2"</code>, the proportion of explained variance. The default is <code>errorCon = c("RMSE" "R2")</code>.
+</p>
+<p>Alternatively, <code>errorCon</code> can be a list, where each list entry is a custom error function of the form <code>foo(true, pred)</code>, where <code>true</code> and <code>pred</code> are the arguments for the vectors of true and predicted values, respectively.  If predictions are made for a time-varying model and <code>tvMethod = "weighted"</code>, the weighted R2 or RMSE are computed. If a custom function is used, an additional argument for the weights has to be provided: <code>foo(true, pred, weights)</code>. Note that custom error functios can also be combined with the buildt-in functions, i.e. <code>errorCon = list("RMSE", "CustomError"=foo)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>errorCat</code></td>
+<td>
+
+<p>Either a character vector specifying the types of nodewise errors that should be computed, where the two provided error functions for categorical variables are <code>errorCat = "CC"</code>, the proportion of correct classification (accuracy) and <code>errorCat = "nCC"</code>, the proportion of correct classification normalized by the marginal distribution of the variable at hand. Specifically, nCC = (CC - norm_constant) / (1 - norm_constant), where norm_constant is the highest relative frequency across categories. Another provided error is "CCmarg" which returns the accuracy of the intercept/marginal model. The default is to return all types of errors <code>errorCon = c("CC" "nCC", "CCmarg")</code>.
+</p>
+<p>Alternatively, <code>errorCat</code> can be a list, where each list entry is a custom error function of the form <code>foo(true, pred)</code>, where <code>true</code> and <code>pred</code> are the arguments for the vectors of true and predicted values, respectively.  If predictions are made for a time-varying model and <code>tvMethod = "weighted"</code>, the weighted R2 or RMSE are computed. If a custom function is used, an additional argument for the weights has to be provided: <code>foo(true, pred, weights)</code>. Note that custom error functios can also be combined with the buildt-in functions, i.e. <code>errorCon = list("nCC", "CustomError"=foo)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tvMethod</code></td>
+<td>
+
+<p>Specifies how predictions and errors are computed for time-varying models: <code>tvMethod = "weighted"</code> computes errors by computing a weighted error over all cases in the time series at each estimation point specified in <code>estpoints</code> in <code>tvmgm()</code> or <code>tvmvar()</code>. The weighting corresponds to the weighting used for estimation (see <code>?tvmgm</code> or <code>?tvmvar</code>). <code>tvMethod = "closestModel"</code> determines for each time point the closest model and uses that model for prediction. See Details below for a more detailed explanation.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>consec</code></td>
+<td>
+<p>Only relevant for (time-varying) mVAR models. An integer vector of length <code>nrow(data)</code>, indicating the sequence of measurement points in a time series. This is only relevant for mVAR models and time series with unequal time intervals. Defaults to <code>consec = NULL</code>, which assumes equal time intervals. <code>consec</code> is ignored if a <code>mgm</code> or <code>tvmgm</code> object is provided to <code>predict.mgm()</code>. For details see <code>?mvar</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beepvar</code></td>
+<td>
+<p>Together with the argument <code>dayvar</code>, this argument is an alternative to the <code>consec</code> argument (see above) to specify the consecutiveness of measurements. This is tailored to ecological momentary assessment (EMA) studies, where the consectutiveness is defined by the number of notification on a given day (<code>beepvar</code>) and the given day (<code>dayvar</code>).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dayvar</code></td>
+<td>
+<p>See <code>beepvar</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>Nodewise errors in time-varying models can be computed in two different ways: first, one computes the predicted value for each of the N cases in the time series for all models (estimated at different estimation points, see <code>?tvmgm</code> or <code>?tvmvar</code>). Then the error of each of the N cases for each of the models is weighted by the weight that has been used to estimate a given model at its estimation point. This means that the error of a data point close to the end of a time-series gets a high weight for models estimated in the end of the time-series and a low weight for models estimated in the beginning of the time series.
+</p>
+<p>Second, we determine for each case in the time-series the closest estmation point, and use the model estimated at that estimation point to make predictions for that case.
+</p>
+<p>Note that the error function normalized accuracy (nCC) is negative if the full model performs worse than the intercept model. This can happen if the model overfits the data.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with the following entries:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>call</code></td>
+<td>
+
+<p>Contains all provided input arguments.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>predicted</code></td>
+<td>
+
+<p>A n x p matrix with predicted values, matching the dimension of the true values in <code>true</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>probabilities</code></td>
+<td>
+
+<p>A list with p entries corresponding to p nodes in the data. If a variable is categorical, the corresponding entry contains a n x k matrix with predicted probabilities, where k is the number of categories of the categorical variable. If a variable is continuous, the corresponding entry is empty.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>true</code></td>
+<td>
+
+<p>Contains the true values. For <code>mgm</code> and <code>tvmgm</code> objects these are equal to the data provided via <code>data</code>. For <code>mvar</code> and <code>tvmvar</code> objects, these are equal to the rows that can be predicted in a VAR model, depending on the largest specified lag and (if specified) the <code>consec</code> argument. 
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>errors</code></td>
+<td>
+
+<p>A matrix containing the all types of errors specified via <code>errorCon</code> and <code>errorCat</code>, for each variable. If <code>tvMethod = "weighted"</code>, the matrix becomes an array, with an additional dimension for the estimation point.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tverrors</code></td>
+<td>
+
+<p>If <code>tvMethod = "weighted"</code>, this list entry contains a list with errors of the format of <code>errors</code>, separately for each estimation point. The errors are computed from predictions of the model at the given estimation points and weighted by the weight-vector at that estimation point. If <code>tvMethod = "closestModel"</code>, this entry is empty.
+</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Jonas Haslbeck &lt;jonashaslbeck@gmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Haslbeck, J. M. B., &amp; Waldorp, L. J. (2020). mgm: Estimating time-varying Mixed Graphical Models in high-dimensional Data. Journal of Statistical Software, 93(8), pp. 1-46. DOI: 10.18637/jss.v093.i08
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+# See examples in ?mgm, ?tvmgm, ?mvar and ?tvmvar.
+
+## End(Not run)
+
+</code></pre>
+
+
+</div>

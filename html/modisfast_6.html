@@ -1,0 +1,137 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mf_import_data</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Import datasets downloaded using <code>modisfast</code> as a <code>terra::SpatRaster</code> object</h2>
+
+<h3>Description</h3>
+
+<p>Import datasets downloaded using <code>modisfast</code> as a <code>terra::SpatRaster</code> object
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mf_import_data(
+  path,
+  collection,
+  output_class = "SpatRaster",
+  proj_epsg = NULL,
+  roi_mask = NULL,
+  vrt = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>path</code></td>
+<td>
+<p>character string. mandatory. The path to the local directory where the data are stored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>collection</code></td>
+<td>
+<p>string. mandatory. Collection of interest (see details of mf_get_url).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>output_class</code></td>
+<td>
+<p>character string. Output object class. Currently only "SpatRaster" implemented.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>proj_epsg</code></td>
+<td>
+<p>numeric. EPSG of the desired projection for the output raster (default : source projection of the data).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>roi_mask</code></td>
+<td>
+<p><code>SpatRaster</code> or <code>SpatVector</code> or <code>sf</code>. Area beyond which data will be masked. Typically, the input ROI of mf_get_url (default : NULL (no mask))</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>vrt</code></td>
+<td>
+<p>boolean. Import virtual raster instead of SpatRaster. Useful for very large files. (default : FALSE)</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a <code>terra::SpatRast</code> object
+</p>
+
+
+<h3>Note</h3>
+
+<p>Although the data downloaded through <code>modisfast</code> could be imported with any netcdf-compliant R package (<code>terra</code>, <code>stars</code>, <code>ncdf4</code>, etc.), care must be taken. In fact, depending on the collection, some “issues” were raised. These issues are independent from <code>modisfast</code> : they result most of time of a lack of full implementation of the OPeNDAP framework by the data providers. Namely, these issues are :
+</p>
+
+<ul>
+<li>
+<p>for MODIS and VIIRS collections : CRS has to be provided
+</p>
+</li>
+<li>
+<p>for GPM collections : CRS has to be provided + data have to be flipped
+</p>
+</li>
+</ul>
+<p>The function mf_import_data includes the processing that needs to be done at the data import phase in order to safely use the data as <code>terra</code> objects.
+</p>
+<p>Also note that reprojecting over large ROIs using the argument <code>proj_epsg</code> might take long. In this case, setting the argument <code>vrt</code> to TRUE might be a solution.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+## Not run: 
+
+### Login to EOSDIS Earthdata with your username and password
+log &lt;- mf_login(credentials = c("earthdata_un","earthdata_pw"))
+
+### Set-up parameters of interest
+coll &lt;- "MOD11A1.061"
+
+bands &lt;- c("LST_Day_1km","LST_Night_1km")
+
+time_range &lt;- as.Date(c("2017-01-01","2017-01-30"))
+
+roi &lt;- sf::st_as_sf(data.frame(
+id = "roi_test",
+geom="POLYGON ((-5.82 9.54, -5.42 9.55, -5.41 8.84, -5.81 8.84, -5.82 9.54))"),
+wkt="geom",crs = 4326)
+
+### Get the URLs of the data
+(urls_mod11a1 &lt;- mf_get_url(
+collection = coll,
+variables = bands,
+roi = roi,
+time_range = time_range
+))
+
+### Download the data
+res_dl &lt;- mf_download_data(urls_mod11a1)
+
+### Import the data as terra::SpatRast
+modis_ts &lt;- mf_import_data(dirname(res_dl$destfile[1]), collection = coll)
+
+### Plot the data
+terra::plot(modis_ts)
+
+
+## End(Not run)
+</code></pre>
+
+
+</div>

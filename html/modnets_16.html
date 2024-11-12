@@ -1,0 +1,337 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>fitNetwork</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit cross-sectional and idiographic moderated network models</h2>
+
+<h3>Description</h3>
+
+<p>The main function that ties everything together for both cross-sectional and
+idiographic (temporal) network models, moderated or otherwise.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">fitNetwork(
+  data,
+  moderators = NULL,
+  type = "gaussian",
+  lags = NULL,
+  seed = NULL,
+  folds = 10,
+  gamma = 0.5,
+  which.lam = "min",
+  rule = "OR",
+  threshold = FALSE,
+  scale = FALSE,
+  std = TRUE,
+  center = TRUE,
+  covariates = NULL,
+  verbose = FALSE,
+  exogenous = TRUE,
+  mval = NULL,
+  residMat = "sigma",
+  medges = 1,
+  pcor = FALSE,
+  maxiter = 100,
+  getLL = TRUE,
+  saveMods = TRUE,
+  binarize = FALSE,
+  fitCoefs = FALSE,
+  detrend = FALSE,
+  beepno = NULL,
+  dayno = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p><code>n x k</code> dataframe or matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>moderators</code></td>
+<td>
+<p>Numeric or character vector indicating which variables (if
+any) to use as moderators.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>Primarily used to supply a variable selection object, such as
+those created with <code>varSelect</code> or <code>modSelect</code>, or
+to indicate that a variable selection method should be employed by setting
+the value to <code>"varSelect"</code>. Currently doesn't support setting the
+value to <code>"resample"</code>, although this will be implemented in the
+future. Alternatively, this can be used to specify the type of variable for
+each node. In this case it should be either a single value –
+<code>"gaussian"</code> or <code>"binomial"</code> – or can be a vector of length
+<code>k</code> to specify which of those two types apply to each variable. These
+dictate which family to use for the call to
+<code>stats::glm</code>. Cannot use binomial models for SUR
+networks.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lags</code></td>
+<td>
+<p>Logical or numeric, to indicate whether to fit a SUR model or
+not. Set to <code>TRUE</code> or 1 for a SUR model fit to temporal data for a
+single subject.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>Only useful if <code>type = "varSelect"</code>, and if the
+<code>varSeed</code> argument is not specified in the <code>...</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>folds</code></td>
+<td>
+<p>Can be used to specify the number of folds in cross-validation
+when <code>type = "varSelect"</code> and <code>criterion = "CV"</code>. Overwritten if
+<code>nfolds</code> argument is provided.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>gamma</code></td>
+<td>
+<p>Only useful if <code>type = "varSelect"</code> and the criterion is
+set to <code>"EBIC"</code>. This is the hyperparameter for the calculation of
+EBIC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>which.lam</code></td>
+<td>
+<p>Only useful if <code>criterion = "CV"</code>, or if a variable
+selection object based on cross-validation is supplied for <code>type</code>.
+Options include <code>"min"</code>, which uses the lambda value that minimizes
+the objective function, or <code>"1se"</code> which uses the lambda value at 1
+standard error above the value that minimizes the objective function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>rule</code></td>
+<td>
+<p>Only applies to GGMs (including between-subjects networks) when a
+threshold is supplied. The <code>"AND"</code> rule will only preserve edges when
+both corresponding coefficients have p-values below the threshold, while
+the <code>"OR"</code> rule will preserve an edge so long as one of the two
+coefficients have a p-value below the supplied threshold.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threshold</code></td>
+<td>
+<p>Determines whether to employ a p-value threshold on the
+model. If <code>TRUE</code> then this defaults to .05. Not recommended, as
+thresholds can be applied post-hoc through the plotting functions, or via
+the <code>net</code> and <code>netInts</code> functions. Recommended to
+leave as <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p>Determines whether to standardize all variables or not.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>std</code></td>
+<td>
+<p>Only applies to SUR networks. Logical. Provides input to the
+<code>method</code> argument of the
+<code>systemfit::systemfit</code> function. If
+<code>TRUE</code>, then the <code>method</code> will be <code>"SUR"</code>. If <code>FALSE</code>,
+then the <code>method</code> will be <code>"OLS"</code>. These two methods only differ
+when constraints are applied. When a saturated model is fit, both methods
+produce the same results.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>center</code></td>
+<td>
+<p>Determines whether to mean-center variables or not.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covariates</code></td>
+<td>
+<p>Either a numeric value or character string – this could
+also be a vector – to indicate which variables (if any) should be treated
+as covariates in the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Logical. Determines whether to return information about the
+progress of the model fitting – especially when variable selection is
+employed – as well as prints the amount of time it takes to fit the model
+to the console.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exogenous</code></td>
+<td>
+<p>Logical. Indicates whether moderator variables should be
+treated as exogenous or not. If they are exogenous, they will not be
+modeled as outcomes/nodes in the network. If the number of moderators
+reaches <code>k - 1</code> or <code>k</code>, then <code>exogenous</code> will automatically
+be <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mval</code></td>
+<td>
+<p>Numeric value to set the moderator variable to when computing
+model coefficients. Useful to create conditional networks – i.e., those
+whose values are conditioned on specific values of the moderator. Excellent
+when the moderator is a categorical variable, or when it's desired to have
+model estimates at +/- 1 SD around the mean of the moderator. These values
+must be supplied explicitly. Can only specify a single value for a given
+model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>residMat</code></td>
+<td>
+<p>Character string indicating which type of residual covariance
+matrix to compute for SUR models. Options include <code>"res", "dfres",
+  "sigma"</code>. <code>"sigma"</code> uses the residual covariance matrix as computed by
+the <code>systemfits</code> package. <code>"res"</code> and <code>"dfres"</code> compute the
+matrix based directly on the residual values. <code>"dfres"</code> is the sample
+estimator that uses <code>N - 1</code> in the denominator, while <code>"res"</code>
+just uses <code>N</code>. Input for <code>SURnet</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>medges</code></td>
+<td>
+<p>Only relevant when <code>lags = 1</code> and <code>exogenous =
+  FALSE</code>. Determines the linetype of moderated edges (corresponds to the lty
+argument of <code>plot()</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pcor</code></td>
+<td>
+<p>Logical. Determines whether to operationalize the adjacency
+matrix as the partial correlation matrix of the data, or to use nodewise
+estimation. Only relevant for unmoderated networks.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxiter</code></td>
+<td>
+<p>See argument of <code>SURfit()</code> function.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>getLL</code></td>
+<td>
+<p>Logical. Determines whether to return log-likelihood statistics
+with model results. Recommended to keep <code>TRUE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>saveMods</code></td>
+<td>
+<p>Logical. Determines whether to save the <code>fitobj</code> element
+of the output, which contains the nodewise models, or the SUR model output
+of <code>systemfit::systemfit</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>binarize</code></td>
+<td>
+<p>Logical. Determines whether to convert the output to a
+binary, unweighted network. Only relevant for GGMs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fitCoefs</code></td>
+<td>
+<p>Determines whether to use the <code>getFitCIs</code>
+function on the output. Not recommended to use. The downside is that this
+will overwrite the <code>fitobj</code> element of the output which contains the
+actual models. Better to leave this as <code>FALSE</code>, and then use the
+<code>getFitCIs</code> function on the object separately.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>detrend</code></td>
+<td>
+<p>Logical. Determines whether to remove linear trends from time
+series variables. Only applies to temporal networks.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>beepno</code></td>
+<td>
+<p>Character string or numeric value to indicate which variable
+(if any) encodes the survey number within a single day. Must be used in
+conjunction with <code>dayno</code> argument. Only relevant to temporal data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dayno</code></td>
+<td>
+<p>Character string or numeric value to indicate which variable (if
+any) encodes the survey number within a single day. Must be used in
+conjunction with <code>beepno</code> argument. Only relevant to temporal data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>For GGMs, nodewise estimation is utilized to fit models to each node, and
+then aggregate results into the final network. For temporal networks that
+represent data for a single subject, SUR estimation based on feasible
+generalized least squares (FGLS) is used. Also incorporates the variable
+selection functions to integrate model selection and estimation. Nodewise
+estimation is used for all GGMs, and SUR estimation is used for temporal
+networks. See <code>systemfit</code> package for more information on the latter,
+particularly via the <code>systemfit::systemfit</code>
+function.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A ggm or SUR network
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">fit1 &lt;- fitNetwork(ggmDat)
+
+
+fit2 &lt;- fitNetwork(ggmDat, 'M', type = 'varSelect', criterion = 'BIC')
+
+
+fit3 &lt;- fitNetwork(gvarDat, 'M', lags = 1)
+</code></pre>
+
+
+</div>

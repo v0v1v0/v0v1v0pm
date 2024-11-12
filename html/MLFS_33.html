@@ -1,0 +1,650 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MLFS</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MLFS</h2>
+
+<h3>Description</h3>
+
+<p>Machine Learning Forest Simulator
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MLFS(
+  data_NFI,
+  data_site,
+  data_tariffs = NULL,
+  data_climate = NULL,
+  df_volumeF_parameters = NULL,
+  thinning_weights_species = NULL,
+  final_cut_weights_species = NULL,
+  thinning_weights_plot = NULL,
+  final_cut_weights_plot = NULL,
+  form_factors = NULL,
+  form_factors_level = "species_plot",
+  uniform_form_factor = 0.42,
+  sim_steps,
+  volume_calculation = "volume_functions",
+  merchantable_whole_tree = "merchantable",
+  sim_harvesting = TRUE,
+  sim_mortality = TRUE,
+  sim_ingrowth = TRUE,
+  sim_crownHeight = TRUE,
+  harvesting_sum = NULL,
+  forest_area_ha = NULL,
+  harvest_sum_level = NULL,
+  plot_upscale_type = NULL,
+  plot_upscale_factor = NULL,
+  mortality_share = NA,
+  mortality_share_type = "volume",
+  mortality_model = "glm",
+  ingrowth_model = "ZIF_poiss",
+  BAI_rf_mtry = NULL,
+  ingrowth_rf_mtry = NULL,
+  mortality_rf_mtry = NULL,
+  nb_laplace = 0,
+  harvesting_type = "final_cut",
+  share_thinning = 0.8,
+  final_cut_weight = 10,
+  thinning_small_weight = 1,
+  species_n_threshold = 100,
+  height_model = "brnn",
+  crownHeight_model = "brnn",
+  BRNN_neurons_crownHeight = 1,
+  BRNN_neurons_height = 3,
+  height_pred_level = 0,
+  include_climate = FALSE,
+  select_months_climate = c(1, 12),
+  set_eval_mortality = TRUE,
+  set_eval_crownHeight = TRUE,
+  set_eval_height = TRUE,
+  set_eval_ingrowth = TRUE,
+  set_eval_BAI = TRUE,
+  k = 10,
+  blocked_cv = TRUE,
+  max_size = NULL,
+  max_size_increase_factor = 1,
+  ingrowth_codes = c(3),
+  ingrowth_max_DBH_percentile = 0.9,
+  measurement_thresholds = NULL,
+  area_correction = NULL,
+  export_csv = FALSE,
+  sim_export_mode = TRUE,
+  include_mortality_BAI = TRUE,
+  intermediate_print = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data_NFI</code></td>
+<td>
+<p>data frame with individual tree variables</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data_site</code></td>
+<td>
+<p>data frame with site descriptors. This data is related to
+data_NFI based on the 'plotID' column</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data_tariffs</code></td>
+<td>
+<p>optional, but mandatory if volume is calculated using the
+one-parametric tariff functions. Data frame with plotID, species and V45. See
+details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data_climate</code></td>
+<td>
+<p>data frame with climate data, covering the initial
+calibration period and all the years which will be included in the simulation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>df_volumeF_parameters</code></td>
+<td>
+<p>optional, data frame with species-specific
+volume function parameters</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thinning_weights_species</code></td>
+<td>
+<p>data frame with thinning weights for each
+species. The first column represents species code, each next column consists
+of species-specific thinning weights applied in each simulation step</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>final_cut_weights_species</code></td>
+<td>
+<p>data frame with final cut weights for each
+species. The first column represents species code, each next column consists
+of species-specific final cut weights applied in each simulation step</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thinning_weights_plot</code></td>
+<td>
+<p>data frame with harvesting weights related to
+plot IDs, used for thinning</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>final_cut_weights_plot</code></td>
+<td>
+<p>data frame with harvesting weights related
+to plot IDs, used for final cut</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>form_factors</code></td>
+<td>
+<p>optional, data frame with species-specific form factors</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>form_factors_level</code></td>
+<td>
+<p>character, the level of specified form factors. It
+can be 'species', 'plot' or 'species_plot'</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>uniform_form_factor</code></td>
+<td>
+<p>numeric, uniform form factor to be used for all
+species and plots. Only if form_factors are not provided</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sim_steps</code></td>
+<td>
+<p>The number of simulation steps</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>volume_calculation</code></td>
+<td>
+<p>character string defining the method for volume
+calculation: 'tariffs', 'volume_functions', 'form_factors' or
+'slo_2p_volume_functions'</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>merchantable_whole_tree</code></td>
+<td>
+<p>character, 'merchantable' or 'whole_tree'. It
+indicates which type of volume functions will be used. This parameter is used
+only for volume calculation using the 'slo_2p_volume_functions'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sim_harvesting</code></td>
+<td>
+<p>logical, should harvesting be simulated?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sim_mortality</code></td>
+<td>
+<p>logical, should mortality be simulated?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sim_ingrowth</code></td>
+<td>
+<p>logical, should ingrowth be simulated?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sim_crownHeight</code></td>
+<td>
+<p>logical, should crown heights be simulated? If TRUE,
+a crownHeight column is expected in data_NFI</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>harvesting_sum</code></td>
+<td>
+<p>a value, or a vector of values defining the harvesting
+sums through the simulation stage. If a single value, then it is used in all
+simulation steps. If a vector of values, the first value is used in the first
+step, the second in the second step, etc.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>forest_area_ha</code></td>
+<td>
+<p>the total area of all forest which are subject of the
+simulation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>harvest_sum_level</code></td>
+<td>
+<p>integer with value 0 or 1 defining the level of
+specified harvesting sum: 0 for plot level and 1 for regional level</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot_upscale_type</code></td>
+<td>
+<p>character defining the upscale method of plot level
+values. It can be 'area' or 'upscale factor'. If 'area', provide the forest
+area represented by all plots in hectares (forest_area_ha argument). If
+'factor', provide the fixed factor to upscale the area of all plots. Please
+note: forest_area_ha/plot_upscale_factor = number of unique plots. This
+argument is important when harvesting sum is defined on regional level.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot_upscale_factor</code></td>
+<td>
+<p>numeric value to be used to upscale area of each
+plot</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mortality_share</code></td>
+<td>
+<p>a value, or a vector of values defining the proportion
+of the volume which is to be the subject of mortality. If a single value,
+then it is used in all simulation steps. If a vector of values, the first
+value is used in the first step, the second in the second step, and so on.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mortality_share_type</code></td>
+<td>
+<p>character, it can be 'volume' or 'n_trees'. If
+'volume' then the mortality share relates to total standing volume, if
+'n_trees' then mortality share relates to the total number of standing trees</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mortality_model</code></td>
+<td>
+<p>model to be used for mortality prediction: 'glm' for
+generalized linear models; 'rf' for random forest algorithm; 'naiveBayes' for
+Naive Bayes algorithm</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ingrowth_model</code></td>
+<td>
+<p>model to be used for ingrowth predictions. 'glm' for
+generalized linear models (Poisson regression), 'ZIF_poiss' for zero inflated
+Poisson regression and 'rf' for random forest</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>BAI_rf_mtry</code></td>
+<td>
+<p>a number of variables randomly sampled as candidates at
+each split of a random forest model for predicting basal area increments
+(BAI). If NULL, default settings are applied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ingrowth_rf_mtry</code></td>
+<td>
+<p>a number of variables randomly sampled as candidates
+at each split of a random forest model for predicting ingrowth. If NULL,
+default settings are applied</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mortality_rf_mtry</code></td>
+<td>
+<p>a number of variables randomly sampled as candidates
+at each split of a random forest model for predicting mortality. If NULL,
+default settings are applied</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nb_laplace</code></td>
+<td>
+<p>value used for Laplace smoothing (additive smoothing) in
+naive Bayes algorithm. Defaults to 0 (no Laplace smoothing)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>harvesting_type</code></td>
+<td>
+<p>character, it could be 'random', 'final_cut',
+'thinning' or 'combined'. The latter combines 'final_cut' and 'thinning'
+options, where the share of each is specified with the argument
+'share_thinning'</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>share_thinning</code></td>
+<td>
+<p>numeric, a number or a vector of numbers between 0 and
+1 that specifies the share of thinning in comparison to final_cut. Only used
+if harvesting_type is 'combined'</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>final_cut_weight</code></td>
+<td>
+<p>numeric value affecting the probability distribution
+of harvested trees. Greater value increases the share of harvested trees
+having larger DBH. Default is 10.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thinning_small_weight</code></td>
+<td>
+<p>numeric value affecting the probability
+distribution of harvested trees. Greater value increases the share of
+harvested trees having smaller DBH. Default is 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>species_n_threshold</code></td>
+<td>
+<p>a positive integer defining the minimum number of
+observations required to treat a species as an independent group</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>height_model</code></td>
+<td>
+<p>character string defining the model to be used for height
+prediction. If brnn, then ANN method with Bayesian Regularization is applied.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>crownHeight_model</code></td>
+<td>
+<p>character string defining the model to be used for
+crown heights. Available are ANN with Bayesian regularization (brnn) or
+linear regression (lm)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>BRNN_neurons_crownHeight</code></td>
+<td>
+<p>a positive integer defining the number of
+neurons to be used in the brnn method for predicting crown heights</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>BRNN_neurons_height</code></td>
+<td>
+<p>a positive integer defining the number of neurons
+to be used in the brnn method for predicting tree heights</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>height_pred_level</code></td>
+<td>
+<p>integer with value 0 or 1 defining the level of
+prediction for height-diameter (H-D) models. The value 1 defines a plot-level
+prediction, while the value 0 defines regional-level predictions. Default is
+0. If using 1, make sure to have representative plot-level data for each
+species.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>include_climate</code></td>
+<td>
+<p>logical, should climate variables be included as
+predictors</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>select_months_climate</code></td>
+<td>
+<p>vector of subset months to be considered.
+Default is c(1,12), which uses all months.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>set_eval_mortality</code></td>
+<td>
+<p>logical, should the mortality model be evaluated
+and returned as the output</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>set_eval_crownHeight</code></td>
+<td>
+<p>logical, should the crownHeight model be
+evaluated and returned as the output</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>set_eval_height</code></td>
+<td>
+<p>logical, should the height model be evaluated and
+returned as the output</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>set_eval_ingrowth</code></td>
+<td>
+<p>logical, should the the ingrowth model be evaluated
+and returned as the output</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>set_eval_BAI</code></td>
+<td>
+<p>logical, should the the BAI model be evaluated and
+returned as the output</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>k</code></td>
+<td>
+<p>the number of folds to be used in the k fold cross-validation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>blocked_cv</code></td>
+<td>
+<p>logical, should the blocked cross-validation be used in the
+evaluation phase?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_size</code></td>
+<td>
+<p>a data frame with the maximum values of DBH for each species.
+If a tree exceeds this value, it dies. If not provided, the maximum is
+estimated from the input data. Two columns must be present, i.e. 'species'
+and 'DBH_max'</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>max_size_increase_factor</code></td>
+<td>
+<p>numeric value, which will be used to increase
+the max DBH for each species, when the maximum is estimated from the input
+data. If the argument 'max_size' is provided, the 'max_size_increase_factor'
+is ignored. Default is 1. To increase maximum for 10 percent, use 1.1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ingrowth_codes</code></td>
+<td>
+<p>numeric value or a vector of codes which refer to
+ingrowth trees</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ingrowth_max_DBH_percentile</code></td>
+<td>
+<p>which percentile should be used to
+estimate the maximum simulated value of ingrowth trees?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>measurement_thresholds</code></td>
+<td>
+<p>data frame with two variables: 1) DBH_threshold
+and 2) weight. This information is used to assign the correct weights in BAI
+and increment sub-model; and to upscale plot-level data to hectares.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>area_correction</code></td>
+<td>
+<p>optional data frame with three variables: 1) plotID
+and 2) DBH_threshold and 3) the correction factor to be multiplied by weight
+for this particular category.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>export_csv</code></td>
+<td>
+<p>logical, if TRUE, at each simulation step, the results are
+saved in the current working directory as csv file</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sim_export_mode</code></td>
+<td>
+<p>logical, if FALSE, the results of the individual
+simulation steps are not merged into the final export table. Therefore,
+output element 1 ($sim_results) will be empty. This was introduced to allow
+simulations when using larger data sets and long term simulations that might
+exceed the available RAM. In such cases, we recommend setting the argument
+export_csv = TRUE, which will export each simulation step to the current
+working directory.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>include_mortality_BAI</code></td>
+<td>
+<p>logical, should basal area increments (BAI) be
+used as independent variable for predicting individual tree morality?</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>intermediate_print</code></td>
+<td>
+<p>logical, if TRUE intermediate steps will be printed
+while MLFS is running</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>a list of class mlfs with at least 15 elements:
+</p>
+
+<ol>
+<li>
+<p> $sim_results - a data frame with the simulation results
+</p>
+</li>
+<li>
+<p> $height_eval - a data frame with predicted and observed tree heights, or a character string indicating that tree heights were not evaluated
+</p>
+</li>
+<li>
+<p> $crownHeight_eval - a data frame with predicted and observed crown heights, or character string indicating that crown heights were not evaluated
+</p>
+</li>
+<li>
+<p> $mortality_eval - a data frame with predicted and observed probabilities of dying for all individual trees, or character string indicating that mortality sub-model was not evaluated
+</p>
+</li>
+<li>
+<p> $ingrowth_eval - a data frame with predicted and observed number of new ingrowth trees, separately for each ingrowth level, or character string indicating that ingrowth model was not evaluated
+</p>
+</li>
+<li>
+<p> $BAI_eval - a data frame with predicted and observed basal area increments (BAI), or character string indicating that BAI model was not evaluated
+</p>
+</li>
+<li>
+<p> $height_model_species - the output model for tree heights (species level)
+</p>
+</li>
+<li>
+<p> $height_model_speciesGroups - the output model for tree heights (species group level)
+</p>
+</li>
+<li>
+<p> $crownHeight_model_species - the output model for crown heights (species level)
+</p>
+</li>
+<li>
+<p> $crownHeight_model_speciesGroups - the output model for crown heights (species group level)
+</p>
+</li>
+<li>
+<p> $mortality_model - the output model for mortality
+</p>
+</li>
+<li>
+<p> $BAI_model_species - the output model for basal area increments (species level)
+</p>
+</li>
+<li>
+<p> $BAI_model_speciesGroups - the output model for basal area increments (species group level)
+</p>
+</li>
+<li>
+<p> $max_size - a data frame with maximum allowed diameter at breast height (DBH) for each species
+</p>
+</li>
+<li>
+<p> $ingrowth_model_3 - the output model for ingrowth (level 1) – the output name depends on ingrowth codes
+</p>
+</li>
+<li>
+<p> $ingrowth_model_15 - the output model for ingrowth (level 2) – optional and the output name depends on ingrowth codes
+</p>
+</li>
+</ol>
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(MLFS)
+
+# open example data
+data(data_NFI)
+data(data_site)
+data(data_climate)
+data(df_volume_parameters)
+data(measurement_thresholds)
+
+test_simulation &lt;- MLFS(data_NFI = data_NFI,
+ data_site = data_site,
+ data_climate = data_climate,
+ df_volumeF_parameters = df_volume_parameters,
+ form_factors = volume_functions,
+ sim_steps = 2,
+ sim_harvesting = TRUE,
+ harvesting_sum = 100000,
+ harvest_sum_level = 1,
+ plot_upscale_type = "factor",
+ plot_upscale_factor = 1600,
+ measurement_thresholds = measurement_thresholds,
+ ingrowth_codes = c(3,15),
+ volume_calculation = "volume_functions",
+ select_months_climate = seq(6,8),
+ intermediate_print = FALSE
+ )
+
+</code></pre>
+
+
+</div>

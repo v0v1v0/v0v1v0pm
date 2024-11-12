@@ -1,0 +1,186 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>learnSVM</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Fit models and make predictions with a PCA-LR classifier
+</h2>
+
+<h3>Description</h3>
+
+<p>These functions are used to apply the generic train-and-test
+mechanism to a classifier that combines principal component analysis
+(PCA) with logistic regression (LR). 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">learnSVM(data, status, params, pfun)
+predictSVM(newdata, details, status, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+
+<p>The data matrix, with rows as features ("genes") and columns as the
+samples to be classified.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>status</code></td>
+<td>
+
+<p>A factor, with two levels, classifying the samples. The length must
+equal the number of <code>data</code> columns.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>params</code></td>
+<td>
+
+<p>A list of additional parameters used by the classifier; see Details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pfun</code></td>
+<td>
+
+<p>The function used to make predictions on new data, using the
+trained classifier.  Should always be set to
+<code>predictSVM</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+
+<p>Another data matrix, with the same number of rows as <code>data</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>details</code></td>
+<td>
+
+<p>A list of additional parameters describing details about the
+particular classifier; see Details.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+
+<p>Optional extra parameters required by the generic "predict" method.
+</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The input arguments to both <code>learnSVM</code> and <code>predictSVM</code>
+are dictated by the requirements of the general train-and-test
+mechanism provided by the <code>Modeler-class</code>.
+</p>
+<p>The SVM classifier is similar in spirit to the "supervised principal
+components" method implemented in the <code>superpc</code> package.  We
+start by performing univariate two-sample t-tests to identify features
+that are differentially expressed between two groups of training
+samples.  We then set a cutoff to select features using a bound
+(<code>alpha</code>) on the false discovery rate (FDR).  If the number of
+selected features is smaller than a prespecified goal
+(<code>minNgenes</code>), then we increase the FDR until we get the desired
+number of features.  Next, we perform PCA on the selected features
+from the trqining data.  we retain enough principal components (PCs)
+to explain a prespecified fraction of the variance (<code>perVar</code>).
+We then fit a logistic regression model using these PCs to predict the
+binary class of the training data.  In order to use this model to make
+binary predictions, you must specify a <code>prior</code> probability that a
+sample belongs to the first of the two groups (where the ordering is
+determined by the levels of the classification factor, <code>status</code>).
+</p>
+<p>In order to fit the model to data, the <code>params</code> argument to the
+<code>learnSVM</code> function should be a list containing components
+named <code>alpha</code>, <code>minNgenes</code>, <code>perVar</code>, and <code>prior</code>.
+It may also contain a logical value called <code>verbose</code>, which
+controls the amount of information that is output as the algorithm runs.
+</p>
+<p>The result of fitting the model using <code>learnSVM</code> is a member of
+the <code>FittedModel-class</code>.  In additon to storing the
+prediction function (<code>pfun</code>) and the training data and status,
+the FittedModel stores those details about the model that are required
+in order to make predictions of the outcome on new data.  In this
+acse, the details are: the <code>prior</code> probability, the set of 
+selected features (<code>sel</code>, a logical vector), the principal
+component decomposition (<code>spca</code>, an object of the
+<code>SamplePCA</code> class), the logistic
+regression model (<code>mmod</code>, of class <code>glm</code>), the number
+of PCs used (<code>nCompUsed</code>) as well as the number of components
+available (<code>nCompAvail</code>) and the number of gene-features selected
+(<code>nGenesSelecets</code>).  The <code>details</code> object is appropriate for
+sending as the second argument to the <code>predictSVM</code> function in
+order to make predictions with the model on new data.  Note that the
+status vector here is the one used for the <em>training</em> data, since
+the prediction function only uses the <em>levels</em> of this factor to
+make sure that the direction of the predicitons is interpreted
+correctly.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The <code>learnSVM</code> function returns an object of the
+<code>FittedModel-class</code>, representing a SVM classifier
+that has been fitted on a training <code>data</code> set.
+</p>
+<p>The <code>predictSVM</code> function returns a factor containing the
+predictions of the model when applied to the new data set.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes &lt;krc@silicovore.com&gt;
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See <code>Modeler-class</code> and <code>Modeler</code> for details
+about how to train and test models.  See
+<code>FittedModel-class</code> and <code>FittedModel</code> for
+details about the structure of the object returned by <code>learnSVM</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># simulate some data
+data &lt;- matrix(rnorm(100*20), ncol=20)
+status &lt;- factor(rep(c("A", "B"), each=10))
+
+# set up the parameter list
+svm.params &lt;- list(minNgenes=10, alpha=0.10, perVar=0.80, prior=0.5)
+
+# learn the model
+fm &lt;- learnSVM(data, status, svm.params, predictSVM)
+
+# Make predictions on some new simulated data
+newdata &lt;- matrix(rnorm(100*30), ncol=30)
+predictSVM(newdata, fm@details, status)
+</code></pre>
+
+
+</div>

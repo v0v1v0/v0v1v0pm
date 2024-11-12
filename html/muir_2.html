@@ -1,0 +1,282 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>muir</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Explore Datasets with Trees</h2>
+
+<h3>Description</h3>
+
+<p>This function allows users to easily and dynamically explore or document a
+data.frame using a tree data structure. Columns of interest in the data.frame can
+be provided to the function, as well as critieria for how they should be represented
+in discrete nodes, to generate a data tree representing those columns and filters.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">muir(data, node.levels, node.limit = 3, level.criteria = NULL,
+  label.vals = NULL, tree.dir = "LR", show.percent = TRUE,
+  num.precision = 2, show.empty.child = FALSE, tree.height = -1,
+  tree.width = -1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A data.frame to be explored using trees</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>node.levels</code></td>
+<td>
+<p>A character vector of columns from <code>data</code> that will be used to
+construct the tree that are provided in the order that they should appear in the tree levels.
+</p>
+<p>For each column, the user can add a suffix to the columnn name to indicate whether to generate
+nodes for all distinct values of the column in the date.frame, a specific number of values
+(i.e., the "Top (n)" values), and whether or not to aggregate remaining values into a separate
+"Other" node, or to use user-provided filter criteria for the column as provided in
+the <code>level.criteria</code> parameter. This does mean that the column names cannot have a ":"
+and must be replaced in the data.frame before being passed in to <code>muir</code> as
+the <code>data</code> param.
+</p>
+<p>Values can be provided as "colname", "colname:*", "colname:3", "colname:+",
+or "colname:*+". The separator character ":" and the special characters in the suffix that
+follow (as outlined below) indicate which approach to take for each column.
+</p>
+
+<ul>
+<li>
+<p> Providing just the column name itself (e.g, "hp") will return results
+based on the operators and values provided in the <code>level.criteria</code> parameter
+for that column name. See <code>level.criteria</code> for more details.
+</p>
+</li>
+<li>
+<p> Providing the column name with an ":*"  suffix (e.g., "hp:*") will return a node for
+all distinct values for that column up to the limit imposed by the <code>node.limit</code> value.
+If the number of distinct values is greater than the <code>node.limit</code>, only the top "n"
+values (based on number of occurences) will be returned.
+</p>
+</li>
+<li>
+<p> Providing the column name with an ":<code>n</code>" suffix (e.g., "hp:3"), where
+<code>n</code> = a positive integer, will return a node for all distinct values for
+that column up to the limit imposed by the integer provided in <code>n</code>.
+If the number of distinct values is greater than the value provided in <code>n</code>,
+only the top "n" values (based on number of occurences) will be returned.
+</p>
+</li>
+<li>
+<p> Providing the column name ending with an ":+" suffix (e.g., "hp:+") will return all the
+values provided in the <code>level.criteria</code> parameter for that column plus an extra node
+titled "Other" for that column that aggregates all the remaining values not included
+in the filter criteria provided in <code>level.criteria</code> for that column.
+</p>
+</li>
+<li>
+<p> Providing a column name ending with both symbols (e.g., "hp:*+", "hp:3+") in the suffix
+will return a node for all distinct values for that column up to the limit imposed by either
+the <code>node.limit</code> or the <code>n</code> value plus an additional "Other" node aggregating
+any remaining values beyond the <code>node.limit</code> or <code>n</code>, if applicable.
+If the number of distinct values is &lt;= the <code>node.limit</code> or <code>n</code> then the "Other"
+node will not be created.
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>node.limit</code></td>
+<td>
+<p>Numeric value. When providing a column in <code>node.levels</code> with an ":*" suffix,
+the <code>node.limit</code> will limit how many distinct values to actually process to prevent
+run-away queries and unreadable trees. The limit defaults to 3 (not including an additional
+4th if requesting to provide an "Other" node as well with a ":*+" suffix). If the
+number of distinct values for the column is greater than the <code>node.limit</code>, the tree
+will include the Top "X" values based on count, where "X" = <code>node.limit</code>. If the
+<code>node.limit</code> is greater than the number of distinct values for the column, it will
+be ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>level.criteria</code></td>
+<td>
+<p>A data.frame consisting of 4 character columns containing
+column names (matching – without suffixes – the columns in <code>node.levels</code> that will
+use the criteria in <code>level.criteria</code> to determine the filters used for each node),
+an operator or boolean function (e.g., "==","&gt;", "is.na", "is.null"), a value,
+and a corresponding node title for the node displaying that criteria.
+</p>
+<p>E.g.,"wt, "&gt;=", "4000", "Heavy Cars"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>label.vals</code></td>
+<td>
+<p>Character vector of additional values to include in the node provided as a
+character vector. The values must take the form of dplyr <code>summarise</code> functions
+(as characters) and include the columns the functions should be run against (e.g.,
+"min(hp)", "mean(hp)", etc.). If no custom suffix is added, the summary function itself
+will be used as the label. Similar to <code>node.levels</code> a custom suffix can be added
+using ":" to print a more meaningful label (e.g., "mean(hp):Avg HP"). In this example,
+the label printed in the node will be "Avg HP:", otherwise it would be mean_hp (note
+that the parens "(" and ")" are removed to be rendered in HTML without error). As with
+<code>node.levels</code>, the column name itself cannot have a ":" and must be replaced in
+the data.frame before being passed in to <code>muir</code> as the <code>data</code> param.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tree.dir</code></td>
+<td>
+<p>Character. The direction the tree graph should be rendered. Defaults to "LR"
+</p>
+
+<ol>
+<li>
+<p> Use "LR" for left-to-right
+</p>
+</li>
+<li>
+<p> Use "RL" for right-to left
+</p>
+</li>
+<li>
+<p> Use "TB" for top-to-bottom
+</p>
+</li>
+<li>
+<p> User "BT" for bottom-to-top
+</p>
+</li>
+</ol>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>show.percent</code></td>
+<td>
+<p>Logical. Should nodes show the percent of records represented by
+that node compared to the total number of records in <code>data.</code> Defaults to TRUE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>num.precision</code></td>
+<td>
+<p>Number of digits to print numeric label values out to</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>show.empty.child</code></td>
+<td>
+<p>Logical. Show a balanced tree with children nodes that are all
+empty or stop expanding the tree once there is a parent node that is empty.
+Defaults to FALSE – don't show empty children nodes</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tree.height</code></td>
+<td>
+<p>Numeric. Control tree height to zoom in/out on nodes. Passed to DiagrammeR
+as <code>height</code> param. Defaults to -1, which appears to optimize the tree size
+for viewing (still researching why exactly that works! :-))</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tree.width</code></td>
+<td>
+<p>Numberic. Control tree width to zoom in/out on nodes. Passed to DiagrammeR
+as <code>width</code> param. Defaults to -1, which appears to best optimize the tree size
+for viewing (still researching why exactly that works! :-))</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object of class <code>htmlwidget</code> (via DiagrammeR) that will
+intelligently print itself into HTML in a variety of contexts
+including the R console, within R Markdown documents,
+and within Shiny output bindings.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+# Load in the 'mtcars' dataset
+data(mtcars)
+
+# Basic exploration - show all values
+mtTree &lt;- muir(data = mtcars, node.levels = c("cyl:*", "carb:*"))
+mtTree
+
+# Basic exploration - show all values overriding default node.limit
+mtTree &lt;- muir(data = mtcars, node.levels = c("cyl:*", "carb:*"), node.limit = 5)
+mtTree
+
+# Show all values overriding default node.limit differently for each column
+mtTree &lt;- muir(data = mtcars, node.levels = c("cyl:2", "carb:5"))
+mtTree
+
+# Show all values overriding default node.limit for each column
+# and aggregating all distinct values above the node.limit into a
+# separate "Other" column to collect remaining values
+
+# Top 2 occurring 'carb' values will be returned in their own nodes,
+# remaining values/counts will be aggregated into a separate "Other" node
+mtTree &lt;- muir(data = mtcars, node.levels = c("cyl:2", "carb:2+"))
+mtTree
+
+# Add additional calculations to each node output (dplyr::summarise functions)
+mtTree &lt;- muir(data = mtcars, node.levels = c("cyl:2", "carb:2+"),
+label.vals = c("min(wt)", "max(wt)"))
+mtTree
+
+# Make new label values more reader-friendly
+mtTree &lt;- muir(data = mtcars, node.levels = c("cyl:2", "carb:2+"),
+label.vals = c("min(wt):Min Weight", "max(wt):Max Weight"))
+mtTree
+
+# Instead of just returning top counts for columns provided in \code{node.levels},
+# provide custom filter criteria and custom node titles in \code{label.vals}
+# (criteria could also be read in from a csv file as a data.frame)
+criteria &lt;- data.frame(col = c("cyl", "cyl", "carb"),
+oper = c("&lt;", "&gt;=", "=="),
+val = c(4, 4, 2),
+title = c("Less Than 4 Cylinders", "4 or More Cylinders", "2 Carburetors"))
+
+mtTree &lt;- muir(data = mtcars, node.levels = c("cyl", "carb"),
+level.criteria = criteria,
+label.vals = c("min(wt):Min Weight", "max(wt):Max Weight"))
+mtTree
+
+# Use same criteria but show all other values for the column where NOT
+# EQUAL to the combination of the filters provided for that column (e.g., for cyl
+# where !(cyl &lt; 4 | cyl &gt;= 4) in an "Other" node
+mtTree &lt;- muir(data = mtcars, node.levels = c("cyl:+", "carb:+"),
+level.criteria = criteria,
+label.vals = c("min(wt):Min Weight", "max(wt):Max Weight"))
+mtTree
+
+# Show empty child nodes (balanced tree)
+mtTree &lt;- muir(data = mtcars, node.levels = c("cyl:+", "carb:+"),
+level.criteria = criteria,
+label.vals = c("min(wt):Min Weight", "max(wt):Max Weight"),
+show.empty.child = TRUE)
+mtTree
+
+# Save tree to HTML file with \code{htmlwidgets} package to working directory
+mtTree &lt;- muir(data = mtcars, node.levels = c("cyl:2", "carb:2+"))
+htmlwidgets::saveWidget(mtTree, "mtTree.html")
+
+## End(Not run)
+</code></pre>
+
+
+</div>

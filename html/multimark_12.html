@@ -1,0 +1,396 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>multimarkClosedSCR</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Fit spatially-explicit population abundance models for capture-mark-recapture data consisting of multiple non-invasive marks</h2>
+
+<h3>Description</h3>
+
+<p>This function fits spatially-explicit population abundance models for capture-mark-recapture data consisting of multiple non-invasive marks using Bayesian analysis methods. Markov chain Monte Carlo (MCMC) is used to draw samples from the joint posterior distribution.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">multimarkClosedSCR(
+  Enc.Mat,
+  trapCoords,
+  studyArea = NULL,
+  buffer = NULL,
+  ncells = 1024,
+  data.type = "never",
+  covs = data.frame(),
+  mms = NULL,
+  mod.p = ~1,
+  mod.delta = ~type,
+  detection = "half-normal",
+  parms = c("pbeta", "delta", "N"),
+  nchains = 1,
+  iter = 12000,
+  adapt = 1000,
+  bin = 50,
+  thin = 1,
+  burnin = 2000,
+  taccept = 0.44,
+  tuneadjust = 0.95,
+  proppbeta = 0.1,
+  propsigma = 1,
+  propcenter = NULL,
+  maxnumbasis = 1,
+  a0delta = 1,
+  a0alpha = 1,
+  b0alpha = 1,
+  sigma_bounds = NULL,
+  mu0 = 0,
+  sigma2_mu0 = 1.75,
+  a0psi = 1,
+  b0psi = 1,
+  initial.values = NULL,
+  known = integer(),
+  scalemax = 10,
+  printlog = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Enc.Mat</code></td>
+<td>
+<p>A matrix containing the observed encounter histories with rows corresponding to individuals and (<code>ntraps</code>*<code>noccas</code>) columns corresponding to traps and sampling occasions.  The first <code>noccas</code> columns correspond to trap 1, the second <code>noccas</code> columns corresopond to trap 2, etc. Ignored unless <code>mms=NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trapCoords</code></td>
+<td>
+<p>A matrix of dimension <code>ntraps</code> x (2 + <code>noccas</code>) indicating the Cartesian coordinates and operating occasions for the traps, where rows correspond to trap, the first column the x-coordinate (“x”), and the second column the y-coordinate (“y”). The last <code>noccas</code> columns indicate whether or not the trap was operating on each of the occasions, where ‘1’ indciates the trap was operating and ‘0’ indicates the trap was not operating. Ignored unless <code>mms=NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>studyArea</code></td>
+<td>
+<p>is a 3-column matrix containing the coordinates for the centroids of a contiguous grid of cells that define the study area and available habitat. Each row corresponds to a grid cell. The first 2 columns (“x” and “y”) indicate the Cartesian x- and y-coordinate for the centroid of each grid cell, and the third column (“avail”) indicates whether the cell is available habitat (=1) or not (=0). All cells must be square and have the same resolution. If <code>studyArea=NULL</code> (the default) and  <code>mms=NULL</code>, then a square study area grid composed of <code>ncells</code> cells of available habitat is drawn around the bounding box of <code>trapCoords</code> based on <code>buffer</code>. Ignored unless <code>mms=NULL</code>.
+Note that rows should be ordered in raster cell order (raster cell numbers start at 1 in the upper left corner, and increase from left to right, and then from top to bottom).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>buffer</code></td>
+<td>
+<p>A scaler in same units as <code>trapCoords</code> indicating the buffer around the bounding box of <code>trapCoords</code> for defining the study area when <code>studyArea=NULL</code>.  Ignored unless <code>studyArea=NULL</code> and <code>mms=NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncells</code></td>
+<td>
+<p>The number of grid cells in the study area when <code>studyArea=NULL</code>. The square root of <code>ncells</code> must be a whole number. Default is <code>ncells=1024</code>. Ignored unless <code>studyArea=NULL</code> and <code>mms=NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data.type</code></td>
+<td>
+<p>Specifies the encounter history data type. All data types include non-detections (type 0 encounter), type 1 encounter (e.g., left-side), and type 2 encounters (e.g., right-side). When both type 1 and type 2 encounters occur for the same individual within a sampling occasion, these can either be "non-simultaneous" (type 3 encounter) or "simultaneous" (type 4 encounter). Three data types are currently permitted:
+</p>
+<p><code>data.type="never"</code> indicates both type 1 and type 2 encounters are never observed for the same individual within a sampling occasion, and observed encounter histories therefore include only type 1 or type 2 encounters (e.g., only left- and right-sided photographs were collected). Observed encounter histories can consist of non-detections (0), type 1 encounters (1), and type 2 encounters (2). See <code>bobcat</code>. Latent encounter histories consist of non-detections (0), type 1 encounters (1), type 2 encounters (2), and type 3 encounters (3).
+</p>
+<p><code>data.type="sometimes"</code> indicates both type 1 and type 2 encounters are sometimes observed (e.g., both-sided photographs are sometimes obtained, but not necessarily for all individuals). Observed encounter histories can consist of non-detections (0), type 1 encounters (1), type 2 encounters (2), type 3 encounters (3), and type 4 encounters (4). Type 3 encounters can only be observed when an individual has at least one type 4 encounter. Latent encounter histories consist of non-detections (0), type 1 encounters (1), type 2 encounters (2), type 3 encounters (3), and type 4 encounters (4). 
+</p>
+<p><code>data.type="always"</code> indicates both type 1 and type 2 encounters are always observed, but some encounter histories may still include only type 1 or type 2 encounters. Observed encounter histories can consist of non-detections (0), type 1 encounters (1), type 2 encounters (2), and type 4 encounters (4). Latent encounter histories consist of non-detections (0), type 1 encounters (1), type 2 encounters (2), and type 4 encounters (4).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>covs</code></td>
+<td>
+<p>A data frame of time- and/or trap-dependent covariates for detection probabilities (ignored unless <code>mms=NULL</code>). The number of rows in the data frame must equal the number of traps times the number of sampling occasions (<code>ntraps*noccas</code>), where the first <code>noccas</code> rows correspond to trap 1, the second <code>noccas</code> rows correspond to trap 2, etc. Covariate names cannot be "time", "age", or "h"; these names are reserved for temporal, behavioral, and individual effects when specifying <code>mod.p</code> and <code>mod.phi</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mms</code></td>
+<td>
+<p>An optional object of class <code>multimarkSCRsetup-class</code>; if <code>NULL</code> it is created. See <code>processdataSCR</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mod.p</code></td>
+<td>
+<p>Model formula for detection probability as a function of distance from activity centers. For example, <code>mod.p=~1</code> specifies no effects (i.e., intercept only) other than distance, <code>mod.p~time</code> specifies temporal effects, <code>mod.p~c</code> specifies behavioral reponse (i.e., trap "happy" or "shy"), <code>mod.p~trap</code> specifies trap effects, and <code>mod.p~time+c</code> specifies additive temporal and behavioral effects.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mod.delta</code></td>
+<td>
+<p>Model formula for conditional probabilities of type 1 (delta_1) and type 2 (delta_2) encounters, given detection. Currently only <code>mod.delta=~1</code> (i.e., <code class="reqn">\delta_1 = \delta_2</code>) and <code>mod.delta=~type</code> (i.e., <code class="reqn">\delta_1 \ne \delta_2</code>) are implemented.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>detection</code></td>
+<td>
+<p>Model for detection probability as a function of distance from activity centers . Must be "<code>half-normal</code>" (of the form <code class="reqn">\exp{(-d^2 / (2*\sigma^2))}</code>, where <code class="reqn">d</code> is distance) or "<code>exponential</code>" (of the form <code class="reqn">\exp{(-d / \lambda)}</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parms</code></td>
+<td>
+<p>A character vector giving the names of the parameters and latent variables to monitor. Possible parameters are cloglog-scale detection probability parameters ("<code>pbeta</code>"), population abundance ("<code>N</code>"), conditional probability of type 1 or type 2 encounter, given detection ("<code>delta</code>)", probability of simultaneous type 1 and type 2 detection, given both types encountered ("<code>alpha</code>"), cloglog-scale distance term for the detection function ("<code>sigma2_scr</code>" when <code>detection=``half-normal''</code> or "<code>lambda</code>" when <code>detection=``exponential''</code>), and the probability that a randomly selected individual from the <code>M = nrow(Enc.Mat)</code> observed individuals belongs to the <code class="reqn">n</code> unique individuals encountered at least once ("<code>psi</code>"). Individual activity centers ("<code>centers</code>"), encounter history indices ("<code>H</code>"), and the log posterior density ("<code>logPosterior</code>") may also be monitored. Setting <code>parms="all"</code> monitors all possible parameters and latent variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nchains</code></td>
+<td>
+<p>The number of parallel MCMC chains for the model.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>iter</code></td>
+<td>
+<p>The number of MCMC iterations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>adapt</code></td>
+<td>
+<p>The number of iterations for proposal distribution adaptation. If <code>adapt = 0</code> then no adaptation occurs.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>bin</code></td>
+<td>
+<p>Bin length for calculating acceptance rates during adaptive phase (<code>0 &lt; bin &lt;= iter</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>thin</code></td>
+<td>
+<p>Thinning interval for monitored parameters.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p>Number of burn-in iterations (<code>0 &lt;= burnin &lt; iter</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>taccept</code></td>
+<td>
+<p>Target acceptance rate during adaptive phase (<code>0 &lt; taccept &lt;= 1</code>). Acceptance rate is monitored every <code>bin</code> iterations. Default is <code>taccept = 0.44</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tuneadjust</code></td>
+<td>
+<p>Adjustment term during adaptive phase (<code>0 &lt; tuneadjust &lt;= 1</code>). If acceptance rate is less than <code>taccept</code>, then proposal term (<code>proppbeta</code> or <code>propsigma</code>) is multiplied by <code>tuneadjust</code>. If acceptance rate is greater than or equal to <code>taccept</code>, then proposal term is divided by <code>tuneadjust</code>. Default is <code>tuneadjust = 0.95</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>proppbeta</code></td>
+<td>
+<p>Scaler or vector (of length k) specifying the initial standard deviation of the Normal(pbeta[j], proppbeta[j]) proposal distribution. If <code>proppbeta</code> is a scaler, then this value is used for all j = 1, ..., k. Default is <code>proppbeta = 0.1</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>propsigma</code></td>
+<td>
+<p>Scaler specifying the initial Gamma(shape = 1/<code>propsigma</code>, scale = sigma_scr * <code>propsigma</code>) proposal distribution for sigma_scr = sqrt(sigma2_scr) (or sqrt(lambda) = lambda if <code>detection=``exponential''</code>). Default is <code>propsigma=1</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>propcenter</code></td>
+<td>
+<p>Scaler specifying the neighborhood distance when proposing updates to activity centers. When <code>propcenter=NULL</code> (the default), then propcenter = a*10, where a is the cell size for the study area grid, and each cell has (at most) approximately 300 neighbors.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxnumbasis</code></td>
+<td>
+<p>Maximum number of basis vectors to use when proposing latent history frequency updates. Default is <code>maxnumbasis = 1</code>, but higher values can potentially improve mixing.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>a0delta</code></td>
+<td>
+<p>Scaler or vector (of length d) specifying the prior for the conditional (on detection) probability of type 1 (delta_1), type 2 (delta_2), and both type 1 and type 2 encounters (1-delta_1-delta_2). If <code>a0delta</code> is a scaler, then this value is used for all a0delta[j] for j = 1, ..., d. For <code>mod.delta=~type</code>, d=3 with [delta_1, delta_2, 1-delta_1-delta_2] ~ Dirichlet(a0delta) prior. For <code>mod.delta=~1</code>, d=2 with [tau] ~ Beta(a0delta[1],a0delta[2]) prior, where (delta_1,delta_2,1-delta_1-delta_2) = (tau/2,tau/2,1-tau). See McClintock et al. (2013) for more details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>a0alpha</code></td>
+<td>
+<p>Specifies "shape1" parameter for [alpha] ~ Beta(a0alpha, b0alpha) prior. Only applicable when <code>data.type = "sometimes"</code>. Default is <code>a0alpha = 1</code>. Note that when <code>a0alpha = 1</code> and <code>b0alpha = 1</code>, then [alpha] ~ Unif(0,1).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b0alpha</code></td>
+<td>
+<p>Specifies "shape2" parameter for [alpha] ~ Beta(a0alpha, b0alpha) prior. Only applicable when <code>data.type = "sometimes"</code>. Default is <code>b0alpha = 1</code>. Note that when <code>a0alpha = 1</code> and <code>b0alpha = 1</code>, then [alpha] ~ Unif(0,1).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma_bounds</code></td>
+<td>
+<p>Positive vector of length 2 for the lower and upper bounds for the [sigma_scr] ~ Uniform(sigma_bounds[1], sigma_bounds[2]) (or [sqrt(lambda)] when <code>detection=``exponential''</code>) prior for the detection function term sigma_scr = sqrt(sigma2_scr) (or sqrt(lambda)). When <code>sigma_bounds = NULL</code> (the default), then <code>sigma_bounds = c(1.e-6,max(diff(range(studyArea[,"x"])),diff(range(studyArea[,"y"]))))</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mu0</code></td>
+<td>
+<p>Scaler or vector (of length k) specifying mean of pbeta[j] ~ Normal(mu0[j], sigma2_mu0[j]) prior. If <code>mu0</code> is a scaler, then this value is used for all j = 1, ..., k. Default is <code>mu0 = 0</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigma2_mu0</code></td>
+<td>
+<p>Scaler or vector (of length k) specifying variance of pbeta[j] ~ Normal(mu0[j], sigma2_mu0[j]) prior. If <code>sigma2_mu0</code> is a scaler, then this value is used for all j = 1, ..., k. Default is <code>sigma2_mu0 = 1.75</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>a0psi</code></td>
+<td>
+<p>Specifies "shape1" parameter for [psi] ~ Beta(a0psi,b0psi) prior. Default is <code>a0psi = 1</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>b0psi</code></td>
+<td>
+<p>Specifies "shape2" parameter for [psi] ~ Beta(a0psi,b0psi) prior. Default is <code>b0psi = 1</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial.values</code></td>
+<td>
+<p>Optional list of <code>nchain</code> list(s) specifying initial values for parameters and latent variables. Default is <code>initial.values = NULL</code>, which causes initial values to be generated automatically. In addition to the parameters ("<code>pbeta</code>", "<code>N</code>", "<code>delta_1</code>", "<code>delta_2</code>", "<code>alpha</code>", "<code>sigma2_scr</code>", "<code>centers</code>", and "<code>psi</code>"), initial values can be specified for the initial latent history frequencies ("<code>x</code>") and initial individual encounter history indices ("<code>H</code>").</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>known</code></td>
+<td>
+<p>Optional integer vector indicating whether the encounter history of an individual is known with certainty (i.e., the observed encounter history is the true encounter history). Encounter histories with at least one type 4 encounter are automatically assumed to be known, and <code>known</code> does not need to be specified unless there exist encounter histories that do not contain a type 4 encounter that happen to be known with certainty (e.g., from independent telemetry studies). If specified, <code>known = c(v_1,v_2,...,v_M)</code> must be a vector of length <code>M = nrow(Enc.Mat)</code> where <code>v_i = 1</code> if the encounter history for individual <code>i</code> is known (<code>v_i = 0</code> otherwise). Note that known all-zero encounter histories (e.g., ‘000’) are ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scalemax</code></td>
+<td>
+<p>Upper bound for internal re-scaling of grid cell centroid coordinates. Default is <code>scalemax=10</code>, which re-scales the centroids to be between 0 and 10.  Re-scaling is done internally to avoid numerical overflows during model fitting. Ignored unless <code>mms=NULL</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>printlog</code></td>
+<td>
+<p>Logical indicating whether to print the progress of chains and any errors to a log file in the working directory. Ignored when <code>nchains=1</code>. Updates are printed to log file as 1% increments of <code>iter</code> of each chain are completed. With &gt;1 chains, setting <code>printlog=TRUE</code> is probably most useful for Windows users because progress and errors are automatically printed to the R console for "Unix-like" machines (i.e., Mac and Linux) when <code>printlog=FALSE</code>. Default is <code>printlog=FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional "<code>parameters</code>" arguments for specifying <code>mod.p</code>. See <code>make.design.data</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The first time <code>multimarkSCRClosed</code> is called, it will likely produce a firewall warning alerting users that R has requested the ability to accept incoming network connections. Incoming network connections are required to use parallel processing as implemented in <code>multimarkClosed</code>. Note that setting <code>parms="all"</code> is required for any <code>multimarkClosed</code> model output to be used in <code>multimodelClosed</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>mcmc</code></td>
+<td>
+<p>Markov chain Monte Carlo object of class <code>mcmc.list</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mod.p</code></td>
+<td>
+<p>Model formula for detection probability (as specified by <code>mod.p</code> above).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mod.delta</code></td>
+<td>
+<p>Model formula for conditional probability of type 1 or type 2 encounter, given detection (as specified by <code>mod.delta</code> above).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mod.det</code></td>
+<td>
+<p>Model formula for detection function (as specified by <code>detection</code> above).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>DM</code></td>
+<td>
+<p>A list of design matrices for detection probability generated for model <code>mod.p</code>, where DM$p is the design matrix for initial capture probability (p) and DM$c is the design matrix for recapture probability (c).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>initial.values</code></td>
+<td>
+<p>A list containing the parameter and latent variable values at iteration <code>iter</code> for each chain. Values are provided for "<code>pbeta</code>", "<code>N</code>", "<code>delta_1</code>", "<code>delta_2</code>", "<code>alpha</code>", "<code>sigma2_scr</code>", "<code>centers</code>", "<code>psi</code>", "<code>x</code>", and "<code>H</code>".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>mms</code></td>
+<td>
+<p>An object of class <code>multimarkSCRsetup</code></p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Brett T. McClintock
+</p>
+
+
+<h3>References</h3>
+
+<p>Bonner, S. J., and Holmberg J. 2013. Mark-recapture with multiple, non-invasive marks. <em>Biometrics</em> 69: 766-775.
+</p>
+<p>Gopalaswamy, A.M., Royle, J.A., Hines, J.E., Singh, P., Jathanna, D., Kumar, N. and Karanth, K.U. 2012. Program SPACECAP: software for estimating animal density using spatially explicit capture-recapture models. <em>Methods in Ecology and Evolution</em> 3:1067-1072.
+</p>
+<p>King, R., McClintock, B. T., Kidney, D., and Borchers, D. L. 2016. Capture-recapture abundance estimation using a semi-complete data likelihood approach. <em>The Annals of Applied Statistics</em> 10: 264-285 
+</p>
+<p>McClintock, B. T., Conn, P. B., Alonso, R. S., and Crooks, K. R. 2013. Integrated modeling of bilateral photo-identification data in mark-recapture analyses. <em>Ecology</em> 94: 1464-1471.
+</p>
+<p>McClintock, B. T., Bailey, L. L., Dreher, B. P., and Link, W. A. 2014. Probit models for capture-recapture data subject to imperfect detection, individual heterogeneity and misidentification. <em>The Annals of Applied Statistics</em> 8: 2461-2484.
+</p>
+<p>Royle, J.A., Karanth, K.U., Gopalaswamy, A.M. and Kumar, N.S. 2009. Bayesian inference in camera trapping studies for a class of spatial capture-recapture models.  <em>Ecology</em> 90: 3233-3244.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>processdataSCR</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# This example is excluded from testing to reduce package check time
+# Example uses unrealistically low values for nchain, iter, and burnin
+
+#Generate object of class "multimarkSCRsetup" from simulated data
+sim.data&lt;-simdataClosedSCR()
+Enc.Mat &lt;- sim.data$Enc.Mat
+trapCoords &lt;- sim.data$spatialInputs$trapCoords
+studyArea &lt;- sim.data$spatialInputs$studyArea
+
+#Run single chain using the default model for simulated data
+example.dot&lt;-multimarkClosedSCR(Enc.Mat,trapCoords,studyArea)
+
+#Posterior summary for monitored parameters
+summary(example.dot$mcmc)
+plot(example.dot$mcmc)
+
+</code></pre>
+
+
+</div>

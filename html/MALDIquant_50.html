@@ -1,0 +1,133 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MALDIquant-parallel</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Parallel Support in Package <span class="pkg">MALDIquant</span>
+</h2>
+
+<h3>Description</h3>
+
+<p><code>MALDIquant</code> offers multi-core support using
+<code>mclapply</code> and <code>mcmapply</code>. This
+approach is limited to unix-based platforms.
+</p>
+<p>Please note that not all functions benfit from parallelisation. Often the
+overhead to create/copy objects outrun the time saving of parallel runs. This
+is true for functions that are very fast to compute (e.g.
+<code>sqrt</code>-transformation). That's why the default value for the
+<code>mc.cores</code> argument in all functions is <code>1L</code>.
+It depends on the size of the dataset which step (often only
+<code>removeBaseline</code> and
+<code>detectPeaks</code>) benefits from parallelisation. <br>
+In general it is faster to encapsulate the complete workflow into a function
+and parallelise it using <code>mclapply</code> instead of using the
+<code>mc.cores</code> argument of each method. The reason is the reduced overhead
+for object management (only one split/combine is needed instead of doing these
+operations in each function again and again).
+</p>
+
+
+<h3>Details</h3>
+
+
+<p>The following functions/methods support the <code>mc.cores</code> argument:
+</p>
+
+<ul>
+<li>
+<p><code>trim,list,numeric-method</code>
+</p>
+</li>
+<li>
+<p><code>transformIntensity,list-method</code>
+</p>
+</li>
+<li>
+<p><code>smoothIntensity,list-method</code>
+</p>
+</li>
+<li>
+<p><code>removeBaseline,list-method</code>
+</p>
+</li>
+<li>
+<p><code>calibrateIntensity,list-method</code>
+</p>
+</li>
+<li>
+<p><code>detectPeaks,list-method</code>
+</p>
+</li>
+<li>
+<p><code>alignSpectra</code>
+</p>
+</li>
+<li>
+<p><code>averageMassSpectra</code>
+</p>
+</li>
+<li>
+<p><code>mergeMassPeaks</code>
+</p>
+</li>
+</ul>
+<h3>See Also</h3>
+
+<p><code>mclapply</code>,
+<code>mcmapply</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+## load package
+library("MALDIquant")
+
+## load example data
+data("fiedler2009subset", package="MALDIquant")
+
+## run single-core baseline correction
+print(system.time(
+  b1 &lt;- removeBaseline(fiedler2009subset, method="SNIP")
+))
+
+if(.Platform$OS.type == "unix") {
+  ## run multi-core baseline correction
+  print(system.time(
+    b2 &lt;- removeBaseline(fiedler2009subset, method="SNIP", mc.cores=2)
+  ))
+  stopifnot(all.equal(b1, b2))
+}
+
+## parallelise complete workflow
+workflow &lt;- function(spectra, cores) {
+  s &lt;- transformIntensity(spectra, method="sqrt", mc.cores=cores)
+  s &lt;- smoothIntensity(s, method="SavitzkyGolay", halfWindowSize=10,
+                       mc.cores=cores)
+  s &lt;- removeBaseline(s, method="SNIP", iterations=100, mc.cores=cores)
+  s &lt;- calibrateIntensity(s, method="TIC", mc.cores=cores)
+  detectPeaks(s, method="MAD", halfWindowSize=20, SNR=2, mc.cores=cores)
+}
+
+if(.Platform$OS.type == "unix") {
+  ## parallelise the complete workflow is often faster because the overhead is
+  ## reduced
+  print(system.time(
+    p1 &lt;- unlist(parallel::mclapply(fiedler2009subset,
+                                    function(x)workflow(list(x), cores=1),
+                                    mc.cores=2), use.names=FALSE)
+  ))
+  print(system.time(
+    p2 &lt;- workflow(fiedler2009subset, cores=2)
+  ))
+  stopifnot(all.equal(p1, p2))
+}
+
+## End(Not run)
+</code></pre>
+
+
+</div>

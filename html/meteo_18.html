@@ -1,0 +1,152 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>near.obs.soil</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Finds n nearest observations from given locations for soil mapping.</h2>
+
+<h3>Description</h3>
+
+<p>The function finds n nearest observations from given locations and at specific depth range from location min depth and creates an object of data.frame class.
+First n columns are Euclidean distances to n nearest locations and next n columns are observations at n nearest stations, and rows are given locations. It is based on knn function of package nabor.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">near.obs.soil(locations,
+              locations.x.y.md = c(1,2,3),
+              observations,
+              observations.x.y.md = c(1,2,3),
+              obs.col = 4,
+              n.obs = 5,
+              depth.range = 0.1,
+              no.obs = 'increase',
+              parallel.processing = TRUE,
+              pp.type = "doParallel", # "snowfall"
+              cpus = detectCores()-1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>locations</code></td>
+<td>
+<p>data.frame with x and y coordinates and mid depth columns, or sf-class, SpatVector-class or SpatRaster-class object; Locations (FROM) for which n nearest observations are found and distances are calculated.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>locations.x.y.md</code></td>
+<td>
+<p>numeric or character vector; Positions or names of the x, y, and mid depth columns in <code>locations</code> if data.frame. Default is c(1,2,3).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>observations</code></td>
+<td>
+<p>data.frame with x, y, mid depth and observation columns, or sf-class or SpatVector-class object with mid depth and observation columns; Observations (TO).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>observations.x.y.md</code></td>
+<td>
+<p>numeric or character vector; positions or names of the x, y, and mid depth columns in <code>observations</code> if data.frame. Default is c(1,2,3).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>obs.col</code></td>
+<td>
+<p>numeric or character; Column name or number showing position of the observation column in the <code>observations</code>. Default is 4.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.obs</code></td>
+<td>
+<p>numeric; Number of nearest observations to be found. Note that it cannot be larger than number of obsevrations. Default is 5.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>depth.range</code></td>
+<td>
+<p>numeric; Depth range for location mid depth in which to search for nearest observations. It's in the mid depth units. Default is 0.1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>no.obs</code></td>
+<td>
+<p>character; Possible values are <code>increase</code> (default) and <code>exactly</code>. If set to <code>increase</code>, in case if there is no <code>n.obs</code> observations in <code>depth.range</code> for a specific location, the <code>depth.range</code> is increased (multiplied by 2, 3, ...) until the number of observations are larger or equal to <code>n.obs</code>. If set to <code>exactly</code>, the function will raise an error when it come to the first location with no <code>n.obs</code> observations in specified <code>depth.range</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel.processing</code></td>
+<td>
+<p>logical; If parallel processing is performed. Default is FALSE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pp.type</code></td>
+<td>
+<p>character; Type (R package) used for parallel processing, "doParallel" (default) or "snowfall".</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cpus</code></td>
+<td>
+<p>numeric; Number of processing units. Default is detectCores()-1.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>data.frame object.  Rows represents specific locations. First <code>n.obs</code> columns are Euclidean distances to <code>n.obs</code> nearest observations. Next <code>n.obs</code> columns are observations at <code>n.obs</code> nearest stations.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The function is intended for soil mapping applications.</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Aleksandar Sekulic <a href="mailto:asekulic@grf.bg.ac.rs">asekulic@grf.bg.ac.rs</a>, Anatol Helfenstein <a href="mailto:anatol.helfenstein@wur.nl">anatol.helfenstein@wur.nl</a></p>
+
+
+<h3>See Also</h3>
+
+<p><code>knn</code>
+<code>near.obs</code>
+<code>rfsi</code>
+<code>pred.rfsi</code>
+<code>tune.rfsi</code>
+<code>cv.rfsi</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">library(sp)
+library(sf)
+library(meteo)
+# prepare data
+# load observation - data.frame of mean temperatures
+demo(meuse, echo=FALSE)
+meuse &lt;- meuse[complete.cases(meuse@data),]
+locations = st_as_sf(meuse, coords = c("x", "y"), crs = 28992, agr = "constant")
+locations = # terra::rast(meuse.grid)
+observations = st_as_sf(meuse, coords = c("x", "y"), crs = 28992, agr = "constant")
+# find 5 nearest observations and distances to them (remove duplicates)
+nearest_obs &lt;- near.obs.soil(locations = locations, # from
+                             locations.x.y.md =  c("x","y","dist"),
+                             observations = observations, # to
+                             observations.x.y.md= c("x","y","dist"),
+                             obs.col = "zinc",
+                             n.obs = 5) # number of nearest observations
+str(nearest_obs)
+summary(nearest_obs)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,175 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>04mi</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Multiple Imputation
+</h2>
+
+<h3>Description</h3>
+
+<p>The <code>mi</code> function cannot be run in isolation.  It is the most important step of a multi-step process to perform multiple imputation.  The data must be specified as a <code>missing_data.frame</code> before <code>mi</code> is used to impute missing values for one or more <code>missing_variable</code>s. An iterative algorithm is used where each <code>missing_variable</code> is modeled (using <code>fit_model</code>) as a function of all the other <code>missing_variable</code>s and their missingness patterns.  This documentation outlines the technical uses of the <code>mi</code> function.  For a more general discussion of how to use <code>mi</code> for multiple imputation, see <code>mi-package</code>. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mi(y, model, ...)
+## Hidden arguments:
+## n.iter = 30, n.chains = 4, max.minutes = Inf, seed = NA, verbose = TRUE,
+## save_models = FALSE, parallel = .Platform$OS.type != "windows"
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y</code></td>
+<td>
+<p>Typically an object that inherits from the <code>missing_data.frame-class</code>,
+although many methods are defined for subclasses of the <code>missing_variable-class</code>.
+Alternatively, <code>y = "parallel"</code> the appropriate parallel backend will be
+registered but no imputation performed. See the Details section.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model</code></td>
+<td>
+<p>Missing when <code>y = "parallel"</code> or when <code>y</code> inherits from the 
+<code>missing_data.frame-class</code> but otherwise should be the result of a call to 
+<code>fit_model</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Further arguments, the most important of which are
+</p>
+
+<dl>
+<dt><code>n.iter</code></dt>
+<dd>
+<p>number of iterations to perform, defaulting to 30</p>
+</dd>
+<dt><code>n.chains</code></dt>
+<dd>
+<p>number of chains to use, ideally equal to the number of virtual cores
+available for use, and defaulting to 4</p>
+</dd>
+<dt><code>max.minutes</code></dt>
+<dd>
+<p>hard time limit that defaults to 20</p>
+</dd>
+<dt><code>seed</code></dt>
+<dd>
+<p>either <code>NA</code>, which is the default, or a psuedo-random number seed</p>
+</dd>
+<dt><code>verbose</code></dt>
+<dd>
+<p>logical scalar that is <code>TRUE</code> by default, indicating that
+progress of the iterative algorithm should be printed to the screen, which does not
+work under Windows when the chains are executed in parallel</p>
+</dd>
+<dt><code>save_models</code></dt>
+<dd>
+<p>logical scalar that defaults to <code>FALSE</code> but if <code>TRUE</code> indicates
+that the models estimated on a frozen completed dataset should be saved. This option should be used if the user is interested in evaluating the quality of the models 			run after the last iteration of the <code>mi</code> algorithm, but saving these models consumes much more RAM</p>
+</dd>
+<dt><code>debug</code></dt>
+<dd>
+<p>logical scalar indicating whether to run in debug mode, which forces the processing to be sequential, and allows developers to capture errors within 			chains</p>
+</dd>
+<dt><code>parallel</code></dt>
+<dd>
+<p>if TRUE, then parallel processing is used, if available.  If FALSE, sequential processing is used. In addition, ths argument may be an object produced 		by <code>makeCluster</code></p>
+</dd>
+</dl>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>It is important to distinguish the two <code>mi</code> methods that are most relevant to users from the many <code>mi</code> methods that are less relevant. The primary <code>mi</code> method is that where <code>y</code> inherits from the <code>missing_data.frame-class</code> and <code>model</code> is omitted. This method “does” the imputation according to the additional arguments described under ... above and returns an object of class <code>"mi"</code>. Executing two or more independent chains is important for monitoring the convergence
+of each chain, see <code>Rhats</code>.
+</p>
+<p>If the chains have not converged in the amount of iterations or time specified, the second important <code>mi</code> method is that where <code>y</code> is an object of class <code>"mi"</code> and <code>model</code> is omitted, which continues a previous run of the iterative imputation algorithm. All the arguments described under ... above remain applicable, except for <code>n.chains</code> and <code>save_RAM</code> because these are established by the previous run that is being continued.
+</p>
+<p>The numerous remaining methods are of less importance to users.  One <code>mi</code> method is called when <code>y = "parallel"</code> and <code>model</code> is omitted. This method merely sets up the parallel backend so that the chains can be executed in parallel on the local machine.  We use the <code>mclapply</code> function in the <span class="pkg">parallel</span> package to implement parallel processing on non-Windows machines, and we use the <span class="pkg">snow</span> package to implement parallel processing on Windows machines; we refer users to the documentation for these packages for more detail about parallel processing. Parallel processing is used by default on machines with multiple processors, but sequential processing can be used instead by using the <code>parallel=FALSE</code> option. If the user is not using a mulitcore computer, sequential processing is used instead of parallel processing.
+</p>
+<p>The first two <code>mi</code> methods described above in turn call a <code>mi</code> method where <code>y</code> inherits from the <code>missing_data.frame-class</code> and <code>model</code> is that which is returned by one of the <code>fit_model-methods</code>. The methods impute values for the originally missing values of a <code>missing_variable</code> given a fitted model, according to the <b>imputation_method</b> slot of the <code>missing_variable</code> in question. Advanced users could define new subclasses of the <code>missing_variable-class</code> in which case it may be necessary to write such a <code>mi</code> method for the new class. It will almost certainly be necessary to add to the 
+<code>fit_model-methods</code>. The existing <code>mi</code> and <code>fit-model-methods</code> should provide a template for doing so.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>model</code> is missing and <code>n.chains</code> is positive, then the <code>mi</code> method will return an object of 
+class <code>"mi"</code>, which has the following slots:
+</p>
+
+<dl>
+<dt>call</dt>
+<dd>
+<p>the call to <code>mi</code></p>
+</dd>
+<dt>data</dt>
+<dd>
+<p>a list of <code>missing_data.frame</code>s, one for each chain</p>
+</dd>
+<dt>total_iters</dt>
+<dd>
+<p>an integer vector that records how many iterations have been performed</p>
+</dd>
+</dl>
+<p>There are a few methods for such an object, such as <code>show</code>, <code>summary</code>,
+<code>dimnames</code>, <code>nrow</code>, <code>ncol</code>, etc.
+</p>
+<p>If <code>mi</code> is called on a <code>missing_data.frame</code> with <code>model</code> missing and a nonpositive
+<code>n.chains</code>, then the <code>missing_data.frame</code> will be returned after allocating storeage.
+</p>
+<p>If <code>model</code> is not missing, then the <code>mi</code> method will impute missing values for the <code>y</code>
+argument and return it.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Ben Goodrich and Jonathan Kropko, for this version, based on earlier versions written by Yu-Sung Su, Masanao Yajima,
+Maria Grazia Pittau, Jennifer Hill, and Andrew Gelman.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>missing_data.frame</code>, <code>fit_model</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># STEP 0: Get data
+data(CHAIN, package = "mi")
+
+# STEP 1: Convert to a missing_data.frame
+mdf &lt;- missing_data.frame(CHAIN) # warnings about missingness patterns
+show(mdf)
+
+# STEP 2: change things
+mdf &lt;- change(mdf, y = "log_virus", what = "transformation", to = "identity")
+
+# STEP 3: look deeper
+summary(mdf)
+
+# STEP 4: impute
+## Not run: 
+imputations &lt;- mi(mdf)
+
+## End(Not run)
+</code></pre>
+
+
+</div>

@@ -1,0 +1,146 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>with</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Evaluates an Expression in Matched or Weighted Multiply Imputed Datasets</h2>
+
+<h3>Description</h3>
+
+<p><code>with()</code> runs a model on the <code>n</code> multiply imputed datasets of the supplied <code>mimids</code> or <code>wimids</code> object. The typical sequence of steps to do a matching or weighting procedure on multiply imputed datasets are:
+</p>
+
+<ol>
+<li>
+<p> Multiply impute the missing values using the <code>mice()</code> function (from the <span class="pkg">mice</span> package) or the <code>amelia()</code> function (from the <span class="pkg">Amelia</span> package), resulting in a multiply imputed dataset (an object of the <code>mids</code> or <code>amelia</code> class);
+</p>
+</li>
+<li>
+<p> Match or weight each multiply imputed dataset using <code>matchthem()</code> or <code>weightthem()</code>, resulting in an object of the <code>mimids</code> or <code>wimids</code> class;
+</p>
+</li>
+<li>
+<p> Check the extent of balance of covariates in the datasets (using functions from the <span class="pkg">cobalt</span> package);
+</p>
+</li>
+<li>
+<p> Fit the statistical model of interest on each dataset by the <code>with()</code> function, resulting in an object of the <code>mimira</code> class; and
+</p>
+</li>
+<li>
+<p> Pool the estimates from each model into a single set of estimates and standard errors, resulting in an object of the <code>mimipo</code> class.
+</p>
+</li>
+</ol>
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'mimids'
+with(data, expr, cluster, ...)
+
+## S3 method for class 'wimids'
+with(data, expr, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A <code>mimids</code> or <code>wimids</code> object, typically produced by a previous call to the <code>matchthem()</code> or <code>weightthem()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>expr</code></td>
+<td>
+<p>An expression (usually a call to a modeling function like <code>glm()</code>, <code>coxph()</code>, <code>svyglm()</code>, etc.) to evaluate in each (matched or weighted) multiply imputed dataset. See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cluster</code></td>
+<td>
+<p>When a function from <span class="pkg">survey</span> (e.g., <code>survey::svyglm()</code>) is supplied in <code>expr</code>, whether the standard errors should incorporate clustering due to dependence between matched pairs. This is done by supplying the variable containing pair membership to the <code>ids</code> argument of <code>link[survey:svydesign]{svydesign()}</code>. If unspecified, it will be set to <code>TRUE</code> if subclasses (i.e., pairs) are present in the output and there are 20 or more unique subclasses. It will be ignored for matching methods that don't return subclasses (e.g., matching with replacement).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments to be passed to <code>expr</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>with()</code> applies the supplied model in <code>expr</code> to the (matched or weighted) multiply imputed datasets, automatically incorporating the (matching) weights when possible. The argument to <code>expr</code> should be of the form <code>glm(y ~ z, family = quasibinomial)</code>, for example, excluding the data or weights argument, which are automatically supplied. <br>
+Functions from the <span class="pkg">survey</span> package, such as <code>svyglm()</code>, are treated a bit differently. No <code>svydesign</code> object needs to be supplied because <code>with()</code> automatically constructs and supplies it with the imputed dataset and estimated weights. When <code>cluster = TRUE</code> (or <code>with()</code> detects that pairs should be clustered; see the <code>cluster</code> argument above), pair membership is supplied to the <code>ids</code> argument of <code>svydesign()</code>. <br>
+After weighting using <code>weightthem()</code>, <code>glm_weightit()</code> should be used as the modeling function to fit generalized lienar models. It correctly produces robust standard errors that account for estimation of the weights, if possible. See <code>WeightIt::glm_weightit()</code> for details. Otherwise, <code>svyglm()</code> should be used rather than <code>glm()</code> in order to correctly compute standard errors. For Cox models, <code>coxph()</code> will produce approximately correct standard errors when used with weighting but <code>svycoxph()</code> will produce more accurate standard errors when matching is used.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object from the <code>mimira</code> class containing the output of the analyses.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Farhad Pishgar and Noah Greifer
+</p>
+
+
+<h3>References</h3>
+
+<p>Stef van Buuren and Karin Groothuis-Oudshoorn (2011). <code>mice</code>: Multivariate Imputation by Chained Equations in <code>R</code>. <em>Journal of Statistical Software</em>, 45(3): 1-67. <a href="https://doi.org/10.18637/jss.v045.i03">doi:10.18637/jss.v045.i03</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>matchthem()</code>
+</p>
+<p><code>weightthem()</code>
+</p>
+<p><code>mice::with.mids()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#Loading libraries
+library(survey)
+
+#Loading the dataset
+data(osteoarthritis)
+
+#Multiply imputing the missing values
+imputed.datasets &lt;- mice::mice(osteoarthritis, m = 5)
+
+#Matching in the multiply imputed datasets
+matched.datasets &lt;- matchthem(OSP ~ AGE + SEX + BMI + RAC + SMK,
+                              imputed.datasets,
+                              approach = 'within',
+                              method = 'nearest')
+
+#Analyzing the matched datasets
+models &lt;- with(matched.datasets,
+               svyglm(KOA ~ OSP, family = binomial),
+               cluster = TRUE)
+
+#Weghting in the multiply imputed datasets
+weighted.datasets &lt;- weightthem(OSP ~ AGE + SEX + BMI + RAC + SMK,
+                               imputed.datasets,
+                               approach = 'within',
+                               method = 'glm')
+
+#Analyzing the matched datasets
+models &lt;- with(weighted.datasets,
+               WeightIt::glm_weightit(KOA ~ OSP,
+                                      family = binomial))
+
+</code></pre>
+
+
+</div>

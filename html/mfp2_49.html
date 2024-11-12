@@ -1,0 +1,214 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>predict.mfp2</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Predict Method for <code>mfp2</code> Fits</h2>
+
+<h3>Description</h3>
+
+<p>Obtains predictions from an <code>mfp2</code> object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'mfp2'
+predict(
+  object,
+  newdata = NULL,
+  type = NULL,
+  terms = NULL,
+  terms_seq = c("equidistant", "data"),
+  alpha = 0.05,
+  ref = NULL,
+  strata = NULL,
+  newoffset = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p>a fitted object of class <code>mfp2</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>optionally, a matrix with column names in which to look for
+variables with which to predict. See <code>mfp2()</code> for details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>type</code></td>
+<td>
+<p>the type of prediction required.  The default is on the
+scale of the linear predictors. See <code>predict.glm()</code> or <code>predict.coxph()</code> for
+details. In case <code>type = "terms"</code>, see the Section on <code style="white-space: pre;">⁠Terms prediction⁠</code>.
+In case <code>type = "contrasts"</code>, see the Section on <code>Contrasts</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>terms</code></td>
+<td>
+<p>a character vector of variable names specifying for which
+variables term or contrast predictions are desired.
+Only used in case <code>type = "terms"</code> or <code>type = "contrasts"</code>.
+If <code>NULL</code> (the default) then all selected variables in the final model will
+be used. In any case, only variables used in the final model are used, even
+if more variable names are passed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>terms_seq</code></td>
+<td>
+<p>a character string specifying how the range of variable
+values for term predictions are handled. The default <code>equidistant</code> computes
+the range of the data range and generates an equidistant sequence of
+100 points from the minimum to the maximum values to properly show the functional
+form estimated in the final model.
+The option <code>data</code> uses the observed data values directly, but these may not
+adequately reflect the functional form of the data, especially when extreme
+values or influential points are present.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>significance level used for computing confidence
+intervals in terms prediction.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ref</code></td>
+<td>
+<p>a named list of reference values used when <code>type = "contrasts"</code>.
+Note that any variable requested in <code>terms</code>, but not having an entry in this
+list (or if the entry is <code>NULL</code>) then the mean value (or minimum for binary
+variables) will be used as reference. Values are specified on the original
+scale of the variable since the program will internally scale it using the
+scaling factors obtained from <code>find_scale_factor()</code>. By default, this function
+uses the means (for continuous variables) and minima (for binary variables) as
+reference values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>strata</code></td>
+<td>
+<p>stratum levels used for predictions.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newoffset</code></td>
+<td>
+<p>A vector of offsets used for predictions. This parameter is important when
+newdata is supplied. The offsets will be directly added to the linear predictor without any
+transformations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>further arguments passed to <code>predict.glm()</code> or <code>predict.coxph()</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>To prepare the <code>newdata</code> for prediction, this function applies any
+necessary shifting and scaling based on the factors obtained from the
+training data.
+It is important to note that if the shifting factors are not sufficiently
+large as estimated from the training data, variables in <code>newdata</code> may end up
+with negative values, which can cause prediction errors if non-linear
+functional forms are used. A warning is given in this case by the function.
+The next step involves transforming the data using the selected
+fractional polynomial (FP) powers. If necessary, centering of variables is
+conducted. Once the transformation (and centering) is complete, the
+transformed data is passed to either <code>predict.glm()</code> or <code>predict.coxph()</code>,
+depending on the chosen family of models and when type is not
+<code>terms</code> and <code>contrasts</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>For any <code>type</code> other than <code>"terms"</code> the output conforms to the output
+of <code>predict.glm()</code> or <code>predict.coxph()</code>.
+</p>
+<p>If <code>type = "terms"</code> or <code>type = "contrasts"</code>, then a named list with entries
+for each variable requested in <code>terms</code> (excluding those not present in the
+final model).
+Each entry is a <code>data.frame</code> with the following columns:
+</p>
+
+<ul>
+<li> <p><code>variable</code>: variable values on original scale.
+</p>
+</li>
+<li> <p><code>variable_pre</code>: variable with pre-transformation applied, i.e. shifted,
+scaled and centered as required.
+</p>
+</li>
+<li> <p><code>value</code>: partial linear predictor or contrast (depending on <code>type</code>).
+</p>
+</li>
+<li> <p><code>se</code>: standard error of partial linear predictor or contrast.
+</p>
+</li>
+<li> <p><code>lower</code>: lower limit of confidence interval.
+</p>
+</li>
+<li> <p><code>upper</code>: upper limit of confidence interval.
+</p>
+</li>
+</ul>
+<h3>Terms prediction</h3>
+
+<p>This function allows to compute the partial linear predictors
+for each variable selected into the final model if <code>type = "terms"</code>. Note
+that the results returned from this function are different from those of
+<code>predict.glm()</code> and <code>predict.coxph()</code> since these functions do not take
+into account that a single variable can be represented by multiple terms.
+This functionality is useful to assess model fit, since it also allows to
+draw data points based on residuals.
+</p>
+
+
+<h3>Contrasts</h3>
+
+<p>This functions allows to compute contrasts with reference to a specified
+variable value if <code>type = "contrasts"</code>. In this case, the fitted partial
+predictors will be centered at the reference value (i.e. 0), and also
+confidence intervals will have width 0 at that point.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>mfp2()</code>, <code>stats::predict.glm()</code>, <code>survival::predict.coxph()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Gaussian model
+data("prostate")
+x = as.matrix(prostate[,2:8])
+y = as.numeric(prostate$lpsa)
+# default interface
+fit1 = mfp2(x, y, verbose = FALSE)
+predict(fit1) # make predictions
+
+</code></pre>
+
+
+</div>

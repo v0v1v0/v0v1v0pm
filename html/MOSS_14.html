@@ -1,0 +1,290 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>ssvdEN_sol_path</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>'Solution path' for sparse Singular Value Decomposition via Elastic Net.</h2>
+
+<h3>Description</h3>
+
+<p>This function allows to explore values on the solution path of the
+sparse singular value decomposition (SVD) problem.
+The goal of this is to tune the degree of sparsity of subjects,
+features, or both subjects/features.
+The function performs a penalized SVD that imposes sparsity/smoothing
+in both left and right singular vectors.
+The penalties at both levels are Elastic Net-like,
+and the trade-off between ridge and Lasso like penalties is controlled
+by two 'alpha' parameters. The proportion of variance explained is
+the criteria used to choose the optimal degrees of sparsity.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">ssvdEN_sol_path(
+  O,
+  center = TRUE,
+  scale = TRUE,
+  dg.grid.right = seq_len(ncol(O)) - 1,
+  dg.grid.left = NULL,
+  n.PC = 1,
+  svd.0 = NULL,
+  alpha.f = 1,
+  alpha.s = 1,
+  maxit = 500,
+  tol = 0.001,
+  approx = FALSE,
+  plot = FALSE,
+  ncores = 1,
+  verbose = TRUE,
+  lib.thresh = TRUE,
+  left.lab = "Subjects",
+  right.lab = "Features",
+  exact.dg = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>O</code></td>
+<td>
+<p>Numeric matrix of n subjects (rows) and p features (columns).
+Only objects supported are 'matrix' and 'FBM'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>center</code></td>
+<td>
+<p>Should we center? Logical. Defaults to TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p>Should we scale? Logical. Defaults to TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dg.grid.right</code></td>
+<td>
+<p>Grid with degrees of sparsity at the features level.
+Numeric. Default is the entire solution path for features
+(i.e. 1 : (ncol(O) - 1)).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dg.grid.left</code></td>
+<td>
+<p>Grid with degrees of sparsity at the subjects level.
+Numeric. Defaults to dg.grid.left = nrow(O).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.PC</code></td>
+<td>
+<p>Number of desired principal axes. Numeric. Defaults to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>svd.0</code></td>
+<td>
+<p>Initial SVD (i.e. least squares solution).
+Defaults to NULL.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha.f</code></td>
+<td>
+<p>Elastic net mixture parameter at the features level.
+Measures the compromise between lasso (alpha = 1) and
+ridge (alpha = 0) types of sparsity. Numeric. Defaults to 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha.s</code></td>
+<td>
+<p>Elastic net mixture parameter at the subjects level.
+Defaults to alpha.s = 1.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maxit</code></td>
+<td>
+<p>Maximum number of iterations. Defaults to 500.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>tol</code></td>
+<td>
+<p>Convergence is determined when ||U_j - U_j-1||_F &lt; tol,
+where U_j is the matrix of estimated left regularized singular
+vectors at iteration j.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>approx</code></td>
+<td>
+<p>Should we use standard SVD or random approximations?
+Defaults to FALSE. If TRUE &amp; is(O,'matrix') == TRUE, irlba is called.
+If TRUE &amp; is(O, "FBM") == TRUE, big_randomSVD is called.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>plot</code></td>
+<td>
+<p>Should we plot the solution path? Logical. Defaults to FALSE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+<p>Number of cores used by big_randomSVD.
+Default does not use parallelism. Ignored when is(O, "FBM") == TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>Should we print messages?. Logical. Defaults to TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lib.thresh</code></td>
+<td>
+<p>Should we use a liberal or conservative
+threshold to tune degrees of sparsity? Logical. Defaults to TRUE.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>left.lab</code></td>
+<td>
+<p>Label for the subjects level. Character.
+Defaults to 'subjects'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>right.lab</code></td>
+<td>
+<p>Label for the features level. Character.
+Defaults to 'features'.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>exact.dg</code></td>
+<td>
+<p>Should we compute exact degrees of sparsity? Logical.
+Defaults to FALSE. Only relevant When alpha.s or alpha.f are in the (0,1)
+interval and exact.dg = TRUE.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The function returns the degree of sparsity for which the change in PEV
+is the steepest ('liberal' option), or for which the change in PEV 
+stabilizes ('conservative' option).
+This heuristics relax the need of tuning parameters on a testing set.
+</p>
+<p>For one PC (rank 1 case), the algorithm finds vectors u, w that minimize:
+||x - u w'||_F^2 + lambda_w (alpha_w||w||_1 + (1 - alpha_w)||w||_F^2)
++
+lambda_u (alpha||u||_1 + (1 - alpha_u)||u||_F^2)
+such that ||u|| = 1. The right Eigen vector is obtained
+from v = w / ||w|| and the corresponding Eigen value = u^T x v.
+The penalties lambda_u and lambda_w are mapped from specified
+desired degrees of sparsity (dg.spar.features &amp; dg.spar.subjects).
+</p>
+
+
+<h3>Value</h3>
+
+
+<p>A list with the results of the (sparse) SVD and (if argument 'plot'=TRUE)
+the corresponding graphical displays.
+</p>
+<ul>
+<li>
+<p> SVD: a list with the results of the (sparse) SVD, containing:
+</p>
+
+<ul>
+<li>
+<p> u: Matrix with left eigenvectors.
+</p>
+</li>
+<li>
+<p> v: Matrix with right eigenvectors.
+</p>
+</li>
+<li>
+<p> d: Matrix with singular values.
+</p>
+</li>
+<li>
+<p> opt.dg.right: Selected degrees of sparsity for right eigenvectors.
+</p>
+</li>
+<li>
+<p> opt.dg.left: Selected degrees of sparsity for left eigenvectors.
+</p>
+</li>
+</ul>
+</li>
+<li>
+<p> plot: A ggplot object.
+</p>
+</li>
+</ul>
+<h3>Note</h3>
+
+<p>Although the degree of sparsity maps onto number of
+features/subjects for Lasso, the user needs to be aware that
+this conceptual correspondence
+is lost for full EN (alpha belonging to (0, 1);
+e.g. the number of features selected with alpha &lt; 1
+will be eventually larger than the optimal degree of sparsity).
+This allows to rapidly increase the number of non-zero elements
+when tuning the degrees of sparsity.
+In order to get exact values for the degrees of sparsity at subjects or
+features levels, the user needs to
+set the value of 'exact.dg' parameter from 'FALSE' (the default) to
+'TRUE'.
+</p>
+
+
+<h3>References</h3>
+
+
+<ul>
+<li>
+<p> Shen, Haipeng, and Jianhua Z. Huang. 2008. Sparse Principal
+Component Analysis via Regularized Low Rank Matrix Approximation.
+Journal of Multivariate Analysis 99 (6).
+</p>
+</li>
+<li>
+<p> Baglama, Jim, Lothar Reichel, and B W Lewis. 2018.
+Irlba: Fast Truncated Singular Value Decomposition and Principal
+Components Analysis for Large Dense and Sparse Matrices.
+</p>
+</li>
+</ul>
+<h3>Examples</h3>
+
+<pre><code class="language-R">library("MOSS")
+
+# Extracting simulated omic blocks.
+sim_blocks &lt;- simulate_data()$sim_blocks
+X &lt;- sim_blocks$`Block 3`
+
+# Tuning sparsity degree for features (increments of 20 units).
+out &lt;- ssvdEN_sol_path(X, dg.grid.right = seq(1, 1000, by = 20))
+</code></pre>
+
+
+</div>

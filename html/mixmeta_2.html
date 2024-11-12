@@ -1,0 +1,140 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>alcohol</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2> Alcohol Intake and Colorectal Cancer </h2>
+
+<h3>Description</h3>
+
+<p>The dataset contains the data on 8 cohort studies participating in the Pooling Project of Prospective Studies of Diet and Cancer. A total of 3,646 cases and 2,511,424 person-years were included in the analysis. Each study estimated the incidence relative rate in different categories of alcohol intake while controlling for a set of potential confounders, using non-drinkers as the reference. The categories where then converted in a dose by assigning to each the median value of individual consumptions, with studies reporting estimates at different levels in a continuous scale.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">alcohol</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 48 observations on the following 7 variables:
+</p>
+
+<ul>
+<li>
+<p><code>id</code>: label for each study, derived from the first author's name.
+</p>
+</li>
+<li>
+<p><code>type</code>: code for study design (cohort estimating incidence rate).
+</p>
+</li>
+<li>
+<p><code>dose</code>: assigned dose level (gr/day of alcohol intake).
+</p>
+</li>
+<li>
+<p><code>cases</code>: number of cases for each dose category.
+</p>
+</li>
+<li>
+<p><code>peryears</code>: amount of person-time for each dose category.
+</p>
+</li>
+<li>
+<p><code>logrr</code>: estimated logarithm of the incidence relative rate.
+</p>
+</li>
+<li>
+<p><code>se</code>: standard error of the estimates.
+</p>
+</li>
+</ul>
+<h3>Details</h3>
+
+<p>The data are stored in a <em>long</em> format, with each record reporting the information for each dose categories and studies including multiple records. The reference category for each study included, although the log-RR is fixed to 0 with no standard error (comparing the category with itself). The information on these reference categories is needed to compute the approximate correlations between estimates in the same study.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The data provide an example of application of dose-response meta-analysis, with repeated measurements of the effect size associated to different doses within each study. This requires a modelling structure that accounts for both within and between-study correlations of repeated measurements. The within-study correlations are usually reconstructed from published data using specific methods. Results can be compared with those reported by Crippa and Orsini (2016) and Orsini and colleagues (2012), although they are not identical: while the original analysis used a two-stage approach, the modelling framework applied here follows the more recent one-stage dose-response meta-analysis proposed by Crippa and collegues (2019).
+</p>
+<p>The dataset is also available in the same format in the dataframe <code>alcohol_crc</code> of the package <span class="pkg">dosresmeta</span>.
+</p>
+
+
+<h3>Source</h3>
+
+<p>Crippa A, et al (2019). One-stage dose-response meta-analysis for aggregated data. <em>Statistical Methods in Medical Research</em>.  <b>28</b>(5):1579–1596.
+</p>
+<p>Crippa A, Orsini N (2016). Multivariate dose-response meta-analysis: The dosresmeta R package. <em>Journal of Statistical Software</em>. <b>72</b>(1):1–15.
+</p>
+<p>Orsini N, et al (2012). Meta-analysis for linear and nonlinear dose-response relations: examples, an evaluation of approximations, and software. <em>American Journal of Epidemiology</em>. <b>175</b>(1):66–73.
+</p>
+<p>Sera F, Armstrong B, Blangiardo M, Gasparrini A (2019). An extended mixed-effects framework for meta-analysis.<em>Statistics in Medicine</em>. 2019;38(29):5429-5444. [Freely available <a href="http://www.ag-myresearch.com/2019_sera_statmed.html"><b>here</b></a>].
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">### REPRODUCE THE RESULTS IN CRIPPA ET AL (2016) AND ORSINI ET AL (2012)
+
+# LOAD THE PACKAGE dosresmeta AND splines
+library(dosresmeta) ; library(splines)
+
+# COMPUTE THE WITHIN-STUDY CORRELATIONS EXCLUDING THE REFERENCE
+addS &lt;- lapply(split(alcohol, alcohol$id), function(x)
+  covar.logrr(y=logrr, v=se^2, cases=cases, n=peryears, type=type, data=x))
+sub &lt;- subset(alcohol, !is.na(se))
+
+# NOT ACCOUNTING FOR WITHIN-STUDY CORRELATIONS
+nocor &lt;- mixmeta(logrr ~ 0 + dose, S=se^2, random= ~ 0 + dose|id, data=sub,
+  method="ml")
+summary(nocor)
+
+# ACCOUNTING FOR WITHIN-STUDY CORRELATIONS
+lin &lt;- mixmeta(logrr ~ 0 + dose, random= ~ 0 + dose|id, data=sub, method="ml",
+  control=list(addSlist=addS))
+summary(lin)
+
+# ALLOWING NON-LINEARITY IN BOTH FIXED AND RANDOM PARTS
+nonlin &lt;- mixmeta(logrr ~ 0 + ns(dose, knots=c(10,25)), data=sub, 
+  random= ~ 0 + ns(dose, knots=c(10,25))|id, method="ml",
+  control=list(addSlist=addS))
+summary(nonlin)
+
+# SIMPLIFY THE MODEL BY ASSUMING LINEARITY IN THE RANDOM PART
+nonlin2 &lt;- update(nonlin, random= ~ 0 + dose|id)
+summary(nonlin2)
+
+# FIXED-EFFECTS MODEL (TRICK: random TO DEFINE THE GROUPING, THEN FIX IT TO 0)
+nonlinfix &lt;- mixmeta(logrr ~ 0 + ns(dose, knots=c(10,25)), random= ~ 1|id,
+  data=sub, method="ml",bscov="fixed", control=list(addSlist=addS, Psifix=0))
+summary(nonlinfix)
+
+# COMPARE THE MODELS
+AIC(nocor, lin, nonlin, nonlin2, nonlinfix)
+
+# PREDICT THE RR FOR 12g/day FOM TWO MODELS
+exp(predict(nocor, newdata=data.frame(dose=12), ci=TRUE))
+exp(predict(lin, newdata=data.frame(dose=12), ci=TRUE))
+
+# PREDICT (RECREATE SPLINES FOR EASY CODING)
+predlin &lt;- exp(predict(lin, newdata=data.frame(dose=0:60), ci=TRUE))
+prednonlin &lt;- exp(predict(nonlin, newdata=data.frame(dose=0:60), ci=TRUE))
+
+# DISPLAY THE NON-LINEAR EFFECT
+col1 &lt;- do.call(rgb, c(as.list(col2rgb("blue") / 255), list(0.2)))
+col2 &lt;- do.call(rgb, c(as.list(col2rgb("green") / 255), list(0.2)))
+plot(0:60, predlin[,1], type="l", ylim=c(0.85,1.9), ylab="RR",
+  xlab="Alcohol intake (gr/day)", main="Dose-response")
+polygon(c(0:60,60:0), c(predlin[,2], rev(predlin[,3])), col=col1, border=NA)
+lines(0:60,prednonlin[,1], lty=5)
+polygon(c(0:60,60:0), c(prednonlin[,2],rev(prednonlin[,3])), col=col2, border=NA)
+</code></pre>
+
+
+</div>

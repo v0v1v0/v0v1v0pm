@@ -1,0 +1,146 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>brt</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Create a model component object for a BART (Bayesian Additive Regression Trees)
+component in the linear predictor</h2>
+
+<h3>Description</h3>
+
+<p>This function is intended to be used on the right hand side of the
+<code>formula</code> argument to <code>create_sampler</code> or
+<code>generate_data</code>. It creates a BART term in the
+model's linear predictor. To use this model component one needs
+to have R package <span class="pkg">dbarts</span> installed.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">brt(
+  formula,
+  X = NULL,
+  n.trees = 75L,
+  name = "",
+  debug = FALSE,
+  keepTrees = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>a formula specifying the predictors to be used in the BART
+model component. Variable names are looked up in the data frame
+passed as <code>data</code> argument to <code>create_sampler</code> or
+<code>generate_data</code>, or in <code>environment(formula)</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>a design matrix can be specified directly, as an alternative
+to the creation of one based on <code>formula</code>. If <code>X</code> is
+specified <code>formula</code> is ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.trees</code></td>
+<td>
+<p>number of trees used in the BART ensemble.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>name</code></td>
+<td>
+<p>the name of the model component. This name is used in the output of the
+MCMC simulation function <code>MCMCsim</code>. By default the name will be 'bart'
+with the number of the model term attached.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>debug</code></td>
+<td>
+<p>if <code>TRUE</code> a breakpoint is set at the beginning of the posterior
+draw function associated with this model component. Mainly intended for developers.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keepTrees</code></td>
+<td>
+<p>whether to store the trees ensemble for each Monte Carlo draw. This
+is required for prediction based on new data. The default is <code>FALSE</code> to save
+memory.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>parameters passed to <code>dbarts</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>An object with precomputed quantities and functions for sampling from
+prior or conditional posterior distributions for this model component. Intended
+for internal use by other package functions.
+</p>
+
+
+<h3>References</h3>
+
+<p>H.A. Chipman, E.I. Georgea and R.E. McCulloch (2010).
+BART: Bayesian additive regression trees.
+The Annals of Applied Statistics 4(1), 266-298.
+</p>
+<p>J.H. Friedman (1991).
+Multivariate adaptive regression splines.
+The Annals of Statistics 19, 1-67.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># generate data, based on an example in Friedman (1991)
+gendat &lt;- function(n=200L, p=10L, sigma=1) {
+  x &lt;- matrix(runif(n * p), n, p)
+  mu &lt;- 10*sin(pi*x[, 1] * x[, 2]) + 20*(x[, 3] - 0.5)^2 + 10*x[, 4] + 5*x[, 5]
+  y &lt;- mu + sigma * rnorm(n)
+  data.frame(x=x, mu=mu, y=y)
+}
+
+train &lt;- gendat()
+test &lt;- gendat(n=25)
+
+# keep trees for later prediction based on new data
+sampler &lt;- create_sampler(
+  y ~ brt(~ . - y, name="bart", keepTrees=TRUE),
+  sigma.mod=pr_invchisq(df=3,  scale=var(train$y)),
+  data = train
+)
+sim &lt;- MCMCsim(sampler, n.chain=2, n.iter=700, thin=2,
+  store.all=TRUE, verbose=FALSE)
+(summ &lt;- summary(sim))
+plot(train$mu, summ$bart[, "Mean"]); abline(0, 1)
+# NB prediction is currently slow
+
+pred &lt;- predict(sim, newdata=test,
+  iters=sample(seq_len(ndraws(sim)), 100),
+  show.progress=FALSE
+)
+(summpred &lt;- summary(pred))
+plot(test$mu, summpred[, "Mean"]); abline(0, 1)
+
+
+</code></pre>
+
+
+</div>

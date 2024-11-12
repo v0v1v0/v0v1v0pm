@@ -1,0 +1,137 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>sweets</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Synthetic dataset due to Hankin
+</h2>
+
+<h3>Description</h3>
+
+<script id="MathJax-script" async src="../../mathjaxr/doc/mathjax/es5/tex-chtml-full.js"></script><p>Four objects:
+</p>
+
+<ul>
+<li>
+<p><code>sweets</code> is a \(2\times 3\times 21\) array
+</p>
+</li>
+<li>
+<p><code>sweets_tally</code> is a length 37 vector
+</p>
+</li>
+<li>
+<p><code>sweets_array</code> is a \(2\times 3\times 37\)
+vector
+</p>
+</li>
+<li>
+<p><code>sweets_table</code> is a \(37\times 6\) matrix
+</p>
+</li>
+</ul>
+<h3>Usage</h3>
+
+<pre><code class="language-R">data(sweets)</code></pre>
+
+
+<h3>Details</h3>
+
+<p>Object <code>sweets</code> is the raw dataset; objects <code>sweets_table</code>
+and <code>sweets_tally</code> are processed versions which are easier to
+analyze.
+</p>
+<p>The father of a certain family brings home nine sweets of type
+<code>mm</code> and nine sweets of type <code>jb</code> each day for 21 days to
+his children, <code>AMH</code>, <code>ZJH</code>, and <code>AGH</code>.
+</p>
+<p>The children share the sweets amongst themselves in such a way that
+each child receives exactly 6 sweets.
+</p>
+
+<ul>
+<li>
+<p> Array <code>sweets</code> has dimension <code>c(2,3,21)</code>: 2 types of
+sweets, 3 children, and 21 days. Thus <code>sweets[,,1]</code> shows that on
+the first day, <code>AMH</code> chose 0 sweets of type <code>mm</code> and 6
+sweets of type <code>jb</code>; child <code>ZJH</code> chose 3 of each, and child
+<code>AGH</code> chose 6 sweets of type <code>mm</code> and 0 sweets of type
+<code>jb</code>.
+</p>
+<p>Observe the constant marginal totals: the kids have the same overall
+number of sweets each, and there are a fixed number of each kind of
+sweet.
+</p>
+</li>
+<li>
+<p> Array <code>sweets_array</code> has dimension <code>c(2,3,37)</code>: 2
+sweets, 3 children, and 37 possible ways of arranging a matrix with
+the specified marginal totals.  This can be produced by
+<code>allboards()</code> of the <span class="pkg">aylmer</span> package.
+</p>
+</li>
+<li> <p><code>sweets_table</code> is a dataframe with six columns, one for
+each combination of child and sweet, and 37 rows, each row showing a
+permissible arrangement.  All possibilities are present.  The six
+entries of <code>sweets[,,1]</code> correspond to the six elements of
+<code>sweets_table[1,]</code>; the column names are mnemonics.
+</p>
+</li>
+<li>
+<p><code>sweets_tally</code> shows how often each of the arrangements in
+<code>sweets_tally</code> was observed (that is, it's a table of the 21
+observations in <code>sweets</code>)
+</p>
+</li>
+</ul>
+<h3>Source</h3>
+
+<p>The Hankin family
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">data(sweets)
+
+# show correspondence between sweets_table and sweets_tally:
+cbind(sweets_table, sweets_tally)
+
+# Sum the data, by sweet and child and test:
+fisher.test(apply(sweets,1:2,sum))
+# Not significant!
+
+
+
+
+# Now test for overdispersion.
+# First set up the regressors:
+
+jj1 &lt;- apply(sweets_array,3,tcrossprod)
+jj2 &lt;- apply(sweets_array,3, crossprod)
+dim(jj1) &lt;- c(2,2,37)
+dim(jj2) &lt;- c(3,3,37)
+
+theta_xy &lt;- jj1[1,2,]
+  phi_ab &lt;- jj2[1,2,]
+  phi_ac &lt;- jj2[1,3,]
+  phi_bc &lt;- jj2[2,3,]
+
+# Now the offset:
+Off &lt;- apply(sweets_array,3,function(x){-sum(lfactorial(x))})
+
+# Now the formula:
+f &lt;- formula(sweets_tally~ -1 + theta_xy + phi_ab + phi_ac + phi_bc)
+
+# Now the Lindsey Poisson device:
+out &lt;- glm(formula=f, offset=Off, family=poisson)
+
+summary(out)
+#  See how the residual deviance is comparable with the degrees of freedom  
+
+</code></pre>
+
+
+</div>

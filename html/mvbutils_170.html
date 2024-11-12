@@ -1,0 +1,205 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>rbdf</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Data frames: better behaviour with zero-length cases</h2>
+
+<h3>Description</h3>
+
+<p><code>rbind</code> concatenates its arguments by row; see <code>cbind</code> for basic documentation. There is an <code>rbind</code> method for data frames which <code>mvbutils</code> overrides, and <code>rbdf</code> calls the override directly. The <code>mvbutils</code> version should behave exactly as the base-R version, with two exceptions:
+</p>
+
+<ul>
+<li>
+<p> zero-row arguments are <b>not</b> ignored, e.g. so that factor levels which never appear are not dropped.
+</p>
+</li>
+<li>
+<p> dimensioned (array or matrix) elements do not lose any extra attributes (such as <code>class</code>).
+</p>
+</li>
+</ul>
+<p>I find the zero-row behaviour more logical, and useful because e.g. it lets me create an <code>empty.data.frame</code> with the correct type/class/levels for all columns, then subsequently add rows to it. The behaviour for matrix (array) elements allows e.g. the <code>rbind</code>ing of data frames that contain matrices of <code>POSIXct</code> elements without losing the <code>POSIXct</code> class (as in my package <span class="pkg">nicetime</span>).
+</p>
+<p>When <code>rbind</code>ing data frames, best practice is to make sure all the arguments really are data frames. Lists and matrices also work OK (they are first coerced to data frames), but scalars are dangerous (even though base-R will process them without complaint). <code>rbind</code> is quirky around data frames; unless <em>all</em> the arguments are data frames, sometimes <code>rbind.data.frame</code> will not be called even when you'd expect it to be, and the coercion of scalars is frankly potty; see <b>Details</b> and EXAMPLES. <code>mvbutils:::rbind.data.frame</code> tries to mimic the base-R scalar coercion, but I'm not sure it's 100% compatible. Again, the safest way to ensure a predictable outcome, is to make sure all arguments really are data frames, and/or to call <code>rbdf</code> directly.
+</p>
+<p>Note that ("thanks" to <code>stringsAsFactors</code>) the order in which data frames are rbound can affect the result— see <b>Examples</b>.
+</p>
+
+
+<h4>Obsolete</h4>
+
+<p>Versions of <code>mvbutils</code> prior to 2.8.207 installed replacements for <code>$&lt;-.data.frame</code> and <code>[[&lt;-.data.frame</code> that circumvented weird behaviour with the base-R versions when the <code>data.frame</code> had zero rows. That weird behaviour seems to be fixed in base-R as of version 3.4.4 (perhaps earlier). I've therefore removed those replacements (after warnings from newer versions RCMD CHECK). Hopefully, everything works... but just for the record, here's the old text, which I <em>think</em> no longer applies.
+</p>
+<p>[I <em>think</em> this paragraph is obsolete.] Normally, you can replace elements in, or add a column to, data frames via e.g. <code>x$y &lt;- z</code> or <code>x[["y"]] &lt;- z</code>. However, in base-R this fails for no good reason if <code>x</code> is a zero-row data frame; the sensible behaviour when <code>y</code> doesn't exist yet, would be to create a zero-length column of the appropriate class. <code>mvbutils</code> overrides the base (mis)behaviour so it works sensibly. Should work for matrix/array "replacements" too.
+</p>
+
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">rbind(..., deparse.level = 1) # generic
+## S3 method for class 'data.frame'
+rbind(..., deparse.level = 1) # S3 method for data.frame
+rbdf(..., deparse.level = 1) # explicitly call S3 method...
+# ... for data frames (circumvent rbind dispatch)
+## OBSOLETE x[[i,j]] &lt;- value # S3 method for data.frame; only ...
+## OBS ... the version x[[i]] &lt;- value is relevant here, tho' arguably j==0 might be
+## OBS x$name &lt;- value # S3 method for data.frame
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code> ...</code></td>
+<td>
+<p>Data frames, or things that will coerced to data frames. NULLs are ignored.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> deparse.level</code></td>
+<td>
+<p>not used by <code>rbind.data.frame</code>, it's for the default and generic only</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>old arguments
+</p>
+
+<dl>
+<dt>i,j</dt>
+<dd>
+<p>column and row subscripts</p>
+</dd>
+<dt>name</dt>
+<dd>
+<p>column name</p>
+</dd>
+<dt>x, value</dt>
+<dd>
+<p>that's up to you; I just have to include them here to stop RCMD CHECK from moaning... :/</p>
+</dd>
+</dl>
+<p>See <code>cbind</code> documentation in base-R.
+</p>
+<p>R's dispatch mechanism for <code>rbind</code> is as follows [my paraphrasing of base-R documentation]. Mostly, if any argument is a data frame then <code>rbind.data.frame</code> will be used. However, if one argument is a data frame but another argument is a scalar/matrix of a class that has an <code>rbind</code> method, then "default rbind" will be called instead. Although the latter still returns a data frame, it stuffs up e.g. class attributes, so that <code>POSIXct</code> objects will be turned into huge numbers. Again, if you really want a data frame result, make sure all the arguments are data frames.
+</p>
+<p>In <code>mvbutils:::rbind.data.frame</code> (and AFAIK in the base-R version), arguments that are not data frames are coerced to data frames, by calling <code>data.frame()</code> on them. AFAICS this works predictably for list and matrix arguments; note that lists need names, and matrices need column names, that match the names of the real data frame arguments, because column alignment is done by name not position. Behaviour for scalars is IMO weird; see <b>Examples</b>. The idea seems to be to turn each scalar into a single-row data frame, coercing its names and truncating/replicating it to match the columns of the first real data frame argument; any <code>names</code> of the scalar itself are disregarded, and alignment is by position not name. Although <code>mvbutils:::rbind.data.frame</code> tries to mimic this coercion, it seems to me unnecessary (the user should just turn the scalar into something less ambiguous), confusing, and dangerous, so <code>mvbutils</code> issues a warning. Whether I have duplicated every quirk, I'm not sure.
+</p>
+<p>Note also that R's accursed <code>drop=TRUE</code> default means that things you might reasonably think <em>should</em> be data frames, might not be. Under some circumstances, this might result in <code>rbind.data.frame</code> being bypassed. See <b>Examples</b>.
+</p>
+<p>Short of rewriting <code>data.frame</code> and <code>rbind</code>, there's nothing <code>mvbutils</code> can do to fix these quirks. Whether base-R should consider any changes is another story, but back-compatibility probably suggests not.
+</p>
+
+
+<h3>Value</h3>
+
+<p>[Taken from the base-R documentation, modified to fit the <code>mvbutils</code> version]
+The <code>rbind</code> data frame method first drops any NULL arguments, then coerces all others to data frames (see <b>Details</b> for how it does this with scalars). Then it drops all zero-column arguments. (If that leaves none, it returns a zero-column zero-row data frame.) It then takes the classes of the columns from the first argument, and matches columns by name (rather than by position). Factors have their levels expanded as necessary (in the order of the levels of the levelsets of the factors encountered) and the result is an ordered factor if and only if all the components were ordered factors. (The last point differs from S-PLUS.) Old-style categories (integer vectors with levels) are promoted to factors. Zero-row arguments are kept, so that in particular their column classes and factor levels are taken account of.
+Because the class of each column is set by the <em>first</em> data frame, rather than "by consensus", numeric/character/factor conversions can be a bit surprising especially where NAs are involved. See the final bit of EXAMPLES.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>cbind</code> and <code>data.frame</code> in base-R; <code>empty.data.frame</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># mvbutils versions are used, unless base:: or baseenv() gets mentioned
+# Why base-R dropping of zero rows is odd
+rbind( data.frame( x='yes', y=1)[-1,], data.frame( x='no', y=0))$x # mvbutils
+#[1] no
+#Levels: yes no # two levels
+base::rbind( data.frame( x='yes', y=1)[-1,], data.frame( x='no', y=0))$x # base-R
+#[1] no
+#Levels: no # lost level
+rbind( data.frame( x='yes', y=1)[-1,], data.frame( x='no', y=0, stringsAsFactors=FALSE))$x
+#[1] no
+#Levels: yes no
+base::rbind( data.frame( x='yes', y=1)[-1,], data.frame( x='no', y=0, stringsAsFactors=FALSE))$x
+#[1] "no" # x has turned into a character
+# Quirks of scalar coercion
+evalq( rbind( data.frame( x=1), x=2, x=3), baseenv()) # OK I guess
+#   x
+#1  1
+#x  2
+#x1 3
+evalq( rbind( data.frame( x=1), x=2:3), baseenv()) # NB lost element
+#  x
+#1 1
+#x 2
+evalq( rbind( data.frame( x=1, y=2, z=3), c( x=4, y=5)), baseenv())
+# NB gained element! Try predicting z[2]...
+#  x y z
+#1 1 2 3
+#2 4 5 4
+evalq( rbind( data.frame( x='cat', y='dog'), cbind( x='flea', y='goat')), baseenv()) # OK
+#     x    y
+#1  cat  dog
+#2 flea goat
+evalq( rbind( data.frame( x='cat', y='dog'), c( x='flea', y='goat')), baseenv()) # Huh?
+#Warning in `[&lt;-.factor`(`*tmp*`, ri, value = "flea") :
+#  invalid factor level, NAs generated
+#Warning in `[&lt;-.factor`(`*tmp*`, ri, value = "goat") :
+#  invalid factor level, NAs generated
+#     x    y
+#1  cat  dog
+#2 &lt;NA&gt; &lt;NA&gt;
+evalq( rbind( data.frame( x='cat', y='dog'), c( x='flea')), baseenv()) # Hmmm...
+#Warning in `[&lt;-.factor`(`*tmp*`, ri, value = "flea") :
+#  invalid factor level, NAs generated
+#Warning in `[&lt;-.factor`(`*tmp*`, ri, value = "flea") :
+#  invalid factor level, NAs generated
+#     x    y
+#1  cat  dog
+#2 &lt;NA&gt; &lt;NA&gt;
+try( evalq( rbind( data.frame( x='cat', y='dog'), cbind( x='flea')), baseenv())) # ...mmmm...
+#Error in rbind(deparse.level, ...) :
+#  numbers of columns of arguments do not match
+# Data frames that aren't:
+data.frame( x=1,y=2)[-1,] # a zero-row DF-- OK
+# [1] x y
+# &lt;0 rows&gt; (or 0-length row.names)
+data.frame( x=1)[-1,] # not a DF!?
+# numeric(0)
+data.frame( x=1)[-1,,drop=FALSE] # OK, but exceeeeeedingly cumbersome
+# &lt;0 rows&gt; (or 0-length row.names)
+# Implications for rbind:
+rbind( data.frame( x='yes')[-1,], x='no')
+#  [,1]
+# x "no" # rbind.data.frame not called!
+rbind( data.frame( x='yes')[-1,,drop=FALSE], x='no')
+#Warning in rbind(deparse.level, ...) :
+#  risky to supply scalar argument(s) to 'rbind.data.frame'
+#   x
+#x no
+# Quirks of ordering and character/factor conversion:
+rbind( data.frame( x=NA), data.frame( x='yes'))$x
+#[1] NA    "yes" # character
+rbind( data.frame( x=NA_character_), data.frame( x='yes'))$x
+#[1] &lt;NA&gt; yes
+#Levels: yes # factor!
+rbind( data.frame( x='yes'), data.frame( x=NA))$x[2:1]
+#[1] &lt;NA&gt;  yes
+#Levels: yes # factor again
+x1 &lt;- data.frame( x='yes', stringsAsFactors=TRUE)
+x2 &lt;- data.frame( x='no', stringsAsFactors=FALSE)
+rbind( x1, x2)$x
+# [1] yes no
+# Levels: yes no
+rbind( x2, x1)$x
+# [1] "no"  "yes"
+# sigh...
+</code></pre>
+
+
+</div>

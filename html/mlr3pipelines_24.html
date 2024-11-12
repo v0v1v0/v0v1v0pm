@@ -1,0 +1,231 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mlr_learners_graph</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Encapsulate a Graph as a Learner</h2>
+
+<h3>Description</h3>
+
+<p>A <code>Learner</code> that encapsulates a <code>Graph</code> to be used in
+mlr3 resampling and benchmarks.
+</p>
+<p>The Graph must return a single <code>Prediction</code> on its <code style="white-space: pre;">⁠$predict()⁠</code>
+call. The result of the <code style="white-space: pre;">⁠$train()⁠</code> call is discarded, only the
+internal state changes during training are used.
+</p>
+<p>The <code>predict_type</code> of a <code>GraphLearner</code> can be obtained or set via it's <code>predict_type</code> active binding.
+Setting a new predict type will try to set the <code>predict_type</code> in all relevant
+<code>PipeOp</code> / <code>Learner</code> encapsulated within the <code>Graph</code>.
+Similarly, the predict_type of a Graph will always be the smallest denominator in the <code>Graph</code>.
+</p>
+<p>A <code>GraphLearner</code> is always constructed in an untrained state. When the <code>graph</code> argument has a
+non-<code>NULL</code> <code style="white-space: pre;">⁠$state⁠</code>, it is ignored.
+</p>
+
+
+<h3>Format</h3>
+
+<p><code>R6Class</code> object inheriting from <code>mlr3::Learner</code>.
+</p>
+
+
+<h3>Construction</h3>
+
+<div class="sourceCode"><pre>GraphLearner$new(graph, id = NULL, param_vals = list(), task_type = NULL, predict_type = NULL)
+</pre></div>
+
+<ul>
+<li> <p><code>graph</code> :: <code>Graph</code> | <code>PipeOp</code><br><code>Graph</code> to wrap. Can be a <code>PipeOp</code>, which is automatically converted to a <code>Graph</code>.
+This argument is usually cloned, unless <code>clone_graph</code> is <code>FALSE</code>; to access the <code>Graph</code> inside <code>GraphLearner</code> by-reference, use <code style="white-space: pre;">⁠$graph⁠</code>.<br></p>
+</li>
+<li> <p><code>id</code> :: <code>character(1)</code>
+Identifier of the resulting <code>Learner</code>.
+</p>
+</li>
+<li> <p><code>param_vals</code> :: named <code>list</code><br>
+List of hyperparameter settings, overwriting the hyperparameter settings . Default <code>list()</code>.
+</p>
+</li>
+<li> <p><code>task_type</code> :: <code>character(1)</code><br>
+What <code>task_type</code> the <code>GraphLearner</code> should have; usually automatically inferred for <code>Graph</code>s that are simple enough.
+</p>
+</li>
+<li> <p><code>predict_type</code> :: <code>character(1)</code><br>
+What <code>predict_type</code> the <code>GraphLearner</code> should have; usually automatically inferred for <code>Graph</code>s that are simple enough.
+</p>
+</li>
+<li> <p><code>clone_graph</code> :: <code>logical(1)</code><br>
+Whether to clone <code>graph</code> upon construction. Unintentionally changing <code>graph</code> by reference can lead to unexpected behaviour,
+so <code>TRUE</code> (default) is recommended. In particular, note that the <code style="white-space: pre;">⁠$state⁠</code> of <code style="white-space: pre;">⁠$graph⁠</code> is set to <code>NULL</code> by reference on
+construction of <code>GraphLearner</code>, during <code style="white-space: pre;">⁠$train()⁠</code>, and during <code style="white-space: pre;">⁠$predict()⁠</code> when <code>clone_graph</code> is <code>FALSE</code>.
+</p>
+</li>
+</ul>
+<h3>Fields</h3>
+
+<p>Fields inherited from <code>Learner</code>, as well as:
+</p>
+
+<ul>
+<li> <p><code>graph</code> :: <code>Graph</code><br><code>Graph</code> that is being wrapped. This field contains the prototype of the <code>Graph</code> that is being trained, but does <em>not</em>
+contain the model. Use <code>graph_model</code> to access the trained <code>Graph</code> after <code style="white-space: pre;">⁠$train()⁠</code>. Read-only.
+</p>
+</li>
+<li> <p><code>graph_model</code> :: <code>Learner</code><br><code>Graph</code> that is being wrapped. This <code>Graph</code> contains a trained state after <code style="white-space: pre;">⁠$train()⁠</code>. Read-only.
+</p>
+</li>
+<li> <p><code>internal_tuned_values</code> :: named <code>list()</code> or <code>NULL</code><br>
+The internal tuned parameter values collected from all <code>PipeOp</code>s.
+<code>NULL</code> is returned if the learner is not trained or none of the wrapped learners supports internal tuning.
+</p>
+</li>
+<li> <p><code>internal_valid_scores</code> :: named <code>list()</code> or <code>NULL</code><br>
+The internal validation scores as retrieved from the <code>PipeOps</code>.
+The names are prefixed with the respective IDs of the <code>PipeOp</code>s.
+<code>NULL</code> is returned if the learner is not trained or none of the wrapped learners supports internal validation.
+</p>
+</li>
+<li> <p><code>validate</code> :: <code>numeric(1)</code>, <code>"predefined"</code>, <code>"test"</code> or <code>NULL</code><br>
+How to construct the validation data. This also has to be configured for the individual <code>PipeOp</code>s such as
+<code>PipeOpLearner</code>, see <code>set_validate.GraphLearner</code>.
+For more details on the possible values, see <code>mlr3::Learner</code>.
+</p>
+</li>
+<li> <p><code>marshaled</code> :: <code>logical(1)</code><br>
+Whether the learner is marshaled.
+</p>
+</li>
+<li> <p><code>impute_selected_features</code> :: <code>logical(1)</code><br>
+Whether to heuristically determine <code style="white-space: pre;">⁠$selected_features()⁠</code> as all <code style="white-space: pre;">⁠$selected_features()⁠</code> of all "base learner" Learners,
+even if they do not have the <code>"selected_features"</code> property / do not implement <code style="white-space: pre;">⁠$selected_features()⁠</code>.
+If <code>impute_selected_features</code> is <code>TRUE</code> and the base learners do not implement <code style="white-space: pre;">⁠$selected_features()⁠</code>,
+the <code>GraphLearner</code>'s <code style="white-space: pre;">⁠$selected_features()⁠</code> method will return all features seen by the base learners.
+This is useful in cases where feature selection is performed inside the <code>Graph</code>:
+The <code style="white-space: pre;">⁠$selected_features()⁠</code> will then be the set of features that were selected by the <code>Graph</code>.
+If <code>impute_selected_features</code> is <code>FALSE</code>, the <code style="white-space: pre;">⁠$selected_features()⁠</code> method will throw an error if <code style="white-space: pre;">⁠$selected_features()⁠</code>
+is not implemented by the base learners.<br>
+This is a heuristic and may report more features than actually used by the base learners,
+in cases where the base learners do not implement <code style="white-space: pre;">⁠$selected_features()⁠</code>.
+The default is <code>FALSE</code>.
+</p>
+</li>
+</ul>
+<h3>Methods</h3>
+
+<p>Methods inherited from <code>Learner</code>, as well as:
+</p>
+
+<ul>
+<li> <p><code>marshal</code><br>
+(any) -&gt; <code>self</code><br>
+Marshal the model.
+</p>
+</li>
+<li> <p><code>unmarshal</code><br>
+(any) -&gt; <code>self</code><br>
+Unmarshal the model.
+</p>
+</li>
+<li> <p><code>base_learner(recursive = Inf, return_po = FALSE, return_all = FALSE, resolve_branching = TRUE)</code><br>
+(<code>numeric(1)</code>, <code>logical(1)</code>, <code>logical(1)</code>, <code>character(1)</code>) -&gt; <code>Learner</code> | <code>PipeOp</code> | <code>list</code> of <code>Learner</code> | <code>list</code> of <code>PipeOp</code><br>
+Return the base learner of the <code>GraphLearner</code>. If <code>recursive</code> is 0, the <code>GraphLearner</code> itself is returned.
+Otherwise, the <code>Graph</code> is traversed backwards to find the first <code>PipeOp</code> containing a <code style="white-space: pre;">⁠$learner_model⁠</code> field.
+If <code>recursive</code> is 1, that <code style="white-space: pre;">⁠$learner_model⁠</code> (or containing <code>PipeOp</code>, if <code>return_po</code> is <code>TRUE</code>) is returned.
+If <code>recursive</code> is greater than 1, the discovered base learner's <code>base_learner()</code> method is called with <code>recursive - 1</code>.
+<code>recursive</code> must be set to 1 if <code>return_po</code> is TRUE, and must be set to at most 1 if <code>return_all</code> is <code>TRUE</code>.<br>
+If <code>return_po</code> is <code>TRUE</code>, the container-<code>PipeOp</code> is returned instead of the <code>Learner</code>.
+This will typically be a <code>PipeOpLearner</code> or a <code>PipeOpLearnerCV</code>.<br>
+If <code>return_all</code> is <code>TRUE</code>, a <code>list</code> of <code>Learner</code>s or <code>PipeOp</code>s is returned.
+If <code>return_po</code> is <code>FALSE</code>, this list may contain <code>Multiplicity</code> objects, which are not unwrapped.
+If <code>return_all</code> is <code>FALSE</code> and there are multiple possible base learners, an error is thrown.
+This may also happen if only a single <code>PipeOpLearner</code> is present that was trained with a <code>Multiplicity</code>.<br>
+If <code>resolve_branching</code> is <code>TRUE</code>, and when a <code>PipeOpUnbranch</code> is encountered, the
+corresponding <code>PipeOpBranch</code> is searched, and its hyperparameter configuration is used to select the base learner.
+There may be multiple corresponding <code>PipeOpBranch</code>s, which are all considered.
+If <code>resolve_branching</code> is <code>FALSE</code>, <code>PipeOpUnbranch</code> is treated as any other <code>PipeOp</code> with multiple inputs; all possible branch paths are considered equally.
+</p>
+</li>
+</ul>
+<p>The following standard extractors as defined by the <code>Learner</code> class are available.
+Note that these typically only extract information from the <code style="white-space: pre;">⁠$base_learner()⁠</code>.
+This works well for simple <code>Graph</code>s that do not modify features too much, but may give unexpected results for <code>Graph</code>s that
+add new features or move information between features.
+</p>
+<p>As an example, consider a feature <code style="white-space: pre;">⁠A`` with missing values, and a feature ⁠</code>B<code style="white-space: pre;">⁠ that is used for imputatoin, using a [`po("imputelearner")`][PipeOpImputeLearner]. In a case where the following [`Learner`][mlr3::Learner] performs embedded feature selection and only selects feature A, the `selected_features()` method could return only feature `A⁠</code>, and <code style="white-space: pre;">⁠$importance()⁠</code> may even report 0 for feature <code>B</code>.
+This would not be entirbababababely accurate when considering the entire <code>GraphLearner</code>, as feature <code>B</code> is used for imputation and would therefore have an impact on predictions.
+The following should therefore only be used if the <code>Graph</code> is known to not have an impact on the relevant properties.
+</p>
+
+<ul>
+<li> <p><code>importance()</code><br>
+() -&gt; <code>numeric</code><br>
+The <code style="white-space: pre;">⁠$importance()⁠</code> returned by the base learner, if it has the <code style="white-space: pre;">⁠"importance⁠</code> property.
+Throws an error otherwise.
+</p>
+</li>
+<li> <p><code>selected_features()</code><br>
+() -&gt; <code>character</code><br>
+The <code style="white-space: pre;">⁠$selected_features()⁠</code> returned by the base learner, if it has the <code style="white-space: pre;">⁠"selected_features⁠</code> property.
+If the base learner does not have the <code>"selected_features"</code> property and <code>impute_selected_features</code> is <code>TRUE</code>,
+all features seen by the base learners are returned.
+Throws an error otherwise.
+</p>
+</li>
+<li> <p><code>oob_error()</code><br>
+() -&gt; <code>numeric(1)</code><br>
+The <code style="white-space: pre;">⁠$oob_error()⁠</code> returned by the base learner, if it has the <code style="white-space: pre;">⁠"oob_error⁠</code> property.
+Throws an error otherwise.
+</p>
+</li>
+<li> <p><code>loglik()</code><br>
+() -&gt; <code>numeric(1)</code><br>
+The <code style="white-space: pre;">⁠$loglik()⁠</code> returned by the base learner, if it has the <code style="white-space: pre;">⁠"loglik⁠</code> property.
+Throws an error otherwise.
+</p>
+</li>
+</ul>
+<h3>Internals</h3>
+
+<p><code>as_graph()</code> is called on the <code>graph</code> argument, so it can technically also be a <code>list</code> of things, which is
+automatically converted to a <code>Graph</code> via <code>gunion()</code>; however, this will usually not result in a valid <code>Graph</code> that can
+work as a <code>Learner</code>. <code>graph</code> can furthermore be a <code>Learner</code>, which is then automatically
+wrapped in a <code>Graph</code>, which is then again wrapped in a <code>GraphLearner</code> object; this usually only adds overhead and is not
+recommended.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other Learners: 
+<code>mlr_learners_avg</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library("mlr3")
+
+graph = po("pca") %&gt;&gt;% lrn("classif.rpart")
+
+lr = GraphLearner$new(graph)
+lr = as_learner(graph)  # equivalent
+
+lr$train(tsk("iris"))
+
+lr$graph$state  # untrained version!
+# The following is therefore NULL:
+lr$graph$pipeops$classif.rpart$learner_model$model
+
+# To access the trained model from the PipeOpLearner's Learner, use:
+lr$graph_model$pipeops$classif.rpart$learner_model$model
+
+# Feature importance (of principal components):
+lr$graph_model$pipeops$classif.rpart$learner_model$importance()
+
+</code></pre>
+
+
+</div>

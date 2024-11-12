@@ -1,0 +1,252 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mdmr</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Conduct MDMR with analytic p-values</h2>
+
+<h3>Description</h3>
+
+<p><code>mdmr</code> (multivariate distance matrix regression) is used to regress a
+distance matrix onto a set of predictors. It returns the test statistic,
+pseudo R-square statistic, and analytic p-values for all predictors
+jointly and for each predictor individually, conditioned on the rest.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mdmr(X, D = NULL, G = NULL, lambda = NULL, return.lambda = F,
+  start.acc = 1e-20, ncores = 1, perm.p = (nrow(as.matrix(X)) &lt; 200),
+  nperm = 500, seed = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>A <code class="reqn">n x p</code> matrix or data frame of predictors. Unordered factors
+will be tested with contrast-codes by default, and ordered factors will be
+tested with polynomial contrasts. For finer control of how categorical
+predictors are handled, or if higher-order effects are desired, the output
+from a call to <code>model.matrix()</code> can be supplied to this argument as
+well.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>D</code></td>
+<td>
+<p>Distance matrix computed on the outcome data. Can be either a
+matrix or an R <code>dist</code> object. Either <code>D</code> or <code>G</code>
+must be passed to <code>mdmr()</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>G</code></td>
+<td>
+<p>Gower's centered similarity matrix computed from <code>D</code>.
+Either <code>D</code> or <code>G</code> must be passed to <code>mdmr</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>Optional argument: Eigenvalues of <code>G</code>.
+Eigendecomposition of large <code>G</code> matrices can be somewhat time
+consuming, and the theoretical p-values require the eigenvalues of
+<code>G</code>. If MDMR is to be conducted multiple times on one distance
+matrix, it is advised to conduct the eigendecomposition once and pass the
+eigenvalues to <code>mdmr()</code> directly each time.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>return.lambda</code></td>
+<td>
+<p>Logical; indicates whether or not the eigenvalues of
+<code>G</code> should be returned, if calculated. Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>start.acc</code></td>
+<td>
+<p>Starting accuracy of the Davies (1980) algorithm
+implemented in the <code>davies</code> function in the <code>CompQuadForm</code>
+package (Duchesne &amp;  De Micheaux, 2010) that <code>mdmr()</code> uses to compute
+MDMR p-values.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ncores</code></td>
+<td>
+<p>Integer; if <code>ncores</code> &gt; 1, the <code>parallel</code>
+package is used to speed computation. Note: Windows users must set
+<code>ncores = 1</code> because the <code>parallel</code> pacakge relies on forking. See
+<code>mc.cores</code> in the <code>mclapply</code> function in the
+<code>parallel</code> pacakge for more details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>perm.p</code></td>
+<td>
+<p>Logical: should permutation-based p-values be computed instead
+of analytic p-values? Default behavior is <code>TRUE</code> if <code>n &lt; 200</code> and
+<code>FALSE</code> otherwise because the anlytic p-values depend on asymptotics.
+for <code>n &gt; 200</code> and "permutation" otherwise.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nperm</code></td>
+<td>
+<p>Number of permutations to use if permutation-based p-values are
+to be computed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>seed</code></td>
+<td>
+<p>Random seed to use to generate the permutation null distribution.
+Defaults to a random seed.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>This function is the fastest approach to conducting MDMR. It uses the
+fastest known computational strategy to compute the MDMR test statistic (see
+Appendix A of McArtor et al., 2017), and it uses fast, analytic p-values.
+</p>
+<p>The slowest part of conducting MDMR is now the necessary eigendecomposition
+of the <code>G</code> matrix, whose computation time is a function of
+<code class="reqn">n^3</code>. If MDMR is to be conducted multiple times on the same
+distance matrix, it is recommended to compute eigenvalues of <code>G</code> in
+advance and pass them to the function rather than computing them every
+time <code>mdmr</code> is called, as is the case if the argument <code>lambda</code>
+is left <code>NULL</code>.
+</p>
+<p>The distance matrix <code>D</code> can be passed to <code>mdmr</code> as either a
+distance object or a symmetric matrix.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object with six elements and a summary function. Calling
+<code>summary(mdmr.res)</code> produces a data frame comprised of:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>Statistic</code></td>
+<td>
+<p>Value of the corresponding MDMR test statistic</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Numer DF</code></td>
+<td>
+<p>Numerator degrees of freedom for the corresponding effect</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Pseudo R2</code></td>
+<td>
+<p>Size of the corresponding effect on the
+distance matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>p-value</code></td>
+<td>
+<p>The p-value for each effect.</p>
+</td>
+</tr>
+</table>
+<p>In addition to the information in the three columns comprising
+<code>summary(res)</code>, the <code>res</code> object also contains:
+</p>
+<table>
+<tr style="vertical-align: top;">
+<td><code>p.prec</code></td>
+<td>
+<p>A data.frame reporting the precision of each p-value. If
+analytic p-values were computed, these are the maximum error bound of the
+p-values reported by the <code>davies</code> function in <code>CompQuadForm</code>. If
+permutation p-values were computed, it is the standard error of each
+permutation p-value.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lambda</code></td>
+<td>
+<p>A vector of the eigenvalues of <code>G</code> (if
+<code>return.lambda = T</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nperm</code></td>
+<td>
+<p>Number of permutations used. Will read <code>NA</code> if analytic
+p-values were computed</p>
+</td>
+</tr>
+</table>
+<p>Note that the printed output of <code>summary(res)</code> will truncate p-values
+to the smallest trustworthy values, but the object returned by
+<code>summary(res)</code> will contain the p-values as computed. The reason for
+this truncation differs for analytic and permutation p-values. For an
+analytic p-value, if the error bound of the Davies algorithm is larger than
+the p-value, the only conclusion that can be drawn with certainty is that
+the p-value is smaller than (or equal to) the error bound. For a permutation
+test, the estimated p-value will be zero if no permuted test statistics are
+greater than the observed statistic, but the zero p-value is only a product
+of the finite number of permutations conduted. The only conclusion that can
+be drawn is that the p-value is smaller than <code>1/nperm</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Daniel B. McArtor (dmcartor@gmail.com) [aut, cre]
+</p>
+
+
+<h3>References</h3>
+
+<p>Davies, R. B. (1980). The Distribution of a Linear Combination of
+chi-square Random Variables. Journal of the Royal Statistical Society.
+Series C (Applied Statistics), 29(3), 323-333.
+</p>
+<p>Duchesne, P., &amp; De Micheaux, P. L. (2010). Computing the distribution of
+quadratic forms: Further comparisons between the Liu-Tang-Zhang
+approximation and exact methods. Computational Statistics and Data
+Analysis, 54(4), 858-862.
+</p>
+<p>McArtor, D. B., Lubke, G. H., &amp; Bergeman, C. S. (2017). Extending
+multivariate distance matrix regression with an effect size measure and the
+distribution of the test statistic. Psychometrika, 82, 1052-1077.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># --- The following two approaches yield equivalent results --- #
+# Approach 1
+data(mdmrdata)
+D &lt;- dist(Y.mdmr, method = "euclidean")
+res1 &lt;- mdmr(X = X.mdmr, D = D)
+summary(res1)
+
+# Approach 2
+data(mdmrdata)
+D &lt;- dist(Y.mdmr, method = "euclidean")
+G &lt;- gower(D)
+res2 &lt;- mdmr(X = X.mdmr, G = G)
+summary(res2)
+
+</code></pre>
+
+
+</div>

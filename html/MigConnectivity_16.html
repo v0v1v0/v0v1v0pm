@@ -1,0 +1,416 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>estStrength</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Estimate MC, migratory connectivity strength</h2>
+
+<h3>Description</h3>
+
+<p>Resampling of uncertainty for MC (migratory connectivity strength)
+from estimates of psi (transition probabilities) and/or relative abundance.
+Psi estimates can come from an estMigConnectivity object, an RMark psi
+matrix, MCMC samples, or other samples expressed in array form.
+Abundance estimates for each origin site can be
+either just point estimates (no uncertainty propagated) or MCMC samples.
+Other inputs include distances between origin sites, distances between target
+sites, and sample size used to estimate psi.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">estStrength(
+  originDist,
+  targetDist,
+  originRelAbund,
+  psi,
+  sampleSize = NULL,
+  originSites = NULL,
+  targetSites = NULL,
+  originNames = NULL,
+  targetNames = NULL,
+  nSamples = 1000,
+  row0 = 0,
+  verbose = 0,
+  alpha = 0.05,
+  approxSigTest = FALSE,
+  sigConst = 0,
+  maintainLegacyOutput = FALSE,
+  returnAllInput = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>originDist</code></td>
+<td>
+<p>Distances between the B origin sites. Symmetric B by B
+matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetDist</code></td>
+<td>
+<p>Distances between the W target sites. Symmetric W by W
+matrix</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originRelAbund</code></td>
+<td>
+<p>Relative abundance estimates at B origin sites. Either
+a numeric vector of length B that sums to 1, or an mcmc object (such as is
+produced by <code>modelCountDataJAGS</code>) or matrix with at least
+<code>nSamples</code> rows. If there are more than B columns, the relevant columns
+should be labeled "relN[1]" through "relN[B]"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>psi</code></td>
+<td>
+<p>Transition probabilities between B origin and W target sites.
+Either a matrix with B rows and W columns where rows sum to 1, an array with
+dimensions x, B, and W (with x samples of the transition probability matrix
+from another model), an 'estPsi' object (result of calling estTransition),
+or a MARK object with estimates of transition probabilities</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sampleSize</code></td>
+<td>
+<p>Total sample size of animals that psi will be estimated
+from. Should be the number of animals released in one of the origin sites
+and observed in one of the target sites (or vice-versa). Optional, but
+recommended, unless psi is an estPsi object (in which case this function can
+pull it from there)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originSites</code></td>
+<td>
+<p>If <code>psi</code> is a MARK object, this must be a numeric
+vector indicating which sites are origin</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetSites</code></td>
+<td>
+<p>If <code>psi</code> is a MARK object, this must be a numeric
+vector indicating which sites are target</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>originNames</code></td>
+<td>
+<p>Optional. Vector of names for the origin sites. Mostly for
+internal use</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetNames</code></td>
+<td>
+<p>Optional. Vector of names for the target sites. Mostly for
+internal use</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nSamples</code></td>
+<td>
+<p>Number of times to resample <code>psi</code> and/or
+<code>originRelAbund</code>. The purpose is to estimate sampling uncertainty;
+higher values here will do so with more precision</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>row0</code></td>
+<td>
+<p>If <code>originRelAbund</code> is an mcmc object or array, this can be
+set to 0 (default) or any greater integer to specify where to stop ignoring
+samples ("burn-in")</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>0 (default) to 2. 0 prints no output during run. 1 prints
+a progress update and summary every 100 samples. 2 prints a
+progress update and summary every sample</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>alpha</code></td>
+<td>
+<p>Level for confidence/credible intervals provided. Default (0.05)
+gives 95 percent CI</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>approxSigTest</code></td>
+<td>
+<p>Should function compute approximate one-sided
+significance tests (p-values) for MC from the resampling? Default is
+FALSE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sigConst</code></td>
+<td>
+<p>Value to compare MC to in significance test. Default is 0</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>maintainLegacyOutput</code></td>
+<td>
+<p>version 0.4.0 of <code>MigConnectivity</code>
+updated the structure of the estimates. If you have legacy code that refers
+to elements within an <code>estMigConnectivity</code> object (results of
+<code>estMC</code>), you can set this to TRUE to also keep the old structure.
+Defaults to FALSE</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>returnAllInput</code></td>
+<td>
+<p>if TRUE (the default) the output includes all of the
+inputs. If FALSE, only the inputs currently used by another MigConnectivity
+function are included in the output.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p><code>estStrength</code> returns a list with the elements:
+</p>
+
+<dl>
+<dt><code>MC</code></dt>
+<dd>
+<p>List containing estimates of migratory connectivity
+strength:
+</p>
+
+<ul>
+<li>
+<p><code>sample</code> <code>nSamples</code> sampled values for
+MC. Provided to allow the user to compute own summary statistics.
+</p>
+</li>
+<li>
+<p><code>mean</code> Mean of <code>MC$sample</code>. Main estimate of MC,
+incorporating parametric uncertainty.
+</p>
+</li>
+<li>
+<p><code>se</code> Standard error of MC, estimated from SD of
+<code>MC$sample</code>.
+</p>
+</li>
+<li>
+<p><code>simpleCI</code> Default<code>1 - alpha</code> confidence interval for
+MC, estimated as <code>alpha/2</code> and <code>1 - alpha/2</code> quantiles of
+<code>MC$sample</code>.
+</p>
+</li>
+<li>
+<p><code>bcCI</code> Bias-corrected <code>1 - alpha</code> confidence interval
+for MC. May be preferable to <code>MC$simpleCI</code> when <code>MC$mean</code> is
+the best estimate of MC. <code>MC$simpleCI</code> is preferred when
+<code>MC$median</code> is a better estimator. When <code>MC$mean==MC$median</code>,
+these should be identical.  Estimated as the
+<code>pnorm(2 * z0 + qnorm(alpha / 2))</code> and
+<code>pnorm(2 * z0 + qnorm(1 - alpha / 2))</code> quantiles of <code>MC$sample</code>,
+where z0 is the proportion of <code>MC$sample &lt; MC$mean</code>.
+</p>
+</li>
+<li>
+<p><code>hpdCI</code> <code>1 - alpha</code> credible interval for MC,
+estimated using the highest posterior density (HPD) method.
+</p>
+</li>
+<li>
+<p><code>median</code> Median of MC, alternate point estimate also
+including parametric uncertainty.
+</p>
+</li>
+<li>
+<p><code>point</code> Simple point estimate of MC, using the point
+estimates of <code>psi</code> and <code>originRelAbund</code> (usually the mean
+values), not accounting for sampling error.
+</p>
+</li>
+<li>
+<p><code>simpleP</code> Approximate p-value for MC, estimated as the
+proportion of bootstrap iterations where MC &lt; <code>sigConst</code> (or MC &gt;
+<code>sigConst</code> if <code>pointMC &lt; sigConst</code>).  Note that if the
+proportion is 0, a default value of 0.5 / <code>nSamples</code> is provided,
+but this is best interpreted as p &lt; 1 / <code>nSamples</code>.  NULL when
+<code>approxSigTest==FALSE</code>.
+</p>
+</li>
+<li>
+<p><code>bcP</code> Approximate bias-corrected p-value for MC, estimated as
+<code>pnorm(qnorm(simpleP) - 2 * z0)</code>, where z0 is the proportion of
+<code>sampleMC &lt; meanMC</code>.  May be a better approximation of the p-value
+than <code>simpleP</code>, but many of the same limitations apply.  NULL when
+<code>approxSigTest==FALSE</code>.
+</p>
+</li>
+</ul>
+</dd>
+<dt><code>input</code></dt>
+<dd>
+<p>List containing the inputs to <code>estStrength</code>.</p>
+</dd>
+</dl>
+<h3>See Also</h3>
+
+<p><code>calcMC</code>, <code>estTransition</code>,
+<code>estMC</code>, <code>estMantel</code>,
+<code>plot.estMigConnectivity</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+  set.seed(101)
+  # Uncertainty in detection (RMark estimates) with equal abundances
+  # Number of resampling iterations for generating confidence intervals
+  nSamplesCMR &lt;- 100
+  nSimulationsCMR &lt;- 10
+  originPos13 &lt;- matrix(c(rep(seq(-99, -81, 2), each = 10),
+                          rep(seq(49, 31, -2), 10)), 100, 2)
+  targetPos13 &lt;- matrix(c(rep(seq(-79, -61, 2), each = 10),
+                          rep(seq(9, -9, -2), 10)), 100, 2)
+  originPosCMR &lt;- rowsum(originPos13, c(rep(1:2, 5, each = 5),
+                                        rep(3:4, 5, each = 5))) / 25
+  originPosCMR
+  targetPosCMR &lt;- rowsum(targetPos13, c(rep(1:2, 5, each = 5),
+                                        rep(3:4, 5, each = 5))) / 25
+  targetPosCMR
+
+  originDist &lt;- distFromPos(originPosCMR, 'ellipsoid')
+  targetDist &lt;- distFromPos(targetPosCMR, 'ellipsoid')
+  originRelAbundTrue &lt;- rep(0.25, 4)
+  # the second intermediate psi scenario, the "low" level
+  psiTrue &lt;- samplePsis[["Low"]]
+  trueMC &lt;- calcMC(originDist, targetDist, originRelAbundTrue, psiTrue)
+  trueMC
+
+  # Storage matrix for samples
+  cmrMCSample &lt;- matrix(NA, nSamplesCMR, nSimulationsCMR)
+  summaryCMR &lt;- data.frame(Simulation = 1:nSimulationsCMR, True=trueMC,
+                           mean=NA, se=NA, lcl=NA, ucl=NA)
+  # Get 'RMark' psi estimates and estimate MC from each
+  for (r in 1:nSimulationsCMR) {
+    cat("Simulation",r,"of",nSimulationsCMR,"\n")
+    # Note: getCMRexample() requires a valid internet connection and that GitHub
+    # is accessible
+    fm &lt;- getCMRexample(r)
+    results &lt;- estStrength(originRelAbund = originRelAbundTrue, psi = fm,
+                     originDist = originDist, targetDist = targetDist,
+                     originSites = 5:8, targetSites = c(3,2,1,4),
+                     nSamples = nSamplesCMR, verbose = 0,
+                     sampleSize = length(grep('[2-5]', fm$data$data$ch)))
+    cmrMCSample[ , r] &lt;- results$MC$sample
+    summaryCMR$mean[r] &lt;- results$MC$mean
+    summaryCMR$se[r] &lt;- results$MC$se
+    # Calculate confidence intervals using quantiles of sampled MC
+    summaryCMR[r, c('lcl', 'ucl')] &lt;- results$MC$simpleCI
+  }
+
+  summaryCMR &lt;- transform(summaryCMR, coverage = (True&gt;=lcl &amp; True&lt;=ucl))
+  summaryCMR
+  summary(summaryCMR)
+  biasCMR &lt;- mean(summaryCMR$mean) - trueMC
+  biasCMR
+  mseCMR &lt;- mean((summaryCMR$mean - trueMC)^2)
+  mseCMR
+  rmseCMR &lt;- sqrt(mseCMR)
+  rmseCMR
+
+
+  # Simulation of BBS data to quantify uncertainty in relative abundance
+
+  nSamplesAbund &lt;- 700 #1700 are stored
+  nSimulationsAbund &lt;- 10
+  #\dontrun{
+  #  nSamplesAbund &lt;- 1700
+  #}
+  # Storage matrix for samples
+  abundMCSample &lt;- matrix(NA, nSamplesAbund, nSimulationsAbund)
+  summaryAbund &lt;- data.frame(Simulation = 1:nSimulationsAbund, True = trueMC,
+                             mean = NA, se = NA, lcl = NA, ucl = NA)
+  for (r in 1:nSimulationsAbund) {
+    cat("Simulation",r,"of",nSimulationsAbund,"\n")
+    row0 &lt;- nrow(abundExamples[[r]]) - nSamplesAbund
+    results &lt;- estStrength(originRelAbund = abundExamples[[r]], psi = psiTrue,
+                     originDist = originDist, targetDist = targetDist,
+                     row0 = row0, nSamples = nSamplesAbund, verbose = 1)
+    abundMCSample[ , r] &lt;- results$MC$sample
+    summaryAbund$mean[r] &lt;- results$MC$mean
+    summaryAbund$se[r] &lt;- results$MC$se
+    # Calculate confidence intervals using quantiles of sampled MC
+    summaryAbund[r, c('lcl', 'ucl')] &lt;- results$MC$simpleCI
+  }
+
+  summaryAbund &lt;- transform(summaryAbund, coverage = (True &gt;= lcl &amp; True &lt;= ucl))
+  summaryAbund
+  summary(summaryAbund)
+  biasAbund &lt;- mean(summaryAbund$mean) - trueMC
+  biasAbund
+  mseAbund &lt;- mean((summaryAbund$mean - trueMC)^2)
+  mseAbund
+  rmseAbund &lt;- sqrt(mseAbund)
+  rmseAbund
+
+  # Ovenbird example with GL and GPS data
+  data(OVENdata) # Ovenbird
+
+  nSamplesGLGPS &lt;- 100 # Number of bootstrap iterations, set low for example
+
+  # Estimate transition probabilities
+  Combined.psi&lt;-estTransition(isGL=OVENdata$isGL, #Light-level geolocator (T/F)
+                              isTelemetry = !OVENdata$isGL,
+                  geoBias = OVENdata$geo.bias, # Light-level GL location bias
+                  geoVCov = OVENdata$geo.vcov, # Location covariance matrix
+                  targetSites = OVENdata$targetSites, # Nonbreeding/target sites
+                  originSites = OVENdata$originSites, # Breeding/origin sites
+                  originPoints = OVENdata$originPoints, # Capture Locations
+                  targetPoints = OVENdata$targetPoints, #Device target locations
+                  verbose = 3,   # output options
+                  nSamples = nSamplesGLGPS, # This is set low for example
+                  resampleProjection = sf::st_crs(OVENdata$targetPoints),
+                  nSim = 1000)
+
+  # Can estimate MC from previous psi estimate
+  Combo.MC1 &lt;- estStrength(targetDist = OVENdata$targetDist, # Distance matrix
+                           originDist = OVENdata$originDist, # Distance matrix
+                           targetSites = OVENdata$targetSites, # Target sites
+                           originSites = OVENdata$originSites, # Breeding sites
+                           psi = Combined.psi,
+                           originRelAbund = OVENdata$originRelAbund,
+                           nSamples = nSamplesGLGPS,
+                           sampleSize = nrow(OVENdata$targetPoints))
+  Combo.MC1
+
+  # Doesn't have to be an estPsi object - can simply be array of psi samples
+  Combo.MC2 &lt;- estStrength(targetDist = OVENdata$targetDist,
+                           originDist = OVENdata$originDist,
+                           targetSites = OVENdata$targetSites,
+                           originSites = OVENdata$originSites,
+                           psi = Combined.psi$psi$sample, # Array of samples
+                           originRelAbund = OVENdata$originRelAbund,
+                           nSamples = nSamplesGLGPS,
+                           sampleSize = nrow(OVENdata$targetPoints))
+  Combo.MC2
+
+</code></pre>
+
+
+</div>

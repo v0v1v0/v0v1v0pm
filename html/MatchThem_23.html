@@ -1,0 +1,128 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>weightthem</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Weights Multiply Imputed Datasets</h2>
+
+<h3>Description</h3>
+
+<p><code>weightthem()</code> performs weighting in the supplied multiply imputed datasets, given as <code>mids</code> or <code>amelia</code> objects, by running <code>WeightIt::weightit()</code> on each of the multiply imputed datasets with the supplied arguments.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">weightthem(formula, datasets, approach = "within", method = "glm", ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>A <code>formula</code> of the form <code>z ~ x1 + x2</code>, where <code>z</code> is the exposure and <code>x1</code> and <code>x2</code> are the covariates to be balanced, which is passed directly to <code>WeightIt::weightit()</code> to specify the propensity score model or treatment and covariates to be used to estimate the weights. See <code>WeightIt::weightit()</code> for details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>datasets</code></td>
+<td>
+<p>The datasets containing the exposure and covariates mentioned in the <code>formula</code>. This argument must be an object of the <code>mids</code> or <code>amelia</code> class, which is typically produced by a previous call to <code>mice()</code> from the <span class="pkg">mice</span> package or to <code>amelia()</code> from the <span class="pkg">Amelia</span> package (the <span class="pkg">Amelia</span> package is designed to impute missing data in a single cross-sectional dataset or in a time-series dataset, currently, the <span class="pkg">MatchThem</span> package only supports the former datasets).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>approach</code></td>
+<td>
+<p>The approach used to combine information in multiply imputed datasets. Currently, <code>"within"</code> (estimating weights within each dataset), <code>"across"</code> (estimating propensity scores within each dataset, averaging them across datasets, and computing a single set of weights based on that to be applied to all datasets), and <code>"apw"</code> (or averaging the probability weights, estimating weights within each dataset and averaging them across datasets) approaches are available. The default is <code>"within"</code>, which has been shown to have superior performance in most cases.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>The method used to estimate weights. See <code>WeightIt::weightit()</code> for allowable options. Only methods that produce a propensity score (<code>"glm"</code>, <code>"gbm"</code>, <code>"ipt"</code> <code>"cbps"</code>, <code>"super"</code>, and <code>"bart"</code>) are compatible with the <code>"across"</code> approach). The default is <code>"glm"</code> propensity score weighting using logistic regression propensity scores.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional arguments to be passed to <code>weightit()</code>. see <code>WeightIt::weightit()</code> for more details.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>If an <code>amelia</code> object is supplied to <code>datasets</code>, it will be transformed into a <code>mids</code> object for further use. <code>weightthem()</code> works by calling <code>mice::complete()</code> on the <code>mids</code> object to extract a complete dataset, and then calls <code>WeightIt::weightit()</code> on each dataset, storing the output of each <code>weightit()</code> call and the <code>mids</code> in the output. All arguments supplied to <code>weightthem()</code> except <code>datasets</code> and <code>approach</code> are passed directly to <code>weightit()</code>. With the <code>"across"</code> approach, the estimated propensity scores are averaged across imputations and re-supplied to another set of calls to <code>weightit()</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of the <code>wimids()</code> (weighted multiply imputed datasets) class, which includes the supplied <code>mids</code> object (or an <code>amelia</code> object transformed into a <code>mids</code> object if supplied) and the output of the calls to <code>weightit()</code> on each multiply imputed dataset.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Farhad Pishgar and Noah Greifer
+</p>
+
+
+<h3>References</h3>
+
+<p>Stef van Buuren and Karin Groothuis-Oudshoorn (2011). <code>mice</code>: Multivariate Imputation by Chained Equations in <code>R</code>. <em>Journal of Statistical Software</em>, 45(3): 1-67. <a href="https://doi.org/10.18637/jss.v045.i03">doi:10.18637/jss.v045.i03</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>wimids</code>
+</p>
+<p><code>with()</code>
+</p>
+<p><code>pool()</code>
+</p>
+<p><code>matchthem()</code>
+</p>
+<p><code>WeightIt::weightit()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">#1
+
+#Loading the dataset
+data(osteoarthritis)
+
+#Multiply imputing the missing values
+imputed.datasets &lt;- mice::mice(osteoarthritis, m = 5)
+
+#Estimating weights of observations in the multiply imputed datasets
+weighted.datasets &lt;- weightthem(OSP ~ AGE + SEX + BMI + RAC + SMK,
+                                imputed.datasets,
+                                approach = 'within',
+                                method = 'glm',
+                                estimand = 'ATT')
+
+#2
+
+#Loading the dataset
+data(osteoarthritis)
+
+#Multiply imputing the missing values
+imputed.datasets &lt;- Amelia::amelia(osteoarthritis, m = 5,
+                                   noms = c("SEX", "RAC", "SMK", "OSP", "KOA"))
+
+#Estimating weights of observations in the multiply imputed datasets
+weighted.datasets &lt;- weightthem(OSP ~ AGE + SEX + BMI + RAC + SMK,
+                                imputed.datasets,
+                                approach = 'within',
+                                method = 'glm',
+                                estimand = 'ATT')
+</code></pre>
+
+
+</div>

@@ -1,0 +1,304 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>uncert</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+Uncertainty estimation functions
+</h2>
+
+<h3>Description</h3>
+
+<p>Functions for estimating measurement uncertainty from standard uncertainties
+and either sensitivity coefficients or (for some methods) expressions or functions. 
+Correlation is supported via either a correlation or covariance matrix.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">   uncert(obj, ...)
+
+   ## Default S3 method:
+uncert(obj, c, method = c("GUM", "MC"), cor, 
+            cov, distrib=NULL, distrib.pars=NULL, B=200, x=NULL, keep.x = TRUE, 
+            u=obj, ...)
+
+   ## S3 method for class 'expression'
+uncert(obj, x, u, method=c("GUM", "NUM", "kragten", "k2", "MC"), 
+            cor, cov, distrib=NULL, distrib.pars=NULL, 
+            B=200, delta=0.01, keep.x = TRUE, ...) 
+
+   ## S3 method for class 'function'
+uncert(obj, x, u, method=c("NUM", "kragten", "k2", "MC"), 
+            cor, cov, distrib=NULL, distrib.pars=NULL, 
+            B=200, delta=0.01, keep.x = TRUE, ...)
+
+   ## S3 method for class 'formula'
+uncert(obj, x, u, method=c("GUM", "NUM", "kragten", "k2", "MC"), 
+            cor, cov, distrib=NULL, distrib.pars=NULL, 
+            B=200, delta=0.01, keep.x = TRUE, ...)
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>obj</code></td>
+<td>
+<p>An R object used for method dispatch; see below. Methods currently exist for 
+numeric vector, expression, function, or formula</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>u</code></td>
+<td>
+<p>For the default method, a numeric vector of standard uncertainties. For 
+the formula or expression methods, a named list of standard uncertainties.Note that 
+for the default method, <code>u</code> is set to the value of <code>obj</code>, allowing 
+specification of either as the <em>first</em> argument</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>c</code></td>
+<td>
+<p>A numeric vector of senstivity coefficients.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>For the expression or formula methods, an R object which can be used 
+as an environment by <code>eval</code>.  For the function method, a list of 
+parameters supplied to FUN via <code>do.call</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>Method of uncertainty evaluation. The current list of methods is:
+</p>
+
+<dl>
+<dt>GUM</dt>
+<dd>
+<p>First-order error propagation (the “law of propagation of uncertainty”) 
+as implemented by the GUM.</p>
+</dd>
+<dt>NUM</dt>
+<dd>
+<p>Numerical differentiation using a simple small step size.</p>
+</dd>
+<dt>kragten</dt>
+<dd>
+<p>Numerical estimation of uncertainty following Kragten (Kragten (1994).</p>
+</dd>
+<dt>k2</dt>
+<dd>
+<p>A symmetric modification of Kragten's approach described by Ellison (Ellison (2005)).</p>
+</dd>
+<dt>MC</dt>
+<dd>
+<p>Monte Carlo simulation.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cor, cov</code></td>
+<td>
+<p>A (square, symmetric) correlation or covariance matrix, respectively.
+If neither is specified, <code>cor</code> is set to the identity matrix.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distrib</code></td>
+<td>
+<p>For <code>method="MC"</code>, a character vector of length 
+<code>length(x)</code> or a named list of names of distribution functions associated 
+with <code>u</code>. See Details for defaults. The list format may include 
+user-specified functions. Silently ignored for other methods.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>distrib.pars</code></td>
+<td>
+<p>For <code>method="MC"</code>, a list of 
+lists of parameters describing the distributions associated with <code>u</code>
+to be passed to the relevant distribution function. If <code>distrib</code> is present
+but <code>distrib.pars</code> is not, neither are included in the return value
+unless <code>method="MC"</code>. See Details for defaults when <code>method="MC"</code>.
+Silently ignored for other methods.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>B</code></td>
+<td>
+<p>Number of Monte Carlo replicates.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>delta</code></td>
+<td>
+<p>Step size for numerical differentiation.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep.x</code></td>
+<td>
+<p>For <code>method="MC"</code>, if <code>keepx=TRUE</code>, the simulated replicates of 
+<code>x</code> are included in the return object.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Additional parameters to be passed to a function (for the function method)
+or used in an expression (for expression or formula method).</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>The default “GUM” method applies first-order error propagation principles to estimate 
+a combined standard uncertainty from a set of sensitivity coefficients and <em>either</em> a 
+set of standard uncertainties and a correlation matrix (which defaults to an identity matrix) 
+<em>or</em> a covariance matrix. Both options use the same calculation, which is simply 
+<code> (t(c) %*% cov) %*% c </code>; standard uncertainties are  first combined with 
+the correlation matrix provided to form the covariance matrix. Since the correlation 
+matrix defaults to the identity matrix, the default is combination without 
+correlation.
+</p>
+<p>The default method takes <code>obj</code> as a vector of uncertainty contributions unless <code>u</code> 
+is specified, in which case <code>u</code> is used. It is not necessary to specify both. 
+The expression method requires <code>obj</code> to be a differentiable R expression which can 
+be evaluated in the environment <code>x</code> to provide a numeric value.
+For the function method, <code>obj</code> must be an R function which takes parameters from x and 
+returns a numeric value.
+For the formula method, <code>obj</code> must be a formula with no left-hand side (e.g. <code>~a*x+b*x^2</code>) 
+which can be evaluated in the environment <code>x</code> to provide a numeric value.
+</p>
+<p>The formula and expression methods first calculate derivatives for the expression or formula, 
+evaluate them using the supplied values of <code>x</code> and then pass the resulting sensitivity 
+coefficients, with supplied <code>u</code>, <code>cor</code> or <code>cov</code> to uncert.default.
+</p>
+<p>The derivatives for the “GUM” method (formula and expression methods only) are algorithmic 
+derivatives (that is, algebraic or analytical derivatives) obtained using <code>deriv</code> 
+applied to <code>expr</code> and <code>formula</code>.  
+</p>
+<p>Numerical derivatives are computed in different ways depending on the method specified: 
+</p>
+<p>- For <code>method="NUM"</code>, the derivatives are calculated as 
+<code class="reqn">(f(x+delta*u)-f(x-delta*u))/(2*delta*u)</code>.
+</p>
+<p>- For <code>method="kragten"</code>, derivatives are calculated as 
+<code class="reqn">(f(x+u*sign(delta))-f(x))/u</code>.
+</p>
+<p>- For <code>method="k2"</code>, derivatives are calculated as 
+<code class="reqn">(f(x+u)-f(x-u))/(2*u)</code>.
+</p>
+<p><code>"NUM"</code> is likely to give a close approximation to analytical differentiation provided that 
+<code>delta</code> is appreciably less than 1 but not so small as to give step sizes near machine 
+precision. <code>"k2"</code> is equivalent to <code>"NUM"</code> with <code>delta=1.0</code>. Both will give zero coefficients
+at stationary points (e.g minima), leading to under-estimation of uncertainty if 
+the curvature is large. <code>"kragten"</code> uses a <em>deliberately</em> one-sided (and large) step to 
+avoid this problem; as a result, <code>"kragten"</code> is a poorer (sometimes much poorer) estimate of
+the analytical differential but likely a better approximation to the truth.
+</p>
+<p>Since these methods rely on <code>u</code>, if <code>u</code> is unspecified and <code>cov</code> is 
+provided, <code>u</code> is extracted from <code>cov</code> (using <code>sqrt(diag(cov))</code>). It is
+assumed that the row and column order in <code>cov</code> is identical to the order of named 
+parameters in <code>x</code>.
+</p>
+<p>Derivatives (and uncertainty contributions) are computed for all parameters in 
+<code>x</code>. Additional parameters used in <code>FUN</code>, <code>expr</code> or <code>formula</code>
+may be included in <code>...</code>; these will be treated as constants in the 
+uncertainty calculation. 
+</p>
+<p>If <code>distrib</code> is missing, or if it is a list with some members missing, the distribution 
+is assumed Normal and <code>distrib$name</code> is set to <code>"norm"</code>. Similarly, if <code>distrib.pars</code>
+or a member of it is missing, the default parameters for <code>x$name</code> are 
+<code>list(mean=x$name, sd=u$name)</code>. If the list is not named, <code>names(x)</code> are used 
+(so the list must be in order of <code>names(x)</code>).
+</p>
+<p>If <code>method="MC"</code>, <code>uncert</code> calls <code>uncertMC</code>. Distributions and 
+distribution parameters are required and B must be present and &gt;1. See <code>uncertMC</code>
+for details of distribution specification. 
+</p>
+<p>For other evaluation methods, the distributions are silently ignored.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class ‘uncert’ or, for <code>method="MC"</code> of class ‘uncertMC’. 
+See <code>uncert-class</code> and <code>uncertMC-class</code> for details.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>S. L. R. Ellison <a href="mailto:s.ellison@lgc.co.uk">s.ellison@lgc.co.uk</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>JCGM 100 (2008) <em>Evaluation of measurement data - Guide to the expression
+of uncertainty in measurement</em>. <a href="http://www.bipm.org/utils/common/documents/jcgm/JCGM_100_2008_E.pdf">http://www.bipm.org/utils/common/documents/jcgm/JCGM_100_2008_E.pdf</a>. 
+(JCGM 100:2008 is a public domain copy of ISO/IEC <em>Guide to the expression
+of uncertainty in measurement</em> (1995) ). 
+</p>
+<p>Kragten, J. (1994) Calculating standard deviations and confidence intervals with 
+a universally applicable spreadsheet technique, Analyst, <b>119</b>, 2161-2166.
+</p>
+<p>Ellison, S. L. R. (2005) Including correlation effects in an improved spreadsheet 
+calculation of combined standard uncertainties, Accred. Qual. Assur. <b>10</b>, 338-343.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>uncert-class</code>,  <code>deriv</code>
+</p>
+<p>For <code>method="MC"</code> see <code>uncertMC</code> and <code>uncertMC-class</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+  expr &lt;- expression(a+b*2+c*3+d/2)
+  x &lt;- list(a=1, b=3, c=2, d=11)
+  u &lt;- lapply(x, function(x) x/10)
+  u.expr&lt;-uncert(expr, x, u, method="NUM")
+  u.expr
+
+  #Compare with default:
+  uncert(u=c(0.1, 0.3, 0.2, 1.1), c=c(1.0, 2.0, 3.0, 0.5))
+  
+  #... or with function method
+  f &lt;- function(a,b,c,d) a+b*2+c*3+d/2
+  u.fun&lt;-uncert(f, x, u, method="NUM")
+  u.fun
+
+  #.. or with the formula method
+  u.form&lt;-uncert(~a+b*2+c*3+d/2, x, u, method="NUM")
+  u.form
+  
+  #An example with correlation
+  u.cor&lt;-diag(1,4)
+  u.cor[3,4]&lt;-u.cor[4,3]&lt;-0.5
+  u.formc&lt;-uncert(~a+b*2+c*3+d/2, x, u, method="NUM", cor=u.cor)
+  u.formc
+  
+  #A Monte Carlo example
+  #See uncertMC for a less linear example
+  u.formc.MC&lt;-uncert(~a+b*2+c*3+d/2, x, u, method="MC", cor=u.cor, B=200)
+  u.formc.MC
+</code></pre>
+
+
+</div>

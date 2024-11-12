@@ -1,0 +1,102 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mcparallelDo</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>mcparallelDo</h2>
+
+<h3>Description</h3>
+
+<p>This function creates a fork, 
+sets the variable named <code>targetValue</code> in the <code>targetEnvironment</code> to NULL,
+evaluates a segment of code evaluated in the fork, 
+and the result of the fork returned in a variable named <code>targetValue</code> in the <code>targetEnvironment</code> after the next top-level command completes.
+If there is an error in the code, the returned variable will be a <code>try-error</code>.
+These effects are accomplished via the automatic creation and destruction of a taskCallback and other functions inside the mcparallelDoManager.
+If job results have to be collected before you return to the top level, use mcparallelDoCheck.
+</p>
+<p>%mdpDo% Is an alternate form of calling the function, as if it were an assignment operator.  See examples.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mcparallelDo(code, targetValue, verbose = TRUE,
+  targetEnvironment = .GlobalEnv)
+
+targetValue %mcpDo% code
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>code</code></td>
+<td>
+<p>The code to evaluate within a fork wrapped in </p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetValue</code></td>
+<td>
+<p>A character element indicating the variable that the result of that job should be assigned to targetEnvironment</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>verbose</code></td>
+<td>
+<p>A boolean element; if TRUE the completion of the fork expr will be accompanied by a message</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>targetEnvironment</code></td>
+<td>
+<p>The environment in which you want targetValue to be created</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>If <code>verbose</code> is set to TRUE, then the <code>character</code> variable name of the job. This can be manually collected via mccollect or, if on Windows, an empty string.  If <code>verbose</code> is set to FALSE, then NULL.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Create data
+data(ToothGrowth)
+## Trigger mcparallelDo to perform analysis on a fork
+mcparallelDo({glm(len ~ supp * dose, data=ToothGrowth)},"interactionPredictorModel")
+## Do other things
+binaryPredictorModel &lt;- glm(len ~ supp, data=ToothGrowth)
+gaussianPredictorModel &lt;- glm(len ~ dose, data=ToothGrowth)
+## The result from mcparallelDo returns in your targetEnvironment, 
+## e.g. .GlobalEnv, when it is complete with a message (by default)
+summary(interactionPredictorModel)
+
+# Example of not returning a value until we return to the top level
+for (i in 1:10) {
+  if (i == 1) {
+    mcparallelDo({2+2}, targetValue = "output")
+  }
+  if (exists("output")) print(i)
+}
+
+# Example of getting a value without returning to the top level
+for (i in 1:10) {
+  if (i == 1) {
+    mcparallelDo({2+2}, targetValue = "output")
+  }
+  mcparallelDoCheck()
+  if (exists("output")) print(i)
+}
+
+# Example of dispatching as assignment
+targetValueWithoutQuotes %mcpDo% sample(LETTERS, 10)
+
+</code></pre>
+
+
+</div>

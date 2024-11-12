@@ -1,0 +1,98 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>MiRKAT.iQ</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>MiRKAT-iQ</h2>
+
+<h3>Description</h3>
+
+<p>Integrated quantile regression-based kernel association test.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">MiRKAT.iQ(Y, X, K, weight = c(0.25, 0.25, 0.25, 0.25))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>Y</code></td>
+<td>
+<p>A numeric vector of the continuous outcome variable.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>X</code></td>
+<td>
+<p>A numeric matrix for additional covariates that you want to adjust for.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>K</code></td>
+<td>
+<p>A list of n by n kernel matrices at a single n by n kernel matrix, where n is the sample size.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>weight</code></td>
+<td>
+<p>A length 4 vector specifying the weight for Cauchy combination, corresponding to wilcoxon/normal/inverselehmann/lehmann functions. The sum of the weight should be 1.</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>Returns a list containing the p values for single kernels, or the omnibus p-value if multiple candidate kernel matrices are provided.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Tianying Wang, Xiang Zhan.
+</p>
+
+
+<h3>References</h3>
+
+<p>Wang T, et al. (2021) Testing microbiome association using integrated quantile regression models. Bioinformatics (to appear).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+library(GUniFrac)
+library(quantreg)
+library(PearsonDS)
+library(MiRKAT)
+
+data(throat.tree)
+data(throat.otu.tab)
+
+## Create UniFrac and Bray-Curtis distance matrices 
+unifracs = GUniFrac(throat.otu.tab, throat.tree, alpha = c(1))$unifracs
+if (requireNamespace("vegan")) {
+ library(vegan)
+ BC= as.matrix(vegdist(throat.otu.tab, method="bray"))
+ Ds = list(w = unifracs[,,"d_1"], uw = unifracs[,,"d_UW"], BC = BC)
+} else {
+ Ds = list(w = unifracs[,,"d_1"], uw = unifracs[,,"d_UW"])
+}
+
+## Convert to kernels           
+Ks = lapply(Ds, FUN = function(d) D2K(d))
+covar = cbind(throat.meta$Age, as.numeric(throat.meta$Sex == "Male"))
+n = nrow(throat.meta)
+y = rnorm(n)
+result = MiRKAT.iQ(y, X = covar, K = Ks)
+
+</code></pre>
+
+
+</div>

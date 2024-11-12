@@ -1,0 +1,374 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>update.mvgam</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Update an existing <code>mvgam</code> object</h2>
+
+<h3>Description</h3>
+
+<p>This function allows a previously fitted <code>mvgam</code> model to be updated
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">## S3 method for class 'mvgam'
+update(
+  object,
+  formula,
+  trend_formula,
+  data,
+  newdata,
+  trend_model,
+  trend_map,
+  use_lv,
+  n_lv,
+  family,
+  share_obs_params,
+  priors,
+  chains,
+  burnin,
+  samples,
+  threads,
+  algorithm,
+  lfo = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>object</code></td>
+<td>
+<p><code>list</code> object returned from <code>mvgam</code>. See <code>mvgam()</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>formula</code></td>
+<td>
+<p>Optional new <code>formula</code> object. Note, <code>mvgam</code> currently does not support dynamic formula
+updates such as removal of specific terms with <code>- term</code>. When updating, the entire formula needs
+to be supplied</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trend_formula</code></td>
+<td>
+<p>An optional <code>character</code> string specifying the GAM process model formula. If
+supplied, a linear predictor will be modelled for the latent trends to capture process model evolution
+separately from the observation model. Should not have a response variable specified on the left-hand side
+of the formula (i.e. a valid option would be <code>~ season + s(year)</code>). Also note that you should not use
+the identifier <code>series</code> in this formula to specify effects that vary across time series. Instead you should use
+<code>trend</code>. This will ensure that models in which a <code>trend_map</code> is supplied will still work consistently
+(i.e. by allowing effects to vary across process models, even when some time series share the same underlying
+process model). This feature is only currently available for <code>RW()</code>, <code>AR()</code> and <code>VAR()</code> trend models.
+In <code>nmix()</code> family models, the <code>trend_formula</code> is used to set up a linear predictor for the underlying
+latent abundance. Be aware that it can be very challenging to simultaneously estimate intercept parameters
+for both the observation mode (captured by <code>formula</code>) and the process model (captured by <code>trend_formula</code>).
+Users are recommended to drop one of these using the <code>- 1</code> convention in the formula right hand side.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>data</code></td>
+<td>
+<p>A <code>dataframe</code> or <code>list</code> containing the model response variable and covariates
+required by the GAM <code>formula</code> and optional <code>trend_formula</code>. Should include columns:
+#'</p>
+
+<ul>
+<li>
+<p><code>series</code> (a <code>factor</code> index of the series IDs; the number of levels should be identical
+to the number of unique series labels (i.e. <code>n_series = length(levels(data$series))</code>))
+</p>
+</li>
+<li>
+<p><code>time</code> (<code>numeric</code> or <code>integer</code> index of the time point for each observation).
+For most dynamic trend types available in <code>mvgam</code> (see argument <code>trend_model</code>), time should be
+measured in discrete, regularly spaced intervals (i.e. <code>c(1, 2, 3, ...)</code>). However you can
+use irregularly spaced intervals if using <code>trend_model = CAR(1)</code>, though note that any
+temporal intervals that are exactly <code>0</code> will be adjusted to a very small number
+(<code>1e-12</code>) to prevent sampling errors. See an example of <code>CAR()</code> trends in <code>CAR</code>
+</p>
+</li>
+</ul>
+<p>Should also include any other variables to be included in the linear predictor of <code>formula</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>newdata</code></td>
+<td>
+<p>Optional <code>dataframe</code> or <code>list</code> of test data containing at least <code>series</code> and <code>time</code>
+in addition to any other variables included in the linear predictor of <code>formula</code>. If included, the
+observations in variable <code>y</code> will be set to <code>NA</code> when fitting the model so that posterior
+simulations can be obtained</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trend_model</code></td>
+<td>
+<p><code>character</code> or  <code>function</code> specifying the time series dynamics for the latent trend. Options are:
+</p>
+
+<ul>
+<li> <p><code>None</code> (no latent trend component; i.e. the GAM component is all that contributes to the linear predictor,
+and the observation process is the only source of error; similarly to what is estimated by <code>gam</code>)
+</p>
+</li>
+<li> <p><code>'RW'</code> or <code>RW()</code>
+</p>
+</li>
+<li> <p><code>'AR1'</code> or <code>AR(p = 1)</code>
+</p>
+</li>
+<li> <p><code>'AR2'</code> or <code>AR(p = 2)</code>
+</p>
+</li>
+<li> <p><code>'AR3'</code> or <code>AR(p = 3)</code>
+</p>
+</li>
+<li> <p><code>'CAR1'</code> or <code>CAR(p = 1)</code>
+</p>
+</li>
+<li> <p><code>'VAR1'</code>  or <code>VAR()</code>(only available in <code>Stan</code>)
+</p>
+</li>
+<li> <p><code style="white-space: pre;">⁠'PWlogistic⁠</code>, <code>'PWlinear'</code> or <code>PW()</code> (only available in <code>Stan</code>)
+</p>
+</li>
+<li> <p><code>'GP'</code> or <code>GP()</code> (Gaussian Process with squared exponential kernel;
+only available in <code>Stan</code>)</p>
+</li>
+</ul>
+<p>For all trend types apart from <code>GP()</code>, <code>CAR()</code> and <code>PW()</code>, moving average and/or correlated
+process error terms can also be estimated (for example, <code>RW(cor = TRUE)</code> will set up a
+multivariate Random Walk if <code>n_series &gt; 1</code>). See mvgam_trends for more details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>trend_map</code></td>
+<td>
+<p>Optional <code>data.frame</code> specifying which series should depend on which latent
+trends. Useful for allowing multiple series to depend on the same latent trend process, but with
+different observation processes. If supplied, a latent factor model is set up by setting
+<code>use_lv = TRUE</code> and using the mapping to set up the shared trends. Needs to have column names
+<code>series</code> and <code>trend</code>, with integer values in the <code>trend</code> column to state which trend each series
+should depend on. The <code>series</code> column should have a single unique entry for each series in the
+data (names should perfectly match factor levels of the <code>series</code> variable in <code>data</code>). Note that
+if this is supplied, the intercept parameter in the process model will NOT be automatically suppressed.
+See examples for details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>use_lv</code></td>
+<td>
+<p><code>logical</code>. If <code>TRUE</code>, use dynamic factors to estimate series'
+latent trends in a reduced dimension format. Only available for
+<code>RW()</code>, <code>AR()</code> and <code>GP()</code> trend models. Defaults to <code>FALSE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n_lv</code></td>
+<td>
+<p><code>integer</code> the number of latent dynamic factors to use if <code>use_lv == TRUE</code>.
+Cannot be <code>&gt; n_series</code>. Defaults arbitrarily to <code>min(2, floor(n_series / 2))</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>family</code></td>
+<td>
+<p><code>family</code> specifying the exponential observation family for the series. Currently supported
+families are:
+</p>
+
+<ul>
+<li>
+<p><code>gaussian()</code> for real-valued data
+</p>
+</li>
+<li>
+<p><code>betar()</code> for proportional data on <code style="white-space: pre;">⁠(0,1)⁠</code>
+</p>
+</li>
+<li>
+<p><code>lognormal()</code> for non-negative real-valued data
+</p>
+</li>
+<li>
+<p><code>student_t()</code> for real-valued data
+</p>
+</li>
+<li>
+<p><code>Gamma()</code> for non-negative real-valued data
+</p>
+</li>
+<li>
+<p><code>bernoulli()</code> for binary data
+</p>
+</li>
+<li>
+<p><code>poisson()</code> for count data
+</p>
+</li>
+<li>
+<p><code>nb()</code> for overdispersed count data
+</p>
+</li>
+<li>
+<p><code>binomial()</code> for count data with imperfect detection when the number of trials is known;
+note that the <code>cbind()</code> function must be used to bind the discrete observations and the discrete number
+of trials
+</p>
+</li>
+<li>
+<p><code>beta_binomial()</code> as for <code>binomial()</code> but allows for overdispersion
+</p>
+</li>
+<li>
+<p><code>nmix()</code> for count data with imperfect detection when the number of trials
+is unknown and should be modeled via a State-Space N-Mixture model.
+The latent states are Poisson, capturing the 'true' latent
+abundance, while the observation process is Binomial to account for
+imperfect detection.
+See <code>mvgam_families</code> for an example of how to use this family</p>
+</li>
+</ul>
+<p>Note that only <code>nb()</code> and <code>poisson()</code> are available if using <code>JAGS</code> as the backend.
+Default is <code>poisson()</code>.
+See <code>mvgam_families</code> for more details</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>share_obs_params</code></td>
+<td>
+<p><code>logical</code>. If <code>TRUE</code> and the <code>family</code>
+has additional family-specific observation parameters (e.g. variance components in
+<code>student_t()</code> or <code>gaussian()</code>, or dispersion parameters in <code>nb()</code> or <code>betar()</code>),
+these parameters will be shared across all series. This is handy if you have multiple
+time series that you believe share some properties, such as being from the same
+species over different spatial units. Default is <code>FALSE</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priors</code></td>
+<td>
+<p>An optional <code>data.frame</code> with prior
+definitions (in JAGS or Stan syntax). if using Stan, this can also be an object of
+class <code>brmsprior</code> (see. <code>prior</code> for details). See get_mvgam_priors and
+'Details' for more information on changing default prior distributions</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>chains</code></td>
+<td>
+<p><code>integer</code> specifying the number of parallel chains for the model. Ignored
+if <code>algorithm %in% c('meanfield', 'fullrank', 'pathfinder', 'laplace')</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>burnin</code></td>
+<td>
+<p><code>integer</code> specifying the number of warmup iterations of the Markov chain to run
+to tune sampling algorithms. Ignored
+if <code>algorithm %in% c('meanfield', 'fullrank', 'pathfinder', 'laplace')</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>samples</code></td>
+<td>
+<p><code>integer</code> specifying the number of post-warmup iterations of the Markov chain to run for
+sampling the posterior distribution</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>threads</code></td>
+<td>
+<p><code>integer</code> Experimental option to use multithreading for within-chain
+parallelisation in <code>Stan</code>. We recommend its use only if you are experienced with
+<code>Stan</code>'s <code>reduce_sum</code> function and have a slow running model that cannot be sped
+up by any other means. Only available for some families(<code>poisson()</code>, <code>nb()</code>, <code>gaussian()</code>) and
+when using <code>Cmdstan</code> as the backend</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>algorithm</code></td>
+<td>
+<p>Character string naming the estimation approach to use.
+Options are <code>"sampling"</code> for MCMC (the default), <code>"meanfield"</code> for
+variational inference with factorized normal distributions,
+<code>"fullrank"</code> for variational inference with a multivariate normal
+distribution, <code>"laplace"</code> for a Laplace approximation (only available
+when using cmdstanr as the backend) or <code>"pathfinder"</code> for the pathfinder
+algorithm (only currently available when using cmdstanr as the backend).
+Can be set globally for the current <span style="font-family: Courier New, Courier; color: #666666;"><b>R</b></span> session via the
+<code>"brms.algorithm"</code> option (see <code>options</code>). Limited testing
+suggests that <code>"meanfield"</code> performs best out of the non-MCMC approximations for
+dynamic GAMs, possibly because of the difficulties estimating covariances among the
+many spline parameters and latent trend parameters. But rigorous testing has not
+been carried out</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>lfo</code></td>
+<td>
+<p>Logical indicating whether this is part of a call to lfo_cv.mvgam. Returns a
+lighter version of the model with no residuals and fewer monitored parameters to speed up
+post-processing. But other downstream functions will not work properly, so users should always
+leave this set as <code>FALSE</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Other arguments to be passed to <code>mvgam</code></p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>A <code>list</code> object of class <code>mvgam</code> containing model output, the text representation of the model file,
+the mgcv model output (for easily generating simulations at
+unsampled covariate values), Dunn-Smyth residuals for each series and key information needed
+for other functions in the package. See <code>mvgam-class</code> for details.
+Use <code>methods(class = "mvgam")</code> for an overview on available methods.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Simulate some data and fit a Poisson AR1 model
+simdat &lt;- sim_mvgam(n_series = 1, trend_model = AR())
+mod &lt;- mvgam(y ~ s(season, bs = 'cc'),
+             trend_model = AR(),
+             noncentred = TRUE,
+             data = simdat$data_train,
+             chains = 2)
+summary(mod)
+conditional_effects(mod, type = 'link')
+
+# Update to an AR2 model
+updated_mod &lt;- update(mod, trend_model = AR(p = 2),
+                      noncentred = TRUE)
+summary(updated_mod)
+conditional_effects(updated_mod, type = 'link')
+
+# Now update to a Binomial AR1 by adding information on trials
+# requires that we supply newdata that contains the 'trials' variable
+simdat$data_train$trials &lt;- max(simdat$data_train$y) + 15
+updated_mod &lt;- update(mod,
+                      formula = cbind(y, trials) ~ s(season, bs = 'cc'),
+                      noncentred = TRUE,
+                      data = simdat$data_train,
+                      family = binomial())
+summary(updated_mod)
+conditional_effects(updated_mod, type = 'link')
+
+</code></pre>
+
+
+</div>

@@ -1,0 +1,192 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>nlmeCurve</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Plot individual MNREAD fitted curves as estimated by a nonlinear mixed-effect (NLME) modeling.</h2>
+
+<h3>Description</h3>
+
+<p>This function uses the NLME model created from <code>nlmeModel</code> to plot individual curves and Critical Print Size (CPS).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">nlmeCurve(nlme.model, displayCPS = TRUE, CPScriterion = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>nlme.model</code></td>
+<td>
+<p>The object returned by <code>nlmeModel</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>displayCPS</code></td>
+<td>
+<p>Optional argument to display the CPS on the individuals curves. Default is TRUE. If set to FALSE, the CPS won't be plotted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>CPScriterion</code></td>
+<td>
+<p>Optional argument to specify a criterion for CPS estimation. The default criterion value is '90 of MRS'. This criterion can vary from 75 to 95 of MRS and should only be modified for specific purposes, as discussed in Cheung et al. 2008</p>
+</td>
+</tr>
+</table>
+<h3>Value</h3>
+
+<p>The function returns a plot of reading speed (in log words/min) as a function of print size (in logMAR). 
+If displayCPS is not specified, the Critical Print Size will be marked as an inverted triangle.
+</p>
+
+
+<h3>Notes</h3>
+
+<p>Print size shown on the plot(s) have been corrected for non-standard testing viewing distance.
+</p>
+<p>For more details on the nlme fit, see:\
+Cheung SH, Kallie CS, Legge GE, Cheong AM. Nonlinear mixed-effects modeling of MNREAD data. 
+Invest Ophthalmol Vis Sci. 2008;49:828–835. doi: 10.1167/iovs.07-0555.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>nlmeModel</code> to fit MNREAD data using a nonlinear mixed-effect (NLME) modeling
+</p>
+<p><code>nlmeParam</code> to estimate Maximum Reading Speed (MRS) and Critical Print Size (CPS) from the NLME model
+</p>
+<p><code>mnreadCurve</code> for standard MNREAD curve
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R"># inspect the structure of the dataframe
+head(data_low_vision, 10)
+
+#------
+
+# restrict dataset to one MNREAD test per subject (regular polarity only)
+data_regular &lt;- data_low_vision %&gt;%
+    filter (polarity == "regular")
+
+# run the NLME model for data grouped by subject
+ nlme_model &lt;- nlmeModel(data_regular, ps, vd, rt, err, subject) 
+
+#------
+
+# plot MNREAD curves and CPS with a default CPS criterion of '90 of MRS' 
+ nlmeCurve(nlme_model) 
+
+# plot MNREAD curves without the CPS for a default CPS criterion of '90 of MRS' 
+ nlmeCurve(nlme_model, FALSE) 
+
+# plot MNREAD curves and CPS with a specific CPS criterion of '80 of MRS'
+ nlmeCurve(nlme_model, TRUE, 0.8) 
+
+#------
+
+# Once created, the NLME curve can be further customized using ggplot2 
+
+# plot the NLME curve 
+ my_plot &lt;- nlmeCurve(nlme_model) 
+
+# display my.plot
+ print(my_plot) 
+
+# modify my.plot
+ my_new_plot &lt;- my_plot + 
+ # overwrites the raw data points
+    geom_point(data = nlme_model[[1]], aes(x=correct_ps, y = rs), size = 4) + 
+ # changes the colors of the curve and raw data (effective only for nested designs)
+    scale_color_brewer(palette="Set1") + 
+ # changes the colors of the CPS diamond (effective only for nested designs)
+    scale_fill_brewer(palette="Set1")  + 
+ # modifies the aspect of the x-axis
+    scale_x_continuous(breaks = seq (-0.5,2.5,0.4))  
+
+# display my.new.plot                                                                        
+ print(my_new_plot) 
+
+
+#------
+
+# For very large datasets, it can be usefull to plot only selected facets to inspect individual fit
+# To do so, one needs to restrict the dataframe called in each of the three layers of the plot
+
+# list of subject names to keep
+subjects_to_keep &lt;- paste ("s", 1:4, sep = "")
+
+# first filter the original data points (data called in the first layer)
+ my_plot$data &lt;- my_plot$data %&gt;%
+    filter(subject %in% subjects_to_keep) %&gt;%
+    droplevels() 
+    
+# then filter the fitted data points (data called in the second layer)
+ my_plot$layers[[2]]$data &lt;- my_plot$layers[[2]]$data %&gt;% 
+    filter(subject %in% subjects_to_keep) %&gt;% 
+    droplevels() 
+  
+# and finally, if 'displayCPS' was set to TRUE, filter the data used to display the CPS
+ my_plot$layers[[4]]$data &lt;- my_plot$layers[[4]]$data %&gt;% 
+    filter(subject %in% subjects_to_keep) %&gt;%
+    droplevels() 
+    
+# plot the restricted my.plot
+ my_plot 
+
+#------
+
+# It is also possible to export the curves in a pdf file running over several pages 
+# and select the desired number of curves per page 
+
+# set the desired number of subjects by page 
+facet_nb = 4
+
+# count the resulting number of pages 
+num_pages = ceiling(length(unique(data_low_vision$subject))/facet_nb)
+
+# identify the list of subject names
+subjects_to_plot &lt;- unique(as.character(data_low_vision$subject))
+
+# split the list into chunks the same size as the number of subjects per page
+subjects_to_plot_splitted &lt;- split(subjects_to_plot, ceiling(seq_along(subjects_to_plot)/facet_nb))
+
+# create a pdf and wrap plots over several pages
+ pdf("nlme-MNREAD-curves.pdf",
+              width = 10.5, height = 8,
+              paper="USr", useDingbats=T)
+              
+              for (i in seq(num_pages))
+              {
+                 my.plot &lt;- nlmeCurve(nlme_model, displayCPS = F) 
+                 
+                 # filter the original data points for the selected chunk of subjects
+                 my.plot$data &lt;- my.plot$data %&gt;%
+                 filter(subject %in% subjects_to_plot_splitted[[i]]) %&gt;%
+                 droplevels()
+                 
+                 # filter the fitted data points for the selected chunk of subjects
+                 my.plot$layers[[2]]$data &lt;- my.plot$layers[[2]]$data %&gt;%
+                 filter(subject %in% subjects_to_plot_splitted[[i]]) %&gt;%
+                 droplevels()
+                 
+                 print (my.plot + geom_line(colour = "red"))
+              }
+              
+              dev.off()  
+              
+              
+
+</code></pre>
+
+
+</div>

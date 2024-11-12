@@ -1,0 +1,149 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>get.backup</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Text backups of function source code</h2>
+
+<h3>Description</h3>
+
+<p><code>get.backup</code> retrieves backups of a function or character object. <code>create.backups</code> creates backup files for all hitherto-unbacked-up functions in a search environment. For <code>get.backup</code> to work, all backups must have been created using the <code>fixr</code> system (or <code>create.backups</code>). <code>read.bkind</code> shows the names of objects with backups, and gives their associated filenames.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">get.backup( name, where=1, rev=TRUE, zap.name=TRUE, unlength=TRUE)
+create.backups( pos=1)
+read.bkind( where=1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code> name</code></td>
+<td>
+<p>function name (character)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> where, pos</code></td>
+<td>
+<p>position in search path (character or numeric), or e.g. <code>..mypack</code> for maintained package <span class="pkg">mypack</span>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> rev</code></td>
+<td>
+<p>if TRUE, most recent backup comes first in the return value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> zap.name</code></td>
+<td>
+<p>if TRUE, the tag <code>"funname" &lt;- </code> at the start of each backup is removed</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> unlength</code></td>
+<td>
+<p>if TRUE, the first line of each backup is removed iff it consists only of a number equal to 1+length( object). This matches the (current) format of character object backups.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p><code>fixr</code> and <code>FF</code> are able to maintain text-file backups of source code, in a directory ".Backup.mvb" below the task directory. The directory will contain a file called "index", plus files BU1, BU2, etc. "index" shows the correspondence between function names and BUx files. Each BUx file contains multiple copies of the source code, with the oldest first. Even if a function is removed (or <code>move</code>d) from the workspace, its BUx file and "index" entry are not deleted.
+</p>
+<p>The number of backups kept is controlled by <code>options(backup.fix)</code>, a numeric vector of length 2. The first element is how many backups to keep from the current R session. The second is how many previous R sessions to keep the final version of the source code from. Older versions get discarded. I use <code>c(5,2)</code>. If you want to use the backup facility, you'll need to set this option in your <code>.First</code>. If the option is not set, no backups happen. If set, then every call to <code>Save</code> or <code>Save.pos</code> will create backups for all previously-unbackupped functions, by automatically calling <code>create.backups</code>. <code>create.backups</code> can also be called manually, to create the backup directory, index, and backup files for all functions in the currently-top task.
+</p>
+<p><code>get.backup</code> returns all available backup versions as <b>character vectors</b>, by default with the most recent first. To turn one of these character vectors into a function, a <code>source</code> step is needed; see <b>Examples</b>.
+</p>
+<p><code>read.bkind</code> shows which file to look for particular backups in. These files are text-format, so you can look at one in a text editor and manually extract the parts you want. You can also use <code>read.bkind</code> to set up a restoration-of-everything, as shown in <b>Examples</b>. I deliberately haven't included a function for mass restoration in <code>mvbutils</code>, because it's too dangerous and individual needs vary.
+</p>
+<p>Currently there is no automatic way to determine the type of a backed-up object. All backups are stored as text, so text objects look very similar to functions. However, the first line of a text object is just a number equal to the length of the text object; the first line of a function object starts with "function(" or "structure( function(". The examples show one way to distinguish automatically.
+</p>
+<p>The function <code>fix.order</code> uses the access dates of backup files to list your functions sorted by date order.
+</p>
+<p><code>move</code> will also move backup files and update INDEX files appropriately.
+</p>
+
+
+<h3>Value</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code> get.backup</code></td>
+<td>
+<p>Either NULL with a warning, if no backups are found, or a list containing the backups, each as a character vector.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> create.backups</code></td>
+<td>
+<p>NULL</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code> read.bkind</code></td>
+<td>
+<p>a list with components <code>files</code> and <code>object.names</code>; these are character vector with elements in 1-1 correspondence. Some of the objects named may not currently exist in <code>where</code>.</p>
+</td>
+</tr>
+</table>
+<h3>Author(s)</h3>
+
+<p>Mark Bravington</p>
+
+
+<h3>See Also</h3>
+
+<p><code>fixr</code>, <code>cd</code>, <code>move</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+## Need some backups first
+# Restore a function:
+g1 &lt;- get.backup( "myfun", "package:myfun")[[1]] # returns most recent backup only
+# To turn this into an actual function (with source attribute as per your formatting):
+myfun &lt;- source.mvb( textConnection( g1)) # would be nice to have an self-closing t.c.
+cat( get.backup( "myfun", "package:myfun", zap=FALSE)[[1]][1])
+# shows "myfun" &lt;- function...
+# Restore a character vector:
+mycharvec &lt;- as.cat( get.backup( 'mycharvec', ..mypackage)[[1]]) # ready to roll
+# Restore most recent backup of everything... brave!
+# Will include functions &amp; charvecs that have subsequently been deleted
+bks &lt;- read.bkind() # in current task
+for( i in bks$object.names) {
+  cat( "Restoring ", i, "...")
+  gb &lt;- get.backup( i, unlength=FALSE)[[1]] # unlength F so we can check type
+  # Is it a charvec?
+  if( grepl( '^ *[0-9]+ *$', gb[1])) # could check length too
+    gb &lt;- as.cat( gb[-1]) # remove line showing length and...
+    # ...set class to "cat" for nice printing, as per 'as.cat'
+  else {
+    # Nope, so it's a function and needs to be sourced
+    tc &lt;- textConnection( gb)
+    gbfun &lt;- try( source.mvb( gb)) # will set source attribute, documentation etc.
+    close( tc)
+    if( gbfun %is.a% "try-error") {
+      gbfun &lt;- stop( function( ...) stop( ii %&amp;% " failed to parse"), list( ii=i))
+      attr( gbfun, 'source') &lt;- gb # still assign source attribute
+    }
+    gb &lt;- gbfun
+  }
+  assign( i, gb)
+  cat( '\n')
+}
+
+## End(Not run)
+</code></pre>
+
+
+</div>

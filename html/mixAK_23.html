@@ -1,0 +1,1220 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>NMixMCMC</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>
+MCMC estimation of (multivariate) normal mixtures with possibly
+censored data.
+</h2>
+
+<h3>Description</h3>
+
+<p>This function runs MCMC for a model in which unknown density is
+specified as a normal mixture with either known or unknown number of
+components. With a prespecified number of components, MCMC is
+implemented through Gibbs sampling (see Diebolt and Robert, 1994) and
+dimension of the data can be arbitrary.
+With unknown number of components, currently only univariate case is
+implemented using the reversible jump MCMC (Richardson and Green,
+1997).
+
+
+
+</p>
+<p>Further, the data are allowed to be censored in which case additional
+Gibbs step is used within the MCMC algorithm 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">NMixMCMC(y0, y1, censor, x_w, scale, prior,
+         init, init2, RJMCMC,
+         nMCMC = c(burn = 10, keep = 10, thin = 1, info = 10),
+         PED, keep.chains = TRUE, onlyInit = FALSE, dens.zero = 1e-300,
+         parallel = FALSE, cltype)
+
+## S3 method for class 'NMixMCMC'
+print(x, dic, ...)
+
+## S3 method for class 'NMixMCMClist'
+print(x, ped, dic, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>y0</code></td>
+<td>
+<p>numeric vector of length <code class="reqn">n</code> or <code class="reqn">n\times p</code>
+matrix with observed data. It contains exactly observed,
+right-censored, left-censored data and lower limits for
+interval-censored data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>y1</code></td>
+<td>
+<p>numeric vector of length <code class="reqn">n</code> or <code class="reqn">n\times p</code>
+matrix with upper limits for interval-censored data. Elements
+corresponding to exactly observed, right-censored or left-censored
+data are ignored and can be filled arbitrarily (by
+<code>NA</code>'s) as well.
+</p>
+<p>It does not have to be supplied if there are no interval-censored data.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>censor</code></td>
+<td>
+<p>numeric vector of length <code class="reqn">n</code> or <code class="reqn">n\times p</code>
+matrix with censoring indicators. The following values indicate:
+</p>
+
+<dl>
+<dt>0</dt>
+<dd>
+<p>right-censored observation,</p>
+</dd>
+<dt>1</dt>
+<dd>
+<p>exactly observed value,</p>
+</dd>
+<dt>2</dt>
+<dd>
+<p>left-censored observation,</p>
+</dd>
+<dt>3</dt>
+<dd>
+<p>interval-censored observation.</p>
+</dd>      
+</dl>
+<p>If it is not supplied then it is assumed that all values are exactly
+observed.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x_w</code></td>
+<td>
+<p>optional vector providing a categorical covariate that may
+influence the mixture weights. Internally, it is converted into a
+<code>factor</code>.
+</p>
+<p>Added in version 4.0 (03/2015).
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>scale</code></td>
+<td>
+<p>a list specifying how to scale the data before running
+MCMC. It should have two components:
+</p>
+
+<dl>
+<dt>shift</dt>
+<dd>
+<p>a vector of length 1 or <code class="reqn">p</code> specifying shift
+vector <code class="reqn">\boldsymbol{m}</code>,</p>
+</dd>
+<dt>scale</dt>
+<dd>
+<p>a vector of length 1 or <code class="reqn">p</code> specifying diagonal of the
+scaling matrix <code class="reqn">\boldsymbol{S}</code>.</p>
+</dd>
+</dl>
+<p>If there is no censoring, and argument <code>scale</code> is missing
+then the data are scaled to have zero mean and unit variances, i.e.,
+<code>scale(y0)</code> is used for MCMC. In the case there is censoring
+and <code>scale</code> is missing,
+<code>scale$shift</code> is taken to be a sample mean of <code>init$y</code> and
+<code>scale$scale</code> are sample standard deviations of columns of <code>init$y</code>.
+</p>
+<p>If you do not wish to scale the data before running MCMC, specify
+<code>scale=list(shift=0, scale=1)</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>prior</code></td>
+<td>
+<p>a list with the parameters of the prior distribution. It
+should have the following components (for some of them,
+the program can assign default values and the user does not have to
+specify them if he/she wishes to use the defaults):
+</p>
+
+<dl>
+<dt>priorK</dt>
+<dd>
+<p>a character string which specifies the type of the
+prior for <code class="reqn">K</code> (the number of mixture components). It should
+have one of the following values:
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+“<code>fixed</code>”<code class="reqn">\mbox{\hspace{6in}}</code>
+Number of mixture components is assumed to be fixed to
+<code class="reqn">K_{max}</code>. This is a <b>default</b> value.
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+“<code>uniform</code>”<code class="reqn">\mbox{\hspace{6in}}</code>
+A priori <code class="reqn">K \sim \mbox{Unif}\{1,\dots,K_{max}\}.</code>
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+“<code>tpoisson</code>”<code class="reqn">\mbox{\hspace{6in}}</code>
+A priori <code class="reqn">K \sim
+	  \mbox{truncated-Poiss}(\lambda,\,K_{max}).</code>
+</p>
+</dd>
+<dt>priormuQ</dt>
+<dd>
+<p>a character string which specifies the type of the
+prior for <code class="reqn">\boldsymbol{\mu}_1,\dots,\boldsymbol{\mu}_{K_{max}}</code> (mixture means) and
+<code class="reqn">\boldsymbol{Q}_1,\dots,\boldsymbol{Q}_{K_{max}}</code> (inverted mixture covariance matrices). It should
+have one of the following values:
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+“<code>independentC</code>”<code class="reqn">\mbox{\hspace{6in}}</code>
+<code class="reqn">\equiv</code> independent conjugate prior (this is a
+<b>default</b> value).
+That is, a priori
+</p>
+<p style="text-align: center;"><code class="reqn">
+          (\boldsymbol{\mu}_j,\, \boldsymbol{Q}_j) \sim
+	  \mbox{N}(\boldsymbol{\xi}_j,\,\boldsymbol{D}_j)
+	  \times
+	  \mbox{Wishart}(\zeta,\,\boldsymbol{\Xi})
+	</code>
+</p>
+  
+<p>independently for <code class="reqn">j=1,\ldots,K</code>, where
+normal means
+<code class="reqn">\boldsymbol{\xi}_1,\dots,\boldsymbol{\xi}_K</code>,
+normal variances
+<code class="reqn">\boldsymbol{D}_1,\dots,\boldsymbol{D}_K</code>,
+and Wishart degrees of freedom <code class="reqn">\zeta</code> are specified
+further as <code>xi</code>, <code>D</code>, <code>zeta</code> components of the
+list <code>prior</code>.
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+“<code>naturalC</code>”<code class="reqn">\mbox{\hspace{6in}}</code>
+<code class="reqn">\equiv</code> natural conjugate prior. That is, a priori
+</p>
+<p style="text-align: center;"><code class="reqn">
+          (\boldsymbol{\mu}_j,\, \boldsymbol{Q}_j) \sim
+	  \mbox{N}(\boldsymbol{\xi}_j,\,c_j^{-1}\boldsymbol{Q}_j^{-1})
+	  \times
+	  \mbox{Wishart}(\zeta,\,\boldsymbol{\Xi})
+	</code>
+</p>
+  
+<p>independently for <code class="reqn">j=1,\ldots,K</code>, where
+normal means
+<code class="reqn">\boldsymbol{\xi}_1,\dots,\boldsymbol{\xi}_K</code>,
+precisions
+<code class="reqn">c_1,\dots,c_K</code>,
+and Wishart degrees of freedom <code class="reqn">\zeta</code> are specified
+further as <code>xi</code>, <code>ce</code>, <code>zeta</code> components of the
+list <code>prior</code>.
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+For both, independent conjugate and natural conjugate prior, the
+Wishart scale matrix <code class="reqn">\boldsymbol{\Xi}</code> is assumed to be
+diagonal with
+<code class="reqn">\gamma_1,\dots,\gamma_p</code> on a
+diagonal. For <code class="reqn">\gamma_j^{-1}</code> <code class="reqn">(j=1,\ldots,K)</code> additional
+gamma hyperprior <code class="reqn">\mbox{G}(g_j,\,h_j)</code> is assumed.
+Values of <code class="reqn">g_1,\dots,g_p</code> and
+<code class="reqn">h_1,\dots,h_p</code> are further specified as
+<code>g</code> and <code>h</code> components of the <code>prior</code> list.
+</p>
+</dd>
+<dt>Kmax</dt>
+<dd>
+<p>maximal number of mixture components
+<code class="reqn">K_{max}</code>. It must <b>always be specified</b> by the user.</p>
+</dd>
+<dt>lambda</dt>
+<dd>
+<p>parameter <code class="reqn">\lambda</code> for the truncated
+Poisson prior on <code class="reqn">K</code>. It must be positive and must <b>always be specified</b> if
+<code>priorK</code> is “<code>tpoisson</code>”.</p>
+</dd>
+<dt>delta</dt>
+<dd>
+<p>parameter <code class="reqn">\delta</code> for the Dirichlet prior
+on the mixture weights <code class="reqn">w_1,\dots,w_K.</code>
+It must be positive. Its <b>default</b> value is 1.</p>
+</dd>
+<dt>xi</dt>
+<dd>
+<p>a numeric value, vector or matrix which specifies
+<code class="reqn">\boldsymbol{\xi}_1, \dots, \boldsymbol{\xi}_{K_{max}}</code> (prior means for the mixture means
+<code class="reqn">\boldsymbol{\mu}_1,\dots,\boldsymbol{\mu}_{K_{max}}</code>). <b>Default</b> value is a matrix
+<code class="reqn">K_{max}\times p</code> with midpoints of columns
+of <code>init$y</code> in rows which follows Richardson and Green (1997).
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>	  
+If <code class="reqn">p=1</code> and <code>xi</code><code class="reqn">=\xi</code> is a single value
+then <code class="reqn">\xi_1=\cdots=\xi_{K_{max}} =
+	    \xi.</code>
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+If <code class="reqn">p=1</code> and <code>xi</code><code class="reqn">=\boldsymbol{\xi}</code> is a vector of length
+<code class="reqn">K_{max}</code> then the <code class="reqn">j</code>-th element of <code>xi</code>
+gives <code class="reqn">\xi_j</code> <code class="reqn">(j=1,\dots,K_{max}).</code>
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>	  
+If <code class="reqn">p&gt;1</code> and <code>xi</code><code class="reqn">=\boldsymbol{\xi}</code> is a vector of length <code class="reqn">p</code>
+then <code class="reqn">\boldsymbol{\xi}_1=\cdots=\boldsymbol{\xi}_{K_{max}} =
+	    \boldsymbol{\xi}.</code>
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+If <code class="reqn">p&gt;1</code> and <code>xi</code> is a <code class="reqn">K_{max} \times p</code> matrix then the <code class="reqn">j</code>-th row of <code>xi</code>
+gives <code class="reqn">\boldsymbol{xi}_j</code> <code class="reqn">(j=1,\dots,K_{max}).</code>	  
+</p>
+</dd> 
+<dt>ce</dt>
+<dd>
+<p>a numeric value or vector which specifies prior
+precision parameters
+<code class="reqn">c_1,\dots,c_{K_{max}}</code> for the
+mixture means <code class="reqn">\boldsymbol{\mu}_1,\dots,\boldsymbol{\mu}_{K_{max}}</code> when <code>priormuQ</code> is “<code>naturalC</code>”.
+Its <b>default</b> value is a vector of ones which follows
+Cappe, Robert and Ryden (2003).
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+If <code>ce</code><code class="reqn">=c</code> is a single value then
+<code class="reqn">c_1=\cdots=c_{K_{max}}=c.</code>
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+If <code>ce</code><code class="reqn">=\boldsymbol{c}</code> is a vector of length
+<code class="reqn">K_{max}</code> then the <code class="reqn">j</code>-th element of <code>ce</code>
+gives <code class="reqn">c_j</code> <code class="reqn">(j=1,\dots,K_{max}).</code>      
+</p>
+</dd>
+<dt>D</dt>
+<dd>
+<p>a numeric vector or matrix which specifies
+<code class="reqn">\boldsymbol{D}_1, \dots, \boldsymbol{D}_{K_{max}}</code> (prior variances or covariance matrices
+of the mixture means
+<code class="reqn">\boldsymbol{\mu}_1,\dots,\boldsymbol{\mu}_{K_{max}}</code> when <code>priormuQ</code> is
+“<code>independentC</code>”.)
+Its <b>default</b> value is a diagonal matrix with squared ranges
+of each column of <code>init$y</code> on a diagonal.
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>	  
+If <code class="reqn">p=1</code> and <code>D</code><code class="reqn">=d</code> is a single value
+then <code class="reqn">d_1=\cdots=d_{K_{max}} =
+	d.</code>
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+If <code class="reqn">p=1</code> and <code>D</code><code class="reqn">=\boldsymbol{d}</code> is a vector of length
+<code class="reqn">K_{max}</code> then the <code class="reqn">j</code>-th element of <code>D</code>
+gives <code class="reqn">d_j</code> <code class="reqn">(j=1,\dots,K_{max}).</code>
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>	  
+If <code class="reqn">p&gt;1</code> and <code>D</code><code class="reqn">=\boldsymbol{D}</code> is a
+<code class="reqn">p\times p</code> matrix
+then <code class="reqn">\boldsymbol{D}_1=\cdots=\boldsymbol{D}_{K_{max}} =
+	  \boldsymbol{D}.</code>
+</p>
+<p><code class="reqn">\mbox{\hspace{6in}}</code>
+If <code class="reqn">p&gt;1</code> and <code>D</code> is a <code class="reqn">(K_{max}\cdot p) \times p</code> matrix then the the first <code class="reqn">p</code> rows of <code>D</code>
+give <code class="reqn">\boldsymbol{D}_1</code>, rows <code class="reqn">p+1,\ldots,2p</code> of
+<code>D</code> give <code class="reqn">\boldsymbol{D}_2</code> etc.
+</p>
+</dd>
+<dt>zeta</dt>
+<dd>
+<p>degrees of freedom <code class="reqn">\zeta</code> for the Wishart
+prior on the inverted mixture variances
+<code class="reqn">\boldsymbol{Q}_1,\dots,\boldsymbol{Q}_{K_{max}}.</code>.
+It must be higher then <code class="reqn">p-1</code>. Its <b>default</b> value is
+<code class="reqn">p + 1</code>.	
+</p>
+</dd>
+<dt>g</dt>
+<dd>
+<p>a value or a vector of length <code class="reqn">p</code> with the shape
+parameters <code class="reqn">g_1,\dots,g_p</code> for the Gamma hyperpriors on
+<code class="reqn">\gamma_1,\dots,\gamma_p</code>.	
+It must be positive. Its <b>default</b> value is a vector
+<code class="reqn">(0.2,\dots,0.2)'</code>.
+</p>
+</dd>
+<dt>h</dt>
+<dd>
+<p>a value or a vector of length <code class="reqn">p</code> with the rate
+parameters <code class="reqn">h_1,\dots,h_p</code>
+for the Gamma hyperpriors on <code class="reqn">\gamma_1,\dots,\gamma_p</code>.
+It must be positive. Its <b>default</b> value is a vector containing
+<code class="reqn">10/R_l^2</code>, where
+<code class="reqn">R_l</code> is a range of the <code class="reqn">l</code>-th column of <code>init$y</code>.
+</p>
+</dd>	
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init</code></td>
+<td>
+<p>a list with the initial values for the MCMC. All initials
+can be determined by the program if they are not specified. The list
+may have the following components:
+</p>
+
+<dl>
+<dt>y</dt>
+<dd>
+<p>a numeric vector or matrix with the initial values for the latent censored observations.</p>
+</dd>
+<dt>K</dt>
+<dd>
+<p>a numeric value with the initial value for the number of mixture components.</p>
+</dd>
+<dt>w</dt>
+<dd>
+<p>a numeric vector with the initial values for the mixture
+weights.</p>
+</dd>
+<dt>mu</dt>
+<dd>
+<p>a numeric vector or matrix with the initial values for
+the mixture means.</p>
+</dd>
+<dt>Sigma</dt>
+<dd>
+<p>a numeric vector or matrix with the initial values
+for the mixture variances.</p>
+</dd>
+<dt>Li</dt>
+<dd>
+<p>a numeric vector with the initial values for the Colesky
+decomposition of the mixture inverse variances.</p>
+</dd>
+<dt>gammaInv</dt>
+<dd>
+<p>a numeric vector with the initial values for the
+inverted components of the hyperparameter <code class="reqn">\boldsymbol{\gamma}</code>.</p>
+</dd>
+<dt>r</dt>
+<dd>
+<p>a numeric vector with the initial values for the mixture
+allocations.</p>
+</dd>      
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>init2</code></td>
+<td>
+<p>a list with the initial values for the second chain
+needed to estimate the penalized expected deviance of Plummer
+(2008). The list <code>init2</code> has the same structure as the list
+<code>init</code>. All initials in <code>init2</code> can be determined by the
+program (differently than the values in <code>init</code>) if they are not
+specified.
+</p>
+<p>Ignored when <code>PED</code> is <code>FALSE</code>.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>RJMCMC</code></td>
+<td>
+<p>a list with the parameters needed to run reversible jump
+MCMC for mixtures with varying number of components. It does not
+have to be specified if the number of components is fixed. Most of
+the parameters can be determined by the program if they are not
+specified. The list may have the following components:
+</p>
+
+<dl>
+<dt>Paction</dt>
+<dd>
+<p>probabilities (or proportionalit constants) which
+are used to choose an action of the sampler within each
+iteration of MCMC to update the mixture related parameters. Let
+<code>Paction</code> = <code class="reqn">(p_1,\,p_2,\,p_3)'</code>. Then with probability <code class="reqn">p_1</code> only steps
+assuming fixed <code class="reqn">k</code> (number of mixture components) are
+performed, with probability <code class="reqn">p_2</code> split-combine move
+is proposed and with probability <code class="reqn">p_3</code> birth-death
+move is proposed.
+</p>
+<p>If not specified (default) then in each iteration of MCMC, all
+sampler actions are performed.
+
+
+
+
+
+
+</p>
+</dd>
+<dt>Psplit</dt>
+<dd>
+<p>a numeric vector of length <code>prior$Kmax</code> giving
+conditional probabilities of the split move given <code class="reqn">k</code> as
+opposite to the combine move.
+</p>
+<p>Default value is
+<code class="reqn">(1,\,0.5,\ldots,0.5,\,0)'</code>.
+</p>
+</dd>
+<dt>Pbirth</dt>
+<dd>
+<p>a numeric vector of length <code>prior$Kmax</code> giving
+conditional probabilities of the birth move given <code class="reqn">k</code> as
+opposite to the death move.
+</p>
+<p>Default value is
+<code class="reqn">(1,\,0.5,\ldots,0.5,\,0)'</code>.
+</p>
+</dd>
+<dt>par.u1</dt>
+<dd>
+<p>a two component vector with parameters of the beta
+distribution used to generate an auxiliary value
+<code class="reqn">u_1</code>.
+</p>
+<p>A default value is <code>par.u1</code> = <code class="reqn">(2,\,2)'</code>,
+i.e., <code class="reqn">u_1 \sim \mbox{Beta}(2,\,2).</code>	
+</p>
+</dd>
+<dt>par.u2</dt>
+<dd>
+<p>a two component vector (for <code class="reqn">p=1</code>) or a matrix
+(for <code class="reqn">p &gt; 1</code>)
+with two columns with parameters of the distributions of the
+auxiliary values
+<code class="reqn">u_{2,1},\ldots,u_{2,p}</code> in rows.
+</p>
+<p>A default value leads to
+<code class="reqn">u_{2,d} \sim \mbox{Unif}(-1,\,1)\; (d=1,\ldots,p-1),</code>
+<code class="reqn">u_{2,p} \sim \mbox{Beta}(1,\,2p).</code>
+</p>
+</dd>
+<dt>par.u3</dt>
+<dd>
+<p>a two component vector (for <code class="reqn">p=1</code>) or a matrix
+(for <code class="reqn">p &gt; 1</code>)
+with two columns with parameters of the distributions of the
+auxiliary values
+<code class="reqn">u_{3,1},\ldots,u_{3,p}</code> in rows.
+</p>
+<p>A default value leads to
+<code class="reqn">u_{3,d} \sim \mbox{Unif}(0,\,1)\; (d=1,\ldots,p-1),</code>
+<code class="reqn">u_{3,p} \sim \mbox{Beta}(1,\,p),</code>	
+</p>
+</dd>      
+</dl>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>nMCMC</code></td>
+<td>
+<p>numeric vector of length 4 giving parameters of the MCMC
+simulation. Its components may be named (ordering is then unimportant) as:
+</p>
+
+<dl>
+<dt>burn</dt>
+<dd>
+<p>length of the burn-in (after discarding the thinned
+values), can be equal to zero as well.</p>
+</dd>
+<dt>keep</dt>
+<dd>
+<p>length of the kept chains (after discarding the
+thinned values), must be positive.</p>
+</dd>
+<dt>thin</dt>
+<dd>
+<p>thinning interval, must be positive.</p>
+</dd>
+<dt>info</dt>
+<dd>
+<p>interval in which the progress information is printed
+on the screen.</p>
+</dd>      
+</dl>
+<p>In total <code class="reqn">(M_{burn} + M_{keep}) \cdot M_{thin}</code> MCMC scans are performed.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>PED</code></td>
+<td>
+<p>a logical value which indicates whether the penalized
+expected deviance (see Plummer, 2008 for more details)
+is to be computed (which requires two parallel
+chains). If not specified, <code>PED</code> is set to <code>TRUE</code>
+for models with fixed number of components and is set to
+<code>FALSE</code> for models with numbers of components estimated using RJ-MCMC.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>keep.chains</code></td>
+<td>
+<p>logical. If <code>FALSE</code>, only summary statistics
+are returned in the resulting object. This might be useful in the
+model searching step to save some memory.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>onlyInit</code></td>
+<td>
+<p>logical. If <code>TRUE</code> then the function only
+determines parameters of the prior distribution, initial values,
+values of <code>scale</code> and
+parameters for the reversible jump MCMC.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dens.zero</code></td>
+<td>
+<p>a small value used instead of zero when computing
+deviance related quantities.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>x</code></td>
+<td>
+<p>an object of class <code>NMixMCMC</code> or <code>NMixMCMClist</code> to
+be printed.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>dic</code></td>
+<td>
+<p>logical which indicates whether DIC should be printed. By
+default, DIC is printed only for models with a fixed number of
+mixture components.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>ped</code></td>
+<td>
+<p>logical which indicates whether PED should be printed. By
+default, PED is printed only for models with a fixed number of
+mixture components.
+</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parallel</code></td>
+<td>
+<p>a logical value which indicates whether parallel
+computation (based on a package <code>parallel</code>) should be used when
+running two chains for the purpose of <code>PED</code> calculation</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cltype</code></td>
+<td>
+<p>optional argument applicable if <code>parallel</code> is
+<code>TRUE</code>. If <code>cltype</code> is given, it is passed as the
+<code>type</code> argument into the call to <code>makeCluster</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>additional arguments passed to the default <code>print</code> method.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>See accompanying paper (Komárek, 2009).
+In the rest of the helpfile,
+the same notation is used as in the paper, namely, <code class="reqn">n</code> denotes the number of
+observations, <code class="reqn">p</code> is dimension of the data, <code class="reqn">K</code> is the number
+of mixture components,
+<code class="reqn">w_1,\dots,w_K</code> are mixture weights, 
+<code class="reqn">\boldsymbol{\mu}_1,\dots,\boldsymbol{\mu}_K</code>
+are mixture means,
+<code class="reqn">\boldsymbol{\Sigma}_1,\dots,\boldsymbol{\Sigma}_K</code>
+are mixture variance-covariance matrices,
+<code class="reqn">\boldsymbol{Q}_1,\dots,\boldsymbol{Q}_K</code> are
+their inverses.
+</p>
+<p>For the data
+<code class="reqn">\boldsymbol{y}_1,\dots,\boldsymbol{y}_n</code> the
+following <code class="reqn">g_y(\boldsymbol{y})</code> density is assumed
+</p>
+<p style="text-align: center;"><code class="reqn">
+    g_y(\boldsymbol{y}) = |\boldsymbol{S}|^{-1} \sum_{j=1}^K w_j
+    \varphi\bigl(\boldsymbol{S}^{-1}(\boldsymbol{y} - \boldsymbol{m}\,|\,\boldsymbol{\mu}_j,\,\boldsymbol{\Sigma}_j)\bigr),
+  </code>
+</p>
+
+<p>where
+<code class="reqn">\varphi(\cdot\,|\,\boldsymbol{\mu},\,\boldsymbol{\Sigma})</code> denotes a density
+of the (multivariate) normal distribution
+with mean <code class="reqn">\boldsymbol{\mu}</code> and a~variance-covariance matrix <code class="reqn">\boldsymbol{\Sigma}</code>.
+Finally, <code class="reqn">\boldsymbol{S}</code> is a pre-specified diagonal scale matrix and
+<code class="reqn">\boldsymbol{m}</code> is a pre-specified shift vector. Sometimes, by
+setting <code class="reqn">\boldsymbol{m}</code> to sample means of components of
+<code class="reqn">\boldsymbol{y}</code> and diagonal of <code class="reqn">\boldsymbol{S}</code> to
+sample standard deviations of <code class="reqn">\boldsymbol{y}</code> (considerable)
+improvement of the MCMC algorithm is achieved.   
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>NMixMCMC</code> or class <code>NMixMCMClist</code>.
+Object of class <code>NMixMCMC</code> is returned if <code>PED</code> is
+<code>FALSE</code>. Object of class <code>NMixMCMClist</code> is returned if
+<code>PED</code> is <code>TRUE</code>. 
+</p>
+
+
+<h3>Object of class NMixMCMC</h3>
+
+<p>Objects of class <code>NMixMCMC</code> have the following components:
+</p>
+  
+<dl>
+<dt>iter</dt>
+<dd>
+<p>index of the last iteration performed.</p>
+</dd>
+<dt>nMCMC</dt>
+<dd>
+<p>used value of the argument <code>nMCMC</code>.</p>
+</dd>
+<dt>dim</dt>
+<dd>
+<p>dimension <code class="reqn">p</code> of the distribution of data</p>
+</dd>
+<dt>nx_w</dt>
+<dd>
+<p>number of levels of a factor covariate on mixture weights
+(equal to 1 if there were no covariates on mixture weights)</p>
+</dd>
+</dl>
+<dl>
+<dt>prior</dt>
+<dd>
+<p>a list containing the used value of the argument <code>prior</code>.</p>
+</dd>
+<dt>init</dt>
+<dd>
+<p>a list containing the used initial values for the MCMC
+(the first iteration of the burn-in).
+</p>
+</dd>
+<dt>state.first</dt>
+<dd>
+<p>a list having the components labeled
+<code>y</code>, <code>K</code>, <code>w</code>, <code>mu</code>, <code>Li</code>, <code>Q</code>, <code>Sigma</code>,
+<code>gammaInv</code>, <code>r</code> containing the values of
+generic parameters at the first stored (after burn-in) iteration of the MCMC.
+</p>
+</dd>  
+<dt>state.last</dt>
+<dd>
+<p>a list having the components labeled
+<code>y</code>, <code>K</code>, <code>w</code>, <code>mu</code>, <code>Li</code>, <code>Q</code>, <code>Sigma</code>,
+<code>gammaInv</code>, <code>r</code> containing the last sampled values of
+generic parameters.
+</p>
+</dd>  
+<dt>RJMCMC</dt>
+<dd>
+<p>a list containing the used value of the argument <code>RJMCMC</code>.</p>
+</dd>  
+<dt>scale</dt>
+<dd>
+<p>a list containing the used value of the argument <code>scale</code>.</p>
+</dd>
+<dt>freqK</dt>
+<dd>
+<p>frequency table of <code class="reqn">K</code> based on the sampled chain.</p>
+</dd>
+<dt>propK</dt>
+<dd>
+<p>posterior distribution of <code class="reqn">K</code> based on the sampled chain.</p>
+</dd>
+<dt>DIC</dt>
+<dd>
+<p>a <code>data.frame</code> having columns labeled
+<code>DIC</code>, <code>pD</code>, <code>D.bar</code>, <code>D.in.bar</code> containing
+values used to compute deviance information criterion
+(DIC). Currently only <code class="reqn">DIC_3</code> of Celeux et al. (2006) is
+implemented.
+</p>
+</dd>
+<dt>moves</dt>
+<dd>
+<p>a <code>data.frame</code> which summarizes the acceptance
+probabilities of different move types of the sampler.</p>
+</dd>
+<dt>K</dt>
+<dd>
+<p>numeric vector with a chain for <code class="reqn">K</code> (number of mixture components).</p>
+</dd>
+<dt>w</dt>
+<dd>
+<p>numeric vector or matrix with a chain for <code class="reqn">w</code> (mixture
+weights). It is a matrix with <code class="reqn">K</code> columns when <code class="reqn">K</code> is
+fixed. Otherwise, it is a vector with weights put sequentially after
+each other.</p>
+</dd>
+<dt>mu</dt>
+<dd>
+<p>numeric vector or matrix with a chain for <code class="reqn">\mu</code> (mixture
+means). It is a matrix with <code class="reqn">p\cdot K</code> columns when <code class="reqn">K</code> is
+fixed. Otherwise, it is a vector with means put sequentially after
+each other.</p>
+</dd>
+<dt>Q</dt>
+<dd>
+<p>numeric vector or matrix with a chain for lower triangles of <code class="reqn">\boldsymbol{Q}</code> (mixture
+inverse variances). It is a matrix with <code class="reqn">\frac{p(p+1)}{2}\cdot K</code>
+columns when <code class="reqn">K</code> is fixed. Otherwise, it is a vector with lower
+triangles of <code class="reqn">\boldsymbol{Q}</code> matrices put sequentially after each other.</p>
+</dd>
+<dt>Sigma</dt>
+<dd>
+<p>numeric vector or matrix with a chain for lower triangles of <code class="reqn">\Sigma</code> (mixture
+variances). It is a matrix with <code class="reqn">\frac{p(p+1)}{2}\cdot K</code>
+columns when <code class="reqn">K</code> is fixed. Otherwise, it is a vector with lower
+triangles of <code class="reqn">\Sigma</code> matrices put sequentially after each other.</p>
+</dd>
+<dt>Li</dt>
+<dd>
+<p>numeric vector or matrix with a chain for lower triangles of
+Cholesky decompositions of <code class="reqn">\boldsymbol{Q}</code> matrices.
+It is a matrix with <code class="reqn">\frac{p(p+1)}{2}\cdot K</code>
+columns when <code class="reqn">K</code> is fixed. Otherwise, it is a vector with lower
+triangles put sequentially after each other.</p>
+</dd>
+<dt>gammaInv</dt>
+<dd>
+<p>matrix with <code class="reqn">p</code> columns with a chain for inverses
+of the hyperparameter <code class="reqn">\boldsymbol{\gamma}</code>.
+</p>
+</dd>
+<dt>order</dt>
+<dd>
+<p>numeric vector or matrix with order indeces of mixture
+components related to artificial identifiability constraint
+defined by a suitable re-labeling algorithm
+(by default, simple ordering of the first component of the mixture
+means is used).
+</p>
+<p>It is a matrix with <code class="reqn">K</code> columns when <code class="reqn">K</code> is
+fixed. Otherwise it is a vector with orders put sequentially after
+each other.</p>
+</dd>
+<dt>rank</dt>
+<dd>
+<p>numeric vector or matrix with rank indeces of mixture
+components. related to artificial identifiability constraint
+defined by a suitable re-labeling algorithm
+(by default, simple ordering of the first component of the mixture
+means is used).
+</p>
+<p>It is a matrix with <code class="reqn">K</code> columns when <code class="reqn">K</code> is
+fixed. Otherwise it is a vector with ranks put sequentially after
+each other.</p>
+</dd>  
+<dt>mixture</dt>
+<dd>
+<p><code>data.frame</code> with columns labeled
+<code>y.Mean.*</code>, <code>y.SD.*</code>, <code>y.Corr.*.*</code>,
+<code>z.Mean.*</code>, <code>z.SD.*</code>, <code>z.Corr.*.*</code> containing the
+chains for the means, standard deviations and correlations of the
+distribution of the original (<code>y</code>) and scaled (<code>z</code>) data
+based on a normal mixture at each iteration.
+</p>
+</dd>
+<dt>deviance</dt>
+<dd>
+<p><code>data.frame</code> with columns labeles
+<code>LogL0</code>, <code>LogL1</code>, <code>dev.complete</code>, <code>dev.observed</code>
+containing the chains of quantities needed to compute DIC.
+</p>
+</dd>  
+<dt>pm.y</dt>
+<dd>
+<p>a <code>data.frame</code> with <code class="reqn">p</code> columns with posterior
+means for (latent) values of observed data (useful when there is
+censoring).</p>
+</dd>
+<dt>pm.z</dt>
+<dd>
+<p>a <code>data.frame</code> with <code class="reqn">p</code> columns with posterior
+means for (latent) values of scaled observed data (useful when there is censoring).</p>
+</dd>  
+<dt>pm.indDev</dt>
+<dd>
+<p>a <code>data.frame</code> with columns labeled
+<code>LogL0</code>, <code>LogL1</code>, <code>dev.complete</code>,
+<code>dev.observed</code>, <code>pred.dens</code> containing posterior means of
+individual contributions to the deviance.
+</p>
+</dd>
+<dt>pred.dens</dt>
+<dd>
+<p>a numeric vector with the predictive density of the
+data based on the MCMC sample evaluated at data points.
+</p>
+<p>Note that when there is censoring, this is not exactly the
+predictive density as it is computed as the average of densities at
+each iteration evaluated at sampled values of latent observations at
+iterations.
+</p>
+</dd>
+<dt>poster.comp.prob_u</dt>
+<dd>
+<p>a matrix which is present in the output object
+if the number of mixture components in the distribution of random
+effects is fixed and equal to <code class="reqn">K</code>. In that case,
+<code>poster.comp.prob_u</code> is a matrix with <code class="reqn">K</code> columns and <code class="reqn">n</code>
+rows with estimated posterior component probabilities
+– posterior means of the components of the underlying 0/1
+allocation vector.
+</p>
+<p><b>WARNING:</b> By default,
+the labels of components are based on artificial
+identifiability constraints based on ordering of the mixture means
+in the first margin. Very often, such identifiability constraint is
+not satisfactory!
+</p>
+
+</dd>
+<dt>poster.comp.prob_b</dt>
+<dd>
+<p>a matrix which is present in the output object
+if the number of mixture components in the distribution of random
+effects is fixed and equal to <code class="reqn">K</code>. In that case,
+<code>poster.comp.prob_b</code> is a matrix with <code class="reqn">K</code> columns and <code class="reqn">n</code>
+rows  with estimated posterior component probabilities
+– posterior mean over model parameters.
+</p>
+<p><b>WARNING:</b> By default, the labels of components are based on artificial
+identifiability constraints based on ordering of the mixture means
+in the first margin. Very often, such identifiability constraint is
+not satisfactory!
+</p>
+
+</dd>    
+<dt>summ.y.Mean</dt>
+<dd>
+<p>Posterior summary statistics based on chains stored
+in <code>y.Mean.*</code> columns of the <code>data.frame</code> <code>mixture</code>.</p>
+</dd>
+<dt>summ.y.SDCorr</dt>
+<dd>
+<p>Posterior summary statistics based on chains
+stored in <code>y.SD.*</code> and <code>y.Corr.*.*</code> columns of the
+<code>data.frame</code> <code>mixture</code>.</p>
+</dd>
+<dt>summ.z.Mean</dt>
+<dd>
+<p>Posterior summary statistics based on chains stored
+in <code>z.Mean.*</code> columns of the <code>data.frame</code> <code>mixture</code>.</p>
+</dd>
+<dt>summ.z.SDCorr</dt>
+<dd>
+<p>Posterior summary statistics based on chains
+stored in <code>z.SD.*</code> and <code>z.Corr.*.*</code> columns of the <code>data.frame</code> <code>mixture</code>.</p>
+</dd>  
+<dt>poster.mean.w</dt>
+<dd>
+<p>a numeric vector with posterior means of mixture
+weights after re-labeling. It is computed only if <code class="reqn">K</code> is fixed
+and even then I am not convinced that these are useful posterior
+summary statistics (see label switching problem mentioned above).
+In any case, they should be used with care.</p>
+</dd>  
+<dt>poster.mean.mu</dt>
+<dd>
+<p>a matrix with posterior means of mixture
+means after re-labeling. It is computed only if <code class="reqn">K</code> is fixed
+and even then I am not convinced that these are useful posterior
+summary statistics (see label switching problem mentioned above).
+In any case, they should be used with care.</p>
+</dd>
+<dt>poster.mean.Q</dt>
+<dd>
+<p>a list with posterior means of mixture inverse
+variances after re-labeling. It is computed only if <code class="reqn">K</code> is fixed
+and even then I am not convinced that these are useful posterior
+summary statistics (see label switching problem mentioned above).
+In any case, they should be used with care.</p>
+</dd>
+<dt>poster.mean.Sigma</dt>
+<dd>
+<p>a list with posterior means of mixture
+variances after re-labeling. It is computed only if <code class="reqn">K</code> is fixed
+and even then I am not convinced that these are useful posterior
+summary statistics (see label switching problem mentioned above).
+In any case, they should be used with care.</p>
+</dd>
+<dt>poster.mean.Li</dt>
+<dd>
+<p>a list with posterior means of Cholesky
+decompositions of mixture inverse variances after re-labeling.
+It is computed only if <code class="reqn">K</code> is fixed
+and even then I am not convinced that these are useful posterior
+summary statistics (see label switching problem mentioned above).
+In any case, they should be used with care.</p>
+</dd>
+<dt>relabel</dt>
+<dd>
+<p>a list which specifies the algorithm used to re-label
+the MCMC output to compute <code>order</code>, <code>rank</code>, <code>poster.comp.prob_u</code>,
+<code>poster.comp.prob_b</code>, <code>poster.mean.w</code>,
+<code>poster.mean.mu</code>, <code>poster.mean.Q</code>,
+<code>poster.mean.Sigma</code>, <code>poster.mean.Li</code>. 
+</p>
+</dd>
+<dt>Cpar</dt>
+<dd>
+<p>a list with components useful to call underlying C++ functions (not
+interesting for ordinary users).</p>
+</dd>
+</dl>
+<h3>Object of class NMixMCMClist</h3>
+
+<p>Object of class <code>NMixMCMClist</code> is the list having two components
+of class <code>NMixMCMC</code> representing two parallel chains and
+additionally the following components:
+</p>
+
+<dl>
+<dt>PED</dt>
+<dd>
+<p>values of penalized expected deviance and related
+quantities. It is a vector with five components: <code>D.expect</code> <code class="reqn">=</code>
+estimated expected deviance, where the estimate is based on two
+parallel chains; <code>popt</code> <code class="reqn">=</code> estimated penalty, where the
+estimate is based on simple MCMC average based on two parallel
+chains; <code>PED</code> <code class="reqn">=</code> estimated penalized expected deviance
+<code class="reqn">=</code> <code>D.expect</code> <code class="reqn">+</code> <code>popt</code>; <code>wpopt</code> <code class="reqn">=</code>
+estimated penalty, where the estimate is based on weighted MCMC average
+(through importance sampling) based on two parallel chains;
+<code>wPED</code> <code class="reqn">=</code> estimated penalized expected deviance <code class="reqn">=</code>
+<code>D.expect</code> <code class="reqn">+</code> <code>wpopt</code>.</p>
+</dd>
+<dt>popt</dt>
+<dd>
+<p>contributions to the unweighted penalty from each observation.</p>
+</dd>
+<dt>wpopt</dt>
+<dd>
+<p>contributions to the weighted penalty from each observation.</p>
+</dd>
+<dt>inv.D</dt>
+<dd>
+<p>for each observation, number of iterations (in both chains), where the
+deviance was in fact equal to infinity (when the corresponding
+density was lower than <code>dens.zero</code>) and was not taken into account when
+computing <code>D.expect</code>.</p>
+</dd>
+<dt>inv.popt</dt>
+<dd>
+<p>for each observation, number of iterations, where the
+penalty was in fact equal to infinity and was not taken into account
+when computing <code>popt</code>.
+</p>
+</dd>
+<dt>inv.wpopt</dt>
+<dd>
+<p>for each observation, number of iterations, where the
+importance sampling weight was in fact equal to infinity and was not taken into account
+when computing <code>wpopt</code>.</p>
+</dd>
+<dt>sumISw</dt>
+<dd>
+<p>for each observation, sum of importance sampling
+weights.</p>
+</dd>
+</dl>
+<h3>Author(s)</h3>
+
+<p>Arnošt Komárek <a href="mailto:arnost.komarek@mff.cuni.cz">arnost.komarek@mff.cuni.cz</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Celeux, G., Forbes, F., Robert, C. P., and Titterington, D. M. (2006).
+Deviance information criteria for missing data models.
+<em>Bayesian Analysis</em>, <b>1</b>(4), 651–674.
+</p>
+<p>Cappé, Robert and Rydén (2003).
+Reversible jump, birth-and-death and more general continuous time Markov chain Monte Carlo samplers.
+<em>Journal of the Royal Statistical Society, Series B</em>, <b>65</b>(3), 679–700.
+</p>
+
+
+
+<p>Diebolt, J. and Robert, C. P. (1994).
+Estimation of finite mixture distributions through Bayesian sampling.
+<em>Journal of the Royal Statistical Society, Series B</em>, <b>56</b>(2), 363–375.
+</p>
+<p>Jasra, A., Holmes, C. C., and Stephens, D. A. (2005).
+Markov chain Monte Carlo methods and the label switching problem in
+Bayesian mixture modelling.
+<em>Statistical Science</em>, <b>20</b>(1), 50–67.
+</p>
+<p>Komárek, A. (2009).
+A new R package for Bayesian estimation of multivariate normal mixtures allowing for selection 
+of the number of components and interval-censored data.
+<em>Computational Statistics and Data Analysis</em>, <b>53</b>(12), 3932–3947.
+</p>
+<p>Plummer, M. (2008).
+Penalized loss functions for Bayesian model comparison.
+<em>Biostatistics</em>, <b>9</b>(3), 523–539.
+</p>
+<p>Richardson, S. and Green, P. J. (1997).
+On Bayesian analysis of mixtures with unknown number of components
+(with Discussion).
+<em>Journal of the Royal Statistical Society, Series B</em>, <b>59</b>(4), 731–792.
+</p>
+<p>Spiegelhalter, D. J.,Best, N. G., Carlin, B. P., and van der Linde, A. (2002).
+Bayesian measures of model complexity and fit (with Discussion).
+<em>Journal of the Royal Statistical Society, Series B</em>, <b>64</b>(4), 583–639.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>NMixPredDensMarg</code>, <code>NMixPredDensJoint2</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">## Not run: 
+## See also additional material available in 
+## YOUR_R_DIR/library/mixAK/doc/
+## or YOUR_R_DIR/site-library/mixAK/doc/
+## - files Galaxy.R, Faithful.R, Tandmob.R and
+## https://www2.karlin.mff.cuni.cz/~komarek/software/mixAK/Galaxy.pdf
+## https://www2.karlin.mff.cuni.cz/~komarek/software/mixAK/Faithful.pdf
+## https://www2.karlin.mff.cuni.cz/~komarek/software/mixAK/Tandmob.pdf
+##
+
+## ==============================================
+
+## Simple analysis of Anderson's iris data
+## ==============================================
+library("colorspace")
+
+data(iris, package="datasets")
+summary(iris)
+VARS &lt;- names(iris)[1:4]
+#COLS &lt;- rainbow_hcl(3, start = 60, end = 240)
+COLS &lt;- c("red", "darkblue", "darkgreen")
+names(COLS) &lt;- levels(iris[, "Species"])
+
+### Prior distribution and the length of MCMC
+Prior &lt;- list(priorK = "fixed", Kmax = 3)
+nMCMC &lt;- c(burn=5000, keep=10000, thin=5, info=1000)
+
+### Run MCMC
+set.seed(20091230)
+fit &lt;- NMixMCMC(y0 = iris[, VARS], prior = Prior, nMCMC = nMCMC)
+
+### Basic posterior summary
+print(fit)
+
+### Univariate marginal posterior predictive densities
+### based on chain #1
+pdens1 &lt;- NMixPredDensMarg(fit[[1]], lgrid=150)
+plot(pdens1)
+plot(pdens1, main=VARS, xlab=VARS)
+
+### Bivariate (for each pair of margins) predictive densities
+### based on chain #1
+pdens2a &lt;- NMixPredDensJoint2(fit[[1]])
+plot(pdens2a)
+
+plot(pdens2a, xylab=VARS)
+plot(pdens2a, xylab=VARS, contour=TRUE)
+
+### Determine the grid to compute bivariate densities
+grid &lt;- list(Sepal.Length=seq(3.5, 8.5, length=75),
+             Sepal.Width=seq(1.8, 4.5, length=75),
+             Petal.Length=seq(0, 7, length=75),
+             Petal.Width=seq(-0.2, 3, length=75))
+pdens2b &lt;- NMixPredDensJoint2(fit[[1]], grid=grid)
+plot(pdens2b, xylab=VARS)
+
+### Plot with contours
+ICOL &lt;- rev(heat_hcl(20, c=c(80, 30), l=c(30, 90), power=c(1/5, 2)))
+oldPar &lt;- par(mfrow=c(2, 3), bty="n")
+for (i in 1:3){
+  for (j in (i+1):4){
+    NAME &lt;- paste(i, "-", j, sep="")
+    MAIN &lt;- paste(VARS[i], "x", VARS[j])
+    image(pdens2b$x[[i]], pdens2b$x[[j]], pdens2b$dens[[NAME]], col=ICOL,
+          xlab=VARS[i], ylab=VARS[j], main=MAIN)
+    contour(pdens2b$x[[i]], pdens2b$x[[j]], pdens2b$dens[[NAME]], add=TRUE, col="brown4")
+  }  
+}  
+
+### Plot with data
+for (i in 1:3){
+  for (j in (i+1):4){
+    NAME &lt;- paste(i, "-", j, sep="")
+    MAIN &lt;- paste(VARS[i], "x", VARS[j])
+    image(pdens2b$x[[i]], pdens2b$x[[j]], pdens2b$dens[[NAME]], col=ICOL,
+          xlab=VARS[i], ylab=VARS[j], main=MAIN)
+    for (spec in levels(iris[, "Species"])){
+      Data &lt;- subset(iris, Species==spec)
+      points(Data[,i], Data[,j], pch=16, col=COLS[spec])
+    }  
+  }  
+}  
+
+### Set the graphical parameters back to their original values
+par(oldPar)
+
+### Clustering based on posterior summary statistics of component allocations
+### or on the posterior distribution of component allocations
+### (these are two equivalent estimators of probabilities of belonging
+###  to each mixture components for each observation)
+p1 &lt;- fit[[1]]$poster.comp.prob_u
+p2 &lt;- fit[[1]]$poster.comp.prob_b
+
+### Clustering based on posterior summary statistics of mixture weight, means, variances
+p3 &lt;- NMixPlugDA(fit[[1]], iris[, VARS])
+p3 &lt;- p3[, paste("prob", 1:3, sep="")]
+
+  ### Observations from "setosa" species (all would be allocated in component 1)
+apply(p1[1:50,], 2, quantile, prob=seq(0, 1, by=0.1))
+apply(p2[1:50,], 2, quantile, prob=seq(0, 1, by=0.1))
+apply(p3[1:50,], 2, quantile, prob=seq(0, 1, by=0.1))
+
+  ### Observations from "versicolor" species (almost all would be allocated in component 2)
+apply(p1[51:100,], 2, quantile, prob=seq(0, 1, by=0.1))
+apply(p2[51:100,], 2, quantile, prob=seq(0, 1, by=0.1))
+apply(p3[51:100,], 2, quantile, prob=seq(0, 1, by=0.1))
+
+  ### Observations from "virginica" species (all would be allocated in component 3)
+apply(p1[101:150,], 2, quantile, prob=seq(0, 1, by=0.1))
+apply(p2[101:150,], 2, quantile, prob=seq(0, 1, by=0.1))
+apply(p3[101:150,], 2, quantile, prob=seq(0, 1, by=0.1))
+
+## End(Not run)
+</code></pre>
+
+
+</div>

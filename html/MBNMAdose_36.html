@@ -1,0 +1,591 @@
+<div class="container">
+
+<table style="width: 100%;"><tr>
+<td>mbnma.run</td>
+<td style="text-align: right;">R Documentation</td>
+</tr></table>
+<h2>Run MBNMA dose-response models</h2>
+
+<h3>Description</h3>
+
+<p>Fits a Bayesian dose-response for model-based network meta-analysis
+(MBNMA) that can account for multiple doses of different agents by
+applying a desired dose-response function. Follows the methods
+of Mawdsley et al. (2016).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class="language-R">mbnma.run(
+  network,
+  fun = dpoly(degree = 1),
+  method = "common",
+  regress = NULL,
+  regress.effect = "common",
+  class.effect = list(),
+  UME = FALSE,
+  sdscale = FALSE,
+  cor = FALSE,
+  omega = NULL,
+  parameters.to.save = NULL,
+  pd = "pd.kl",
+  likelihood = NULL,
+  link = NULL,
+  priors = NULL,
+  n.iter = 20000,
+  n.chains = 3,
+  n.burnin = floor(n.iter/2),
+  n.thin = max(1, floor((n.iter - n.burnin)/1000)),
+  autojags = FALSE,
+  Rhat = 1.05,
+  n.update = 10,
+  model.file = NULL,
+  jagsdata = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr style="vertical-align: top;">
+<td><code>network</code></td>
+<td>
+<p>An object of class <code>mbnma.network</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>fun</code></td>
+<td>
+<p>An object of <code>class("dosefun")</code> that specifies a functional form to be assigned to the
+dose-response. See Details.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>method</code></td>
+<td>
+<p>Can take either <code>"common"</code> or <code>"random"</code> to indicate whether relative effects
+should be modelled with between-study heterogeneity or not (see details).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regress</code></td>
+<td>
+<p>A formula of effect modifiers (variables that
+interact with the treatment effect) to incorporate using Network Meta-Regression
+(E.g. <code>~ Population + Age</code>). All variables in the formula are modelled as interacting
+with the treatment effect (i.e. prognostic variables cannot be included in this way).
+Effects modifiers must be named variables in <code>network$data.ab</code> and must be identical
+within a study. Factor and character effect modifiers will be converted to a series of
+named dummy variables.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>regress.effect</code></td>
+<td>
+<p>Indicates whether effect modification should be assumed to be
+<code>"common"</code> (assumed to be equal versus Placebo throughout the network),
+<code>"random"</code> (assumed to be exchangeable versus Placebo throughout the network),
+<code>"agent"</code> (assumed to be equal versus Placebo within each agent), or
+<code>"class"</code> (assumed to be equal versus Placebo within each class).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>class.effect</code></td>
+<td>
+<p>A list of named strings that determines which dose-response
+parameters to model with a class effect and what that effect should be
+(<code>"common"</code> or <code>"random"</code>). Element names should match dose-response parameter names.
+Note that assuming class effects on some dose-response parameters may be unreasonable if
+the range of doses differ substantially across agents within a class.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>UME</code></td>
+<td>
+<p>A boolean object to indicate whether to fit an Unrelated Mean Effects model
+that does not assume consistency and so can be used to test if the consistency
+assumption is valid.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>sdscale</code></td>
+<td>
+<p>Logical object to indicate whether to write a model that specifies a reference SD
+for standardising when modelling using Standardised Mean Differences. Specifying <code>sdscale=TRUE</code>
+will therefore only modify the model if link function is set to SMD (<code>link="smd"</code>).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>cor</code></td>
+<td>
+<p>A boolean object that indicates whether correlation should be modelled
+between relative effect dose-response parameters. This is
+automatically set to <code>FALSE</code> if class effects are modelled or if multiple dose-response
+functions are fitted.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>omega</code></td>
+<td>
+<p>A scale matrix for the inverse-Wishart prior for the covariance matrix used
+to model the correlation between dose-response parameters (see Details for dose-response functions). <code>omega</code> must
+be a symmetric positive definite matrix with dimensions equal to the number of dose-response parameters modelled using
+relative effects (<code>"rel"</code>). If left as <code>NULL</code> (the default) a diagonal matrix with elements equal to 100
+is used.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>parameters.to.save</code></td>
+<td>
+<p>A character vector containing names of parameters
+to monitor in JAGS</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>pd</code></td>
+<td>
+<p>Can take either:
+</p>
+
+<ul>
+<li> <p><code>pv</code> only pV will be reported (as automatically outputted by <code>R2jags</code>).
+</p>
+</li>
+<li> <p><code>plugin</code> calculates pD by the plug-in
+method (Spiegelhalter et al. 2002). It is faster, but may output negative
+non-sensical values, due to skewed deviances that can arise with non-linear models.
+</p>
+</li>
+<li> <p><code>pd.kl</code> calculates pD by the Kullback-Leibler divergence (Plummer 2008). This
+will require running the model for additional iterations but is a more robust calculation for the effective
+number of parameters in non-linear models.
+</p>
+</li>
+<li> <p><code>popt</code> calculates pD using an optimism adjustment which allows for calculation
+of the penalized expected deviance (Plummer 2008).
+</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>likelihood</code></td>
+<td>
+<p>A string indicating the likelihood to use in the model. Can take either <code>"binomial"</code>,
+<code>"normal"</code> or <code>"poisson"</code>. If left as <code>NULL</code> the likelihood will be inferred from the data.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>link</code></td>
+<td>
+<p>A string indicating the link function to use in the model. Can take any link function
+defined within JAGS (e.g. <code>"logit"</code>, <code>"log"</code>, <code>"probit"</code>, <code>"cloglog"</code>), be assigned the value <code>"identity"</code> for
+an identity link function, or be assigned the value <code>"smd"</code> for modelling Standardised Mean Differences using an
+identity link function. If left as <code>NULL</code> the link function will be automatically assigned based
+on the likelihood.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>priors</code></td>
+<td>
+<p>A named list of parameter values (without indices) and
+replacement prior distribution values given as strings
+<strong>using distributions as specified in JAGS syntax</strong> (see Plummer (2017)). Note
+that normal distributions in JAGS are specified as </p>
+<p style="text-align: center;"><code class="reqn">N(\mu, prec)</code>
+</p>
+<p>, where </p>
+<p style="text-align: center;"><code class="reqn">prec = 1 / {\sigma^2}</code>
+</p>
+<p>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.iter</code></td>
+<td>
+<p>number of total iterations per chain (including burn in; default: 20000)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.chains</code></td>
+<td>
+<p>number of Markov chains (default: 3)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.burnin</code></td>
+<td>
+<p>length of burn in, i.e. number of iterations to discard at the
+beginning. Default is 'n.iter/2“, that is, discarding the first half of the
+simulations. If n.burnin is 0, jags() will run 100 iterations for adaption.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.thin</code></td>
+<td>
+<p>thinning rate. Must be a positive integer. Set <code style="white-space: pre;">⁠n.thin &gt; 1`` to save memory and computation time if n.iter is large. Default is ⁠</code>max(1, floor(n.chains * (n.iter-n.burnin) / 1000))“ which will only thin if there are at least 2000
+simulations.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>autojags</code></td>
+<td>
+<p>A boolean value that indicates whether the model should be continually updated until
+it has converged below a specific cutoff of <code>Rhat</code></p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>Rhat</code></td>
+<td>
+<p>A cutoff value for the Gelman-Rubin convergence diagnostic(Gelman and Rubin 1992).
+Unless all parameters have Rhat values lower than this the model will continue to sequentially update up
+to a maximum of <code>n.update</code>. Default is <code>1.05</code>.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>n.update</code></td>
+<td>
+<p>The maximum number of updates. Each update is run for 1000 iterations, after which the
+Rhat values of all parameters are checked against <code>Rhat</code>. Default maximum updates
+is <code>10</code> (i.e. 10,000 additional iterations in total).</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>model.file</code></td>
+<td>
+<p>The file path to a JAGS model (.jags file) that can be used
+to overwrite the JAGS model that is automatically written based on the
+specified options in <code>MBNMAdose</code>. Useful for adding further model flexibility.</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>jagsdata</code></td>
+<td>
+<p>A named list of the data objects to be used in the JAGS model. Only
+required if users are defining their own JAGS model using <code>model.file</code>. Format
+should match that of standard models fitted in <code>MBNMAdose</code>
+(see <code>mbnma$model.arg$jagsdata</code>)</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td><code>...</code></td>
+<td>
+<p>Arguments to be sent to R2jags.</p>
+</td>
+</tr>
+</table>
+<h3>Details</h3>
+
+<p>When relative effects are modelled on more than one dose-response parameter and
+<code>cor = TRUE</code>, correlation between the dose-response parameters is automatically
+estimated using a vague Wishart prior. This prior can be made slightly more informative
+by specifying the relative scale of variances between the dose-response parameters using
+<code>omega</code>. <code>cor</code> will automatically be set to <code>FALSE</code> if class effects are modelled.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of S3 <code>class(c("mbnma", "rjags"))</code> containing parameter
+results from the model. Can be summarized by <code>print()</code> and can check
+traceplots using <code>R2jags::traceplot()</code> or various functions from the package <code>mcmcplots</code>.
+</p>
+<p>Nodes that are automatically monitored (if present in the model) have the
+following interpretation:</p>
+
+<table>
+<tr>
+<td style="text-align: left;">
+   <strong>Parameters(s)/Parameter Prefix</strong> </td>
+<td style="text-align: left;"> <strong>Interpretation</strong> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code style="white-space: pre;">⁠&lt;named dose-response parameter&gt;⁠</code> (e.g. <code>emax</code>) </td>
+<td style="text-align: left;"> The pooled effect for each dose-response parameter, as defined in dose-response functions. Will vary by agent if pooling is specified as <code>"rel"</code> in the dose-response function. </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>sd</code> </td>
+<td style="text-align: left;"> The between-study SD (heterogeneity) for relative effects, reported if <code>method="random"</code> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code style="white-space: pre;">⁠sd.&lt;named dose-response parameter&gt;⁠</code> (e.g. <code>sd.emax</code>) </td>
+<td style="text-align: left;"> Between-study SD (heterogeneity) for absolute dose-response parameters specified as <code>"random"</code>. </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code style="white-space: pre;">⁠&lt;named capitalized dose-response parameter&gt;⁠</code> (e.g. <code>EMAX</code>) </td>
+<td style="text-align: left;"> The class effect within each class for a given dose-response parameter. These will be estimated by the model if specified in <code>class.effects</code> for a given dose-response parameter. </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code style="white-space: pre;">⁠sd.&lt;named capitalized dose-response parameter&gt;⁠</code> (e.g. <code>sd.EMAX</code>) </td>
+<td style="text-align: left;"> The within-class SD for different agents within the same class. Will be estimated by the model if any dose-response parameter in <code>class.effect</code> is set to <code>"random"</code>. </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>totresdev</code> </td>
+<td style="text-align: left;"> The residual deviance of the model </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>deviance</code> </td>
+<td style="text-align: left;"> The deviance of the model </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<p>If there are errors in the JAGS model code then the object will be a list
+consisting of two elements - an error message from JAGS that can help with
+debugging and <code>model.arg</code>, a list of arguments provided to <code>mbnma.run()</code>
+which includes <code>jagscode</code>, the JAGS code for the model that can help
+users identify the source of the error.
+</p>
+
+
+<h3>Dose-response parameter arguments</h3>
+
+
+<table>
+<tr>
+<td style="text-align: left;">
+   <strong>Argument</strong> </td>
+<td style="text-align: left;"> <strong>Model specification</strong> </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>"rel"</code> </td>
+<td style="text-align: left;"> Implies that <em>relative</em> effects should be pooled for this dose-response parameter separately for each agent in the network. </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>"common"</code> </td>
+<td style="text-align: left;"> Implies that all agents share the same common effect for this dose-response parameter. </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>"random"</code> </td>
+<td style="text-align: left;"> Implies that all agents share a similar (exchangeable) effect for this dose-response parameter. This approach allows for modelling of variability between agents. </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+   <code>numeric()</code> </td>
+<td style="text-align: left;"> Assigned a numeric value, indicating that this dose-response parameter should not be estimated from the data but should be assigned the numeric value determined by the user. This can be useful for fixing specific dose-response parameters (e.g. Hill parameters in Emax functions) to a single value. </td>
+</tr>
+<tr>
+<td style="text-align: left;">
+</td>
+</tr>
+</table>
+<h3>Dose-response function</h3>
+
+<p>Several general dose-response functions are provided, but a
+user-defined dose-response relationship can instead be used.
+</p>
+<p>As of version 0.4.0 dose-response functions are specified as an object of <code>class("dosefun")</code>. See
+help details for each of the functions below for the interpretation of specific dose-response parameters.
+</p>
+<p>Built-in dose-response functions are:
+</p>
+
+<ul>
+<li> <p><code>dpoly()</code>: polynomial (e.g. for a linear model - <code>dpoly(degree=1)</code>)
+</p>
+</li>
+<li> <p><code>dloglin()</code>: log-linear
+</p>
+</li>
+<li> <p><code>dexp()</code>: exponential
+</p>
+</li>
+<li> <p><code>demax()</code>: (emax with/without a Hill parameter)
+</p>
+</li>
+<li> <p><code>dspline()</code>: splines (can fit B-splines (<code>type="bs"</code>), restricted cubic splines (<code>type="rcs"</code>), natural splines (<code>type="ns"</code>), or
+piecewise linear splines (<code>type="ls"</code>))
+</p>
+</li>
+<li> <p><code>dfpoly()</code>: fractional polynomials
+</p>
+</li>
+<li> <p><code>dnonparam()</code>: Non-parametric monotonic function (<code>direction</code> can be either <code>"increasing"</code> or <code>"decreasing"</code>) following the method
+of Owen et al. (2015)
+</p>
+</li>
+<li> <p><code>duser()</code>: user-defined function
+</p>
+</li>
+<li> <p><code>dmulti()</code>: allows agent-specific dose-response functions to be fitted. A separate function must be provided for each agent
+in the network.
+</p>
+</li>
+</ul>
+<h3>References</h3>
+
+<p>Gelman A, Rubin DB (1992).
+“Inference from iterative simulation using multiple sequences.”
+<em>Statistical Science</em>, <b>7</b>(4), 457-511.
+<a href="https://projecteuclid.org/journals/statistical-science/volume-7/issue-4/Inference-from-Iterative-Simulation-Using-Multiple-Sequences/10.1214/ss/1177011136.full">https://projecteuclid.org/journals/statistical-science/volume-7/issue-4/Inference-from-Iterative-Simulation-Using-Multiple-Sequences/10.1214/ss/1177011136.full</a>.<br><br> Mawdsley D, Bennetts M, Dias S, Boucher M, Welton NJ (2016).
+“Model-Based Network Meta-Analysis: A Framework for Evidence Synthesis of Clinical Trial Data.”
+<em>CPT Pharmacometrics Syst Pharmacol</em>, <b>5</b>(8), 393-401.
+ISSN 2163-8306 (Electronic) 2163-8306 (Linking), <a href="https://doi.org/10.1002/psp4.12091">doi:10.1002/psp4.12091</a>, <a href="https://pubmed.ncbi.nlm.nih.gov/27479782/">https://pubmed.ncbi.nlm.nih.gov/27479782/</a>.<br><br> Owen RK, Tincello DG, Keith RA (2015).
+“Network meta-analysis: development of a three-level hierarchical modeling approach incorporating dose-related constraints.”
+<em>Value Health</em>, <b>18</b>(1), 116-26.
+ISSN 1524-4733 (Electronic) 1098-3015 (Linking), <a href="https://doi.org/10.1016/j.jval.2014.10.006">doi:10.1016/j.jval.2014.10.006</a>, <a href="https://pubmed.ncbi.nlm.nih.gov/25595242/">https://pubmed.ncbi.nlm.nih.gov/25595242/</a>.<br><br> Plummer M (2008).
+“Penalized loss functions for Bayesian model comparison.”
+<em>Biostatistics</em>, <b>9</b>(3), 523-39.
+ISSN 1468-4357 (Electronic) 1465-4644 (Linking), <a href="https://pubmed.ncbi.nlm.nih.gov/18209015/">https://pubmed.ncbi.nlm.nih.gov/18209015/</a>.<br><br> Plummer M (2017).
+<em>JAGS user manual</em>.
+<a href="https://people.stat.sc.edu/hansont/stat740/jags_user_manual.pdf">https://people.stat.sc.edu/hansont/stat740/jags_user_manual.pdf</a>.<br><br> Spiegelhalter DJ, Best NG, Carlin BP, van der Linde A (2002).
+“Bayesian measures of model complexity and fit.”
+<em>J R Statistic Soc B</em>, <b>64</b>(4), 583-639.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class="language-R">
+# Using the triptans data
+network &lt;- mbnma.network(triptans)
+
+
+######## Dose-response functions ########
+
+# Fit a dose-response MBNMA with a linear function
+# with common treatment effects
+result &lt;- mbnma.run(network, fun=dpoly(degree=1), method="common")
+
+# Fit a dose-response MBNMA with a log-linear function
+# with random treatment effects
+result &lt;- mbnma.run(network, fun=dloglin(), method="random")
+
+# Fit a dose-response MBNMA with a fractional polynomial function
+# with random treatment effects
+# with a probit link function
+result &lt;- mbnma.run(network, fun=dfpoly(), method="random", link="probit")
+
+# Fit a user-defined function (quadratic)
+fun.def &lt;- ~ (beta.1 * dose) + (beta.2 * (dose^2))
+result &lt;- mbnma.run(network, fun=duser(fun=fun.def), method="common")
+
+# Fit an Emax function
+# with a single random (exchangeable) parameter for ED50
+# with common treatment effects
+result &lt;- mbnma.run(network, fun=demax(emax="rel", ed50="random"),
+              method="common")
+
+# Fit an Emax function with a Hill parameter
+# with a fixed value of 5 for the Hill parameter
+# with random relative effects
+result &lt;- mbnma.run(network, fun=demax(hill=5), method="random")
+
+# Fit a model with natural cubic splines
+# with 3 knots at 10% 30% and 60% quartiles of dose ranges
+depnet &lt;- mbnma.network(ssri) # Using the sSRI depression dataset
+result &lt;- mbnma.run(depnet, fun=dspline(type="ns", knots=c(0.1,0.3,0.6)))
+
+# Fit a model with different dose-response functions for each agent
+multifun &lt;- dmulti(list(dloglin(), # for placebo (can be any function)
+                       demax(), # for eletriptan
+                       demax(), # for sumatriptan
+                       dloglin(), # for frovatriptan
+                       demax(), # for almotriptan
+                       demax(), # for zolmitriptan
+                       dloglin(), # for naratriptan
+                       demax())) # for rizatriptan
+
+multidose &lt;- mbnma.run(network, fun=multifun)
+
+
+########## Class effects ##########
+
+ # Using the osteoarthritis dataset
+ pain.df &lt;- osteopain
+
+ # Set a shared class (NSAID) only for Naproxcinod and Naproxen
+ pain.df &lt;- pain.df %&gt;% dplyr::mutate(
+                class = dplyr::case_when(agent %in% c("Naproxcinod", "Naproxen") ~ "NSAID",
+                        !agent %in% c("Naproxcinod", "Naproxen") ~ agent
+                        )
+                )
+
+ # Run an Emax MBNMA with a common class effect on emax
+ painnet &lt;- mbnma.network(pain.df)
+ result &lt;- mbnma.run(painnet, fun = demax(),
+                class.effect = list(emax = "common"))
+
+
+####### Priors #######
+
+# Obtain priors from a fractional polynomial function
+result &lt;- mbnma.run(network, fun=dfpoly(degree=1), method="random")
+print(result$model.arg$priors)
+
+# Change the prior distribution for the power
+newpriors &lt;- list(power.1 = "dnorm(0,0.001) T(0,)")
+newpriors &lt;- list(sd = "dnorm(0,0.5) T(0,)")
+
+result &lt;- mbnma.run(network, fun=dfpoly(degree=1), method="random",
+              priors=newpriors)
+
+
+########## Sampler options ##########
+
+# Change the number of MCMC iterations, the number of chains, and the thin
+result &lt;- mbnma.run(network, fun=dloglin(), method="random",
+              n.iter=5000, n.thin=5, n.chains=4)
+
+# Calculate effective number of parameters via plugin method
+result &lt;- mbnma.run(network, fun=dloglin(), method="random",
+              pd="plugin")
+
+# Calculate effective number of parameters using penalized expected deviance
+result &lt;- mbnma.run(network, fun=dloglin(), method="random",
+              pd="popt")
+
+
+####### Examine MCMC diagnostics (using mcmcplots or coda packages) #######
+
+# Density plots
+mcmcplots::denplot(result)
+
+# Traceplots
+mcmcplots::traplot(result)
+
+# Caterpillar plots
+mcmcplots::caterplot(result, "rate")
+
+# Autocorrelation plots (using the coda package)
+coda::autocorr.plot(coda::as.mcmc(result))
+
+####### Automatically run jags until convergence is reached #########
+
+# Rhat of 1.08 is set as the criteria for convergence
+#on all monitored parameters
+conv.res &lt;- mbnma.run(network, fun=demax(),
+              method="random",
+              n.iter=10000, n.burnin=9000,
+              autojags=TRUE, Rhat=1.08, n.update=8)
+
+
+########## Output ###########
+
+# Print R2jags output and summary
+print(result)
+summary(result)
+
+# Plot forest plot of results
+plot(result)
+
+
+</code></pre>
+
+
+</div>
